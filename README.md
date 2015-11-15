@@ -1,19 +1,16 @@
 # guble messaging server
 
 guble is a simple messaging server, written in golang.
-
-## Features
-
-* Web Socket connection
+Guble is in a very early state and unreleased. If you like it,
+help me or come back later ;-)
 
 ## Roadmap
 
-Guble is in a very early state and unreleased. If there is enough time,
-the following features may be realized:
+If there is enough time, the following features may be realized:
 
 * Subscription to multiple topics
 * Replay of messages
-* REST and WebSocket API for message Publishing
+* Additional REST API for message Publishing
 * Authentication and Accessmanagement
 
 ## Starting the guble server
