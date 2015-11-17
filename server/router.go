@@ -1,153 +1,126 @@
 package server
 
 import (
-	"github.com/rs/xid"
 	"log"
 	"runtime"
 	"strings"
 	"time"
 )
 
-type Path string
-
-type Route struct {
-	Id   string
-	Path Path
-	C    chan []byte
-}
-
-type SubRequest struct {
-	route      Route
+type SubscriptionRequest struct {
+	route      *Route
 	doneNotify chan bool
 }
 
-type Message struct {
-	id   int64
-	path Path
-	body []byte
-}
-
-type MsgMultiplexer struct {
+type PubSubRouter struct {
 	// mapping the path to the route slice
-	routes           map[Path][]Route
-	messageIn        chan Message
-	subscribe        chan SubRequest
-	unsubscribe      chan SubRequest
-	stop             chan bool
-	routeChannelSize int
+	routes          map[Path][]Route
+	messageIn       chan Message
+	subscribeChan   chan SubscriptionRequest
+	unsubscribeChan chan SubscriptionRequest
+	stop            chan bool
 }
 
-func NewMultiplexer() *MsgMultiplexer {
-	return &MsgMultiplexer{
-		routes:           make(map[Path][]Route),
-		messageIn:        make(chan Message, 500),
-		subscribe:        make(chan SubRequest, 10),
-		unsubscribe:      make(chan SubRequest, 10),
-		stop:             make(chan bool, 1),
-		routeChannelSize: 1,
+func NewPubSubRouter() *PubSubRouter {
+	return &PubSubRouter{
+		routes:          make(map[Path][]Route),
+		messageIn:       make(chan Message, 500),
+		subscribeChan:   make(chan SubscriptionRequest, 10),
+		unsubscribeChan: make(chan SubscriptionRequest, 10),
+		stop:            make(chan bool, 1),
 	}
 }
 
-func (mux *MsgMultiplexer) Go() *MsgMultiplexer {
+func (router *PubSubRouter) Go() *PubSubRouter {
 	go func() {
 		//log.Println("DEBUG: starting message multiplexer")
 		for {
 			//log.Println("DEBUG: GO: next select")
 
 			select {
-			case message := <-mux.messageIn:
+			case message := <-router.messageIn:
 				//log.Println("DEBUG: GO: before handleMessage")
-				mux.handleMessage(message)
+				router.handleMessage(message)
 				//log.Println("DEBUG: GO: after handleMessage")
-			case subscriber := <-mux.subscribe:
-				mux.addRoute(subscriber.route)
+			case subscriber := <-router.subscribeChan:
+				router.subscribe(subscriber.route)
 				subscriber.doneNotify <- true
-			case unsubscriber := <-mux.unsubscribe:
-				mux.removeRoute(unsubscriber.route)
+			case unsubscriber := <-router.unsubscribeChan:
+				router.unsubscribe(unsubscriber.route)
 				unsubscriber.doneNotify <- true
-			case <-mux.stop:
-				mux.closeAllRoutes()
+			case <-router.stop:
+				router.closeAllRoutes()
 				//log.Println("DEBUG: stopping message multiplexer")
 				break
 			}
 			runtime.Gosched()
 		}
 	}()
-	return mux
+	return router
 }
 
-func (mux *MsgMultiplexer) Stop() {
-	mux.stop <- true
+func (router *PubSubRouter) Stop() {
+	router.stop <- true
 	runtime.Gosched()
 }
 
-func (mux *MsgMultiplexer) AddRoute(r Route) Route {
-	req := SubRequest{
+func (router *PubSubRouter) Subscribe(r *Route) *Route {
+	req := SubscriptionRequest{
 		route:      r,
 		doneNotify: make(chan bool),
 	}
-	mux.subscribe <- req
+	router.subscribeChan <- req
 	<-req.doneNotify
 	return r
 }
 
-func (mux *MsgMultiplexer) addRoute(r Route) Route {
-	routeList, present := mux.routes[r.Path]
+func (router *PubSubRouter) subscribe(r *Route) {
+	routeList, present := router.routes[r.Path]
 	if !present {
 		routeList = []Route{}
-		mux.routes[r.Path] = routeList
+		router.routes[r.Path] = routeList
 	}
-	mux.routes[r.Path] = append(routeList, r)
-	return r
+	router.routes[r.Path] = append(routeList, *r)
 }
 
-func (mux *MsgMultiplexer) AddNewRoute(path string) Route {
-	return mux.AddRoute(
-		Route{
-			Id:   xid.New().String(),
-			Path: Path(path),
-			C:    make(chan []byte, mux.routeChannelSize),
-		})
-}
-
-func (mux *MsgMultiplexer) RemoveRoute(r Route) {
-	req := SubRequest{
+func (router *PubSubRouter) Unsubscribe(r *Route) {
+	req := SubscriptionRequest{
 		route:      r,
 		doneNotify: make(chan bool),
 	}
-	mux.unsubscribe <- req
+	router.unsubscribeChan <- req
 	<-req.doneNotify
 }
 
-func (mux *MsgMultiplexer) removeRoute(r Route) {
-	routeList, present := mux.routes[r.Path]
+func (router *PubSubRouter) unsubscribe(r *Route) {
+	routeList, present := router.routes[r.Path]
 	if !present {
 		return
 	}
-	mux.routes[r.Path] = remove(routeList, r)
-	if len(mux.routes[r.Path]) == 0 {
-		delete(mux.routes, r.Path)
+	router.routes[r.Path] = remove(routeList, r)
+	if len(router.routes[r.Path]) == 0 {
+		delete(router.routes, r.Path)
 	}
 }
 
-func (mux *MsgMultiplexer) HandleMessage(message Message) {
-	mux.messageIn <- message
+func (router *PubSubRouter) HandleMessage(message Message) {
+	router.messageIn <- message
 	runtime.Gosched()
 }
 
-func (mux *MsgMultiplexer) handleMessage(message Message) {
+func (router *PubSubRouter) handleMessage(message Message) {
 	log.Printf("INFO: handle message=%v, len=%v", string(message.body), len(message.body))
 
-	log.Printf("DEBUG: number of routes =%v", len(mux.routes))
+	log.Printf("DEBUG: number of routes =%v", len(router.routes))
 
-	for currentRoutePath, currentRouteList := range mux.routes {
+	for currentRoutePath, currentRouteList := range router.routes {
 		if matchesTopic(message.path, currentRoutePath) {
-			mux.deliverMessage(copyOf(message.body), currentRouteList)
+			router.deliverMessage(copyOf(message.body), currentRouteList)
 		}
 	}
 }
 
-func (mux *MsgMultiplexer) deliverMessage(message []byte, deliverRouteList []Route) {
+func (router *PubSubRouter) deliverMessage(message []byte, deliverRouteList []Route) {
 	for _, route := range deliverRouteList {
 		//log.Println("DEBUG: GO: deliverMessage->going into delivery select ..")
 
@@ -166,7 +139,7 @@ func (mux *MsgMultiplexer) deliverMessage(message []byte, deliverRouteList []Rou
 					// fine!
 				case <-time.After(time.Second * 3):
 					log.Printf("WARN: ran into timeout when sending message to route=%v, closing path now", route.Path)
-					mux.removeRoute(route)
+					router.unsubscribe(&route)
 					close(route.C)
 				}
 			}(route)
@@ -176,8 +149,8 @@ func (mux *MsgMultiplexer) deliverMessage(message []byte, deliverRouteList []Rou
 	}
 }
 
-func (mux *MsgMultiplexer) closeAllRoutes() {
-	for _, currentRouteList := range mux.routes {
+func (router *PubSubRouter) closeAllRoutes() {
+	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
 			close(route.C)
 		}
@@ -199,7 +172,7 @@ func matchesTopic(messagePath, routePath Path) bool {
 			(messagePathLen > routePathLen && string(messagePath)[routePathLen] == '/'))
 }
 
-func remove(slice []Route, route Route) []Route {
+func remove(slice []Route, route *Route) []Route {
 	position := -1
 	for p, r := range slice {
 		if r.Id == route.Id {

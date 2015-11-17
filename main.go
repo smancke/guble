@@ -20,8 +20,8 @@ type Args struct {
 func main() {
 	args := loadArgs()
 
-	mux := server.NewMultiplexer().Go()
-	server := server.NewServer(mux)
+	mux := server.NewPubSubRouter().Go()
+	server := server.NewWSHandler(mux, mux)
 	server.Start(args.Listen)
 
 	waitForTermination(func() {

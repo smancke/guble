@@ -8,21 +8,22 @@ import (
 )
 
 var aTestMessage = []byte("Hello World!")
+var chanSize = 1
 
 func TestAddAndRemoveRoutes(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a Multiplexer
-	mux := NewMultiplexer().Go()
+	router := NewPubSubRouter().Go()
 
 	// when i add two routes in the same path
-	routeBlah1 := mux.AddNewRoute("/blah")
-	routeBlah2 := mux.AddNewRoute("/blah")
+	routeBlah1 := router.Subscribe(NewRoute("/blah", chanSize))
+	routeBlah2 := router.Subscribe(NewRoute("/blah", chanSize))
 
 	// and one route in another path
-	routeFoo := mux.AddNewRoute("/foo")
+	routeFoo := router.Subscribe(NewRoute("/foo", chanSize))
 
-	fmt.Printf("%+v\n", mux)
+	fmt.Printf("%+v\n", router)
 
 	// then
 	// they have correct ids
@@ -31,32 +32,32 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 	a.NotEqual(routeBlah2.Id, routeFoo.Id)
 
 	// and the routes are stored
-	a.Equal(2, len(mux.routes[Path("/blah")]))
-	a.Equal(mux.routes[Path("/blah")][0].Id, routeBlah1.Id)
-	a.Equal(mux.routes[Path("/blah")][1].Id, routeBlah2.Id)
+	a.Equal(2, len(router.routes[Path("/blah")]))
+	a.Equal(router.routes[Path("/blah")][0].Id, routeBlah1.Id)
+	a.Equal(router.routes[Path("/blah")][1].Id, routeBlah2.Id)
 
-	a.Equal(1, len(mux.routes[Path("/foo")]))
-	a.Equal(mux.routes[Path("/foo")][0].Id, routeFoo.Id)
+	a.Equal(1, len(router.routes[Path("/foo")]))
+	a.Equal(router.routes[Path("/foo")][0].Id, routeFoo.Id)
 
 	// WHEN i remove routes
-	mux.RemoveRoute(routeBlah1)
-	mux.RemoveRoute(routeFoo)
+	router.Unsubscribe(routeBlah1)
+	router.Unsubscribe(routeFoo)
 
 	// then they are gone
-	a.Equal(1, len(mux.routes[Path("/blah")]))
-	a.Equal(mux.routes[Path("/blah")][0].Id, routeBlah2.Id)
+	a.Equal(1, len(router.routes[Path("/blah")]))
+	a.Equal(router.routes[Path("/blah")][0].Id, routeBlah2.Id)
 
-	a.Nil(mux.routes[Path("/foo")])
+	a.Nil(router.routes[Path("/foo")])
 }
 
 func TestSimpleMessageSending(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a Multiplexer with route
-	mux, r := aMuxRoute()
+	router, r := aRouterRoute()
 
 	// when i send a message to the route
-	mux.HandleMessage(Message{path: r.Path, body: aTestMessage})
+	router.HandleMessage(Message{path: r.Path, body: aTestMessage})
 
 	// then I can receive it a short time later
 	assertChannelContainsMessage(a, r.C, aTestMessage)
@@ -66,17 +67,17 @@ func TestRoutingWithSubTopics(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a Multiplexer with route
-	mux := NewMultiplexer().Go()
-	r := mux.AddNewRoute("/blah")
+	router := NewPubSubRouter().Go()
+	r := router.Subscribe(NewRoute("/blah", chanSize))
 
 	// when i send a message to a subroute
-	mux.HandleMessage(Message{path: "/blah/blub", body: aTestMessage})
+	router.HandleMessage(Message{path: "/blah/blub", body: aTestMessage})
 
 	// then I can receive the message
 	assertChannelContainsMessage(a, r.C, aTestMessage)
 
 	// but, when i send a message to a resource, which is just a substring
-	mux.HandleMessage(Message{path: "/blahblub", body: aTestMessage})
+	router.HandleMessage(Message{path: "/blahblub", body: aTestMessage})
 
 	// then the message gets not delivered
 	a.Equal(0, len(r.C))
@@ -104,16 +105,16 @@ func TestCallerIsNotBlockedIfTheChannelIsFull(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a Multiplexer with route
-	mux, r := aMuxRoute()
+	router, r := aRouterRoute()
 	// where the channel is full of messages
-	for i := 0; i < mux.routeChannelSize; i++ {
-		mux.HandleMessage(Message{path: r.Path, body: aTestMessage})
+	for i := 0; i < chanSize; i++ {
+		router.HandleMessage(Message{path: r.Path, body: aTestMessage})
 	}
 
 	// when I send one more message
 	done := make(chan []byte, 1)
 	go func() {
-		mux.HandleMessage(Message{path: r.Path, body: aTestMessage})
+		router.HandleMessage(Message{path: r.Path, body: aTestMessage})
 		done <- []byte("done")
 	}()
 
@@ -121,17 +122,17 @@ func TestCallerIsNotBlockedIfTheChannelIsFull(t *testing.T) {
 	assertChannelContainsMessage(a, done, []byte("done"))
 
 	// and thwo messaes are recieveable
-	for i := 0; i < mux.routeChannelSize; i++ {
+	for i := 0; i < chanSize; i++ {
 		assertChannelContainsMessage(a, r.C, aTestMessage)
 	}
 
 	assertChannelContainsMessage(a, r.C, aTestMessage)
 }
 
-func aMuxRoute() (*MsgMultiplexer, Route) {
-	mux := NewMultiplexer().Go()
-	return mux,
-		mux.AddNewRoute("/blah")
+func aRouterRoute() (*PubSubRouter, *Route) {
+	router := NewPubSubRouter().Go()
+	return router,
+		router.Subscribe(NewRoute("/blah", chanSize))
 }
 
 func assertChannelContainsMessage(a *assert.Assertions, c chan []byte, msg []byte) {
