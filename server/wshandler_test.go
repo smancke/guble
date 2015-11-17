@@ -4,6 +4,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
+	"time"
 )
 
 var pubSubSourceMock *PubSubSourceMock
@@ -13,15 +14,32 @@ func TestSubscriptionMessage(t *testing.T) {
 	a := assert.New(t)
 
 	// Given
-	handler := aMockedWSHandler()
-	subscriptionPath := "/bla"
+	pubSubSourceMock = new(PubSubSourceMock)
+	messageSinkMock = new(MessageSinkMock)
+	handler := NewWSHandler(pubSubSourceMock, messageSinkMock)
+
+	//handler := aMockedWSHandler()
+	subscriptionPath := "/mock"
+	wsconn := &WSConnMock{}
+	wsconn.On("LocationString").
+		Return(subscriptionPath)
+	wsconn.On("Receive", mock.AnythingOfType("*[]uint8")).
+		Return(nil)
+	pubSubSourceMock.On("Subscribe", mock.AnythingOfType("*server.Route")).
+		Return(nil)
 
 	// when I
-	sendASubscribeMessage(handler, subscriptionPath)
+	//sendASubscribeMessage(handler, subscriptionPath)
+	go func() {
+
+		handler.HandleNewConnection(wsconn)
+	}()
+
+	time.Sleep(time.Millisecond * 10)
 
 	// then the mock was called for subscription
 	// TODO
-	a.Equal(16, 16)
+	a.Equal([]*mock.Call{}, pubSubSourceMock.ExpectedCalls)
 }
 
 func aMockedWSHandler() *WSHandler {
@@ -41,6 +59,9 @@ type PubSubSourceMock struct {
 
 func (pss *PubSubSourceMock) Subscribe(r *Route) *Route {
 	args := pss.Called(r)
+	if args.Get(0) == nil {
+		return nil
+	}
 	return args.Get(0).(*Route)
 }
 
@@ -55,4 +76,25 @@ type MessageSinkMock struct {
 
 func (sink *MessageSinkMock) HandleMessage(message Message) {
 	sink.Called(message)
+}
+
+// WSConnMock -----------------------------------
+type WSConnMock struct {
+	mock.Mock
+}
+
+func (conn *WSConnMock) Close() {
+	conn.Called()
+}
+
+func (conn *WSConnMock) LocationString() string {
+	return conn.Called().String(0)
+}
+
+func (conn *WSConnMock) Send(bytes []byte) (err error) {
+	return conn.Called(bytes).Error(0)
+}
+
+func (conn *WSConnMock) Receive(bytes *[]byte) (err error) {
+	return conn.Called(bytes).Error(0)
 }

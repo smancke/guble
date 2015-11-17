@@ -1,10 +1,17 @@
 package server
 
 import (
-	"golang.org/x/net/websocket"
 	"log"
-	"net/http"
 )
+
+// WSConn is a wrapper interface for the needed functions of the websocket.Conn
+// It is introduced for testability of the WSHandler
+type WSConn interface {
+	Close()
+	LocationString() string
+	Send(bytes []byte) (err error)
+	Receive(bytes *[]byte) (err error)
+}
 
 type WSHandler struct {
 	messageSouce     PubSubSource
@@ -21,35 +28,18 @@ func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink) *WSHandler
 	return server
 }
 
-func (srv *WSHandler) Start(listen string) {
+func (srv *WSHandler) HandleNewConnection(ws WSConn) {
+	path := ws.LocationString()
 
-	go func() {
-		log.Printf("starting up at %v", listen)
-		http.Handle("/", websocket.Handler(func(ws *websocket.Conn) {
-			srv.handleConnection(ws)
-		}))
-
-		err := http.ListenAndServe(listen, nil)
-		if err != nil {
-			log.Panicf("ListenAndServe: " + err.Error())
-		}
-	}()
-}
-
-func (srv *WSHandler) Stop() {
-}
-
-func (srv *WSHandler) handleConnection(ws *websocket.Conn) {
-	path := ws.Config().Location.String()
 	log.Printf("subscribe on %s", path)
-	route := NewRoute(path, srv.routeChannelSize)
+	route := NewRoute(path, 1)
 	srv.messageSouce.Subscribe(route)
 
 	go sendLoop(srv, ws, route)
 	srv.receiveLoop(ws, route)
 }
 
-func sendLoop(srv *WSHandler, ws *websocket.Conn, route *Route) {
+func sendLoop(srv *WSHandler, ws WSConn, route *Route) {
 	for {
 		msg, ok := <-route.C
 		if !ok {
@@ -57,7 +47,7 @@ func sendLoop(srv *WSHandler, ws *websocket.Conn, route *Route) {
 			ws.Close()
 			return
 		}
-		if err := websocket.Message.Send(ws, msg); err != nil {
+		if err := ws.Send(msg); err != nil {
 			log.Printf("INFO: client closed the connection for path %q", route.Path)
 			srv.messageSouce.Unsubscribe(route)
 			break
@@ -65,12 +55,12 @@ func sendLoop(srv *WSHandler, ws *websocket.Conn, route *Route) {
 	}
 }
 
-func (srv *WSHandler) receiveLoop(ws *websocket.Conn, route *Route) {
+func (srv *WSHandler) receiveLoop(ws WSConn, route *Route) {
 	for {
 		var message []byte
 		//log.Printf("DEBUG: receiveLoop -> waiting for messages")
 
-		err := websocket.Message.Receive(ws, &message)
+		err := ws.Receive(&message)
 		if err != nil {
 			log.Printf("client closed the connection for path %q", route.Path)
 			srv.messageSouce.Unsubscribe(route)
