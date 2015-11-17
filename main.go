@@ -21,12 +21,11 @@ func main() {
 	args := loadArgs()
 
 	mux := server.NewPubSubRouter().Go()
-	server := server.NewWSHandler(mux, mux)
-	server.Start(args.Listen)
+	wshandler := server.NewWSHandler(mux, mux)
+	server.StartWSServer(args.Listen, wshandler)
 
 	waitForTermination(func() {
 		mux.Stop()
-		server.Stop()
 		time.Sleep(time.Second * 2)
 	})
 }
