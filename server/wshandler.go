@@ -4,15 +4,6 @@ import (
 	"log"
 )
 
-// WSConn is a wrapper interface for the needed functions of the websocket.Conn
-// It is introduced for testability of the WSHandler
-type WSConn interface {
-	Close()
-	LocationString() string
-	Send(bytes []byte) (err error)
-	Receive(bytes *[]byte) (err error)
-}
-
 type WSHandler struct {
 	messageSouce     PubSubSource
 	messageSink      MessageSink

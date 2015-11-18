@@ -34,3 +34,12 @@ type PubSubSource interface {
 type MessageSink interface {
 	HandleMessage(message Message)
 }
+
+// WSConn is a wrapper interface for the needed functions of the websocket.Conn
+// It is introduced for testability of the WSHandler
+type WSConn interface {
+	Close()
+	LocationString() string
+	Send(bytes []byte) (err error)
+	Receive(bytes *[]byte) (err error)
+}

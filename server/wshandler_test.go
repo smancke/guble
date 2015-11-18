@@ -1,100 +1,68 @@
 package server
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"github.com/golang/mock/gomock"
+	_ "github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
 
-var pubSubSourceMock *PubSubSourceMock
-var messageSinkMock *MessageSinkMock
+var ctrl *gomock.Controller
 
 func TestSubscriptionMessage(t *testing.T) {
-	a := assert.New(t)
+	defer initCtrl(t)()
 
-	// Given
-	pubSubSourceMock = new(PubSubSourceMock)
-	messageSinkMock = new(MessageSinkMock)
-	handler := NewWSHandler(pubSubSourceMock, messageSinkMock)
+	messages := []string{"hallo"} //, "foo"}
+	wsconn, pubSubSource, messageSink := createDefaultMocks(messages)
 
-	//handler := aMockedWSHandler()
-	subscriptionPath := "/mock"
-	wsconn := &WSConnMock{}
-	wsconn.On("LocationString").
-		Return(subscriptionPath)
-	wsconn.On("Receive", mock.AnythingOfType("*[]uint8")).
-		Return(nil)
-	pubSubSourceMock.On("Subscribe", mock.AnythingOfType("*server.Route")).
-		Return(nil)
+	wsconn.EXPECT().LocationString().Return("/mock")
+	pubSubSource.EXPECT().Subscribe(routeMatcher{"/mock"}).Return(nil)
+	pubSubSource.EXPECT().Subscribe(routeMatcher{"/foo"}).Return(nil)
 
-	// when I
-	//sendASubscribeMessage(handler, subscriptionPath)
+	runNewWsHandler(wsconn, pubSubSource, messageSink)
+}
+
+func initCtrl(t *testing.T) func() {
+	ctrl = gomock.NewController(t)
+	return func() { ctrl.Finish() }
+}
+
+func runNewWsHandler(wsconn *MockWSConn, pubSubSource *MockPubSubSource, messageSink *MockMessageSink) {
+	handler := NewWSHandler(pubSubSource, messageSink)
 	go func() {
-
 		handler.HandleNewConnection(wsconn)
 	}()
-
 	time.Sleep(time.Millisecond * 10)
-
-	// then the mock was called for subscription
-	// TODO
-	a.Equal([]*mock.Call{}, pubSubSourceMock.ExpectedCalls)
 }
 
-func aMockedWSHandler() *WSHandler {
-	pubSubSourceMock = new(PubSubSourceMock)
-	messageSinkMock = new(MessageSinkMock)
-	return NewWSHandler(pubSubSourceMock, messageSinkMock)
-}
-
-func sendASubscribeMessage(handler *WSHandler, path string) {
-
-}
-
-// PubSubSourceMock -----------------------------------
-type PubSubSourceMock struct {
-	mock.Mock
-}
-
-func (pss *PubSubSourceMock) Subscribe(r *Route) *Route {
-	args := pss.Called(r)
-	if args.Get(0) == nil {
-		return nil
+func createDefaultMocks(inputMessages []string) (*MockWSConn, *MockPubSubSource, *MockMessageSink) {
+	inputMessagesC := make(chan []byte, 10)
+	for _, msg := range inputMessages {
+		inputMessagesC <- []byte(msg)
 	}
-	return args.Get(0).(*Route)
+
+	pubSubSource := NewMockPubSubSource(ctrl)
+	messageSink := NewMockMessageSink(ctrl)
+
+	wsconn := NewMockWSConn(ctrl)
+	wsconn.EXPECT().Receive(gomock.Any()).Do(func(message *[]byte) error {
+		inputMessage := <-inputMessagesC
+		message = &inputMessage
+		return nil
+	}).Times(len(inputMessages) + 1)
+
+	return wsconn, pubSubSource, messageSink
 }
 
-func (pss *PubSubSourceMock) Unsubscribe(r *Route) {
-	pss.Called(r)
+// --- routeMatcher ---------
+type routeMatcher struct {
+	path string
 }
 
-// MessageSinkMock -----------------------------------
-type MessageSinkMock struct {
-	mock.Mock
+func (n routeMatcher) Matches(x interface{}) bool {
+	return n.path == string(x.(*Route).Path)
 }
 
-func (sink *MessageSinkMock) HandleMessage(message Message) {
-	sink.Called(message)
-}
-
-// WSConnMock -----------------------------------
-type WSConnMock struct {
-	mock.Mock
-}
-
-func (conn *WSConnMock) Close() {
-	conn.Called()
-}
-
-func (conn *WSConnMock) LocationString() string {
-	return conn.Called().String(0)
-}
-
-func (conn *WSConnMock) Send(bytes []byte) (err error) {
-	return conn.Called(bytes).Error(0)
-}
-
-func (conn *WSConnMock) Receive(bytes *[]byte) (err error) {
-	return conn.Called(bytes).Error(0)
+func (n routeMatcher) String() string {
+	return "route path equals " + n.path
 }
