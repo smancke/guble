@@ -104,16 +104,6 @@ func (_mr *_MockWSConnRecorder) Close() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Close")
 }
 
-func (_m *MockWSConn) LocationString() string {
-	ret := _m.ctrl.Call(_m, "LocationString")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-func (_mr *_MockWSConnRecorder) LocationString() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "LocationString")
-}
-
 func (_m *MockWSConn) Send(bytes []byte) error {
 	ret := _m.ctrl.Call(_m, "Send", bytes)
 	ret0, _ := ret[0].(error)

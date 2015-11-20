@@ -1,7 +1,9 @@
 package server
 
 import (
+	"fmt"
 	"log"
+	"strings"
 )
 
 type WSHandler struct {
@@ -20,51 +22,89 @@ func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink) *WSHandler
 }
 
 func (srv *WSHandler) HandleNewConnection(ws WSConn) {
-	path := ws.LocationString()
+	// Path := Ws.LocationString()
+	// log.Printf("subscribe on %s", path)
+	// route := NewRoute(path, 1)
+	// srv.messageSouce.Subscribe(route)
 
-	log.Printf("subscribe on %s", path)
-	route := NewRoute(path, 1)
-	srv.messageSouce.Subscribe(route)
+	messageSouceC := make(chan []byte, 100)
 
-	go sendLoop(srv, ws, route)
-	srv.receiveLoop(ws, route)
+	go sendLoop(srv, ws, messageSouceC)
+	srv.receiveLoop(ws, messageSouceC)
 }
 
-func sendLoop(srv *WSHandler, ws WSConn, route *Route) {
+func sendLoop(srv *WSHandler, ws WSConn, messageSouceC chan []byte) {
 	for {
-		msg, ok := <-route.C
+		msg, ok := <-messageSouceC
 		if !ok {
-			log.Printf("INFO: messageSouce closed the connection %q", route.Path)
+			log.Printf("INFO: messageSouce closed the connection")
 			ws.Close()
 			return
 		}
 		if err := ws.Send(msg); err != nil {
-			log.Printf("INFO: client closed the connection for path %q", route.Path)
-			srv.messageSouce.Unsubscribe(route)
+			log.Printf("INFO: client closed the connection")
+			// TODO: Handle closing the channel
 			break
 		}
 	}
 }
 
-func (srv *WSHandler) receiveLoop(ws WSConn, route *Route) {
+func (srv *WSHandler) receiveLoop(ws WSConn, messageSouceC chan []byte) {
 	for {
 		var message []byte
-		//log.Printf("DEBUG: receiveLoop -> waiting for messages")
 
 		err := ws.Receive(&message)
 		if err != nil {
-			log.Printf("client closed the connection for path %q", route.Path)
-			srv.messageSouce.Unsubscribe(route)
+			log.Printf("client closed the connection")
+			// TODO: how to cleanly unsubscrive from all routes
 			break
 		}
 		if len(message) > 0 {
-			messageCopy := make([]byte, len(message))
-			copy(messageCopy, message)
+			msgSplit := strings.SplitN(string(message), " ", 2)
+			if len(msgSplit) == 2 {
+				cmd, content := msgSplit[0], msgSplit[1]
 
-			srv.messageSink.HandleMessage(Message{
-				path: route.Path,
-				body: messageCopy,
-			})
+				switch cmd {
+				case "subscribe":
+					srv.subscribe(messageSouceC, strings.TrimSpace(content))
+				case "send":
+					srv.send(messageSouceC, content)
+				default:
+					srv.returnError(messageSouceC, "unknown command %v in %v", cmd, string(message))
+				}
+			} else {
+				srv.returnError(messageSouceC, "no command in %v", string(message))
+			}
 		}
 	}
+}
+
+func (srv *WSHandler) send(messageSouceC chan []byte, content string) {
+	log.Printf("sending %q\n", content)
+	contentSplit := strings.SplitN(string(content), " ", 2)
+	if len(contentSplit) == 2 {
+		srv.messageSink.HandleMessage(Message{
+			Path: Path(contentSplit[0]),
+			Body: []byte(contentSplit[1]),
+		})
+	} else {
+		srv.returnError(messageSouceC, "no path in content %v", string(content))
+	}
+
+	srv.returnOK(messageSouceC, "sent message.")
+}
+
+func (srv *WSHandler) subscribe(messageSouceC chan []byte, path string) {
+	log.Printf("subscribe: %q\n", path)
+	route := NewRoute(path, messageSouceC)
+	srv.messageSouce.Subscribe(route)
+	srv.returnOK(messageSouceC, "subscribed to %v", path)
+}
+
+func (srv *WSHandler) returnError(messageSouceC chan []byte, messagePattern string, params ...interface{}) {
+	messageSouceC <- []byte(fmt.Sprintf("ERROR: "+messagePattern+"\n", params...))
+}
+
+func (srv *WSHandler) returnOK(messageSouceC chan []byte, messagePattern string, params ...interface{}) {
+	messageSouceC <- []byte(fmt.Sprintf(messagePattern+"\n", params...))
 }

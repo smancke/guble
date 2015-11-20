@@ -5,9 +5,9 @@ import (
 )
 
 type Message struct {
-	id   int64
-	path Path
-	body []byte
+	Id   int64
+	Path Path
+	Body []byte
 }
 
 type Path string
@@ -18,11 +18,11 @@ type Route struct {
 	C    chan []byte
 }
 
-func NewRoute(path string, routeChannelSize int) *Route {
+func NewRoute(path string, channel chan []byte) *Route {
 	return &Route{
 		Id:   xid.New().String(),
 		Path: Path(path),
-		C:    make(chan []byte, routeChannelSize),
+		C:    channel,
 	}
 }
 
@@ -39,7 +39,6 @@ type MessageSink interface {
 // It is introduced for testability of the WSHandler
 type WSConn interface {
 	Close()
-	LocationString() string
 	Send(bytes []byte) (err error)
 	Receive(bytes *[]byte) (err error)
 }

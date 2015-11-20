@@ -109,13 +109,13 @@ func (router *PubSubRouter) HandleMessage(message Message) {
 }
 
 func (router *PubSubRouter) handleMessage(message Message) {
-	log.Printf("INFO: handle message=%v, len=%v", string(message.body), len(message.body))
+	log.Printf("INFO: handle message=%v, len=%v", string(message.Body), len(message.Body))
 
 	log.Printf("DEBUG: number of routes =%v", len(router.routes))
 
 	for currentRoutePath, currentRouteList := range router.routes {
-		if matchesTopic(message.path, currentRoutePath) {
-			router.deliverMessage(copyOf(message.body), currentRouteList)
+		if matchesTopic(message.Path, currentRoutePath) {
+			router.deliverMessage(copyOf(message.Body), currentRouteList)
 		}
 	}
 }

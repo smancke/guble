@@ -17,11 +17,12 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 	router := NewPubSubRouter().Go()
 
 	// when i add two routes in the same path
-	routeBlah1 := router.Subscribe(NewRoute("/blah", chanSize))
-	routeBlah2 := router.Subscribe(NewRoute("/blah", chanSize))
+	channel := make(chan []byte)
+	routeBlah1 := router.Subscribe(NewRoute("/blah", channel))
+	routeBlah2 := router.Subscribe(NewRoute("/blah", channel))
 
 	// and one route in another path
-	routeFoo := router.Subscribe(NewRoute("/foo", chanSize))
+	routeFoo := router.Subscribe(NewRoute("/foo", channel))
 
 	fmt.Printf("%+v\n", router)
 
@@ -57,7 +58,7 @@ func TestSimpleMessageSending(t *testing.T) {
 	router, r := aRouterRoute()
 
 	// when i send a message to the route
-	router.HandleMessage(Message{path: r.Path, body: aTestMessage})
+	router.HandleMessage(Message{Path: r.Path, Body: aTestMessage})
 
 	// then I can receive it a short time later
 	assertChannelContainsMessage(a, r.C, aTestMessage)
@@ -68,16 +69,17 @@ func TestRoutingWithSubTopics(t *testing.T) {
 
 	// Given a Multiplexer with route
 	router := NewPubSubRouter().Go()
-	r := router.Subscribe(NewRoute("/blah", chanSize))
+	channel := make(chan []byte)
+	r := router.Subscribe(NewRoute("/blah", channel))
 
 	// when i send a message to a subroute
-	router.HandleMessage(Message{path: "/blah/blub", body: aTestMessage})
+	router.HandleMessage(Message{Path: "/blah/blub", Body: aTestMessage})
 
 	// then I can receive the message
 	assertChannelContainsMessage(a, r.C, aTestMessage)
 
 	// but, when i send a message to a resource, which is just a substring
-	router.HandleMessage(Message{path: "/blahblub", body: aTestMessage})
+	router.HandleMessage(Message{Path: "/blahblub", Body: aTestMessage})
 
 	// then the message gets not delivered
 	a.Equal(0, len(r.C))
@@ -108,13 +110,13 @@ func TestCallerIsNotBlockedIfTheChannelIsFull(t *testing.T) {
 	router, r := aRouterRoute()
 	// where the channel is full of messages
 	for i := 0; i < chanSize; i++ {
-		router.HandleMessage(Message{path: r.Path, body: aTestMessage})
+		router.HandleMessage(Message{Path: r.Path, Body: aTestMessage})
 	}
 
 	// when I send one more message
 	done := make(chan []byte, 1)
 	go func() {
-		router.HandleMessage(Message{path: r.Path, body: aTestMessage})
+		router.HandleMessage(Message{Path: r.Path, Body: aTestMessage})
 		done <- []byte("done")
 	}()
 
@@ -130,9 +132,10 @@ func TestCallerIsNotBlockedIfTheChannelIsFull(t *testing.T) {
 }
 
 func aRouterRoute() (*PubSubRouter, *Route) {
+
 	router := NewPubSubRouter().Go()
 	return router,
-		router.Subscribe(NewRoute("/blah", chanSize))
+		router.Subscribe(NewRoute("/blah", make(chan []byte)))
 }
 
 func assertChannelContainsMessage(a *assert.Assertions, c chan []byte, msg []byte) {

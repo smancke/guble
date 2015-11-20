@@ -50,10 +50,9 @@ Messages send from the server to the client are all of in the following form:
 The client can send the following commands:
 ```
     // Send a message to a topic
-    send <path>[,<dataType>]:<body>
+    send <path> <body>
     e.g.
-    subscribe /foo
-    subscribe /foo/bar
+    send /foo Hello World
 ```
 
 ```
@@ -65,7 +64,7 @@ The client can send the following commands:
 ```
 
 ```
-    // Unsubscribe from a path (e.g. a topic or subtopic)
+    // Planned: Unsubscribe from a path (e.g. a topic or subtopic)
     unsubscribe <path>
     e.g.
     unsubscribe /foo
@@ -73,7 +72,7 @@ The client can send the following commands:
 ```
 
 ```
-    // Replay all messages from a specific topic, which are newer than the supllied message id.
+    // Planned: Replay all messages from a specific topic, which are newer than the supllied message id.
     replay <lastMessageId> /<topic>
     e.g.
     replay 42 /events

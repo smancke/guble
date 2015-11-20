@@ -12,12 +12,31 @@ var ctrl *gomock.Controller
 func TestSubscriptionMessage(t *testing.T) {
 	defer initCtrl(t)()
 
-	messages := []string{"hallo"} //, "foo"}
+	messages := []string{"subscribe /mock", "subscribe /foo"}
 	wsconn, pubSubSource, messageSink := createDefaultMocks(messages)
 
-	wsconn.EXPECT().LocationString().Return("/mock")
 	pubSubSource.EXPECT().Subscribe(routeMatcher{"/mock"}).Return(nil)
+	wsconn.EXPECT().Send([]byte("subscribed to /mock\n"))
 	pubSubSource.EXPECT().Subscribe(routeMatcher{"/foo"}).Return(nil)
+	wsconn.EXPECT().Send([]byte("subscribed to /foo\n"))
+
+	runNewWsHandler(wsconn, pubSubSource, messageSink)
+}
+
+func TestSendMessage(t *testing.T) {
+	defer initCtrl(t)()
+
+	messages := []string{"send /path Hello, this is a test"}
+	wsconn, pubSubSource, messageSink := createDefaultMocks(messages)
+
+	type Message struct {
+		id   int64
+		path Path
+		body []byte
+	}
+
+	messageSink.EXPECT().HandleMessage(messageMatcher{"/path", "Hello, this is a test"})
+	wsconn.EXPECT().Send([]byte("sent message.\n"))
 
 	runNewWsHandler(wsconn, pubSubSource, messageSink)
 }
@@ -46,8 +65,7 @@ func createDefaultMocks(inputMessages []string) (*MockWSConn, *MockPubSubSource,
 
 	wsconn := NewMockWSConn(ctrl)
 	wsconn.EXPECT().Receive(gomock.Any()).Do(func(message *[]byte) error {
-		inputMessage := <-inputMessagesC
-		message = &inputMessage
+		*message = <-inputMessagesC
 		return nil
 	}).Times(len(inputMessages) + 1)
 
@@ -65,4 +83,19 @@ func (n routeMatcher) Matches(x interface{}) bool {
 
 func (n routeMatcher) String() string {
 	return "route path equals " + n.path
+}
+
+// --- messageMatcher ---------
+type messageMatcher struct {
+	path    string
+	message string
+}
+
+func (n messageMatcher) Matches(x interface{}) bool {
+	return n.path == string(x.(Message).Path) &&
+		n.message == string(x.(Message).Body)
+}
+
+func (n messageMatcher) String() string {
+	return "message equals " + n.path + " " + n.message
 }
