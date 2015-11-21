@@ -1,15 +1,36 @@
 # guble messaging server
 
 guble is a simple messaging server, written in golang.
-Guble is in a very early state and unreleased. If you like it,
-help me or come back later ;-)
+Guble is in a very early state and unreleased. If you like it, help me or come back later ;-)
+
+The goals of guble are, to have a message bus which is:
+* Very easy consumption of messages with web and mobile clients
+* Consumers should not need an api in addition to web sockets
+* Fast realtime messaging, as well as playback of messages from a commit-log
+* Reliable and scalable over multiple nodes
+* User aware sematics, to easily support message szenarios between people with their multiple devices
+
+## Features
+
+* In-memory dispatching of messages
+* Subscription to multiple topics
+
+## Next TODOs
+
+* Message ids as sequence
+* Strong definition of command and message format
+* Implementation of a client api
+* Introducion of User-ID and Client-ID
+* Introducion of a correlation id
 
 ## Roadmap
 
 If there is enough time, the following features may be realized:
 
-* Subscription to multiple topics
-* Replay of messages
+* Persistance and replay of messages
+* Acknowledgement of message delivery
+* Delivery semantics (e.g. user must read on one device)
+* Replication across multiple Servers
 * Additional REST API for message Publishing
 * Authentication and Accessmanagement
 
@@ -29,51 +50,145 @@ Build and start with the following commands:
 	./bin/guble-cli
 ```
 
-
 ## Protocol
 The communication with the guble server is done by usual websockets.
 
 ### Message Format
-Messages send from the server to the client are all of in the following form:
+Payload messages send from the server to the client are all of in the following form:
 ```
-    <id>,<fromUserId>,<fromClientId>,<path>,<mime-type>:<body>
-    e.g.
-    42,user01,phone1,/foo/bar,text/plain:Hello World
-    42,user01,54sdcj8sd7,/foo/bar,binary:anyByteData
+    <sequenceId:int64>,<path:string>,<publisherUserId:string>,<publisherApplicationId:string>,<publisherMessageId:string>,<messagePublishingTime:iso-date>\n
+    [<application headers json>}\n
+    <body>
+
+    example 1:
+    42,/foo/bar,user01,phone1,id123,2015-01-01T12:00:00+01:00
+    {"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}
+    Hello World
+
+    example 2:
+    42,/foo/bar,user01,54sdcj8sd7,id123,2015-01-01T12:00:00+01:00
+
+    anyByteData
 ```
 
-* All text formats are assumed as utf-8 encoded.
-* Message ids are int64, and distinct within a topic. The message ids are strictly monotonically increasing
+* All text formats are assumed to be utf-8 encoded.
+* Message sequenceId are int64, and distinct within a topic. The message sequenceIds are strictly monotonically increasing
   depending on the message age, but there is no guarantee for a correct order while transmitting.
 
-### Client Commands
-The client can send the following commands:
-```
-    // Send a message to a topic
-    send <path> <body>
-    e.g.
-    send /foo Hello World
-```
+### Server Status messages
+The server sends status messages to the client. All positive status messages start with `>`.
+Status messages reporting an error start with `!`. Status messages are in the form.
 
 ```
-    // Subscribe to a path (e.g. a topic or subtopic)
+    '>'<msgType> <Explenation text>\n
+    <json data>
+
+    example:
+
+```
+
+#### Connection message
+```
+    >connected\n
+    {"ApplicationId": "the app id", "UserId": "the user id", "Time": "the server time as iso date"}
+
+    example:
+    >connected You are connected to the server.
+    {"ApplicationId": "phone1", "UserId": "user01", "Time": "2015-01-01T12:00:00+01:00"}
+```
+
+#### Send success notification
+This notification confirms, that the messaging system has successfully received the message and now starts transmiting it to the subscribers.
+
+```
+    >send-success <publisherMessageId>
+    {"sequenceId": "sequence id", "path": "/foo", "publisherMessageId": "publishers message id", "messagePublishingTime": "iso-date"}
+```
+
+#### Send error notification
+This message indicates, that the message could not be delivered.
+```
+    >send-error <publisherMessageId> <error text>
+    {"sequenceId": "sequence id", "path": "/foo", "publisherMessageId": "publishers message id", "messagePublishingTime": "iso-date"}
+```
+
+#### Bad Request
+This notification has the same meaning as the http 400 Bad Request.
+```
+    !bad-request unknown command 'sdcsd'\n
+    {}
+```
+
+#### Internal Server Error
+This notification has the same meaning as the http 500 Internal Server Error.
+```
+    !internal-server-error this computing node has problems\n
+    {}
+```
+
+Connection message
+```
+    --connected\n
+    ApplicationId=<applicationId>\n
+    UserId=<userId>\n
+    Time=iso-date
+
+    example:
+    $connected
+    ApplicationId=phone1
+    UserId=user01
+    Time=2015-01-01T12:00:00+01:00
+```
+
+### Client Commands
+The client can send the following commands.
+
+
+#### Send
+Send a message to a topic
+```
+    send <path>\n
+    [<header>\n]..
+    \n
+    <body>
+
+    example:
+    send /foo
+
+    Hello World
+```
+
+#### Subscribe
+Subscribe to a path (e.g. a topic or subtopic)
+```
     subscribe <path>
-    e.g.
+
+    example:
     subscribe /foo
     subscribe /foo/bar
 ```
 
 ```
-    // Planned: Unsubscribe from a path (e.g. a topic or subtopic)
     unsubscribe <path>
-    e.g.
+
+    example:
     unsubscribe /foo
     unsubscribe /foo/bar
 ```
 
+#### Replay
+Replay all messages from a specific topic, which are newer than the supllied message id.
+If `maxCount` is supplied, only the maxCount newest messages are supplied.
 ```
-    // Planned: Replay all messages from a specific topic, which are newer than the supllied message id.
-    replay <lastMessageId> /<topic>
-    e.g.
+    replay <lastSequenceId>[,<maxCount>] /<topic>
+
+    examples:
+    // replay all messages in the topic /events:
+    replay -1 /events
+    
+    // replay all messages with sequenceId > 42:
     replay 42 /events
+    
+    // replay the last 10 messages:
+    replay -1,10 /events
 ```
