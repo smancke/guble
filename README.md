@@ -1,7 +1,7 @@
 # guble messaging server
 
 guble is a simple messaging server, written in golang.
-Guble is in a very early state and unreleased. If you like it, help me or come back later ;-)
+Guble is in a very early state and unreleased. For now, this documentation is a draft, how it should work at a later state! If you like it, help me, or come back later ;-)
 
 The goals of guble are, to have a message bus which is:
 * Very easy consumption of messages with web and mobile clients
@@ -57,7 +57,7 @@ The communication with the guble server is done by usual websockets.
 Payload messages send from the server to the client are all of in the following form:
 ```
     <sequenceId:int64>,<path:string>,<publisherUserId:string>,<publisherApplicationId:string>,<publisherMessageId:string>,<messagePublishingTime:iso-date>\n
-    [<application headers json>}\n
+    [<application headers json>]\n
     <body>
 
     example 1:
@@ -192,3 +192,43 @@ If `maxCount` is supplied, only the maxCount newest messages are supplied.
     // replay the last 10 messages:
     replay -1,10 /events
 ```
+
+## Topics 
+
+Messages can be routed by topics are hierarchically, so they are represented by a path, separated by `/`.
+There are two global topic spaces `/user` and `/group`.
+The server takes care, that a message only gets delivered once, even if it was matched by multiple
+subscription paths.
+
+### Subtopics
+The path delimiter gives the semantic of subtopics. With this, a subscription to a parent topic (e.g. `/foo`)
+also results in receiving all message of the sub topics (e.g. `/foo/bar`).
+
+### User Topics `/user`
+Each user has its own Topic space.
+```
+    /user/<userId>
+```
+Within this space, every device or application, the user is connected with, creates it's own topic:
+```
+    /user/<userId>/<applicationId>
+```
+In addition to this, there is a topic fo all devices:
+```
+    /user/<userId>/common
+```
+As soon, as the application is connected, it gets automatically subscribed to the `applicationId` topic and to
+the `common` topic. So other applications can address this application by sending messages to one of both queues.
+Applications are free to send messages to any subtopic within the user space.
+Subtopics other than the `applicationId` or the `common` are also addressable, but not subscribed by default.
+If one sends a message to `/user/<userId>/foo`, only those applications of the user will receive it, who have explicitly subscribed to it.
+
+### Group Topics `/group`
+Multiple users can share a group where every member of the group can send to topics and subscribe on them.
+The topics of such a group are located at:
+```
+    /user/<groupId>
+```
+
+## Authentication and Accessmanagement
+TBD ..
