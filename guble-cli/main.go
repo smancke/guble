@@ -1,13 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"golang.org/x/net/websocket"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/smancke/guble/client"
 )
 
 // This is a minimal commandline client to connect through a websocket
@@ -20,37 +20,12 @@ func main() {
 	fmt.Printf("connecting to %q\n", url)
 
 	origin := "http://localhost/"
-	ws, err := websocket.Dial(url, "", origin)
+	_, err := client.Open(url, origin, 100)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	go receiveLoop(ws)
-	go sendLoop(ws)
-
 	waitForTermination(func() {})
-}
-
-func receiveLoop(ws *websocket.Conn) {
-	for {
-		var msg = make([]byte, 512)
-		var n int
-		var err error
-		if n, err = ws.Read(msg); err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s", msg[:n])
-	}
-}
-
-func sendLoop(ws *websocket.Conn) {
-	for {
-		reader := bufio.NewReader(os.Stdin)
-		text, _ := reader.ReadString('\n')
-		if _, err := ws.Write([]byte(text)); err != nil {
-			log.Fatal(err)
-		}
-	}
 }
 
 func waitForTermination(callback func()) {

@@ -31,3 +31,9 @@ type Message struct {
 
 // The path of a topic
 type Path string
+
+func ParseMessage(message []byte) (*Message, error) {
+	return &Message{
+		Body: message,
+	}, nil
+}
