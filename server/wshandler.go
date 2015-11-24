@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
+
+	guble "github.com/smancke/guble/guble"
 )
 
 type WSHandler struct {
@@ -83,8 +85,8 @@ func (srv *WSHandler) send(messageSouceC chan []byte, content string) {
 	log.Printf("sending %q\n", content)
 	contentSplit := strings.SplitN(string(content), " ", 2)
 	if len(contentSplit) == 2 {
-		srv.messageSink.HandleMessage(Message{
-			Path: Path(contentSplit[0]),
+		srv.messageSink.HandleMessage(guble.Message{
+			Path: guble.Path(contentSplit[0]),
 			Body: []byte(contentSplit[1]),
 		})
 	} else {

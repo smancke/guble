@@ -5,6 +5,8 @@ package server
 
 import (
 	gomock "github.com/golang/mock/gomock"
+
+	guble "github.com/smancke/guble/guble"
 )
 
 // Mock of PubSubSource interface
@@ -67,7 +69,7 @@ func (_m *MockMessageSink) EXPECT() *_MockMessageSinkRecorder {
 	return _m.recorder
 }
 
-func (_m *MockMessageSink) HandleMessage(message Message) {
+func (_m *MockMessageSink) HandleMessage(message guble.Message) {
 	_m.ctrl.Call(_m, "HandleMessage", message)
 }
 

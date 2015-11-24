@@ -5,6 +5,8 @@ import (
 	_ "github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	guble "github.com/smancke/guble/guble"
 )
 
 var ctrl *gomock.Controller
@@ -28,12 +30,6 @@ func TestSendMessage(t *testing.T) {
 
 	messages := []string{"send /path Hello, this is a test"}
 	wsconn, pubSubSource, messageSink := createDefaultMocks(messages)
-
-	type Message struct {
-		id   int64
-		path Path
-		body []byte
-	}
 
 	messageSink.EXPECT().HandleMessage(messageMatcher{"/path", "Hello, this is a test"})
 	wsconn.EXPECT().Send([]byte("sent message.\n"))
@@ -92,8 +88,8 @@ type messageMatcher struct {
 }
 
 func (n messageMatcher) Matches(x interface{}) bool {
-	return n.path == string(x.(Message).Path) &&
-		n.message == string(x.(Message).Body)
+	return n.path == string(x.(guble.Message).Path) &&
+		n.message == string(x.(guble.Message).Body)
 }
 
 func (n messageMatcher) String() string {

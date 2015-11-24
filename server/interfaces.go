@@ -2,26 +2,20 @@ package server
 
 import (
 	"github.com/rs/xid"
+
+	guble "github.com/smancke/guble/guble"
 )
-
-type Message struct {
-	Id   int64
-	Path Path
-	Body []byte
-}
-
-type Path string
 
 type Route struct {
 	Id   string
-	Path Path
+	Path guble.Path
 	C    chan []byte
 }
 
 func NewRoute(path string, channel chan []byte) *Route {
 	return &Route{
 		Id:   xid.New().String(),
-		Path: Path(path),
+		Path: guble.Path(path),
 		C:    channel,
 	}
 }
@@ -32,7 +26,7 @@ type PubSubSource interface {
 }
 
 type MessageSink interface {
-	HandleMessage(message Message)
+	HandleMessage(message guble.Message)
 }
 
 // WSConn is a wrapper interface for the needed functions of the websocket.Conn

@@ -33,6 +33,7 @@ If there is enough time, the following features may be realized:
 * Replication across multiple Servers
 * Additional REST API for message Publishing
 * Authentication and Accessmanagement
+* CRC32 Checksum for messages
 
 ## Starting the guble server
 Build and start with the following commands:
@@ -145,7 +146,7 @@ The client can send the following commands.
 
 
 #### Send
-Send a message to a topic
+Publis a message for a topic
 ```
     send <path>\n
     [<header>\n]..

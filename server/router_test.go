@@ -5,6 +5,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	guble "github.com/smancke/guble/guble"
 )
 
 var aTestMessage = []byte("Hello World!")
@@ -33,22 +35,22 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 	a.NotEqual(routeBlah2.Id, routeFoo.Id)
 
 	// and the routes are stored
-	a.Equal(2, len(router.routes[Path("/blah")]))
-	a.Equal(router.routes[Path("/blah")][0].Id, routeBlah1.Id)
-	a.Equal(router.routes[Path("/blah")][1].Id, routeBlah2.Id)
+	a.Equal(2, len(router.routes[guble.Path("/blah")]))
+	a.Equal(router.routes[guble.Path("/blah")][0].Id, routeBlah1.Id)
+	a.Equal(router.routes[guble.Path("/blah")][1].Id, routeBlah2.Id)
 
-	a.Equal(1, len(router.routes[Path("/foo")]))
-	a.Equal(router.routes[Path("/foo")][0].Id, routeFoo.Id)
+	a.Equal(1, len(router.routes[guble.Path("/foo")]))
+	a.Equal(router.routes[guble.Path("/foo")][0].Id, routeFoo.Id)
 
 	// WHEN i remove routes
 	router.Unsubscribe(routeBlah1)
 	router.Unsubscribe(routeFoo)
 
 	// then they are gone
-	a.Equal(1, len(router.routes[Path("/blah")]))
-	a.Equal(router.routes[Path("/blah")][0].Id, routeBlah2.Id)
+	a.Equal(1, len(router.routes[guble.Path("/blah")]))
+	a.Equal(router.routes[guble.Path("/blah")][0].Id, routeBlah2.Id)
 
-	a.Nil(router.routes[Path("/foo")])
+	a.Nil(router.routes[guble.Path("/foo")])
 }
 
 func TestSimpleMessageSending(t *testing.T) {
@@ -58,7 +60,7 @@ func TestSimpleMessageSending(t *testing.T) {
 	router, r := aRouterRoute()
 
 	// when i send a message to the route
-	router.HandleMessage(Message{Path: r.Path, Body: aTestMessage})
+	router.HandleMessage(guble.Message{Path: r.Path, Body: aTestMessage})
 
 	// then I can receive it a short time later
 	assertChannelContainsMessage(a, r.C, aTestMessage)
@@ -73,13 +75,13 @@ func TestRoutingWithSubTopics(t *testing.T) {
 	r := router.Subscribe(NewRoute("/blah", channel))
 
 	// when i send a message to a subroute
-	router.HandleMessage(Message{Path: "/blah/blub", Body: aTestMessage})
+	router.HandleMessage(guble.Message{Path: "/blah/blub", Body: aTestMessage})
 
 	// then I can receive the message
 	assertChannelContainsMessage(a, r.C, aTestMessage)
 
 	// but, when i send a message to a resource, which is just a substring
-	router.HandleMessage(Message{Path: "/blahblub", Body: aTestMessage})
+	router.HandleMessage(guble.Message{Path: "/blahblub", Body: aTestMessage})
 
 	// then the message gets not delivered
 	a.Equal(0, len(r.C))
@@ -87,8 +89,8 @@ func TestRoutingWithSubTopics(t *testing.T) {
 
 func TestMatchesTopic(t *testing.T) {
 	for _, test := range []struct {
-		messagePath Path
-		routePath   Path
+		messagePath guble.Path
+		routePath   guble.Path
 		matches     bool
 	}{
 		{"/foo", "/foo", true},
@@ -110,13 +112,13 @@ func TestCallerIsNotBlockedIfTheChannelIsFull(t *testing.T) {
 	router, r := aRouterRoute()
 	// where the channel is full of messages
 	for i := 0; i < chanSize; i++ {
-		router.HandleMessage(Message{Path: r.Path, Body: aTestMessage})
+		router.HandleMessage(guble.Message{Path: r.Path, Body: aTestMessage})
 	}
 
 	// when I send one more message
 	done := make(chan []byte, 1)
 	go func() {
-		router.HandleMessage(Message{Path: r.Path, Body: aTestMessage})
+		router.HandleMessage(guble.Message{Path: r.Path, Body: aTestMessage})
 		done <- []byte("done")
 	}()
 

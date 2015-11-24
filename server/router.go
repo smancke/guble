@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	guble "github.com/smancke/guble/guble"
 )
 
 type SubscriptionRequest struct {
@@ -14,8 +16,8 @@ type SubscriptionRequest struct {
 
 type PubSubRouter struct {
 	// mapping the path to the route slice
-	routes          map[Path][]Route
-	messageIn       chan Message
+	routes          map[guble.Path][]Route
+	messageIn       chan guble.Message
 	subscribeChan   chan SubscriptionRequest
 	unsubscribeChan chan SubscriptionRequest
 	stop            chan bool
@@ -23,8 +25,8 @@ type PubSubRouter struct {
 
 func NewPubSubRouter() *PubSubRouter {
 	return &PubSubRouter{
-		routes:          make(map[Path][]Route),
-		messageIn:       make(chan Message, 500),
+		routes:          make(map[guble.Path][]Route),
+		messageIn:       make(chan guble.Message, 500),
 		subscribeChan:   make(chan SubscriptionRequest, 10),
 		unsubscribeChan: make(chan SubscriptionRequest, 10),
 		stop:            make(chan bool, 1),
@@ -103,12 +105,12 @@ func (router *PubSubRouter) unsubscribe(r *Route) {
 	}
 }
 
-func (router *PubSubRouter) HandleMessage(message Message) {
+func (router *PubSubRouter) HandleMessage(message guble.Message) {
 	router.messageIn <- message
 	runtime.Gosched()
 }
 
-func (router *PubSubRouter) handleMessage(message Message) {
+func (router *PubSubRouter) handleMessage(message guble.Message) {
 	log.Printf("INFO: handle message=%v, len=%v", string(message.Body), len(message.Body))
 
 	log.Printf("DEBUG: number of routes =%v", len(router.routes))
@@ -164,7 +166,7 @@ func copyOf(message []byte) []byte {
 }
 
 // Test wether the supplied routePath matches the message topic
-func matchesTopic(messagePath, routePath Path) bool {
+func matchesTopic(messagePath, routePath guble.Path) bool {
 	messagePathLen := len(string(messagePath))
 	routePathLen := len(string(routePath))
 	return strings.HasPrefix(string(messagePath), string(routePath)) &&
