@@ -37,31 +37,37 @@ func readLoop(c *Client) {
 	var err error
 	var message *guble.Message
 	for {
-		// TODO: catch panics
-		if n, err = c.ws.Read(msg); err != nil {
-			guble.Err("%v", err)
-			c.errors <- err.Error()
-			continue
-		}
-		guble.Debug("%s", msg[:n])
-		message, err = guble.ParseMessage(msg[:n])
-		if err != nil {
-			guble.Err("parsing message failed %v", err)
-			c.errors <- err.Error()
-			continue
-		}
-		c.messages <- message
+		func() {
+			defer guble.PanicLogger()
+
+			if n, err = c.ws.Read(msg); err != nil {
+				guble.Err("%v", err)
+				c.errors <- err.Error()
+				return
+			}
+			guble.Debug("%s", msg[:n])
+			message, err = guble.ParseMessage(msg[:n])
+			if err != nil {
+				guble.Err("parsing message failed %v", err)
+				c.errors <- err.Error()
+				return
+			}
+			c.messages <- message
+		}()
 	}
 }
 
 func writeLoop(c *Client) {
 	// TODO: Implement proper write logic
 	for {
-		reader := bufio.NewReader(os.Stdin)
-		text, _ := reader.ReadString('\n')
-		if _, err := c.ws.Write([]byte(text)); err != nil {
-			guble.Err(err.Error())
-		}
+		func() {
+			defer guble.PanicLogger()
+			reader := bufio.NewReader(os.Stdin)
+			text, _ := reader.ReadString('\n')
+			if _, err := c.ws.Write([]byte(text)); err != nil {
+				guble.Err(err.Error())
+			}
+		}()
 	}
 }
 
