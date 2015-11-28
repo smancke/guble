@@ -18,9 +18,9 @@ func TestSubscriptionMessage(t *testing.T) {
 	wsconn, pubSubSource, messageSink := createDefaultMocks(messages)
 
 	pubSubSource.EXPECT().Subscribe(routeMatcher{"/mock"}).Return(nil)
-	wsconn.EXPECT().Send([]byte("subscribed to /mock\n"))
+	wsconn.EXPECT().Send([]byte(">subscribed-to /mock"))
 	pubSubSource.EXPECT().Subscribe(routeMatcher{"/foo"}).Return(nil)
-	wsconn.EXPECT().Send([]byte("subscribed to /foo\n"))
+	wsconn.EXPECT().Send([]byte(">subscribed-to /foo"))
 
 	runNewWsHandler(wsconn, pubSubSource, messageSink)
 }
@@ -32,7 +32,7 @@ func TestSendMessage(t *testing.T) {
 	wsconn, pubSubSource, messageSink := createDefaultMocks(messages)
 
 	messageSink.EXPECT().HandleMessage(messageMatcher{"/path", "Hello, this is a test"})
-	wsconn.EXPECT().Send([]byte("sent message.\n"))
+	wsconn.EXPECT().Send([]byte(">sent message."))
 
 	runNewWsHandler(wsconn, pubSubSource, messageSink)
 }

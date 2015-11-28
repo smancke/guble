@@ -100,13 +100,13 @@ func (srv *WSHandler) subscribe(messageSouceC chan []byte, path string) {
 	log.Printf("subscribe: %q\n", path)
 	route := NewRoute(path, messageSouceC)
 	srv.messageSouce.Subscribe(route)
-	srv.returnOK(messageSouceC, "subscribed to %v", path)
+	srv.returnOK(messageSouceC, "subscribed-to %v", path)
 }
 
 func (srv *WSHandler) returnError(messageSouceC chan []byte, messagePattern string, params ...interface{}) {
-	messageSouceC <- []byte(fmt.Sprintf("ERROR: "+messagePattern+"\n", params...))
+	messageSouceC <- []byte(fmt.Sprintf("!"+messagePattern, params...))
 }
 
 func (srv *WSHandler) returnOK(messageSouceC chan []byte, messagePattern string, params ...interface{}) {
-	messageSouceC <- []byte(fmt.Sprintf(messagePattern+"\n", params...))
+	messageSouceC <- []byte(fmt.Sprintf(">"+messagePattern, params...))
 }

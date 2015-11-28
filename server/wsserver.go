@@ -1,27 +1,42 @@
 package server
 
 import (
+	"github.com/smancke/guble/guble"
 	"golang.org/x/net/websocket"
 	"log"
 	"net/http"
 )
 
-func StartWSServer(listen string, srv *WSHandler) {
+type WSServer struct {
+	server *http.Server
+}
+
+func StartWSServer(listen string, srv *WSHandler) *WSServer {
+	ws := &WSServer{}
 	go func() {
-		log.Printf("starting up at %v", listen)
-		http.Handle("/", websocket.Handler(func(ws *websocket.Conn) {
+		guble.Info("starting up at %v", listen)
+		mux := http.NewServeMux()
+		mux.Handle("/", websocket.Handler(func(ws *websocket.Conn) {
 			handleConnection(ws, srv)
 		}))
 
-		err := http.ListenAndServe(listen, nil)
+		ws.server = &http.Server{Addr: listen, Handler: mux}
+		err := ws.server.ListenAndServe()
+
 		if err != nil {
 			log.Panicf("ListenAndServe: " + err.Error())
 		}
 	}()
+	return ws
 }
 
 func handleConnection(ws *websocket.Conn, srv *WSHandler) {
 	srv.HandleNewConnection(&wsconn{ws})
+}
+
+func (ws *WSServer) Stop() {
+	guble.Info("stopping http server !!!!TODO .. implement")
+	// TODO .. implement
 }
 
 // wsconnImpl is a Wrapper of the websocket.Conn

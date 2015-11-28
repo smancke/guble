@@ -17,11 +17,13 @@ The goals of guble are, to have a message bus which is:
 
 ## Next TODOs
 
-* Message ids as sequence
-* Strong definition of command and message format
 * Implementation of a client api
+* Integration test
+* Strong definition of command and message format
+* Message ids as sequence
 * Introducion of User-ID and Client-ID
 * Introducion of a correlation id
+* Usable Logging
 
 ## Roadmap
 
@@ -90,11 +92,11 @@ Status messages reporting an error start with `!`. Status messages are in the fo
 
 #### Connection message
 ```
-    >connected\n
+    >ok-connected\n
     {"ApplicationId": "the app id", "UserId": "the user id", "Time": "the server time as iso date"}
 
     example:
-    >connected You are connected to the server.
+    >ok-connected You are connected to the server.
     {"ApplicationId": "phone1", "UserId": "user01", "Time": "2015-01-01T12:00:00+01:00"}
 ```
 
@@ -102,43 +104,34 @@ Status messages reporting an error start with `!`. Status messages are in the fo
 This notification confirms, that the messaging system has successfully received the message and now starts transmiting it to the subscribers.
 
 ```
-    >send-success <publisherMessageId>
+    >ok-send <publisherMessageId>
     {"sequenceId": "sequence id", "path": "/foo", "publisherMessageId": "publishers message id", "messagePublishingTime": "iso-date"}
+```
+
+#### Subscribe success notification
+This notification confirms, a sucessful subscribe message.
+
+```
+    >ok-subscribed-to <path>
 ```
 
 #### Send error notification
 This message indicates, that the message could not be delivered.
 ```
-    >send-error <publisherMessageId> <error text>
+    >error-send <publisherMessageId> <error text>
     {"sequenceId": "sequence id", "path": "/foo", "publisherMessageId": "publishers message id", "messagePublishingTime": "iso-date"}
 ```
 
 #### Bad Request
 This notification has the same meaning as the http 400 Bad Request.
 ```
-    !bad-request unknown command 'sdcsd'\n
-    {}
+    !error-bad-request unknown command 'sdcsd'
 ```
 
 #### Internal Server Error
 This notification has the same meaning as the http 500 Internal Server Error.
 ```
-    !internal-server-error this computing node has problems\n
-    {}
-```
-
-Connection message
-```
-    --connected\n
-    ApplicationId=<applicationId>\n
-    UserId=<userId>\n
-    Time=iso-date
-
-    example:
-    $connected
-    ApplicationId=phone1
-    UserId=user01
-    Time=2015-01-01T12:00:00+01:00
+    !error-server-internal this computing node has problems
 ```
 
 ### Client Commands
@@ -146,7 +139,7 @@ The client can send the following commands.
 
 
 #### Send
-Publis a message for a topic
+Publish a message for a topic
 ```
     send <path>\n
     [<header>\n]..
@@ -177,7 +170,7 @@ Subscribe to a path (e.g. a topic or subtopic)
     unsubscribe /foo/bar
 ```
 
-#### Replay
+#### Replay (TBD, not implemented in the first version)
 Replay all messages from a specific topic, which are newer than the supllied message id.
 If `maxCount` is supplied, only the maxCount newest messages are supplied.
 ```
