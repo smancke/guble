@@ -21,8 +21,11 @@ func main() {
 	args := loadArgs()
 
 	mux := server.NewPubSubRouter().Go()
-	wshandler := server.NewWSHandler(mux, mux)
-	server.StartWSServer(args.Listen, wshandler)
+
+	wshandlerFactory := func(wsConn server.WSConn) server.Startable {
+		return server.NewWSHandler(mux, mux, wsConn)
+	}
+	server.StartWSServer(args.Listen, wshandlerFactory)
 
 	waitForTermination(func() {
 		mux.Stop()

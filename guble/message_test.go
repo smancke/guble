@@ -58,6 +58,17 @@ func TestSerializeAMinimalMessage(t *testing.T) {
 	assert.Equal(t, aMinimalMessage, string(msg.Bytes()))
 }
 
+func TestSerializeAMinimalMessageWithBody(t *testing.T) {
+	msg := &Message{
+		Id:             int64(42),
+		Path:           Path("/"),
+		PublishingTime: "2015-01-01T12:00:00+01:00",
+		Body:           []byte("Hello World"),
+	}
+
+	assert.Equal(t, aMinimalMessage+"\n\nHello World", string(msg.Bytes()))
+}
+
 func TestParsingAMinimalMessage(t *testing.T) {
 	assert := assert.New(t)
 
@@ -124,6 +135,16 @@ func TestSerializeANotificationMessage(t *testing.T) {
 	}
 
 	assert.Equal(t, aConnectedNotification, string(msg.Bytes()))
+}
+
+func TestSerializeANotificationMessageWithEmptyArg(t *testing.T) {
+	msg := &NotificationMessage{
+		Name:    SUCCESS_SEND,
+		Arg:     "",
+		IsError: false,
+	}
+
+	assert.Equal(t, ">"+SUCCESS_SEND, string(msg.Bytes()))
 }
 
 func TestParsingErrorNotificationMessage(t *testing.T) {

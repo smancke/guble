@@ -17,7 +17,7 @@ type SubscriptionRequest struct {
 type PubSubRouter struct {
 	// mapping the path to the route slice
 	routes          map[guble.Path][]Route
-	messageIn       chan guble.Message
+	messageIn       chan *guble.Message
 	subscribeChan   chan SubscriptionRequest
 	unsubscribeChan chan SubscriptionRequest
 	stop            chan bool
@@ -26,7 +26,7 @@ type PubSubRouter struct {
 func NewPubSubRouter() *PubSubRouter {
 	return &PubSubRouter{
 		routes:          make(map[guble.Path][]Route),
-		messageIn:       make(chan guble.Message, 500),
+		messageIn:       make(chan *guble.Message, 500),
 		subscribeChan:   make(chan SubscriptionRequest, 10),
 		unsubscribeChan: make(chan SubscriptionRequest, 10),
 		stop:            make(chan bool, 1),
@@ -105,24 +105,24 @@ func (router *PubSubRouter) unsubscribe(r *Route) {
 	}
 }
 
-func (router *PubSubRouter) HandleMessage(message guble.Message) {
+func (router *PubSubRouter) HandleMessage(message *guble.Message) {
 	router.messageIn <- message
 	runtime.Gosched()
 }
 
-func (router *PubSubRouter) handleMessage(message guble.Message) {
+func (router *PubSubRouter) handleMessage(message *guble.Message) {
 	log.Printf("INFO: handle message=%v, len=%v", string(message.Body), len(message.Body))
 
 	log.Printf("DEBUG: number of routes =%v", len(router.routes))
 
 	for currentRoutePath, currentRouteList := range router.routes {
 		if matchesTopic(message.Path, currentRoutePath) {
-			router.deliverMessage(copyOf(message.Body), currentRouteList)
+			router.deliverMessage(message, currentRouteList)
 		}
 	}
 }
 
-func (router *PubSubRouter) deliverMessage(message []byte, deliverRouteList []Route) {
+func (router *PubSubRouter) deliverMessage(message *guble.Message, deliverRouteList []Route) {
 	for _, route := range deliverRouteList {
 		//log.Println("DEBUG: GO: deliverMessage->going into delivery select ..")
 

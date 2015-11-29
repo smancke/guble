@@ -9,7 +9,7 @@ import (
 	guble "github.com/smancke/guble/guble"
 )
 
-var aTestMessage = []byte("Hello World!")
+var aTestByteMessage = []byte("Hello World!")
 var chanSize = 1
 
 func TestAddAndRemoveRoutes(t *testing.T) {
@@ -19,7 +19,7 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 	router := NewPubSubRouter().Go()
 
 	// when i add two routes in the same path
-	channel := make(chan []byte)
+	channel := make(chan *guble.Message)
 	routeBlah1 := router.Subscribe(NewRoute("/blah", channel))
 	routeBlah2 := router.Subscribe(NewRoute("/blah", channel))
 
@@ -60,10 +60,10 @@ func TestSimpleMessageSending(t *testing.T) {
 	router, r := aRouterRoute()
 
 	// when i send a message to the route
-	router.HandleMessage(guble.Message{Path: r.Path, Body: aTestMessage})
+	router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage})
 
 	// then I can receive it a short time later
-	assertChannelContainsMessage(a, r.C, aTestMessage)
+	assertChannelContainsMessage(a, r.C, aTestByteMessage)
 }
 
 func TestRoutingWithSubTopics(t *testing.T) {
@@ -71,17 +71,17 @@ func TestRoutingWithSubTopics(t *testing.T) {
 
 	// Given a Multiplexer with route
 	router := NewPubSubRouter().Go()
-	channel := make(chan []byte)
+	channel := make(chan *guble.Message)
 	r := router.Subscribe(NewRoute("/blah", channel))
 
 	// when i send a message to a subroute
-	router.HandleMessage(guble.Message{Path: "/blah/blub", Body: aTestMessage})
+	router.HandleMessage(&guble.Message{Path: "/blah/blub", Body: aTestByteMessage})
 
 	// then I can receive the message
-	assertChannelContainsMessage(a, r.C, aTestMessage)
+	assertChannelContainsMessage(a, r.C, aTestByteMessage)
 
 	// but, when i send a message to a resource, which is just a substring
-	router.HandleMessage(guble.Message{Path: "/blahblub", Body: aTestMessage})
+	router.HandleMessage(&guble.Message{Path: "/blahblub", Body: aTestByteMessage})
 
 	// then the message gets not delivered
 	a.Equal(0, len(r.C))
@@ -112,14 +112,14 @@ func TestCallerIsNotBlockedIfTheChannelIsFull(t *testing.T) {
 	router, r := aRouterRoute()
 	// where the channel is full of messages
 	for i := 0; i < chanSize; i++ {
-		router.HandleMessage(guble.Message{Path: r.Path, Body: aTestMessage})
+		router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage})
 	}
 
 	// when I send one more message
-	done := make(chan []byte, 1)
+	done := make(chan *guble.Message, 1)
 	go func() {
-		router.HandleMessage(guble.Message{Path: r.Path, Body: aTestMessage})
-		done <- []byte("done")
+		router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage})
+		done <- &guble.Message{Body: []byte("done")}
 	}()
 
 	// then I the sending reurns immediately
@@ -127,24 +127,24 @@ func TestCallerIsNotBlockedIfTheChannelIsFull(t *testing.T) {
 
 	// and thwo messaes are recieveable
 	for i := 0; i < chanSize; i++ {
-		assertChannelContainsMessage(a, r.C, aTestMessage)
+		assertChannelContainsMessage(a, r.C, aTestByteMessage)
 	}
 
-	assertChannelContainsMessage(a, r.C, aTestMessage)
+	assertChannelContainsMessage(a, r.C, aTestByteMessage)
 }
 
 func aRouterRoute() (*PubSubRouter, *Route) {
 
 	router := NewPubSubRouter().Go()
 	return router,
-		router.Subscribe(NewRoute("/blah", make(chan []byte)))
+		router.Subscribe(NewRoute("/blah", make(chan *guble.Message)))
 }
 
-func assertChannelContainsMessage(a *assert.Assertions, c chan []byte, msg []byte) {
+func assertChannelContainsMessage(a *assert.Assertions, c chan *guble.Message, msg []byte) {
 	//log.Println("DEBUG: start assertChannelContainsMessage-> select")
 	select {
 	case msgBack := <-c:
-		a.Equal(msg, msgBack)
+		a.Equal(string(msg), string(msgBack.Body))
 	case <-time.After(time.Millisecond):
 		a.Fail("No message received")
 	}

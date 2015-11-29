@@ -107,8 +107,10 @@ func (msg *NotificationMessage) Bytes() []byte {
 		buff.WriteString(">")
 	}
 	buff.WriteString(msg.Name)
-	buff.WriteString(" ")
-	buff.WriteString(msg.Arg)
+	if len(msg.Arg) > 0 {
+		buff.WriteString(" ")
+		buff.WriteString(msg.Arg)
+	}
 
 	if len(msg.Json) > 0 {
 		buff.WriteString("\n")
@@ -139,7 +141,7 @@ func parseMessage(message []byte) (interface{}, error) {
 
 	meta := strings.Split(parts[0], ",")
 	if len(meta) != 6 {
-		return nil, fmt.Errorf("message metadata has to have 6 fields, but was %v fields", len(meta))
+		return nil, fmt.Errorf("message metadata has to have 6 fields, but was %v", parts[0])
 	}
 
 	id, err := strconv.ParseInt(meta[0], 10, 0)

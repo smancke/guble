@@ -18,6 +18,7 @@ func TestSimplePingPong(t *testing.T) {
 	defer initServerAndClients(t)()
 
 	client1.Subscribe("/foo")
+	time.Sleep(time.Millisecond * 10)
 	client2.Send("/foo", "Hallo")
 
 	select {
@@ -26,7 +27,7 @@ func TestSimplePingPong(t *testing.T) {
 	case msg := <-client1.Errors():
 		t.Logf("received error: %v", msg)
 		t.FailNow()
-	case <-time.After(time.Millisecond * 10):
+	case <-time.After(time.Millisecond * 100):
 		t.Log("no message received")
 		t.FailNow()
 	}
@@ -34,8 +35,10 @@ func TestSimplePingPong(t *testing.T) {
 
 func initServerAndClients(t *testing.T) func() {
 	mux := server.NewPubSubRouter().Go()
-	wshandler := server.NewWSHandler(mux, mux)
-	ws = server.StartWSServer(testListen, wshandler)
+	wshandlerFactory := func(wsConn server.WSConn) server.Startable {
+		return server.NewWSHandler(mux, mux, wsConn)
+	}
+	ws = server.StartWSServer(testListen, wshandlerFactory)
 
 	time.Sleep(time.Millisecond * 10)
 

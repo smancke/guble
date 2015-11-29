@@ -68,7 +68,7 @@ func (_m *MockMessageSink) EXPECT() *_MockMessageSinkRecorder {
 	return _m.recorder
 }
 
-func (_m *MockMessageSink) HandleMessage(message guble.Message) {
+func (_m *MockMessageSink) HandleMessage(message *guble.Message) {
 	_m.ctrl.Call(_m, "HandleMessage", message)
 }
 
@@ -123,4 +123,33 @@ func (_m *MockWSConn) Receive(bytes *[]byte) error {
 
 func (_mr *_MockWSConnRecorder) Receive(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Receive", arg0)
+}
+
+// Mock of Startable interface
+type MockStartable struct {
+	ctrl     *gomock.Controller
+	recorder *_MockStartableRecorder
+}
+
+// Recorder for MockStartable (not exported)
+type _MockStartableRecorder struct {
+	mock *MockStartable
+}
+
+func NewMockStartable(ctrl *gomock.Controller) *MockStartable {
+	mock := &MockStartable{ctrl: ctrl}
+	mock.recorder = &_MockStartableRecorder{mock}
+	return mock
+}
+
+func (_m *MockStartable) EXPECT() *_MockStartableRecorder {
+	return _m.recorder
+}
+
+func (_m *MockStartable) Start() {
+	_m.ctrl.Call(_m, "Start")
+}
+
+func (_mr *_MockStartableRecorder) Start() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Start")
 }

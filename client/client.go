@@ -1,11 +1,9 @@
 package client
 
 import (
-	"bufio"
 	"fmt"
 	"github.com/smancke/guble/guble"
 	"golang.org/x/net/websocket"
-	"os"
 )
 
 type Client struct {
@@ -28,7 +26,6 @@ func Open(url, origin string, channelSize int) (*Client, error) {
 		errors:         make(chan *guble.NotificationMessage, channelSize),
 	}
 	go c.readLoop()
-	go c.writeLoop()
 	return c, nil
 }
 
@@ -48,7 +45,7 @@ func (c *Client) readLoop() {
 				shouldStop = true
 				return
 			}
-			guble.Debug("%s", msg[:n])
+			guble.Debug("client raw read> %s", msg[:n])
 
 			parsed, err = guble.ParseMessage(msg[:n])
 			if err != nil {
@@ -81,25 +78,18 @@ func (c *Client) Send(path string, body string) error {
 }
 
 func (c *Client) SendBytes(path string, body []byte) error {
-	cmd := bytef("send %v\n", path)
-	_, err := c.ws.Write(append(cmd, body...))
-	return err
+	cmd := &guble.Cmd{
+		Name: guble.CMD_SEND,
+		Arg:  path,
+		Body: body,
+	}
+
+	return c.WriteRawMessage(cmd.Bytes())
 }
 
-func (c *Client) writeLoop() {
-	// TODO: Implement proper write logic
-	shouldStop := false
-	for !shouldStop {
-		func() {
-			defer guble.PanicLogger()
-			reader := bufio.NewReader(os.Stdin)
-			text, _ := reader.ReadString('\n')
-			if _, err := c.ws.Write([]byte(text)); err != nil {
-				shouldStop = true
-				guble.Err(err.Error())
-			}
-		}()
-	}
+func (c *Client) WriteRawMessage(message []byte) error {
+	_, err := c.ws.Write(message)
+	return err
 }
 
 func (c *Client) Messages() chan *guble.Message {

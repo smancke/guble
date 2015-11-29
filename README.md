@@ -141,7 +141,7 @@ The client can send the following commands.
 #### Send
 Publish a message for a topic
 ```
-    send <path>\n
+    send <path> [<publisherMessageId>]\n
     [<header>\n]..
     \n
     <body>

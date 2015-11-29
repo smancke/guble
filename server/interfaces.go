@@ -9,10 +9,10 @@ import (
 type Route struct {
 	Id   string
 	Path guble.Path
-	C    chan []byte
+	C    chan *guble.Message
 }
 
-func NewRoute(path string, channel chan []byte) *Route {
+func NewRoute(path string, channel chan *guble.Message) *Route {
 	return &Route{
 		Id:   xid.New().String(),
 		Path: guble.Path(path),
@@ -26,7 +26,7 @@ type PubSubSource interface {
 }
 
 type MessageSink interface {
-	HandleMessage(message guble.Message)
+	HandleMessage(message *guble.Message)
 }
 
 // WSConn is a wrapper interface for the needed functions of the websocket.Conn
@@ -35,4 +35,8 @@ type WSConn interface {
 	Close()
 	Send(bytes []byte) (err error)
 	Receive(bytes *[]byte) (err error)
+}
+
+type Startable interface {
+	Start()
 }
