@@ -1,4 +1,4 @@
-# guble messaging server
+# guble messaging server [![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble)
 
 guble is a simple messaging server, written in golang.
 Guble is in a very early state and unreleased. For now, this documentation is a draft, how it should work at a later state! If you like it, help me, or come back later ;-)
@@ -18,11 +18,9 @@ The goals of guble are, to have a message bus which is:
 ## Next TODOs
 
 * Implementation of a client api
-* Integration test
-* Strong definition of command and message format
+* Hang up clients, if they are not responsive enough
 * Message ids as sequence
 * Introducion of User-ID and Client-ID
-* Introducion of a correlation id
 * Usable Logging
 
 ## Roadmap
