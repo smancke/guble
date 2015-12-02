@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/websocket"
 	"testing"
