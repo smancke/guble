@@ -2,7 +2,7 @@ package server
 
 import (
 	"fmt"
-	"log"
+	"github.com/rs/xid"
 
 	guble "github.com/smancke/guble/guble"
 	"strings"
@@ -12,7 +12,10 @@ type WSHandler struct {
 	messageSouce        PubSubSource
 	messageSink         MessageSink
 	clientConn          WSConn
+	applicationId       string
+	userId              string
 	messagesToSend      chan *guble.Message
+	routeClosed         chan string
 	notificationsToSend chan *guble.NotificationMessage
 }
 
@@ -21,18 +24,16 @@ func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, wsConn WSC
 		messageSink:         messageSink,
 		messageSouce:        messageSouce,
 		clientConn:          wsConn,
+		applicationId:       xid.New().String(),
+		userId:              "TODO-userid",
 		messagesToSend:      make(chan *guble.Message, 100),
 		notificationsToSend: make(chan *guble.NotificationMessage, 100),
+		routeClosed:         make(chan string, 100),
 	}
 	return server
 }
 
 func (srv *WSHandler) Start() {
-	// Path := Ws.LocationString()
-	// log.Printf("subscribe on %s", path)
-	// route := NewRoute(path, 1)
-	// srv.messageSouce.Subscribe(route)
-
 	go srv.sendLoop()
 	srv.receiveLoop()
 }
@@ -42,26 +43,31 @@ func (srv *WSHandler) sendLoop() {
 		select {
 		case msg, ok := <-srv.messagesToSend:
 			if !ok {
-				log.Printf("INFO: messageSouce closed the connection")
+				guble.Info("messageSouce closed the connection -> closing the websocket connection to applicationId=%v", srv.applicationId)
 				srv.clientConn.Close()
 				return
 			}
 			if err := srv.clientConn.Send(msg.Bytes()); err != nil {
-				log.Printf("INFO: client closed the connection")
-				// TODO: Handle closing the channel
+				guble.Info("applicationId=%v closed the connection", srv.applicationId)
+				// TODO: Handle closing the channel and unsubscribing for all topics!
 				break
 			}
 		case msg, ok := <-srv.notificationsToSend:
 			if !ok {
-				log.Printf("INFO: messageSouce closed the connection")
+				guble.Info("messageSouce closed the connection -> closing the websocket connection to applicationId=%v", srv.applicationId)
 				srv.clientConn.Close()
 				return
 			}
 			if err := srv.clientConn.Send(msg.Bytes()); err != nil {
-				log.Printf("INFO: client closed the connection")
-				// TODO: Handle closing the channel
+				guble.Info("applicationId=%v closed the connection", srv.applicationId)
+				// TODO: Handle closing the channel and unsubscribing for all topics!
 				break
 			}
+		case closedRouteId := <-srv.routeClosed:
+			// this handling could be improved later on
+			guble.Info("INFO: router closed route %v -> closing the websocket connection to applicationId=%v", closedRouteId, srv.applicationId)
+			srv.clientConn.Close()
+			return
 		}
 	}
 }
@@ -71,7 +77,7 @@ func (srv *WSHandler) receiveLoop() {
 	for {
 		err := srv.clientConn.Receive(&message)
 		if err != nil {
-			log.Printf("client closed the connection")
+			guble.Info("client closed the connection")
 			// TODO: how to cleanly unsubscrive from all routes
 			break
 		}
@@ -93,7 +99,7 @@ func (srv *WSHandler) receiveLoop() {
 }
 
 func (srv *WSHandler) send(cmd *guble.Cmd) {
-	log.Printf("sending %q\n", string(cmd.Body))
+	guble.Info("sending %q\n", string(cmd.Body))
 	if len(cmd.Arg) == 0 {
 		srv.returnError(guble.ERROR_BAD_REQUEST, "send command requires a path argument, but non given", cmd.Name)
 		return
@@ -101,7 +107,9 @@ func (srv *WSHandler) send(cmd *guble.Cmd) {
 	args := strings.SplitN(cmd.Arg, " ", 2)
 	msg := &guble.Message{
 		Path: guble.Path(args[0]),
-		Body: cmd.Body,
+		PublisherApplicationId: srv.applicationId,
+		PublisherUserId:        srv.userId,
+		Body:                   cmd.Body,
 	}
 	if len(args) == 2 {
 		msg.PublisherMessageId = args[1]
@@ -116,8 +124,8 @@ func (srv *WSHandler) subscribe(cmd *guble.Cmd) {
 		srv.returnError(guble.ERROR_BAD_REQUEST, "subscribe command requires a path argument, but non given", cmd.Name)
 		return
 	}
-	log.Printf("subscribe: %q\n", cmd.Arg)
-	route := NewRoute(cmd.Arg, srv.messagesToSend)
+	guble.Info("subscribe: %q\n", cmd.Arg)
+	route := NewRoute(cmd.Arg, srv.messagesToSend, srv.routeClosed, srv.applicationId)
 	srv.messageSouce.Subscribe(route)
 	srv.returnOK("subscribed-to", cmd.Arg)
 }

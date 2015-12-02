@@ -36,6 +36,13 @@ type Message struct {
 	Body []byte
 }
 
+// returns the first line of a serialized message, without the newline
+func (msg *Message) MetadataLine() string {
+	buff := &bytes.Buffer{}
+	msg.writeMetadataLine(buff)
+	return string(buff.Bytes())
+}
+
 func (msg *Message) BodyAsString() string {
 	return string(msg.Body)
 }
@@ -43,17 +50,8 @@ func (msg *Message) BodyAsString() string {
 // Serialize the message into a byte slice
 func (msg *Message) Bytes() []byte {
 	buff := &bytes.Buffer{}
-	buff.WriteString(strconv.FormatInt(msg.Id, 10))
-	buff.WriteString(",")
-	buff.WriteString(string(msg.Path))
-	buff.WriteString(",")
-	buff.WriteString(msg.PublisherUserId)
-	buff.WriteString(",")
-	buff.WriteString(msg.PublisherApplicationId)
-	buff.WriteString(",")
-	buff.WriteString(msg.PublisherMessageId)
-	buff.WriteString(",")
-	buff.WriteString(msg.PublishingTime)
+
+	msg.writeMetadataLine(buff)
 
 	if len(msg.HeaderJson) > 0 || len(msg.Body) > 0 {
 		buff.WriteString("\n")
@@ -69,6 +67,20 @@ func (msg *Message) Bytes() []byte {
 	}
 
 	return buff.Bytes()
+}
+
+func (msg *Message) writeMetadataLine(buff *bytes.Buffer) {
+	buff.WriteString(strconv.FormatInt(msg.Id, 10))
+	buff.WriteString(",")
+	buff.WriteString(string(msg.Path))
+	buff.WriteString(",")
+	buff.WriteString(msg.PublisherUserId)
+	buff.WriteString(",")
+	buff.WriteString(msg.PublisherApplicationId)
+	buff.WriteString(",")
+	buff.WriteString(msg.PublisherMessageId)
+	buff.WriteString(",")
+	buff.WriteString(msg.PublishingTime)
 }
 
 // Valid constants for the NotificationMessage.Name

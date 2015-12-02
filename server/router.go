@@ -1,10 +1,8 @@
 package server
 
 import (
-	"log"
 	"runtime"
 	"strings"
-	"time"
 
 	guble "github.com/smancke/guble/guble"
 )
@@ -111,9 +109,9 @@ func (router *PubSubRouter) HandleMessage(message *guble.Message) {
 }
 
 func (router *PubSubRouter) handleMessage(message *guble.Message) {
-	log.Printf("INFO: handle message=%v, len=%v", string(message.Body), len(message.Body))
-
-	log.Printf("DEBUG: number of routes =%v", len(router.routes))
+	if guble.InfoEnabled() {
+		guble.Info("routing message: %v", message.MetadataLine())
+	}
 
 	for currentRoutePath, currentRouteList := range router.routes {
 		if matchesTopic(message.Path, currentRoutePath) {
@@ -128,26 +126,18 @@ func (router *PubSubRouter) deliverMessage(message *guble.Message, deliverRouteL
 
 		select {
 		case route.C <- message:
-			//log.Println("DEBUG: GO: deliverMessage->delivered message in channel")
 			// fine, we could send the message
 		default:
-			// the channel is blocked
-			//log.Println("DEBUG: GO: deliverMessage-> the channel is blocked, starting go routine with timeout ..")
-
-			// lets send asynchronous with a timeout
-			go func(r Route) {
-				select {
-				case r.C <- message:
-					// fine!
-				case <-time.After(time.Second * 3):
-					log.Printf("WARN: ran into timeout when sending message to route=%v, closing path now", route.Path)
-					router.unsubscribe(&route)
-					close(route.C)
-				}
-			}(route)
+			guble.Info("queue was full, closing delivery for route=%v to applicationId=%v", route.Path, route.ApplicationId)
+			// the message channel is blocked,
+			// so we notify this route, that we stopped delivery and kick it out
+			select {
+			case route.CloseRouteByRouter <- route.Id:
+			default:
+				// ignore, if the closedByRouter already was full
+			}
+			router.unsubscribe(&route)
 		}
-		//log.Println("DEBUG: GO: deliverMessage->done delivery select")
-
 	}
 }
 

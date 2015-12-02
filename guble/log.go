@@ -14,20 +14,32 @@ const (
 
 var LogLevel = LEVEL_INFO
 
+func DebugEnabled() bool {
+	return LogLevel <= LEVEL_DEBUG
+}
+
 func Debug(pattern string, args ...interface{}) {
-	if LogLevel >= LEVEL_DEBUG {
+	if DebugEnabled() {
 		log.Print("DEBUG: ", fmt.Sprintf(pattern, args...))
 	}
 }
 
+func InfoEnabled() bool {
+	return LogLevel <= LEVEL_INFO
+}
+
 func Info(pattern string, args ...interface{}) {
-	if LogLevel >= LEVEL_INFO {
+	if InfoEnabled() {
 		log.Print("INFO: ", fmt.Sprintf(pattern, args...))
 	}
 }
 
+func ErrEnabled() bool {
+	return LogLevel <= LEVEL_ERR
+}
+
 func Err(pattern string, args ...interface{}) {
-	if LogLevel >= LEVEL_ERR {
+	if ErrEnabled() {
 		pc := make([]uintptr, 1)
 		runtime.Callers(2, pc)
 		f := runtime.FuncForPC(pc[0])

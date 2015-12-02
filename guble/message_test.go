@@ -2,6 +2,7 @@ package guble
 
 import (
 	assert "github.com/stretchr/testify/assert"
+	"strings"
 	"testing"
 )
 
@@ -34,6 +35,7 @@ func TestParsingANormalMessage(t *testing.T) {
 }
 
 func TestSerializeANormalMessage(t *testing.T) {
+	// given: a message
 	msg := &Message{
 		Id:                     int64(42),
 		Path:                   Path("/foo/bar"),
@@ -45,7 +47,11 @@ func TestSerializeANormalMessage(t *testing.T) {
 		Body:                   []byte("Hello World"),
 	}
 
+	// then: the serialisation is as expected
 	assert.Equal(t, aNormalMessage, string(msg.Bytes()))
+
+	// and: the first line is as expected
+	assert.Equal(t, strings.SplitN(aNormalMessage, "\n", 2)[0], msg.MetadataLine())
 }
 
 func TestSerializeAMinimalMessage(t *testing.T) {

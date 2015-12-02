@@ -7,16 +7,20 @@ import (
 )
 
 type Route struct {
-	Id   string
-	Path guble.Path
-	C    chan *guble.Message
+	Id                 string
+	Path               guble.Path
+	C                  chan *guble.Message
+	CloseRouteByRouter chan string
+	ApplicationId      string
 }
 
-func NewRoute(path string, channel chan *guble.Message) *Route {
+func NewRoute(path string, channel chan *guble.Message, closeRouteByRouter chan string, applicationId string) *Route {
 	return &Route{
-		Id:   xid.New().String(),
-		Path: guble.Path(path),
-		C:    channel,
+		Id:                 xid.New().String(),
+		Path:               guble.Path(path),
+		C:                  channel,
+		CloseRouteByRouter: closeRouteByRouter,
+		ApplicationId:      applicationId,
 	}
 }
 
