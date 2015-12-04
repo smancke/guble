@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/smancke/guble/guble"
 	"github.com/smancke/guble/server"
 
 	"github.com/alexflint/go-arg"
@@ -18,6 +19,8 @@ type Args struct {
 }
 
 func main() {
+	guble.LogLevel = guble.LEVEL_INFO
+
 	args := loadArgs()
 
 	mux := server.NewPubSubRouter().Go()
@@ -46,8 +49,8 @@ func loadArgs() Args {
 func waitForTermination(callback func()) {
 	sigc := make(chan os.Signal)
 	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
-	log.Printf("Got singal '%v' .. exit greacefully now", <-sigc)
+	guble.Info("Got singal '%v' .. exit greacefully now", <-sigc)
 	callback()
-	log.Printf("exit now")
+	guble.Info("exit now")
 	os.Exit(0)
 }

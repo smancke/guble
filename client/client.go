@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/smancke/guble/guble"
 	"golang.org/x/net/websocket"
+	"time"
 )
 
 type Client struct {
@@ -11,22 +12,60 @@ type Client struct {
 	messages       chan *guble.Message
 	statusMessages chan *guble.NotificationMessage
 	errors         chan *guble.NotificationMessage
+	url            string
+	origin         string
+	shouldStop     chan bool
+	autoReconnect  bool
 }
 
-func Open(url, origin string, channelSize int) (*Client, error) {
-	ws, err := websocket.Dial(url, "", origin)
-	if err != nil {
-		return nil, err
-	}
-
+func Open(url, origin string, channelSize int, autoReconnect bool) (*Client, error) {
 	c := &Client{
-		ws:             ws,
 		messages:       make(chan *guble.Message, channelSize),
 		statusMessages: make(chan *guble.NotificationMessage, channelSize),
 		errors:         make(chan *guble.NotificationMessage, channelSize),
+		url:            url,
+		origin:         origin,
+		shouldStop:     make(chan bool, 1),
+		autoReconnect:  autoReconnect,
 	}
-	go c.readLoop()
+
+	if !autoReconnect {
+		if err := c.connect(); err != nil {
+			return c, err
+		}
+		go c.readLoop()
+	} else {
+		go func() {
+			for {
+				select {
+				case <-c.shouldStop:
+					break
+				default:
+				}
+
+				if err := c.connect(); err != nil {
+					guble.Err("error on connect, retry in 1 second")
+					time.Sleep(time.Second * 1)
+				} else {
+					c.readLoop()
+				}
+
+			}
+		}()
+
+	}
 	return c, nil
+}
+
+func (c *Client) connect() error {
+	guble.Info("connecting to %v", c.url)
+	var err error
+	c.ws, err = websocket.Dial(c.url, "", c.origin)
+	if err != nil {
+		return err
+	}
+	guble.Info("connected to %v", c.url)
+	return nil
 }
 
 func (c *Client) readLoop() {
@@ -34,15 +73,15 @@ func (c *Client) readLoop() {
 	var n int
 	var err error
 	var parsed interface{}
-	shouldStop := false
-	for !shouldStop {
+	connectionError := false
+	for !connectionError {
 		func() {
 			defer guble.PanicLogger()
 
 			if n, err = c.ws.Read(msg); err != nil {
 				guble.Err("%#v", err)
 				c.errors <- clientErrorMessage(err.Error())
-				shouldStop = true
+				connectionError = true
 				return
 			}
 			guble.Debug("client raw read> %s", msg[:n])

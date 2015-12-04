@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -15,17 +14,15 @@ import (
 
 // This is a minimal commandline client to connect through a websocket
 func main() {
-	guble.LogLevel = guble.LEVEL_ERR
+	guble.LogLevel = guble.LEVEL_INFO
 
 	url := "ws://localhost:8080/"
 	if len(os.Args) == 2 {
 		url = os.Args[1]
 	}
 
-	fmt.Printf("connecting to %q\n", url)
-
 	origin := "http://localhost/"
-	client, err := client.Open(url, origin, 100)
+	client, err := client.Open(url, origin, 100, true)
 	if err != nil {
 		log.Fatal(err)
 	}
