@@ -12,7 +12,7 @@ Hello World`
 
 var aMinimalMessage = "42,/,,,,2015-01-01T12:00:00+01:00"
 
-var aConnectedNotification = `>connected You are connected to the server.
+var aConnectedNotification = `#connected You are connected to the server.
 {"ApplicationId": "phone1", "UserId": "user01", "Time": "2015-01-01T12:00:00+01:00"}`
 
 func TestParsingANormalMessage(t *testing.T) {
@@ -150,7 +150,7 @@ func TestSerializeANotificationMessageWithEmptyArg(t *testing.T) {
 		IsError: false,
 	}
 
-	assert.Equal(t, ">"+SUCCESS_SEND, string(msg.Bytes()))
+	assert.Equal(t, "#"+SUCCESS_SEND, string(msg.Bytes()))
 }
 
 func TestParsingErrorNotificationMessage(t *testing.T) {

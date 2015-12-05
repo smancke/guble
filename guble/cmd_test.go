@@ -5,11 +5,11 @@ import (
 	"testing"
 )
 
-var aSendCommand = `send /foo
+var aSendCommand = `> /foo
 {"meta": "data"}
 Hello World`
 
-var aSubscribeCommand = "subscribe /foo/bar"
+var aSubscribeCommand = "+ /foo/bar"
 
 func TestParsingASendCommand(t *testing.T) {
 	assert := assert.New(t)

@@ -108,7 +108,11 @@ func (c *Client) readLoop() {
 }
 
 func (c *Client) Subscribe(path string) error {
-	_, err := c.ws.Write(bytef("subscribe %v", path))
+	cmd := &guble.Cmd{
+		Name: guble.CMD_SUBSCRIBE,
+		Arg:  path,
+	}
+	_, err := c.ws.Write(cmd.Bytes())
 	return err
 }
 

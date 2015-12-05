@@ -19,13 +19,13 @@ var aTestMessage = &guble.Message{
 func TestSubscriptionMessage(t *testing.T) {
 	defer initCtrl(t)()
 
-	messages := []string{"subscribe /mock", "subscribe /foo"}
+	messages := []string{"+ /mock", "+ /foo"}
 	wsconn, pubSubSource, messageSink := createDefaultMocks(messages)
 
 	pubSubSource.EXPECT().Subscribe(routeMatcher{"/mock"}).Return(nil)
-	wsconn.EXPECT().Send([]byte(">subscribed-to /mock"))
+	wsconn.EXPECT().Send([]byte("#subscribed-to /mock"))
 	pubSubSource.EXPECT().Subscribe(routeMatcher{"/foo"}).Return(nil)
-	wsconn.EXPECT().Send([]byte(">subscribed-to /foo"))
+	wsconn.EXPECT().Send([]byte("#subscribed-to /foo"))
 
 	runNewWsHandler(wsconn, pubSubSource, messageSink)
 }
@@ -34,7 +34,7 @@ func TestSendMessageWirthPublisherMessageId(t *testing.T) {
 	defer initCtrl(t)()
 
 	// given: a send command with PublisherMessageId
-	commands := []string{"send /path 42"}
+	commands := []string{"> /path 42"}
 	wsconn, pubSubSource, messageSink := createDefaultMocks(commands)
 
 	messageSink.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *guble.Message) {
@@ -42,7 +42,7 @@ func TestSendMessageWirthPublisherMessageId(t *testing.T) {
 		assert.Equal(t, "42", msg.PublisherMessageId)
 	})
 
-	wsconn.EXPECT().Send([]byte(">send 42"))
+	wsconn.EXPECT().Send([]byte("#send 42"))
 
 	runNewWsHandler(wsconn, pubSubSource, messageSink)
 }
@@ -50,11 +50,11 @@ func TestSendMessageWirthPublisherMessageId(t *testing.T) {
 func TestSendMessage(t *testing.T) {
 	defer initCtrl(t)()
 
-	commands := []string{"send /path\n\nHello, this is a test"}
+	commands := []string{"> /path\n\nHello, this is a test"}
 	wsconn, pubSubSource, messageSink := createDefaultMocks(commands)
 
 	messageSink.EXPECT().HandleMessage(messageMatcher{"/path", "Hello, this is a test"})
-	wsconn.EXPECT().Send([]byte(">send"))
+	wsconn.EXPECT().Send([]byte("#send"))
 
 	runNewWsHandler(wsconn, pubSubSource, messageSink)
 }
@@ -75,7 +75,7 @@ func TestAnIncommingMessageIsDelivered(t *testing.T) {
 func TestBadCommands(t *testing.T) {
 	defer initCtrl(t)()
 
-	badRequests := []string{"XXXX", "", "send", "send/foo", "subscribe", "unsubscribe"}
+	badRequests := []string{"XXXX", "", ">", ">/foo", "+", "-", "send /foo"}
 	wsconn, pubSubSource, messageSink := createDefaultMocks(badRequests)
 
 	counter := 0

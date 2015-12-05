@@ -8,9 +8,9 @@ import (
 
 // Valid command names
 const (
-	CMD_SEND        = "send"
-	CMD_SUBSCRIBE   = "subscribe"
-	CMD_UNSUBSCRIBE = "unsubscribe"
+	CMD_SEND        = ">"
+	CMD_SUBSCRIBE   = "+"
+	CMD_UNSUBSCRIBE = "-"
 )
 
 // Representation of a command, which the client sends to the server

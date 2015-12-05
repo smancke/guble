@@ -116,7 +116,7 @@ func (msg *NotificationMessage) Bytes() []byte {
 	if msg.IsError {
 		buff.WriteString("!")
 	} else {
-		buff.WriteString(">")
+		buff.WriteString("#")
 	}
 	buff.WriteString(msg.Name)
 	if len(msg.Arg) > 0 {
@@ -138,7 +138,7 @@ type Path string
 // Parses a messages, send from the server to the client
 // The parsed messages is the types *Message or *NotificationMessage
 func ParseMessage(message []byte) (interface{}, error) {
-	if len(message) >= 1 && (message[0] == '>' || message[0] == '!') {
+	if len(message) >= 1 && (message[0] == '#' || message[0] == '!') {
 		return parseNotificationMessage(message)
 	}
 	return parseMessage(message)
@@ -189,8 +189,8 @@ func parseNotificationMessage(message []byte) (interface{}, error) {
 
 	msg := &NotificationMessage{}
 
-	if len(message) < 2 || (message[0] != '>' && message[0] != '!') {
-		return nil, fmt.Errorf("message has to start with '>' or '!' and a name, but got '%v'", message)
+	if len(message) < 2 || (message[0] != '#' && message[0] != '!') {
+		return nil, fmt.Errorf("message has to start with '#' or '!' and a name, but got '%v'", message)
 	}
 	msg.IsError = message[0] == '!'
 

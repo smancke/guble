@@ -17,11 +17,14 @@ The goals of guble are, to have a message bus which is:
 
 ## Next TODOs
 
-* Implementation of a client api
-* Hang up clients, if they are not responsive enough
+* Clean unsubscription
+* (Re)-Setup of subscriptions after client reconnect
+* Performance Tests
 * Message ids as sequence
 * Introducion of User-ID and Client-ID
-* Usable Logging
+* Connection message
+* Improve Logging
+* Clean Shutdown
 
 ## Roadmap
 
@@ -76,62 +79,6 @@ Payload messages send from the server to the client are all of in the following 
 * Message sequenceId are int64, and distinct within a topic. The message sequenceIds are strictly monotonically increasing
   depending on the message age, but there is no guarantee for a correct order while transmitting.
 
-### Server Status messages
-The server sends status messages to the client. All positive status messages start with `>`.
-Status messages reporting an error start with `!`. Status messages are in the form.
-
-```
-    '>'<msgType> <Explenation text>\n
-    <json data>
-
-    example:
-
-```
-
-#### Connection message
-```
-    >ok-connected\n
-    {"ApplicationId": "the app id", "UserId": "the user id", "Time": "the server time as iso date"}
-
-    example:
-    >ok-connected You are connected to the server.
-    {"ApplicationId": "phone1", "UserId": "user01", "Time": "2015-01-01T12:00:00+01:00"}
-```
-
-#### Send success notification
-This notification confirms, that the messaging system has successfully received the message and now starts transmiting it to the subscribers.
-
-```
-    >ok-send <publisherMessageId>
-    {"sequenceId": "sequence id", "path": "/foo", "publisherMessageId": "publishers message id", "messagePublishingTime": "iso-date"}
-```
-
-#### Subscribe success notification
-This notification confirms, a sucessful subscribe message.
-
-```
-    >ok-subscribed-to <path>
-```
-
-#### Send error notification
-This message indicates, that the message could not be delivered.
-```
-    >error-send <publisherMessageId> <error text>
-    {"sequenceId": "sequence id", "path": "/foo", "publisherMessageId": "publishers message id", "messagePublishingTime": "iso-date"}
-```
-
-#### Bad Request
-This notification has the same meaning as the http 400 Bad Request.
-```
-    !error-bad-request unknown command 'sdcsd'
-```
-
-#### Internal Server Error
-This notification has the same meaning as the http 500 Internal Server Error.
-```
-    !error-server-internal this computing node has problems
-```
-
 ### Client Commands
 The client can send the following commands.
 
@@ -150,23 +97,23 @@ Publish a message for a topic
     Hello World
 ```
 
-#### Subscribe
+#### Subscribe  (TBD)
 Subscribe to a path (e.g. a topic or subtopic)
 ```
-    subscribe <path>
+    + <path>
 
     example:
-    subscribe /foo
-    subscribe /foo/bar
+    + /foo
+    + /foo/bar
 ```
 
 ```
-    unsubscribe <path>
+    - <path>
 
     example:
-    unsubscribe /foo
-    unsubscribe /foo/bar
-```
+    - /foo
+    - /foo/bar
+    ```
 
 #### Replay (TBD, not implemented in the first version)
 Replay all messages from a specific topic, which are newer than the supllied message id.
@@ -185,6 +132,62 @@ If `maxCount` is supplied, only the maxCount newest messages are supplied.
     replay -1,10 /events
 ```
 
+### Server Status messages
+The server sends status messages to the client. All positive status messages start with `>`.
+Status messages reporting an error start with `!`. Status messages are in the form.
+
+```
+    '#'<msgType> <Explenation text>\n
+    <json data>
+
+    example:
+
+```
+
+#### Connection message
+```
+    #ok-connected\n
+    {"ApplicationId": "the app id", "UserId": "the user id", "Time": "the server time as iso date"}
+
+    example:
+    #ok-connected You are connected to the server.
+    {"ApplicationId": "phone1", "UserId": "user01", "Time": "2015-01-01T12:00:00+01:00"}
+```
+
+#### Send success notification
+This notification confirms, that the messaging system has successfully received the message and now starts transmiting it to the subscribers.
+
+```
+    #ok-send <publisherMessageId>
+    {"sequenceId": "sequence id", "path": "/foo", "publisherMessageId": "publishers message id", "messagePublishingTime": "iso-date"}
+```
+
+#### Subscribe success notification
+This notification confirms, a sucessful subscribe message.
+
+```
+    #ok-subscribed-to <path>
+```
+
+#### Send error notification
+This message indicates, that the message could not be delivered.
+```
+    !error-send <publisherMessageId> <error text>
+    {"sequenceId": "sequence id", "path": "/foo", "publisherMessageId": "publishers message id", "messagePublishingTime": "iso-date"}
+```
+
+#### Bad Request
+This notification has the same meaning as the http 400 Bad Request.
+```
+    !error-bad-request unknown command 'sdcsd'
+```
+
+#### Internal Server Error
+This notification has the same meaning as the http 500 Internal Server Error.
+```
+    !error-server-internal this computing node has problems
+```
+
 ## Topics 
 
 Messages can be routed by topics are hierarchically, so they are represented by a path, separated by `/`.
@@ -196,7 +199,7 @@ subscription paths.
 The path delimiter gives the semantic of subtopics. With this, a subscription to a parent topic (e.g. `/foo`)
 also results in receiving all message of the sub topics (e.g. `/foo/bar`).
 
-### User Topics `/user`
+### User Topics `/user` (TBD, not implemented in the first version)
 Each user has its own Topic space.
 ```
     /user/<userId>
@@ -215,7 +218,7 @@ Applications are free to send messages to any subtopic within the user space.
 Subtopics other than the `applicationId` or the `common` are also addressable, but not subscribed by default.
 If one sends a message to `/user/<userId>/foo`, only those applications of the user will receive it, who have explicitly subscribed to it.
 
-### Group Topics `/group`
+### Group Topics `/group` (TBD, not implemented in the first version)
 Multiple users can share a group where every member of the group can send to topics and subscribe on them.
 The topics of such a group are located at:
 ```

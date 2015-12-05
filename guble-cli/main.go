@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"fmt"
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/guble"
 	"strings"
@@ -28,7 +29,21 @@ func main() {
 	}
 
 	go writeLoop(client)
+	go readLoop(client)
 	waitForTermination(func() {})
+}
+
+func readLoop(client *client.Client) {
+	for {
+		select {
+		case incomingMessage := <-client.Messages():
+			fmt.Println(string(incomingMessage.Bytes()))
+		case error := <-client.Errors():
+			fmt.Println("ERROR: " + string(error.Bytes()))
+		case status := <-client.StatusMessages():
+			fmt.Println(string(status.Bytes()))
+		}
+	}
 }
 
 func writeLoop(client *client.Client) {
@@ -39,9 +54,11 @@ func writeLoop(client *client.Client) {
 			reader := bufio.NewReader(os.Stdin)
 			text, _ := reader.ReadString('\n')
 
-			if strings.HasPrefix(text, "send") {
+			if strings.HasPrefix(text, ">") {
+				fmt.Print("header: ")
 				header, _ := reader.ReadString('\n')
 				text += header
+				fmt.Print("body: ")
 				body, _ := reader.ReadString('\n')
 				text += strings.TrimSpace(body)
 			}
