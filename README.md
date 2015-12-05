@@ -86,13 +86,13 @@ The client can send the following commands.
 #### Send
 Publish a message for a topic
 ```
-    send <path> [<publisherMessageId>]\n
+    > <path> [<publisherMessageId>]\n
     [<header>\n]..
     \n
     <body>
 
     example:
-    send /foo
+    > /foo
 
     Hello World
 ```
