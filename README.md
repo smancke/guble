@@ -97,7 +97,7 @@ Publish a message for a topic
     Hello World
 ```
 
-#### Subscribe  (TBD)
+#### Subscribe
 Subscribe to a path (e.g. a topic or subtopic)
 ```
     + <path>
@@ -107,13 +107,15 @@ Subscribe to a path (e.g. a topic or subtopic)
     + /foo/bar
 ```
 
+#### Unsubscribe  (TBD)
+Unsubscribe from a path (e.g. a topic or subtopic)
 ```
     - <path>
 
     example:
     - /foo
     - /foo/bar
-    ```
+```
 
 #### Replay (TBD, not implemented in the first version)
 Replay all messages from a specific topic, which are newer than the supllied message id.
