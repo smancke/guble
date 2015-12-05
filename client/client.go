@@ -29,14 +29,16 @@ func Open(url, origin string, channelSize int, autoReconnect bool) (*Client, err
 		autoReconnect:  autoReconnect,
 	}
 
+	if err := c.connect(); err != nil {
+		return c, err
+	}
 	if !autoReconnect {
-		if err := c.connect(); err != nil {
-			return c, err
-		}
 		go c.readLoop()
 	} else {
 		go func() {
 			for {
+				c.readLoop()
+
 				select {
 				case <-c.shouldStop:
 					break
@@ -47,9 +49,7 @@ func Open(url, origin string, channelSize int, autoReconnect bool) (*Client, err
 					guble.Err("error on connect, retry in 1 second")
 					time.Sleep(time.Second * 1)
 				} else {
-					c.readLoop()
 				}
-
 			}
 		}()
 

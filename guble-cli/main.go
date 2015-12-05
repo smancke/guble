@@ -2,46 +2,74 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
-	"fmt"
+	"github.com/alexflint/go-arg"
+
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/guble"
-	"strings"
 )
+
+type Args struct {
+	Verbose bool     `arg:"-v,help: Display verbose server communication"`
+	Url     string   `arg:"help: The websocket url to connect (ws://localhost:8080/)"`
+	Topics  []string `arg:"positional,help: The topics to subscribe on connect"`
+}
+
+var args Args
 
 // This is a minimal commandline client to connect through a websocket
 func main() {
-	guble.LogLevel = guble.LEVEL_INFO
+	guble.LogLevel = guble.LEVEL_ERR
 
-	url := "ws://localhost:8080/"
-	if len(os.Args) == 2 {
-		url = os.Args[1]
-	}
+	args = loadArgs()
 
 	origin := "http://localhost/"
-	client, err := client.Open(url, origin, 100, true)
+	client, err := client.Open(args.Url, origin, 100, true)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	go writeLoop(client)
 	go readLoop(client)
+
+	for _, topic := range args.Topics {
+		fmt.Printf("+ %v\n", topic)
+		client.Subscribe(topic)
+	}
 	waitForTermination(func() {})
+}
+
+func loadArgs() Args {
+	args := Args{
+		Verbose: false,
+		Url:     "ws://localhost:8080/",
+	}
+
+	arg.MustParse(&args)
+	return args
 }
 
 func readLoop(client *client.Client) {
 	for {
 		select {
 		case incomingMessage := <-client.Messages():
-			fmt.Println(string(incomingMessage.Bytes()))
+			if args.Verbose {
+				fmt.Println(string(incomingMessage.Bytes()))
+			} else {
+				fmt.Printf("%v: %v\n", incomingMessage.PublisherUserId, incomingMessage.BodyAsString())
+			}
 		case error := <-client.Errors():
 			fmt.Println("ERROR: " + string(error.Bytes()))
 		case status := <-client.StatusMessages():
-			fmt.Println(string(status.Bytes()))
+			if args.Verbose {
+				fmt.Println(string(status.Bytes()))
+			}
 		}
 	}
 }
@@ -63,7 +91,9 @@ func writeLoop(client *client.Client) {
 				text += strings.TrimSpace(body)
 			}
 
-			log.Printf("Sending: %v\n", text)
+			if args.Verbose {
+				log.Printf("Sending: %v\n", text)
+			}
 			if err := client.WriteRawMessage([]byte(text)); err != nil {
 				shouldStop = true
 				guble.Err(err.Error())
