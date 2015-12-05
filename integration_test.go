@@ -43,9 +43,9 @@ func initServerAndClients(t *testing.T) func() {
 	time.Sleep(time.Millisecond * 10)
 
 	var err error
-	client1, err = client.Open("ws://"+testListen, "http://localhost/", 1)
+	client1, err = client.Open("ws://"+testListen, "http://localhost/", 1, false)
 	assert.NoError(t, err)
-	client2, err = client.Open("ws://"+testListen, "http://localhost/", 1)
+	client2, err = client.Open("ws://"+testListen, "http://localhost/", 1, false)
 	assert.NoError(t, err)
 
 	return func() {
