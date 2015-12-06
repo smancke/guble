@@ -33,27 +33,28 @@ func NewPubSubRouter() *PubSubRouter {
 
 func (router *PubSubRouter) Go() *PubSubRouter {
 	go func() {
-		//log.Println("DEBUG: starting message multiplexer")
 		for {
-			//log.Println("DEBUG: GO: next select")
+			func() {
+				defer guble.PanicLogger()
 
-			select {
-			case message := <-router.messageIn:
-				//log.Println("DEBUG: GO: before handleMessage")
-				router.handleMessage(message)
-				//log.Println("DEBUG: GO: after handleMessage")
-			case subscriber := <-router.subscribeChan:
-				router.subscribe(subscriber.route)
-				subscriber.doneNotify <- true
-			case unsubscriber := <-router.unsubscribeChan:
-				router.unsubscribe(unsubscriber.route)
-				unsubscriber.doneNotify <- true
-			case <-router.stop:
-				router.closeAllRoutes()
-				//log.Println("DEBUG: stopping message multiplexer")
-				break
-			}
-			runtime.Gosched()
+				select {
+				case message := <-router.messageIn:
+					//log.Println("DEBUG: GO: before handleMessage")
+					router.handleMessage(message)
+					//log.Println("DEBUG: GO: after handleMessage")
+				case subscriber := <-router.subscribeChan:
+					router.subscribe(subscriber.route)
+					subscriber.doneNotify <- true
+				case unsubscriber := <-router.unsubscribeChan:
+					router.unsubscribe(unsubscriber.route)
+					unsubscriber.doneNotify <- true
+				case <-router.stop:
+					router.closeAllRoutes()
+					//log.Println("DEBUG: stopping message multiplexer")
+					break
+				}
+				runtime.Gosched()
+			}()
 		}
 	}()
 	return router
@@ -115,36 +116,39 @@ func (router *PubSubRouter) handleMessage(message *guble.Message) {
 
 	for currentRoutePath, currentRouteList := range router.routes {
 		if matchesTopic(message.Path, currentRoutePath) {
-			router.deliverMessage(message, currentRouteList)
+			for _, route := range currentRouteList {
+				router.deliverMessage(route, message)
+			}
 		}
 	}
 }
 
-func (router *PubSubRouter) deliverMessage(message *guble.Message, deliverRouteList []Route) {
-	for _, route := range deliverRouteList {
-		//log.Println("DEBUG: GO: deliverMessage->going into delivery select ..")
-
+func (router *PubSubRouter) deliverMessage(route Route, message *guble.Message) {
+	defer guble.PanicLogger()
+	select {
+	case route.C <- message:
+		// fine, we could send the message
+	default:
+		guble.Info("queue was full, closing delivery for route=%v to applicationId=%v", route.Path, route.ApplicationId)
+		// the message channel is blocked,
+		// so we notify this route, that we stopped delivery and kick it out
 		select {
-		case route.C <- message:
-			// fine, we could send the message
+		case route.CloseRouteByRouter <- route.Id:
 		default:
-			guble.Info("queue was full, closing delivery for route=%v to applicationId=%v", route.Path, route.ApplicationId)
-			// the message channel is blocked,
-			// so we notify this route, that we stopped delivery and kick it out
-			select {
-			case route.CloseRouteByRouter <- route.Id:
-			default:
-				// ignore, if the closedByRouter already was full
-			}
-			router.unsubscribe(&route)
+			// ignore, if the closedByRouter already was full
 		}
+		router.unsubscribe(&route)
 	}
 }
 
 func (router *PubSubRouter) closeAllRoutes() {
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
-			close(route.C)
+			select {
+			case route.CloseRouteByRouter <- route.Id:
+			default:
+				// ignore, if the closedByRouter already was full
+			}
 		}
 	}
 }

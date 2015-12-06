@@ -47,6 +47,9 @@ func (srv *WSHandler) sendLoop() {
 				srv.clientConn.Close()
 				return
 			}
+			if guble.DebugEnabled() {
+				guble.Debug("deliver message to applicationId=%v: %v", srv.applicationId, msg.MetadataLine())
+			}
 			if err := srv.clientConn.Send(msg.Bytes()); err != nil {
 				guble.Info("applicationId=%v closed the connection", srv.applicationId)
 				// TODO: Handle closing the channel and unsubscribing for all topics!

@@ -54,7 +54,7 @@ type wsconn struct {
 }
 
 func (conn *wsconn) Close() {
-	conn.Close()
+	conn.Conn.Close()
 }
 
 func (conn *wsconn) LocationString() string {

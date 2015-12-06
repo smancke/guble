@@ -18,7 +18,7 @@ type Args struct {
 }
 
 func main() {
-	guble.LogLevel = guble.LEVEL_INFO
+	guble.LogLevel = guble.LEVEL_ERR
 
 	args := loadArgs()
 

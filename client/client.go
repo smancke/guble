@@ -79,7 +79,7 @@ func (c *Client) readLoop() {
 			defer guble.PanicLogger()
 
 			if n, err = c.ws.Read(msg); err != nil {
-				guble.Err("%#v", err)
+				guble.Err("%#v", err.Error())
 				c.errors <- clientErrorMessage(err.Error())
 				connectionError = true
 				return
