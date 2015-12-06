@@ -79,10 +79,16 @@ func (c *Client) readLoop() {
 			defer guble.PanicLogger()
 
 			if n, err = c.ws.Read(msg); err != nil {
-				guble.Err("%#v", err.Error())
-				c.errors <- clientErrorMessage(err.Error())
-				connectionError = true
-				return
+				select {
+				case <-c.shouldStop:
+					c.shouldStop <- true
+					return
+				default:
+					guble.Err("%#v", err.Error())
+					c.errors <- clientErrorMessage(err.Error())
+					connectionError = true
+					return
+				}
 			}
 			guble.Debug("client raw read> %s", msg[:n])
 
@@ -148,6 +154,7 @@ func (c *Client) Errors() chan *guble.NotificationMessage {
 }
 
 func (c *Client) Close() {
+	c.shouldStop <- true
 	c.ws.Close()
 }
 

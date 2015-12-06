@@ -13,11 +13,13 @@ import (
 )
 
 type testgroup struct {
-	t              *testing.T
-	groupId        int
-	addr           string
-	done           chan bool
-	messagesToSend int
+	t                *testing.T
+	groupId          int
+	addr             string
+	done             chan bool
+	messagesToSend   int
+	client1, client2 *client.Client
+	topic            string
 }
 
 func newTestgroup(t *testing.T, groupId int, addr string, messagesToSend int) *testgroup {
@@ -30,43 +32,62 @@ func newTestgroup(t *testing.T, groupId int, addr string, messagesToSend int) *t
 	}
 }
 
-func (test *testgroup) Start() {
+func (test *testgroup) Init() {
+	test.topic = fmt.Sprintf("/%v-foo", test.groupId)
 	var err error
-	var client1, client2 *client.Client
+	location := "ws://" + test.addr
+	//location := "ws://gathermon.mancke.net:8080"
+	//location := "ws://127.0.0.1:8080"
+	test.client1, err = client.Open(location, "http://localhost/", 10, false)
+	if err != nil {
+		panic(err)
+	}
+	test.client2, err = client.Open(location, "http://localhost/", 10, false)
+	if err != nil {
+		panic(err)
+	}
 
-	client1, err = client.Open("ws://"+test.addr, "http://localhost/", 10, true)
-	assert.NoError(test.t, err)
-	defer client1.Close()
-	client2, err = client.Open("ws://"+test.addr, "http://localhost/", 10, true)
-	assert.NoError(test.t, err)
-	defer client1.Close()
+	test.client1.Subscribe(test.topic)
 
-	time.Sleep(time.Millisecond * 10)
+	select {
+	case subscribeNotify := <-test.client1.StatusMessages():
+		assert.Equal(test.t, guble.SUCCESS_SUBSCRIBED_TO, subscribeNotify.Name)
+		assert.Equal(test.t, test.topic, subscribeNotify.Arg)
+	case <-time.After(time.Second * 1):
+		test.t.Logf("[%v] no subscription notification after 1 second", test.groupId)
+		test.done <- false
+		test.t.Fail()
+		return
+	}
+}
 
-	topic := fmt.Sprintf("/%v-foo", test.groupId)
-	client1.Subscribe(topic)
-
-	time.Sleep(time.Millisecond * 10)
-
+func (test *testgroup) Start() {
 	for i := 0; i < test.messagesToSend; i++ {
 		body := fmt.Sprintf("Hallo-%v", i)
-		client2.Send(topic, body)
+		test.client2.Send(test.topic, body)
 
 		select {
-		case msg := <-client1.Messages():
+		case msg := <-test.client1.Messages():
 			assert.Equal(test.t, body, msg.BodyAsString())
-			assert.Equal(test.t, topic, string(msg.Path))
-		case msg := <-client1.Errors():
-			test.t.Logf("received error: %v", msg)
-			test.t.FailNow()
-			//case msg := <-client1.StatusMessages():
-			//	test.t.Logf("received status message: %v", msg)
-		case <-time.After(time.Millisecond * 100):
-			test.t.Log("no message received")
-			test.t.FailNow()
+			assert.Equal(test.t, test.topic, string(msg.Path))
+		case msg := <-test.client1.Errors():
+			test.t.Logf("[%v] received error: %v", test.groupId, msg)
+			test.done <- false
+			test.t.Fail()
+			return
+		case <-time.After(time.Second * 1):
+			test.t.Logf("[%v] no message received for 1 second, expected message %v", test.groupId, i)
+			test.done <- false
+			test.t.Fail()
+			return
 		}
 	}
 	test.done <- true
+}
+
+func (test *testgroup) Clean() {
+	test.client1.Close()
+	test.client2.Close()
 }
 
 func TestThroughput(t *testing.T) {
@@ -83,13 +104,27 @@ func TestThroughput(t *testing.T) {
 	}()
 	time.Sleep(time.Millisecond * 10)
 
-	testgroupCount := 10
+	testgroupCount := 20
 	messagesPerGroup := 1000
 	log.Printf("init the %v testgroups", testgroupCount)
 	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
 	for i, _ := range testgroups {
 		testgroups[i] = newTestgroup(t, i, ws.GetAddr(), messagesPerGroup)
 	}
+
+	// init test
+	log.Print("init the testgroups")
+	for i, _ := range testgroups {
+		testgroups[i].Init()
+	}
+
+	defer func() {
+		// cleanup tests
+		log.Print("cleanup the testgroups")
+		for i, _ := range testgroups {
+			testgroups[i].Clean()
+		}
+	}()
 
 	// start test
 	log.Print("start the testgroups")
@@ -100,9 +135,15 @@ func TestThroughput(t *testing.T) {
 
 	log.Print("wait for finishing")
 	timeout := time.After(time.Second * 60)
-	for _, test := range testgroups {
+	for i, test := range testgroups {
+		//fmt.Printf("wating for test %v\n", i)
 		select {
-		case <-test.done:
+		case successFlag := <-test.done:
+			if !successFlag {
+				t.Logf("testgroup %v returned with error", i)
+				t.FailNow()
+				return
+			}
 		case <-timeout:
 			t.Log("timeout. testgroups not ready before timeout")
 			t.Fail()

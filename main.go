@@ -14,13 +14,20 @@ import (
 )
 
 type Args struct {
-	Listen string `Arg:"-L,Help: [Host:]Port the address to listen on (:8080)" env:"GN_LISTEN"`
+	Listen   string `arg:"-l,help: [Host:]Port the address to listen on (:8080)" env:"GUBLE_LISTEN"`
+	LogInfo  bool   `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
+	LogDebug bool   `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
 }
 
 func main() {
-	guble.LogLevel = guble.LEVEL_ERR
 
 	args := loadArgs()
+	if args.LogInfo {
+		guble.LogLevel = guble.LEVEL_INFO
+	}
+	if args.LogDebug {
+		guble.LogLevel = guble.LEVEL_DEBUG
+	}
 
 	mux := server.NewPubSubRouter().Go()
 

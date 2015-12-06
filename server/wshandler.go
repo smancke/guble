@@ -17,6 +17,7 @@ type WSHandler struct {
 	messagesToSend      chan *guble.Message
 	routeClosed         chan string
 	notificationsToSend chan *guble.NotificationMessage
+	subscriptions       map[guble.Path]*Route
 }
 
 func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, wsConn WSConn) *WSHandler {
@@ -29,6 +30,7 @@ func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, wsConn WSC
 		messagesToSend:      make(chan *guble.Message, 100),
 		notificationsToSend: make(chan *guble.NotificationMessage, 100),
 		routeClosed:         make(chan string, 100),
+		subscriptions:       make(map[guble.Path]*Route),
 	}
 	return server
 }
@@ -50,26 +52,28 @@ func (srv *WSHandler) sendLoop() {
 			if guble.DebugEnabled() {
 				guble.Debug("deliver message to applicationId=%v: %v", srv.applicationId, msg.MetadataLine())
 			}
+			if guble.InfoEnabled() {
+				guble.Info("sending message: %v", msg.MetadataLine())
+			}
 			if err := srv.clientConn.Send(msg.Bytes()); err != nil {
 				guble.Info("applicationId=%v closed the connection", srv.applicationId)
-				// TODO: Handle closing the channel and unsubscribing for all topics!
+				srv.cleanAndClose()
 				break
 			}
 		case msg, ok := <-srv.notificationsToSend:
 			if !ok {
 				guble.Info("messageSouce closed the connection -> closing the websocket connection to applicationId=%v", srv.applicationId)
-				srv.clientConn.Close()
+				srv.cleanAndClose()
 				return
 			}
 			if err := srv.clientConn.Send(msg.Bytes()); err != nil {
 				guble.Info("applicationId=%v closed the connection", srv.applicationId)
-				// TODO: Handle closing the channel and unsubscribing for all topics!
+				srv.cleanAndClose()
 				break
 			}
 		case closedRouteId := <-srv.routeClosed:
-			// this handling could be improved later on
 			guble.Info("INFO: router closed route %v -> closing the websocket connection to applicationId=%v", closedRouteId, srv.applicationId)
-			srv.clientConn.Close()
+			srv.cleanAndClose()
 			return
 		}
 	}
@@ -80,8 +84,8 @@ func (srv *WSHandler) receiveLoop() {
 	for {
 		err := srv.clientConn.Receive(&message)
 		if err != nil {
-			guble.Info("client closed the connection")
-			// TODO: how to cleanly unsubscrive from all routes
+			guble.Info("applicationId=%v closed the connection", srv.applicationId)
+			srv.cleanAndClose()
 			break
 		}
 
@@ -127,10 +131,21 @@ func (srv *WSHandler) subscribe(cmd *guble.Cmd) {
 		srv.returnError(guble.ERROR_BAD_REQUEST, "subscribe command requires a path argument, but non given", cmd.Name)
 		return
 	}
-	guble.Info("subscribe: %q\n", cmd.Arg)
 	route := NewRoute(cmd.Arg, srv.messagesToSend, srv.routeClosed, srv.applicationId)
 	srv.messageSouce.Subscribe(route)
+	srv.subscriptions[route.Path] = route
 	srv.returnOK("subscribed-to", cmd.Arg)
+}
+
+func (srv *WSHandler) cleanAndClose() {
+	guble.Info("closing applicationId=%v", srv.applicationId)
+
+	for _, route := range srv.subscriptions {
+		srv.messageSouce.Unsubscribe(route)
+		delete(srv.subscriptions, route.Path)
+	}
+
+	srv.clientConn.Close()
 }
 
 func (srv *WSHandler) returnError(name string, argPattern string, params ...interface{}) {

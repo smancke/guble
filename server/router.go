@@ -24,7 +24,7 @@ type PubSubRouter struct {
 func NewPubSubRouter() *PubSubRouter {
 	return &PubSubRouter{
 		routes:          make(map[guble.Path][]Route),
-		messageIn:       make(chan *guble.Message, 500),
+		messageIn:       make(chan *guble.Message, 500*100),
 		subscribeChan:   make(chan SubscriptionRequest, 10),
 		unsubscribeChan: make(chan SubscriptionRequest, 10),
 		stop:            make(chan bool, 1),
@@ -39,7 +39,9 @@ func (router *PubSubRouter) Go() *PubSubRouter {
 
 				select {
 				case message := <-router.messageIn:
-					//log.Println("DEBUG: GO: before handleMessage")
+					if float32(len(router.messageIn))/float32(cap(router.messageIn)) > 0.9 {
+						guble.Warn("router.messageIn channel very full: current=%v, max=\n", len(router.messageIn), cap(router.messageIn))
+					}
 					router.handleMessage(message)
 					//log.Println("DEBUG: GO: after handleMessage")
 				case subscriber := <-router.subscribeChan:
@@ -76,6 +78,7 @@ func (router *PubSubRouter) Subscribe(r *Route) *Route {
 }
 
 func (router *PubSubRouter) subscribe(r *Route) {
+	guble.Info("subscribe applicationId=%v, path=%v", r.ApplicationId, r.Path)
 	routeList, present := router.routes[r.Path]
 	if !present {
 		routeList = []Route{}
@@ -94,6 +97,7 @@ func (router *PubSubRouter) Unsubscribe(r *Route) {
 }
 
 func (router *PubSubRouter) unsubscribe(r *Route) {
+	guble.Info("unsubscribe applicationId=%v, path=%v", r.ApplicationId, r.Path)
 	routeList, present := router.routes[r.Path]
 	if !present {
 		return

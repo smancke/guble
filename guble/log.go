@@ -11,10 +11,11 @@ import (
 const (
 	LEVEL_DEBUG = iota
 	LEVEL_INFO
+	LEVEL_WARN
 	LEVEL_ERR
 )
 
-var LogLevel = LEVEL_INFO
+var LogLevel = LEVEL_WARN
 
 func DebugEnabled() bool {
 	return LogLevel <= LEVEL_DEBUG
@@ -33,6 +34,16 @@ func InfoEnabled() bool {
 func Info(pattern string, args ...interface{}) {
 	if InfoEnabled() {
 		log.Print("INFO: ", fmt.Sprintf(pattern, args...))
+	}
+}
+
+func WarnEnabled() bool {
+	return LogLevel <= LEVEL_WARN
+}
+
+func Warn(pattern string, args ...interface{}) {
+	if WarnEnabled() {
+		log.Print("WARN: ", fmt.Sprintf(pattern, args...))
 	}
 }
 
