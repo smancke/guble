@@ -62,9 +62,16 @@ func (test *testgroup) Init() {
 }
 
 func (test *testgroup) Start() {
+	go func() {
+		for i := 0; i < test.messagesToSend; i++ {
+			body := fmt.Sprintf("Hallo-%v", i)
+			test.client2.Send(test.topic, body)
+		}
+		time.Sleep(time.Microsecond)
+	}()
+
 	for i := 0; i < test.messagesToSend; i++ {
 		body := fmt.Sprintf("Hallo-%v", i)
-		test.client2.Send(test.topic, body)
 
 		select {
 		case msg := <-test.client1.Messages():
@@ -75,7 +82,7 @@ func (test *testgroup) Start() {
 			test.done <- false
 			test.t.Fail()
 			return
-		case <-time.After(time.Second * 1):
+		case <-time.After(time.Second * 5):
 			test.t.Logf("[%v] no message received for 1 second, expected message %v", test.groupId, i)
 			test.done <- false
 			test.t.Fail()
@@ -104,8 +111,8 @@ func TestThroughput(t *testing.T) {
 	}()
 	time.Sleep(time.Millisecond * 10)
 
-	testgroupCount := 20
-	messagesPerGroup := 1000
+	testgroupCount := 2
+	messagesPerGroup := 200
 	log.Printf("init the %v testgroups", testgroupCount)
 	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
 	for i, _ := range testgroups {

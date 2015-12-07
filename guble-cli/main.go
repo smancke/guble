@@ -16,9 +16,11 @@ import (
 )
 
 type Args struct {
-	Verbose bool     `arg:"-v,help: Display verbose server communication"`
-	Url     string   `arg:"help: The websocket url to connect (ws://localhost:8080/)"`
-	Topics  []string `arg:"positional,help: The topics to subscribe on connect"`
+	Verbose  bool     `arg:"-v,help: Display verbose server communication"`
+	Url      string   `arg:"help: The websocket url to connect (ws://localhost:8080/)"`
+	Topics   []string `arg:"positional,help: The topics to subscribe on connect"`
+	LogInfo  bool     `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
+	LogDebug bool     `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
 }
 
 var args Args
@@ -28,6 +30,12 @@ func main() {
 	guble.LogLevel = guble.LEVEL_ERR
 
 	args = loadArgs()
+	if args.LogInfo {
+		guble.LogLevel = guble.LEVEL_INFO
+	}
+	if args.LogDebug {
+		guble.LogLevel = guble.LEVEL_DEBUG
+	}
 
 	origin := "http://localhost/"
 	client, err := client.Open(args.Url, origin, 100, true)

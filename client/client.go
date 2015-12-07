@@ -2,8 +2,9 @@ package client
 
 import (
 	"fmt"
+	"github.com/gorilla/websocket"
 	"github.com/smancke/guble/guble"
-	"golang.org/x/net/websocket"
+	"net/http"
 	"time"
 )
 
@@ -60,7 +61,9 @@ func Open(url, origin string, channelSize int, autoReconnect bool) (*Client, err
 func (c *Client) connect() error {
 	guble.Info("connecting to %v", c.url)
 	var err error
-	c.ws, err = websocket.Dial(c.url, "", c.origin)
+	header := http.Header{"Origin": []string{c.origin}}
+	c.ws, _, err = websocket.DefaultDialer.Dial(c.url, header)
+	//c.ws, err = websocket.Dial(c.url, "", c.origin)
 	if err != nil {
 		return err
 	}
@@ -69,16 +72,14 @@ func (c *Client) connect() error {
 }
 
 func (c *Client) readLoop() {
-	var msg = make([]byte, 512)
-	var n int
 	var err error
 	var parsed interface{}
 	connectionError := false
 	for !connectionError {
 		func() {
 			defer guble.PanicLogger()
-
-			if n, err = c.ws.Read(msg); err != nil {
+			var msg []byte
+			if _, msg, err = c.ws.ReadMessage(); err != nil {
 				select {
 				case <-c.shouldStop:
 					c.shouldStop <- true
@@ -90,9 +91,9 @@ func (c *Client) readLoop() {
 					return
 				}
 			}
-			guble.Debug("client raw read> %s", msg[:n])
+			guble.Debug("client raw read> %s", msg)
 
-			parsed, err = guble.ParseMessage(msg[:n])
+			parsed, err = guble.ParseMessage(msg)
 			if err != nil {
 				guble.Err("parsing message failed %v", err)
 				c.errors <- clientErrorMessage(err.Error())
@@ -118,7 +119,7 @@ func (c *Client) Subscribe(path string) error {
 		Name: guble.CMD_SUBSCRIBE,
 		Arg:  path,
 	}
-	_, err := c.ws.Write(cmd.Bytes())
+	err := c.ws.WriteMessage(websocket.BinaryMessage, cmd.Bytes())
 	return err
 }
 
@@ -137,8 +138,7 @@ func (c *Client) SendBytes(path string, body []byte) error {
 }
 
 func (c *Client) WriteRawMessage(message []byte) error {
-	_, err := c.ws.Write(message)
-	return err
+	return c.ws.WriteMessage(websocket.BinaryMessage, message)
 }
 
 func (c *Client) Messages() chan *guble.Message {
