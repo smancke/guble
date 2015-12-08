@@ -1,8 +1,8 @@
 package server
 
 import (
+	"github.com/gorilla/websocket"
 	"github.com/smancke/guble/guble"
-	"golang.org/x/net/websocket"
 	"log"
 	"net"
 	"net/http"
@@ -14,13 +14,23 @@ type WSServer struct {
 	ln     net.Listener
 }
 
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
+
 func StartWSServer(addr string, newWsHandler func(wsConn WSConn) Startable) *WSServer {
 	ws := &WSServer{}
 	go func() {
 		mux := http.NewServeMux()
-		mux.Handle("/", websocket.Handler(func(ws *websocket.Conn) {
-			newWsHandler(&wsconn{ws}).Start()
-		}))
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			c, err := upgrader.Upgrade(w, r, nil)
+			if err != nil {
+				guble.Warn("error on upgrading %v", err.Error())
+				return
+			}
+			defer c.Close()
+			newWsHandler(&wsconn{c}).Start()
+		})
 
 		guble.Info("starting up at %v", addr)
 		ws.server = &http.Server{Addr: addr, Handler: mux}
@@ -58,15 +68,16 @@ func (conn *wsconn) Close() {
 }
 
 func (conn *wsconn) LocationString() string {
-	return conn.Config().Location.String()
+	return conn.LocationString()
 }
 
 func (conn *wsconn) Send(bytes []byte) (err error) {
-	return websocket.Message.Send(conn.Conn, bytes)
+	return conn.Conn.WriteMessage(websocket.BinaryMessage, bytes)
 }
 
 func (conn *wsconn) Receive(bytes *[]byte) (err error) {
-	return websocket.Message.Receive(conn.Conn, bytes)
+	_, *bytes, err = conn.Conn.ReadMessage()
+	return err
 }
 
 // copied from golang: net/http/server.go
