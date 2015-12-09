@@ -31,7 +31,7 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 
 	// then
 	// they have correct ids
-	a.Equal(16, len(routeBlah1.Id))
+	a.NotEqual("", routeBlah1.Id)
 	a.NotEqual(routeBlah1.Id, routeBlah2.Id)
 	a.NotEqual(routeBlah2.Id, routeFoo.Id)
 
