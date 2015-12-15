@@ -95,7 +95,7 @@ func TestBadCommands(t *testing.T) {
 }
 
 func runNewWsHandler(wsconn *MockWSConn, pubSubSource *MockPubSubSource, messageSink *MockMessageSink) *WSHandler {
-	handler := NewWSHandler(pubSubSource, messageSink, wsconn)
+	handler := NewWSHandler(pubSubSource, messageSink, wsconn, "testuser")
 	go func() {
 		handler.Start()
 	}()

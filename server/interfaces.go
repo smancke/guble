@@ -11,6 +11,7 @@ type Route struct {
 	Path               guble.Path
 	C                  chan *guble.Message
 	CloseRouteByRouter chan string
+	UserId             string
 	ApplicationId      string
 }
 

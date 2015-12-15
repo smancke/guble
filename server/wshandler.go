@@ -20,13 +20,13 @@ type WSHandler struct {
 	subscriptions       map[guble.Path]*Route
 }
 
-func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, wsConn WSConn) *WSHandler {
+func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, wsConn WSConn, userId string) *WSHandler {
 	server := &WSHandler{
 		messageSink:         messageSink,
 		messageSouce:        messageSouce,
 		clientConn:          wsConn,
 		applicationId:       xid.New().String(),
-		userId:              "TODO-userid",
+		userId:              userId,
 		messagesToSend:      make(chan *guble.Message, 100),
 		notificationsToSend: make(chan *guble.NotificationMessage, 100),
 		routeClosed:         make(chan string, 100),

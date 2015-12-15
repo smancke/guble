@@ -15,11 +15,11 @@ func TestStartAndStopWSServer(t *testing.T) {
 		time.Sleep(time.Second * 10)
 	}).AnyTimes()
 	var conn WSConn
-	newWsHandler := func(wsConn WSConn) Startable {
+	newWsHandler := func(wsConn WSConn, userId string) Startable {
 		conn = wsConn
 		return startable
 	}
-	server := StartWSServer("localhost:0", newWsHandler)
+	server := StartWSServer("localhost:0", "/", newWsHandler)
 	time.Sleep(time.Millisecond * 10)
 
 	addr := server.GetAddr()
@@ -47,4 +47,10 @@ func sendTestMessage(t *testing.T, addr string, conn *WSConn) {
 	err = connDeref.Receive(&msg)
 	assert.NoError(t, err)
 	assert.Equal(t, "Testmessage", string(msg))
+}
+
+func TestExtractUserId(t *testing.T) {
+	assert.Equal(t, "marvin", extractUserId("/foo/user/marvin"))
+	assert.Equal(t, "marvin", extractUserId("/user/marvin"))
+	assert.Equal(t, "", extractUserId("/"))
 }

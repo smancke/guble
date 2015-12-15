@@ -29,17 +29,21 @@ func main() {
 		guble.LogLevel = guble.LEVEL_DEBUG
 	}
 
+	startupServer(args)
+}
+
+func startupServer(args Args) {
 	router := server.NewPubSubRouter().Go()
 	messageEntry := server.NewMessageEntry(router)
-
-	wshandlerFactory := func(wsConn server.WSConn) server.Startable {
-		return server.NewWSHandler(router, messageEntry, wsConn)
+	wshandlerFactory := func(wsConn server.WSConn, userId string) server.Startable {
+		return server.NewWSHandler(router, messageEntry, wsConn, userId)
 	}
-	server.StartWSServer(args.Listen, wshandlerFactory)
+	ws := server.StartWSServer(args.Listen, "/", wshandlerFactory)
 
 	waitForTermination(func() {
 		router.Stop()
-		time.Sleep(time.Second * 2)
+		ws.Stop()
+		time.Sleep(time.Second * 1)
 	})
 }
 

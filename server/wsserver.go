@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -18,18 +19,18 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-func StartWSServer(addr string, newWsHandler func(wsConn WSConn) Startable) *WSServer {
+func StartWSServer(addr string, prefix string, newWsHandler func(wsConn WSConn, userId string) Startable) *WSServer {
 	ws := &WSServer{}
 	go func() {
 		mux := http.NewServeMux()
-		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
 			c, err := upgrader.Upgrade(w, r, nil)
 			if err != nil {
 				guble.Warn("error on upgrading %v", err.Error())
 				return
 			}
 			defer c.Close()
-			newWsHandler(&wsconn{c}).Start()
+			newWsHandler(&wsconn{c}, extractUserId(r.RequestURI)).Start()
 		})
 
 		guble.Info("starting up at %v", addr)
@@ -57,6 +58,15 @@ func (ws *WSServer) GetAddr() string {
 	return ws.ln.Addr().String()
 }
 
+// parsed the userid out of an uri
+func extractUserId(requestUri string) string {
+	uriParts := strings.SplitN(requestUri, "/user/", 2)
+	if len(uriParts) != 2 {
+		return ""
+	}
+	return uriParts[1]
+}
+
 // wsconnImpl is a Wrapper of the websocket.Conn
 // implementing the interface WSConn for better testability
 type wsconn struct {
@@ -65,10 +75,6 @@ type wsconn struct {
 
 func (conn *wsconn) Close() {
 	conn.Conn.Close()
-}
-
-func (conn *wsconn) LocationString() string {
-	return conn.LocationString()
 }
 
 func (conn *wsconn) Send(bytes []byte) (err error) {

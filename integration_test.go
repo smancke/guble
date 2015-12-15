@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-var testListen = "localhost:9999"
 var ws *server.WSServer
 var client1 *client.Client
 var client2 *client.Client
@@ -24,6 +23,8 @@ func TestSimplePingPong(t *testing.T) {
 	select {
 	case msg := <-client1.Messages():
 		assert.Equal(t, "Hallo", msg.BodyAsString())
+		assert.Equal(t, "user2", msg.PublisherUserId)
+		assert.Equal(t, uint64(1), msg.Id)
 	case msg := <-client1.Errors():
 		t.Logf("received error: %v", msg)
 		t.FailNow()
@@ -34,22 +35,23 @@ func TestSimplePingPong(t *testing.T) {
 }
 
 func initServerAndClients(t *testing.T) func() {
-	mux := server.NewPubSubRouter().Go()
-	wshandlerFactory := func(wsConn server.WSConn) server.Startable {
-		return server.NewWSHandler(mux, mux, wsConn)
+	router := server.NewPubSubRouter().Go()
+	messageEntry := server.NewMessageEntry(router)
+	wshandlerFactory := func(wsConn server.WSConn, userId string) server.Startable {
+		return server.NewWSHandler(router, messageEntry, wsConn, userId)
 	}
-	ws = server.StartWSServer(testListen, wshandlerFactory)
+	ws = server.StartWSServer("localhost:0", "/", wshandlerFactory)
 
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 100)
 
 	var err error
-	client1, err = client.Open("ws://"+testListen, "http://localhost/", 1, false)
+	client1, err = client.Open("ws://"+ws.GetAddr()+"/user/user1", "http://localhost", 1, false)
 	assert.NoError(t, err)
-	client2, err = client.Open("ws://"+testListen, "http://localhost/", 1, false)
+	client2, err = client.Open("ws://"+ws.GetAddr()+"/user/user2", "http://localhost", 1, false)
 	assert.NoError(t, err)
 
 	return func() {
-		mux.Stop()
+		router.Stop()
 		ws.Stop()
 		if client1 != nil {
 			client1.Close()

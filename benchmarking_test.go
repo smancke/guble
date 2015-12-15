@@ -101,10 +101,10 @@ func TestThroughput(t *testing.T) {
 	guble.LogLevel = guble.LEVEL_ERR
 	log.Print("start the server")
 	mux := server.NewPubSubRouter().Go()
-	wshandlerFactory := func(wsConn server.WSConn) server.Startable {
-		return server.NewWSHandler(mux, mux, wsConn)
+	wshandlerFactory := func(wsConn server.WSConn, userId string) server.Startable {
+		return server.NewWSHandler(mux, mux, wsConn, userId)
 	}
-	ws := server.StartWSServer("localhost:0", wshandlerFactory)
+	ws := server.StartWSServer("localhost:0", "/", wshandlerFactory)
 	defer func() {
 		mux.Stop()
 		ws.Stop()
