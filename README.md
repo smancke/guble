@@ -17,7 +17,6 @@ The goals of guble are, to have a message bus which is:
 
 ## Next TODOs
 
-* Message ids as sequence
 * Introducion of User-ID and Client-ID
 * User Topics
 * Connection message
