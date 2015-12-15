@@ -12,7 +12,7 @@ type Message struct {
 
 	// The sequenceId of the message, which is given by the
 	// server an is strictly monotonically increasing at least within a root topic.
-	Id int64
+	Id uint64
 
 	// The topic path
 	Path Path
@@ -70,7 +70,7 @@ func (msg *Message) Bytes() []byte {
 }
 
 func (msg *Message) writeMetadataLine(buff *bytes.Buffer) {
-	buff.WriteString(strconv.FormatInt(msg.Id, 10))
+	buff.WriteString(strconv.FormatUint(msg.Id, 10))
 	buff.WriteString(",")
 	buff.WriteString(string(msg.Path))
 	buff.WriteString(",")
@@ -156,7 +156,7 @@ func parseMessage(message []byte) (interface{}, error) {
 		return nil, fmt.Errorf("message metadata has to have 6 fields, but was %v", parts[0])
 	}
 
-	id, err := strconv.ParseInt(meta[0], 10, 0)
+	id, err := strconv.ParseUint(meta[0], 10, 0)
 	if err != nil {
 		return nil, fmt.Errorf("message metadata has to start with integer id, but was %v", meta[0])
 	}

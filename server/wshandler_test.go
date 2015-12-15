@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"fmt"
 	guble "github.com/smancke/guble/guble"
 	"strings"
 )
 
 var aTestMessage = &guble.Message{
-	Id:   int64(42),
+	Id:   uint64(42),
 	Path: "/foo",
 	Body: []byte("Test"),
 }
@@ -53,7 +54,7 @@ func TestSendMessage(t *testing.T) {
 	commands := []string{"> /path\n\nHello, this is a test"}
 	wsconn, pubSubSource, messageSink := createDefaultMocks(commands)
 
-	messageSink.EXPECT().HandleMessage(messageMatcher{"/path", "Hello, this is a test"})
+	messageSink.EXPECT().HandleMessage(messageMatcher{path: "/path", message: "Hello, this is a test"})
 	wsconn.EXPECT().Send([]byte("#send"))
 
 	runNewWsHandler(wsconn, pubSubSource, messageSink)
@@ -135,15 +136,17 @@ func (n routeMatcher) String() string {
 
 // --- messageMatcher ---------
 type messageMatcher struct {
+	id      uint64
 	path    string
 	message string
 }
 
 func (n messageMatcher) Matches(x interface{}) bool {
 	return n.path == string(x.(*guble.Message).Path) &&
-		n.message == string(x.(*guble.Message).Body)
+		n.message == string(x.(*guble.Message).Body) &&
+		(n.id == 0 || n.id == x.(*guble.Message).Id)
 }
 
 func (n messageMatcher) String() string {
-	return "message equals " + n.path + " " + n.message
+	return fmt.Sprintf("message equals %q, %q, %q", n.id, n.path, n.message)
 }

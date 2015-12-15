@@ -23,7 +23,7 @@ func TestParsingANormalMessage(t *testing.T) {
 	assert.IsType(&Message{}, msgI)
 	msg := msgI.(*Message)
 
-	assert.Equal(int64(42), msg.Id)
+	assert.Equal(uint64(42), msg.Id)
 	assert.Equal(Path("/foo/bar"), msg.Path)
 	assert.Equal("user01", msg.PublisherUserId)
 	assert.Equal("phone01", msg.PublisherApplicationId)
@@ -37,7 +37,7 @@ func TestParsingANormalMessage(t *testing.T) {
 func TestSerializeANormalMessage(t *testing.T) {
 	// given: a message
 	msg := &Message{
-		Id:                     int64(42),
+		Id:                     uint64(42),
 		Path:                   Path("/foo/bar"),
 		PublisherUserId:        "user01",
 		PublisherApplicationId: "phone01",
@@ -56,7 +56,7 @@ func TestSerializeANormalMessage(t *testing.T) {
 
 func TestSerializeAMinimalMessage(t *testing.T) {
 	msg := &Message{
-		Id:             int64(42),
+		Id:             uint64(42),
 		Path:           Path("/"),
 		PublishingTime: "2015-01-01T12:00:00+01:00",
 	}
@@ -66,7 +66,7 @@ func TestSerializeAMinimalMessage(t *testing.T) {
 
 func TestSerializeAMinimalMessageWithBody(t *testing.T) {
 	msg := &Message{
-		Id:             int64(42),
+		Id:             uint64(42),
 		Path:           Path("/"),
 		PublishingTime: "2015-01-01T12:00:00+01:00",
 		Body:           []byte("Hello World"),
@@ -83,7 +83,7 @@ func TestParsingAMinimalMessage(t *testing.T) {
 	assert.IsType(&Message{}, msgI)
 	msg := msgI.(*Message)
 
-	assert.Equal(int64(42), msg.Id)
+	assert.Equal(uint64(42), msg.Id)
 	assert.Equal(Path("/"), msg.Path)
 	assert.Equal("", msg.PublisherUserId)
 	assert.Equal("", msg.PublisherApplicationId)

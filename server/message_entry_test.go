@@ -1,0 +1,46 @@
+package server
+
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+
+	guble "github.com/smancke/guble/guble"
+)
+
+func TestNextIdForTopic(t *testing.T) {
+	defer initCtrl(t)()
+	a := assert.New(t)
+
+	messageEntry := NewMessageEntry(NewMockMessageSink(ctrl))
+	a.Equal(uint64(1), messageEntry.nextIdForTopic("/bli/bla"))
+	a.Equal(uint64(2), messageEntry.nextIdForTopic("/bli/bla"))
+	a.Equal(uint64(3), messageEntry.nextIdForTopic("/bli/BLUBB"))
+	a.Equal(uint64(4), messageEntry.nextIdForTopic("/bli/bla"))
+
+	a.Equal(uint64(1), messageEntry.nextIdForTopic("/another/topic1"))
+	a.Equal(uint64(1), messageEntry.nextIdForTopic("/WithoutSubtopic"))
+	a.Equal(uint64(1), messageEntry.nextIdForTopic("WithoutLeadingSlash"))
+	a.Equal(uint64(1), messageEntry.nextIdForTopic("")) // robus against ""
+}
+
+func TestInrementingTheMessageId(t *testing.T) {
+	defer initCtrl(t)()
+
+	routerMock := NewMockMessageSink(ctrl)
+	messageEntry := NewMessageEntry(routerMock)
+
+	routerMock.EXPECT().HandleMessage(&messageMatcher{1, "/topic1", "topic1Message1"})
+	messageEntry.HandleMessage(
+		&guble.Message{Path: guble.Path("/topic1"), Body: []byte("topic1Message1")},
+	)
+
+	routerMock.EXPECT().HandleMessage(&messageMatcher{2, "/topic1", "topic1Message2"})
+	messageEntry.HandleMessage(
+		&guble.Message{Path: guble.Path("/topic1"), Body: []byte("topic1Message2")},
+	)
+
+	routerMock.EXPECT().HandleMessage(&messageMatcher{1, "/topic2", "topic2Message1"})
+	messageEntry.HandleMessage(
+		&guble.Message{Path: guble.Path("/topic2"), Body: []byte("topic2Message1")},
+	)
+}

@@ -13,18 +13,18 @@ The goals of guble are, to have a message bus which is:
 ## Features
 
 * In-memory dispatching of messages
-* Subscription to multiple topics
+* Subscription to multiple topics and subtopics
 
 ## Next TODOs
 
-* Clean unsubscription
-* (Re)-Setup of subscriptions after client reconnect
-* Performance Tests
 * Message ids as sequence
 * Introducion of User-ID and Client-ID
+* User Topics
 * Connection message
 * Improve Logging
 * Clean Shutdown
+* Better Approach for message buffering on huge message numbers
+* Client: (Re)-Setup of subscriptions after client reconnect
 
 ## Roadmap
 
