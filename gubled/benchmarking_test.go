@@ -1,4 +1,4 @@
-package main
+package gubled
 
 import (
 	assert "github.com/stretchr/testify/assert"
@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/guble"
-	"github.com/smancke/guble/server"
 	"log"
 	"time"
 )
@@ -99,15 +98,10 @@ func (test *testgroup) Clean() {
 
 func TestThroughput(t *testing.T) {
 	guble.LogLevel = guble.LEVEL_ERR
-	log.Print("start the server")
-	mux := server.NewPubSubRouter().Go()
-	wshandlerFactory := func(wsConn server.WSConn, userId string) server.Startable {
-		return server.NewWSHandler(mux, mux, wsConn, userId)
-	}
-	ws := server.StartWSServer("localhost:0", "/", wshandlerFactory)
+
+	service := StartupService(Args{Listen: "localhost:0"})
 	defer func() {
-		mux.Stop()
-		ws.Stop()
+		service.Stop()
 	}()
 	time.Sleep(time.Millisecond * 10)
 
@@ -116,7 +110,7 @@ func TestThroughput(t *testing.T) {
 	log.Printf("init the %v testgroups", testgroupCount)
 	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
 	for i, _ := range testgroups {
-		testgroups[i] = newTestgroup(t, i, ws.GetAddr(), messagesPerGroup)
+		testgroups[i] = newTestgroup(t, i, service.GetWebServer().GetAddr(), messagesPerGroup)
 	}
 
 	// init test

@@ -1,52 +1,46 @@
 package server
 
 import (
+	"bytes"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/websocket"
+	"io/ioutil"
+	"net/http"
 	"testing"
 	"time"
 )
 
 func TestStartAndStopWSServer(t *testing.T) {
-	defer initCtrl(t)()
 
-	startable := NewMockStartable(ctrl)
-	startable.EXPECT().Start().Do(func() {
-		time.Sleep(time.Second * 10)
-	}).AnyTimes()
-	var conn WSConn
-	newWsHandler := func(wsConn WSConn, userId string) Startable {
-		conn = wsConn
-		return startable
-	}
-	server := StartWSServer("localhost:0", "/", newWsHandler)
+	// given: a configured echo webserver
+	server := NewWebServer("localhost:3333")
+	server.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		bytes, _ := ioutil.ReadAll(r.Body)
+		w.Write(bytes)
+	})
+
+	// when: I start the server
+	server.Start()
 	time.Sleep(time.Millisecond * 10)
-
 	addr := server.GetAddr()
 
-	sendTestMessage(t, addr, &conn)
+	// and: send a testmessage
+	resp, err := http.Post("http://"+addr, "text/plain", bytes.NewBufferString("hello"))
 
+	// then: the message is returned
+	assert.NoError(t, err)
+	responseBody, _ := ioutil.ReadAll(resp.Body)
+	assert.Equal(t, "hello", string(responseBody))
+
+	// and when: we stop the service
 	server.Stop()
+	time.Sleep(time.Millisecond * 100)
 
-	time.Sleep(time.Millisecond * 10)
-
-	_, err := websocket.Dial("ws://"+addr, "", "http://localhost/")
-	assert.Error(t, err) // server closed
-}
-
-func sendTestMessage(t *testing.T, addr string, conn *WSConn) {
-	ws, err := websocket.Dial("ws://"+addr, "", "http://localhost/")
-	assert.NoError(t, err)
-	defer ws.Close()
-
-	_, err = ws.Write([]byte("Testmessage"))
-	assert.NoError(t, err)
-
-	var msg []byte
-	connDeref := *conn
-	err = connDeref.Receive(&msg)
-	assert.NoError(t, err)
-	assert.Equal(t, "Testmessage", string(msg))
+	// then: the next call returns an error
+	//       because the server is closed
+	c2 := &http.Client{}
+	c2.Transport = &http.Transport{DisableKeepAlives: true}
+	_, err = c2.Post("http://"+addr, "text/plain", bytes.NewBufferString("hello"))
+	assert.Error(t, err)
 }
 
 func TestExtractUserId(t *testing.T) {

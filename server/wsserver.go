@@ -1,7 +1,6 @@
 package server
 
 import (
-	"github.com/gorilla/websocket"
 	"github.com/smancke/guble/guble"
 	"log"
 	"net"
@@ -13,40 +12,34 @@ import (
 type WSServer struct {
 	server *http.Server
 	ln     net.Listener
+	mux    *http.ServeMux
+	addr   string
 }
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+func NewWebServer(addr string) *WSServer {
+	return &WSServer{
+		mux:  http.NewServeMux(),
+		addr: addr,
+	}
 }
 
-func StartWSServer(addr string, prefix string, newWsHandler func(wsConn WSConn, userId string) Startable) *WSServer {
-	ws := &WSServer{}
+func (ws *WSServer) Start() {
 	go func() {
-		mux := http.NewServeMux()
-		mux.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
-			c, err := upgrader.Upgrade(w, r, nil)
-			if err != nil {
-				guble.Warn("error on upgrading %v", err.Error())
-				return
-			}
-			defer c.Close()
-			newWsHandler(&wsconn{c}, extractUserId(r.RequestURI)).Start()
-		})
-
-		guble.Info("starting up at %v", addr)
-		ws.server = &http.Server{Addr: addr, Handler: mux}
+		guble.Info("starting up at %v", ws.addr)
+		ws.server = &http.Server{Addr: ws.addr, Handler: ws.mux}
 		var err error
-		ws.ln, err = net.Listen("tcp", addr)
+		ws.ln, err = net.Listen("tcp", ws.addr)
 		if err != nil {
 			log.Panicf("Listen: " + err.Error())
 		}
-		ws.server.Serve(tcpKeepAliveListener{ws.ln.(*net.TCPListener)})
-		err = ws.server.ListenAndServe()
-		if err != nil {
-			log.Panicf("ListenAndServe: " + err.Error())
+
+		err = ws.server.Serve(tcpKeepAliveListener{ws.ln.(*net.TCPListener)})
+
+		if err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
+			guble.Err("ListenAndServe %s", err.Error())
 		}
+		guble.Info("http server stopped")
 	}()
-	return ws
 }
 
 func (ws *WSServer) Stop() {
@@ -55,6 +48,9 @@ func (ws *WSServer) Stop() {
 }
 
 func (ws *WSServer) GetAddr() string {
+	if ws.ln == nil {
+		return "::unknown::"
+	}
 	return ws.ln.Addr().String()
 }
 
@@ -65,25 +61,6 @@ func extractUserId(requestUri string) string {
 		return ""
 	}
 	return uriParts[1]
-}
-
-// wsconnImpl is a Wrapper of the websocket.Conn
-// implementing the interface WSConn for better testability
-type wsconn struct {
-	*websocket.Conn
-}
-
-func (conn *wsconn) Close() {
-	conn.Conn.Close()
-}
-
-func (conn *wsconn) Send(bytes []byte) (err error) {
-	return conn.Conn.WriteMessage(websocket.BinaryMessage, bytes)
-}
-
-func (conn *wsconn) Receive(bytes *[]byte) (err error) {
-	_, *bytes, err = conn.Conn.ReadMessage()
-	return err
 }
 
 // copied from golang: net/http/server.go
@@ -101,6 +78,6 @@ func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
 		return
 	}
 	tc.SetKeepAlive(true)
-	tc.SetKeepAlivePeriod(3 * time.Minute)
+	tc.SetKeepAlivePeriod(10 * time.Second)
 	return tc, nil
 }

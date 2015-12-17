@@ -1,12 +1,36 @@
 package server
 
 import (
-	"fmt"
+	"github.com/smancke/guble/guble"
+
+	"github.com/gorilla/websocket"
 	"github.com/rs/xid"
 
-	guble "github.com/smancke/guble/guble"
+	"fmt"
+	"net/http"
 	"strings"
 )
+
+var webSocketUpgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
+
+type WSHandlerFactory struct {
+	PubSubSource PubSubSource
+	MessageSink  MessageSink
+}
+
+func (factory WSHandlerFactory) HandlerFunc(w http.ResponseWriter, r *http.Request) {
+	c, err := webSocketUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		guble.Warn("error on upgrading %v", err.Error())
+		return
+	}
+	defer c.Close()
+
+	NewWSHandler(factory.PubSubSource, factory.MessageSink, &wsconn{c}, extractUserId(r.RequestURI)).
+		Start()
+}
 
 type WSHandler struct {
 	messageSouce        PubSubSource
@@ -162,4 +186,23 @@ func (srv *WSHandler) returnOK(name string, argPattern string, params ...interfa
 		Arg:     fmt.Sprintf(argPattern, params...),
 		IsError: false,
 	}
+}
+
+// wsconnImpl is a Wrapper of the websocket.Conn
+// implementing the interface WSConn for better testability
+type wsconn struct {
+	*websocket.Conn
+}
+
+func (conn *wsconn) Close() {
+	conn.Conn.Close()
+}
+
+func (conn *wsconn) Send(bytes []byte) (err error) {
+	return conn.Conn.WriteMessage(websocket.BinaryMessage, bytes)
+}
+
+func (conn *wsconn) Receive(bytes *[]byte) (err error) {
+	_, *bytes, err = conn.Conn.ReadMessage()
+	return err
 }

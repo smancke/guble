@@ -45,3 +45,7 @@ type WSConn interface {
 type Startable interface {
 	Start()
 }
+
+type Stopable interface {
+	Stop()
+}
