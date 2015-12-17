@@ -2,11 +2,13 @@ package gubled
 
 import (
 	"github.com/smancke/guble/client"
+	"github.com/smancke/guble/guble"
 	"github.com/smancke/guble/server"
 
 	assert "github.com/stretchr/testify/assert"
 	"testing"
 
+	"encoding/json"
 	"time"
 )
 
@@ -15,8 +17,11 @@ func TestSimplePingPong(t *testing.T) {
 	defer tearDown()
 
 	client1.Subscribe("/foo")
+	expectStatusMessage(t, client1, guble.SUCCESS_SUBSCRIBED_TO, "/foo")
+
 	time.Sleep(time.Millisecond * 10)
-	client2.Send("/foo", "Hallo")
+	client2.Send("/foo 42", "Hallo")
+	expectStatusMessage(t, client2, guble.SUCCESS_SEND, "42")
 
 	select {
 	case msg := <-client1.Messages():
@@ -40,8 +45,16 @@ func initServerAndClients(t *testing.T) (*server.Service, *client.Client, *clien
 	var err error
 	client1, err := client.Open("ws://"+service.GetWebServer().GetAddr()+"/user/user1", "http://localhost", 1, false)
 	assert.NoError(t, err)
+
+	checkConnectedNotificationJson(t, "user1",
+		expectStatusMessage(t, client1, guble.SUCCESS_CONNECTED, "You are connected to the server."),
+	)
+
 	client2, err := client.Open("ws://"+service.GetWebServer().GetAddr()+"/user/user2", "http://localhost", 1, false)
 	assert.NoError(t, err)
+	checkConnectedNotificationJson(t, "user2",
+		expectStatusMessage(t, client2, guble.SUCCESS_CONNECTED, "You are connected to the server."),
+	)
 
 	return service, client1, client2, func() {
 		service.Stop()
@@ -53,4 +66,27 @@ func initServerAndClients(t *testing.T) (*server.Service, *client.Client, *clien
 			client2.Close()
 		}
 	}
+}
+
+func expectStatusMessage(t *testing.T, client *client.Client, name string, arg string) string {
+	select {
+	case notify := <-client.StatusMessages():
+		assert.Equal(t, name, notify.Name)
+		assert.Equal(t, arg, notify.Arg)
+		return notify.Json
+	case <-time.After(time.Second * 1):
+		t.Logf("no notification of type %s after 1 second", name)
+		t.Fail()
+		return ""
+	}
+}
+
+func checkConnectedNotificationJson(t *testing.T, user string, connectedJson string) {
+	m := make(map[string]string)
+	err := json.Unmarshal([]byte(connectedJson), &m)
+	assert.NoError(t, err)
+	assert.Equal(t, user, m["UserId"])
+	assert.True(t, len(m["ApplicationId"]) > 0)
+	_, e := time.Parse(time.RFC3339, m["Time"])
+	assert.NoError(t, e)
 }

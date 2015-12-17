@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 var webSocketUpgrader = websocket.Upgrader{
@@ -60,6 +61,7 @@ func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, wsConn WSC
 }
 
 func (srv *WSHandler) Start() {
+	srv.sendConnectionMessage()
 	go srv.sendLoop()
 	srv.receiveLoop()
 }
@@ -120,16 +122,29 @@ func (srv *WSHandler) receiveLoop() {
 		}
 		switch cmd.Name {
 		case guble.CMD_SEND:
-			srv.send(cmd)
+			srv.handleSend(cmd)
 		case guble.CMD_SUBSCRIBE:
-			srv.subscribe(cmd)
+			srv.handleSubscribe(cmd)
 		default:
 			srv.returnError(guble.ERROR_BAD_REQUEST, "unknown command %v", cmd.Name)
 		}
 	}
 }
 
-func (srv *WSHandler) send(cmd *guble.Cmd) {
+func (srv *WSHandler) sendConnectionMessage() {
+	connected := &guble.NotificationMessage{
+		Name: guble.SUCCESS_CONNECTED,
+		Arg:  "You are connected to the server.",
+		Json: fmt.Sprintf(`{"ApplicationId": "%s", "UserId": "%s", "Time": "%s"}`, srv.applicationId, srv.userId, time.Now().Format(time.RFC3339)),
+	}
+
+	if err := srv.clientConn.Send(connected.Bytes()); err != nil {
+		guble.Info("applicationId=%v closed the connection", srv.applicationId)
+		srv.cleanAndClose()
+	}
+}
+
+func (srv *WSHandler) handleSend(cmd *guble.Cmd) {
 	guble.Info("sending %q\n", string(cmd.Body))
 	if len(cmd.Arg) == 0 {
 		srv.returnError(guble.ERROR_BAD_REQUEST, "send command requires a path argument, but non given", cmd.Name)
@@ -150,7 +165,7 @@ func (srv *WSHandler) send(cmd *guble.Cmd) {
 	srv.returnOK(guble.SUCCESS_SEND, msg.PublisherMessageId)
 }
 
-func (srv *WSHandler) subscribe(cmd *guble.Cmd) {
+func (srv *WSHandler) handleSubscribe(cmd *guble.Cmd) {
 	if len(cmd.Arg) == 0 {
 		srv.returnError(guble.ERROR_BAD_REQUEST, "subscribe command requires a path argument, but non given", cmd.Name)
 		return

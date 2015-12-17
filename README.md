@@ -17,8 +17,8 @@ The goals of guble are, to have a message bus which is:
 
 ## Next TODOs
 
-* User Topics
 * Connection message
+* User Topics
 * Rest Endpoint for message publishing
 * Improve Logging
 * Clean Shutdown
@@ -138,7 +138,7 @@ The server sends status messages to the client. All positive status messages sta
 Status messages reporting an error start with `!`. Status messages are in the form.
 
 ```
-    '#'<msgType> <Explenation text>\n
+    '#'<msgType> <Explanation text>\n
     <json data>
 
     example:
@@ -147,7 +147,7 @@ Status messages reporting an error start with `!`. Status messages are in the fo
 
 #### Connection message
 ```
-    #ok-connected\n
+    #ok-connected You are connected to the server.\n
     {"ApplicationId": "the app id", "UserId": "the user id", "Time": "the server time as iso date"}
 
     example:

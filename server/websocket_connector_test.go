@@ -82,7 +82,10 @@ func TestBadCommands(t *testing.T) {
 	counter := 0
 
 	wsconn.EXPECT().Send(gomock.Any()).Do(func(data []byte) error {
-		if strings.HasPrefix(string("!bad-request"), "!bad-request") {
+		if strings.HasPrefix(string(data), "#connected") {
+			return nil
+		}
+		if strings.HasPrefix(string(data), "!error-bad-request") {
 			counter++
 		} else {
 			t.Logf("expected bad-request, but got: %v", string(data))
@@ -118,6 +121,8 @@ func createDefaultMocks(inputMessages []string) (*MockWSConn, *MockPubSubSource,
 		return nil
 	}).Times(len(inputMessages) + 1)
 
+	wsconn.EXPECT().Send(connectedNotificationMatcher{})
+
 	return wsconn, pubSubSource, messageSink
 }
 
@@ -149,4 +154,16 @@ func (n messageMatcher) Matches(x interface{}) bool {
 
 func (n messageMatcher) String() string {
 	return fmt.Sprintf("message equals %q, %q, %q", n.id, n.path, n.message)
+}
+
+// --- Connected Notification Matcher ---------
+type connectedNotificationMatcher struct {
+}
+
+func (notify connectedNotificationMatcher) Matches(x interface{}) bool {
+	return strings.HasPrefix(string(x.([]byte)), "#connected")
+}
+
+func (notify connectedNotificationMatcher) String() string {
+	return fmt.Sprintf("is connected message")
 }

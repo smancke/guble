@@ -46,14 +46,19 @@ func (test *testgroup) Init() {
 		panic(err)
 	}
 
-	test.client1.Subscribe(test.topic)
+	test.expectStatusMessage(guble.SUCCESS_CONNECTED, "You are connected to the server.")
 
+	test.client1.Subscribe(test.topic)
+	test.expectStatusMessage(guble.SUCCESS_SUBSCRIBED_TO, test.topic)
+}
+
+func (test *testgroup) expectStatusMessage(name string, arg string) {
 	select {
-	case subscribeNotify := <-test.client1.StatusMessages():
-		assert.Equal(test.t, guble.SUCCESS_SUBSCRIBED_TO, subscribeNotify.Name)
-		assert.Equal(test.t, test.topic, subscribeNotify.Arg)
+	case notify := <-test.client1.StatusMessages():
+		assert.Equal(test.t, name, notify.Name)
+		assert.Equal(test.t, arg, notify.Arg)
 	case <-time.After(time.Second * 1):
-		test.t.Logf("[%v] no subscription notification after 1 second", test.groupId)
+		test.t.Logf("[%v] no notification of type %s after 1 second", test.groupId, name)
 		test.done <- false
 		test.t.Fail()
 		return
