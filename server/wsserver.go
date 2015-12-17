@@ -9,21 +9,21 @@ import (
 	"time"
 )
 
-type WSServer struct {
+type WebServer struct {
 	server *http.Server
 	ln     net.Listener
 	mux    *http.ServeMux
 	addr   string
 }
 
-func NewWebServer(addr string) *WSServer {
-	return &WSServer{
+func NewWebServer(addr string) *WebServer {
+	return &WebServer{
 		mux:  http.NewServeMux(),
 		addr: addr,
 	}
 }
 
-func (ws *WSServer) Start() {
+func (ws *WebServer) Start() {
 	go func() {
 		guble.Info("starting up at %v", ws.addr)
 		ws.server = &http.Server{Addr: ws.addr, Handler: ws.mux}
@@ -42,12 +42,12 @@ func (ws *WSServer) Start() {
 	}()
 }
 
-func (ws *WSServer) Stop() {
+func (ws *WebServer) Stop() {
 	guble.Info("stopping http server")
 	ws.ln.Close()
 }
 
-func (ws *WSServer) GetAddr() string {
+func (ws *WebServer) GetAddr() string {
 	if ws.ln == nil {
 		return "::unknown::"
 	}

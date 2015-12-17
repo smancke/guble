@@ -7,7 +7,7 @@ import (
 // This is the main class for simple startup of a server
 type Service struct {
 	stopListener []Stopable
-	webServer    *WSServer
+	webServer    *WebServer
 }
 
 func NewService(addr string) *Service {
@@ -37,6 +37,6 @@ func (service *Service) Stop() {
 	}
 }
 
-func (service *Service) GetWebServer() *WSServer {
+func (service *Service) GetWebServer() *WebServer {
 	return service.webServer
 }

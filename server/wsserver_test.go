@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func TestStartAndStopWSServer(t *testing.T) {
+func TestStartAndStopWebServer(t *testing.T) {
 
 	// given: a configured echo webserver
 	server := NewWebServer("localhost:3333")
