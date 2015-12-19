@@ -34,14 +34,14 @@ func newTestgroup(t *testing.T, groupId int, addr string, messagesToSend int) *t
 func (test *testgroup) Init() {
 	test.topic = fmt.Sprintf("/%v-foo", test.groupId)
 	var err error
-	location := "ws://" + test.addr
+	location := "ws://" + test.addr + "/stream/user/xy"
 	//location := "ws://gathermon.mancke.net:8080"
 	//location := "ws://127.0.0.1:8080"
-	test.client1, err = client.Open(location, "http://localhost/stream", 10, false)
+	test.client1, err = client.Open(location, "http://localhost/", 10, false)
 	if err != nil {
 		panic(err)
 	}
-	test.client2, err = client.Open(location, "http://localhost/stream", 10, false)
+	test.client2, err = client.Open(location, "http://localhost/", 10, false)
 	if err != nil {
 		panic(err)
 	}
