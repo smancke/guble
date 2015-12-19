@@ -17,11 +17,28 @@ var webSocketUpgrader = websocket.Upgrader{
 }
 
 type WSHandlerFactory struct {
-	PubSubSource PubSubSource
-	MessageSink  MessageSink
+	Router      PubSubSource
+	MessageSink MessageSink
+	prefix      string
 }
 
-func (factory WSHandlerFactory) HandlerFunc(w http.ResponseWriter, r *http.Request) {
+func NewWSHandlerFactory(prefix string) *WSHandlerFactory {
+	return &WSHandlerFactory{prefix: prefix}
+}
+
+func (factory *WSHandlerFactory) GetPrefix() string {
+	return factory.prefix
+}
+
+func (factory *WSHandlerFactory) SetMessageEntry(messageSink MessageSink) {
+	factory.MessageSink = messageSink
+}
+
+func (factory *WSHandlerFactory) SetRouter(router PubSubSource) {
+	factory.Router = router
+}
+
+func (factory *WSHandlerFactory) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := webSocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		guble.Warn("error on upgrading %v", err.Error())
@@ -29,7 +46,7 @@ func (factory WSHandlerFactory) HandlerFunc(w http.ResponseWriter, r *http.Reque
 	}
 	defer c.Close()
 
-	NewWSHandler(factory.PubSubSource, factory.MessageSink, &wsconn{c}, extractUserId(r.RequestURI)).
+	NewWSHandler(factory.Router, factory.MessageSink, &wsconn{c}, extractUserId(r.RequestURI)).
 		Start()
 }
 
@@ -47,8 +64,8 @@ type WSHandler struct {
 
 func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, wsConn WSConn, userId string) *WSHandler {
 	server := &WSHandler{
-		messageSink:         messageSink,
 		messageSouce:        messageSouce,
+		messageSink:         messageSink,
 		clientConn:          wsConn,
 		applicationId:       xid.New().String(),
 		userId:              userId,

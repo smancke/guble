@@ -17,10 +17,11 @@ The goals of guble are, to have a message bus which is:
 
 ## Next TODOs
 
-* Connection message
-* User Topics
 * Rest Endpoint for message publishing
-* Improve Logging
+* Authentication and Access Management
+* Persistant Topic Sequences
+* User Topics
+* Improve Logging (Maybe use of: https://github.com/Sirupsen/logrus)
 * Clean Shutdown
 * Better Approach for message buffering on huge message numbers
 * Client: (Re)-Setup of subscriptions after client reconnect

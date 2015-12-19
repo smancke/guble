@@ -6,6 +6,7 @@ package server
 import (
 	gomock "github.com/golang/mock/gomock"
 	guble "github.com/smancke/guble/guble"
+	http "net/http"
 )
 
 // Mock of PubSubSource interface
@@ -152,4 +153,122 @@ func (_m *MockStartable) Start() {
 
 func (_mr *_MockStartableRecorder) Start() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Start")
+}
+
+// Mock of Stopable interface
+type MockStopable struct {
+	ctrl     *gomock.Controller
+	recorder *_MockStopableRecorder
+}
+
+// Recorder for MockStopable (not exported)
+type _MockStopableRecorder struct {
+	mock *MockStopable
+}
+
+func NewMockStopable(ctrl *gomock.Controller) *MockStopable {
+	mock := &MockStopable{ctrl: ctrl}
+	mock.recorder = &_MockStopableRecorder{mock}
+	return mock
+}
+
+func (_m *MockStopable) EXPECT() *_MockStopableRecorder {
+	return _m.recorder
+}
+
+func (_m *MockStopable) Stop() {
+	_m.ctrl.Call(_m, "Stop")
+}
+
+func (_mr *_MockStopableRecorder) Stop() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Stop")
+}
+
+// Mock of SetRouter interface
+type MockSetRouter struct {
+	ctrl     *gomock.Controller
+	recorder *_MockSetRouterRecorder
+}
+
+// Recorder for MockSetRouter (not exported)
+type _MockSetRouterRecorder struct {
+	mock *MockSetRouter
+}
+
+func NewMockSetRouter(ctrl *gomock.Controller) *MockSetRouter {
+	mock := &MockSetRouter{ctrl: ctrl}
+	mock.recorder = &_MockSetRouterRecorder{mock}
+	return mock
+}
+
+func (_m *MockSetRouter) EXPECT() *_MockSetRouterRecorder {
+	return _m.recorder
+}
+
+func (_m *MockSetRouter) SetRouter(router PubSubSource) {
+	_m.ctrl.Call(_m, "SetRouter", router)
+}
+
+func (_mr *_MockSetRouterRecorder) SetRouter(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetRouter", arg0)
+}
+
+// Mock of SetMessageEntry interface
+type MockSetMessageEntry struct {
+	ctrl     *gomock.Controller
+	recorder *_MockSetMessageEntryRecorder
+}
+
+// Recorder for MockSetMessageEntry (not exported)
+type _MockSetMessageEntryRecorder struct {
+	mock *MockSetMessageEntry
+}
+
+func NewMockSetMessageEntry(ctrl *gomock.Controller) *MockSetMessageEntry {
+	mock := &MockSetMessageEntry{ctrl: ctrl}
+	mock.recorder = &_MockSetMessageEntryRecorder{mock}
+	return mock
+}
+
+func (_m *MockSetMessageEntry) EXPECT() *_MockSetMessageEntryRecorder {
+	return _m.recorder
+}
+
+func (_m *MockSetMessageEntry) SetMessageEntry(messageSink MessageSink) {
+	_m.ctrl.Call(_m, "SetMessageEntry", messageSink)
+}
+
+func (_mr *_MockSetMessageEntryRecorder) SetMessageEntry(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetMessageEntry", arg0)
+}
+
+// Mock of Endpoint interface
+type MockEndpoint struct {
+	ctrl     *gomock.Controller
+	recorder *_MockEndpointRecorder
+}
+
+// Recorder for MockEndpoint (not exported)
+type _MockEndpointRecorder struct {
+	mock *MockEndpoint
+}
+
+func NewMockEndpoint(ctrl *gomock.Controller) *MockEndpoint {
+	mock := &MockEndpoint{ctrl: ctrl}
+	mock.recorder = &_MockEndpointRecorder{mock}
+	return mock
+}
+
+func (_m *MockEndpoint) EXPECT() *_MockEndpointRecorder {
+	return _m.recorder
+}
+
+func (_m *MockEndpoint) GetHandler() func(http.ResponseWriter, *http.Request) {
+	ret := _m.ctrl.Call(_m, "GetHandler")
+	ret0, _ := ret[0].(func(http.ResponseWriter, *http.Request))
+	return ret0
+}
+
+func (_mr *_MockEndpointRecorder) GetHandler() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetHandler")
 }

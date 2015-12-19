@@ -38,16 +38,15 @@ func Main() {
 }
 
 func StartupService(args Args) *server.Service {
-	service := server.NewService(args.Listen)
-
 	router := server.NewPubSubRouter().Go()
-	service.AddStopListener(router)
+	service := server.NewService(
+		args.Listen,
+		router,
+		server.NewMessageEntry(router),
+	)
 
-	messageEntry := server.NewMessageEntry(router)
-	//service.AddStopListener(messageEntry)
-
-	wsHandlerFactory := &server.WSHandlerFactory{PubSubSource: router, MessageSink: messageEntry}
-	service.AddHandleFunc("/", wsHandlerFactory.HandlerFunc)
+	service.Register(server.NewWSHandlerFactory("/stream/"))
+	service.Register(server.NewRestMessageApi("/api/"))
 
 	service.Start()
 

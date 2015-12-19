@@ -1,9 +1,11 @@
 package server
 
 import (
+	guble "github.com/smancke/guble/guble"
+
 	"github.com/rs/xid"
 
-	guble "github.com/smancke/guble/guble"
+	"net/http"
 )
 
 type Route struct {
@@ -48,4 +50,17 @@ type Startable interface {
 
 type Stopable interface {
 	Stop()
+}
+
+type SetRouter interface {
+	SetRouter(router PubSubSource)
+}
+
+type SetMessageEntry interface {
+	SetMessageEntry(messageSink MessageSink)
+}
+
+type Endpoint interface {
+	http.Handler
+	GetPrefix() string
 }

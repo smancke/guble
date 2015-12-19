@@ -17,7 +17,7 @@ import (
 
 type Args struct {
 	Verbose  bool     `arg:"-v,help: Display verbose server communication"`
-	Url      string   `arg:"help: The websocket url to connect (ws://localhost:8080/)"`
+	Url      string   `arg:"help: The websocket url to connect (ws://localhost:8080/stream)"`
 	Topics   []string `arg:"positional,help: The topics to subscribe on connect"`
 	LogInfo  bool     `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
 	LogDebug bool     `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
@@ -56,7 +56,7 @@ func main() {
 func loadArgs() Args {
 	args := Args{
 		Verbose: false,
-		Url:     "ws://localhost:8080/",
+		Url:     "ws://localhost:8080/stream",
 	}
 
 	arg.MustParse(&args)

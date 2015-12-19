@@ -4,6 +4,7 @@ import (
 	guble "github.com/smancke/guble/guble"
 	"strings"
 	"sync"
+	"time"
 )
 
 // The message entry is responsible for handling of all incomming messages
@@ -26,6 +27,7 @@ func NewMessageEntry(router MessageSink) *MessageEntry {
 // Take the message and forward it to the router.
 func (entry *MessageEntry) HandleMessage(message *guble.Message) {
 	message.Id = entry.nextIdForTopic(string(message.Path))
+	message.PublishingTime = time.Now().Format(time.RFC3339)
 	entry.router.HandleMessage(message)
 }
 
