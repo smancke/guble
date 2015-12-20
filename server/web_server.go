@@ -42,9 +42,11 @@ func (ws *WebServer) Start() {
 	}()
 }
 
-func (ws *WebServer) Stop() {
-	guble.Info("stopping http server")
-	ws.ln.Close()
+func (ws *WebServer) Stop() error {
+	if ws.ln != nil {
+		return ws.ln.Close()
+	}
+	return nil
 }
 
 func (ws *WebServer) GetAddr() string {

@@ -77,17 +77,17 @@ func headersToJson(header http.Header) string {
 	count := 0
 	for key, valueList := range header {
 		if strings.HasPrefix(strings.ToLower(key), X_HEADER_PREFIX) && len(valueList) > 0 {
+			if count > 0 {
+				buff.WriteString(",")
+			}
 			buff.WriteString(`"`)
 			buff.WriteString(key[len(X_HEADER_PREFIX):])
 			buff.WriteString(`":`)
 			buff.WriteString(`"`)
 			buff.WriteString(valueList[0])
 			buff.WriteString(`"`)
-			if count < len(header)-1 {
-				buff.WriteString(",")
-			}
+			count++
 		}
-		count++
 	}
 	buff.WriteString("}")
 	return string(buff.Bytes())

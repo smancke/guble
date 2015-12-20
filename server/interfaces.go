@@ -49,7 +49,7 @@ type Startable interface {
 }
 
 type Stopable interface {
-	Stop()
+	Stop() error
 }
 
 type SetRouter interface {

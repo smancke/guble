@@ -62,9 +62,10 @@ func (router *PubSubRouter) Go() *PubSubRouter {
 	return router
 }
 
-func (router *PubSubRouter) Stop() {
+func (router *PubSubRouter) Stop() error {
 	router.stop <- true
 	runtime.Gosched()
+	return nil
 }
 
 func (router *PubSubRouter) Subscribe(r *Route) *Route {
