@@ -11,24 +11,28 @@ import (
 
 // This is the main class for simple startup of a server
 type Service struct {
-	messageSink  MessageSink
-	router       PubSubSource
-	stopListener []Stopable
-	webServer    *WebServer
+	kvStore       KVStore
+	webServer     *WebServer
+	messageSink   MessageSink
+	router        PubSubSource
+	stopListener  []Stopable
+	startListener []Startable
 	// The time given to each Module on Stop()
 	StopGracePeriod time.Duration
 }
 
 // Registers the Main Router, where other modules can subscribe for messages
 
-func NewService(addr string, router PubSubSource, messageSink MessageSink) *Service {
+func NewService(addr string, kvStore KVStore, messageSink MessageSink, router PubSubSource) *Service {
 	service := &Service{
 		stopListener:    make([]Stopable, 0, 5),
+		kvStore:         kvStore,
 		webServer:       NewWebServer(addr),
 		messageSink:     messageSink,
 		router:          router,
 		StopGracePeriod: time.Second * 2,
 	}
+	service.Register(service.kvStore)
 	service.Register(service.webServer)
 	service.Register(service.messageSink)
 	service.Register(service.router)
@@ -54,20 +58,34 @@ func (service *Service) Register(module interface{}) {
 	}
 
 	switch m := module.(type) {
+	case Startable:
+		guble.Info("register %v as StartListener", name)
+		service.AddStartListener(m)
+	}
+
+	switch m := module.(type) {
 	case Endpoint:
 		guble.Info("register %v as Endpoint to %v", name, m.GetPrefix())
 		service.AddHandler(m.GetPrefix(), m)
 	}
 
+	// do the injections ...
+
+	switch m := module.(type) {
+	case SetKVStore:
+		guble.Debug("inject KVStore to %v", name)
+		m.SetKVStore(service.kvStore)
+	}
+
 	switch m := module.(type) {
 	case SetRouter:
-		guble.Info("inject Router to %v", name)
+		guble.Debug("inject Router to %v", name)
 		m.SetRouter(service.router)
 	}
 
 	switch m := module.(type) {
 	case SetMessageEntry:
-		guble.Info("inject MessageEntry to %v", name)
+		guble.Debug("inject MessageEntry to %v", name)
 		m.SetMessageEntry(service.messageSink)
 	}
 }
@@ -77,11 +95,17 @@ func (service *Service) AddHandler(prefix string, handler http.Handler) {
 }
 
 func (service *Service) Start() {
-	service.webServer.Start()
+	for _, startable := range service.startListener {
+		startable.Start()
+	}
 }
 
 func (service *Service) AddStopListener(stopable Stopable) {
 	service.stopListener = append(service.stopListener, stopable)
+}
+
+func (service *Service) AddStartListener(startable Startable) {
+	service.startListener = append(service.startListener, startable)
 }
 
 func (service *Service) Stop() error {

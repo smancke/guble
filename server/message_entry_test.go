@@ -5,7 +5,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"testing"
 
-	guble "github.com/smancke/guble/guble"
+	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/store"
 	"time"
 )
 
@@ -17,6 +18,7 @@ func TestMessagesGetAPublishingTime(t *testing.T) {
 
 	routerMock := NewMockMessageSink(ctrl)
 	messageEntry := NewMessageEntry(routerMock)
+	messageEntry.SetKVStore(store.NewMemoryKVStore())
 
 	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *guble.Message) {
 		t, e := time.Parse(time.RFC3339, msg.PublishingTime)
@@ -35,6 +37,7 @@ func TestNextIdForTopic(t *testing.T) {
 	a := assert.New(t)
 
 	messageEntry := NewMessageEntry(NewMockMessageSink(ctrl))
+	messageEntry.SetKVStore(store.NewMemoryKVStore())
 	a.Equal(uint64(1), messageEntry.nextIdForTopic("/bli/bla"))
 	a.Equal(uint64(2), messageEntry.nextIdForTopic("/bli/bla"))
 	a.Equal(uint64(3), messageEntry.nextIdForTopic("/bli/BLUBB"))
@@ -51,6 +54,7 @@ func TestInrementingTheMessageId(t *testing.T) {
 
 	routerMock := NewMockMessageSink(ctrl)
 	messageEntry := NewMessageEntry(routerMock)
+	messageEntry.SetKVStore(store.NewMemoryKVStore())
 
 	routerMock.EXPECT().HandleMessage(&messageMatcher{1, "/topic1", "topic1Message1"})
 	messageEntry.HandleMessage(
