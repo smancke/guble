@@ -9,10 +9,13 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
+	"time"
 )
 
 var ctrl *gomock.Controller
@@ -51,6 +54,47 @@ func TestPostMessage(t *testing.T) {
 
 	// the the result
 	a.Equal("registered: /notifications\n", string(w.Body.Bytes()))
+}
+
+func TestSaveAndLoadSubscriptions(t *testing.T) {
+	defer initCtrl(t)()
+	defer enableDebugForMethod()()
+	a := assert.New(t)
+
+	// given: some test routes
+	testRoutes := map[string]bool{
+		"marvin:/foo:1234": true,
+		"zappod:/bar:1212": true,
+		"athur:/erde:42":   true,
+	}
+
+	routerMock := NewMockPubSubSource(ctrl)
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
+		// delte the route from the map, if we got it in the test
+		delete(testRoutes, fmt.Sprintf("%v:%v:%v", route.UserId, route.Path, route.ApplicationId))
+	}).AnyTimes()
+
+	kvStore := store.NewMemoryKVStore()
+	gcm := NewGCMConnector("/gcm/")
+	gcm.SetRouter(routerMock)
+	gcm.SetKVStore(kvStore)
+
+	// when: we save the routes
+	for k, _ := range testRoutes {
+		splitedKey := strings.SplitN(k, ":", 3)
+		userid := splitedKey[0]
+		topic := splitedKey[1]
+		gcmid := splitedKey[2]
+		gcm.saveSubscription(userid, topic, gcmid)
+	}
+
+	// and reload the routes
+	gcm.loadSubscriptions()
+
+	time.Sleep(time.Millisecond * 100)
+
+	// than: all expected subscriptions were called
+	a.Equal(0, len(testRoutes))
 }
 
 func TestRemoveTailingSlash(t *testing.T) {
