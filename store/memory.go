@@ -1,5 +1,9 @@
 package store
 
+import (
+	"strings"
+)
+
 type MemoryKVStore struct {
 	data map[string]map[string][]byte
 }
@@ -28,6 +32,20 @@ func (kvStore *MemoryKVStore) Delete(schema, key string) error {
 	s := kvStore.getSchema(schema)
 	delete(s, key)
 	return nil
+}
+
+func (kvStore *MemoryKVStore) IterateKeys(schema string, keyPrefix string) chan string {
+	responseChan := make(chan string, 100)
+	s := kvStore.getSchema(schema)
+	go func() {
+		for key, _ := range s {
+			if strings.HasPrefix(key, keyPrefix) {
+				responseChan <- key
+			}
+		}
+		close(responseChan)
+	}()
+	return responseChan
 }
 
 func (kvStore *MemoryKVStore) getSchema(schema string) map[string][]byte {

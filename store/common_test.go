@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 )
 
 var test1 = []byte("Test1")
@@ -32,6 +33,51 @@ func CommonTestPutGetDelete(t *testing.T, s KVStore) {
 	assertGet(a, s, "s1", "a", test1)
 	assertGetNoExist(a, s, "s1", "b")
 	assertGet(a, s, "s2", "a", test3)
+}
+
+func CommonTestIterateKeys(t *testing.T, s KVStore) {
+	a := assert.New(t)
+
+	a.NoError(s.Put("s1", "bli", test1))
+	a.NoError(s.Put("s1", "bla", test1))
+	a.NoError(s.Put("s1", "buu", test1))
+	a.NoError(s.Put("s2", "bli", test1))
+
+	asserChannelContains(a, s.IterateKeys("s1", "bl"),
+		"bli", "bla")
+
+	asserChannelContains(a, s.IterateKeys("s1", ""),
+		"bli", "bla", "buu")
+
+	asserChannelContains(a, s.IterateKeys("s1", "bla"),
+		"bla")
+
+	asserChannelContains(a, s.IterateKeys("s1", "nothing"))
+
+	asserChannelContains(a, s.IterateKeys("s2", ""),
+		"bli")
+}
+
+func asserChannelContains(a *assert.Assertions, entryC chan string, expectedEntries ...string) {
+	allEntries := make([]string, 0)
+
+loop:
+	for {
+		select {
+		case entry, ok := <-entryC:
+			if !ok {
+				break loop
+			}
+			allEntries = append(allEntries, entry)
+		case <-time.After(time.Second):
+			a.Fail("timeout")
+		}
+	}
+
+	a.Equal(len(expectedEntries), len(allEntries))
+	for _, expected := range expectedEntries {
+		a.Contains(allEntries, expected)
+	}
 }
 
 func CommonBenchPutGet(b *testing.B, s KVStore) {

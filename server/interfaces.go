@@ -71,13 +71,13 @@ type Endpoint interface {
 type FetchRequest struct {
 
 	// The partition to search for messages
-	Partition              string
+	Partition string
 
 	// The message sequence id to start
-	StartId                uint64
+	StartId uint64
 
 	// A topic path to filter
-	TopicPath              guble.Path
+	TopicPath guble.Path
 
 	// The maximum number of messages to return
 	// AdditionalMessageCount == 0: Only the Message with StartId
@@ -86,10 +86,10 @@ type FetchRequest struct {
 	AdditionalMessageCount int
 
 	// The cannel to send the message back to the receiver
-	MessageC               chan *guble.Message
+	MessageC chan *guble.Message
 
 	// A Callback if an error occures
-	ErrorCallback          chan error
+	ErrorCallback chan error
 }
 
 // Interface for a persistance backend storing topics
@@ -107,6 +107,7 @@ type KVStore interface {
 	Put(schema, key string, value []byte) error
 	Get(schema, key string) (value []byte, exist bool, err error)
 	Delete(schema, key string) error
+	IterateKeys(schema string, keyPrefix string) (keys chan string)
 }
 
 // Interface for modules, which need a Key Value store set,

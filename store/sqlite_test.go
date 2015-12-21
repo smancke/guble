@@ -14,6 +14,16 @@ func TestSqlitePutGetDelete(t *testing.T) {
 	CommonTestPutGetDelete(t, db)
 }
 
+func TestSqliteIterateKeys(t *testing.T) {
+	f := tempFilename()
+	//	defer os.Remove(f)
+
+	db := NewSqliteKVStore(f, false)
+	db.Open()
+
+	CommonTestIterateKeys(t, db)
+}
+
 func BenchmarkSqlitePutGet(b *testing.B) {
 	f := tempFilename()
 	defer os.Remove(f)
