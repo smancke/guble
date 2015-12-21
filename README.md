@@ -41,7 +41,7 @@ If there is enough time, the following features may be realized:
 ## Starting the guble server
 Build and start with the following commands:
 ```
-	go get -t github.com/smancke/guble
+	go get -t github.com/smancke/guble/...
 	./bin/guble
 ```
 
