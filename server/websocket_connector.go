@@ -187,7 +187,7 @@ func (srv *WSHandler) handleSubscribe(cmd *guble.Cmd) {
 		srv.returnError(guble.ERROR_BAD_REQUEST, "subscribe command requires a path argument, but non given", cmd.Name)
 		return
 	}
-	route := NewRoute(cmd.Arg, srv.messagesToSend, srv.routeClosed, srv.applicationId)
+	route := NewRoute(cmd.Arg, srv.messagesToSend, srv.routeClosed, srv.applicationId, srv.userId)
 	srv.messageSouce.Subscribe(route)
 	srv.subscriptions[route.Path] = route
 	srv.returnOK("subscribed-to", cmd.Arg)

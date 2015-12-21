@@ -12,19 +12,23 @@ import (
 )
 
 type GCMConnector struct {
-	router  server.PubSubSource
-	kvStore store.KVStore
-	mux     http.Handler
-	prefix  string
+	router             server.PubSubSource
+	kvStore            store.KVStore
+	mux                http.Handler
+	prefix             string
+	channelFromRouter  chan *guble.Message
+	closeRouteByRouter chan string
 }
 
 func NewGCMConnector(prefix string) *GCMConnector {
 	mux := httprouter.New()
 
-	gcm := &GCMConnector{mux: mux, prefix: prefix}
+	channelFromRouter := make(chan *guble.Message, 1000)
+	closeRouteByRouter := make(chan string)
+	gcm := &GCMConnector{mux: mux, prefix: prefix, channelFromRouter: channelFromRouter, closeRouteByRouter: closeRouteByRouter}
 
 	p := removeTrailingSlash(prefix)
-	mux.POST(p+"/register/:userid/:gcmid/*topic", gcm.Register)
+	mux.POST(p + "/subscribe/:userid/:gcmid/*topic", gcm.Subscribe)
 
 	return gcm
 }
@@ -45,15 +49,18 @@ func (gcm *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	gcm.mux.ServeHTTP(w, r)
 }
 
-func (gcm *GCMConnector) Register(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (gcm *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	topic := "/" + params.ByName(`topic`)
 	guble.Info("new registration to gcm connector userid=%q, gcmid=%q: %q", params.ByName(`userid`), params.ByName(`gcmid`), topic)
+	route := server.NewRoute(topic, gcm.channelFromRouter, gcm.closeRouteByRouter, params.ByName(`gcmid`), params.ByName("userid"))
+	route.Id = params.ByName("userid")
+	gcm.router.Subscribe(route)
 	fmt.Fprintf(w, "registered: %v\n", topic)
 }
 
 func removeTrailingSlash(path string) string {
-	if len(path) > 0 && path[len(path)-1] == '/' {
-		return path[:len(path)-1]
+	if len(path) > 0 && path[len(path) - 1] == '/' {
+		return path[:len(path) - 1]
 	}
 	return path
 }

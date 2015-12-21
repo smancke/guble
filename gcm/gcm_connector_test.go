@@ -24,24 +24,30 @@ func TestPostMessage(t *testing.T) {
 
 	// given:  a rest api with a message sink
 	routerMock := NewMockPubSubSource(ctrl)
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
+		a.Equal("/notifications", string(route.Path))
+		a.Equal("marvin", route.UserId)
+		a.Equal("gcmId123", route.ApplicationId)
+	})
+
 	kvStore := store.NewMemoryKVStore()
 	gcm := NewGCMConnector("/gcm/")
 	gcm.SetRouter(routerMock)
 	gcm.SetKVStore(kvStore)
 
-	url, _ := url.Parse("http://localhost/gcm/marvin/xyz1234/notifications")
+	url, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/notifications")
 	// and a http context
 	req := &http.Request{URL: url}
 	w := httptest.NewRecorder()
 
 	params := httprouter.Params{
 		httprouter.Param{Key: "userid", Value: "marvin"},
-		httprouter.Param{Key: "gcmid", Value: "xyz123"},
+		httprouter.Param{Key: "gcmid", Value: "gcmId123"},
 		httprouter.Param{Key: "topic", Value: "notifications"},
 	}
 
 	// when: I POST a message
-	gcm.Register(w, req, params)
+	gcm.Subscribe(w, req, params)
 
 	// the the result
 	a.Equal("registered: /notifications\n", string(w.Body.Bytes()))

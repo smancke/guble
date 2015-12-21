@@ -21,11 +21,11 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 	// when i add two routes in the same path
 	channel := make(chan *guble.Message, chanSize)
 	closeRouteByRouter := make(chan string)
-	routeBlah1 := router.Subscribe(NewRoute("/blah", channel, closeRouteByRouter, "appid01"))
-	routeBlah2 := router.Subscribe(NewRoute("/blah", channel, closeRouteByRouter, "appid01"))
+	routeBlah1 := router.Subscribe(NewRoute("/blah", channel, closeRouteByRouter, "appid01", "user01"))
+	routeBlah2 := router.Subscribe(NewRoute("/blah", channel, closeRouteByRouter, "appid01", "user01"))
 
 	// and one route in another path
-	routeFoo := router.Subscribe(NewRoute("/foo", channel, closeRouteByRouter, "appid01"))
+	routeFoo := router.Subscribe(NewRoute("/foo", channel, closeRouteByRouter, "appid01", "user01"))
 
 	fmt.Printf("%+v\n", router)
 
@@ -74,7 +74,7 @@ func TestRoutingWithSubTopics(t *testing.T) {
 	router := NewPubSubRouter().Go()
 	channel := make(chan *guble.Message, chanSize)
 	closeRouteByRouter := make(chan string)
-	r := router.Subscribe(NewRoute("/blah", channel, closeRouteByRouter, "appid01"))
+	r := router.Subscribe(NewRoute("/blah", channel, closeRouteByRouter, "appid01", "user01"))
 
 	// when i send a message to a subroute
 	router.HandleMessage(&guble.Message{Path: "/blah/blub", Body: aTestByteMessage})
@@ -142,7 +142,7 @@ func TestRouteIsRemovedIfChannelIsFull(t *testing.T) {
 
 func aRouterRoute() (*PubSubRouter, *Route) {
 	router := NewPubSubRouter().Go()
-	return router, router.Subscribe(NewRoute("/blah", make(chan *guble.Message, chanSize), make(chan string, 1), "appid01"))
+	return router, router.Subscribe(NewRoute("/blah", make(chan *guble.Message, chanSize), make(chan string, 1), "appid01", "user01"))
 }
 
 func assertChannelContainsMessage(a *assert.Assertions, c chan *guble.Message, msg []byte) {

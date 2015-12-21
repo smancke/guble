@@ -17,12 +17,13 @@ type Route struct {
 	ApplicationId      string
 }
 
-func NewRoute(path string, channel chan *guble.Message, closeRouteByRouter chan string, applicationId string) *Route {
+func NewRoute(path string, channel chan *guble.Message, closeRouteByRouter chan string, applicationId string, userId string) *Route {
 	return &Route{
 		Id:                 xid.New().String(),
 		Path:               guble.Path(path),
 		C:                  channel,
 		CloseRouteByRouter: closeRouteByRouter,
+		UserId:             userId,
 		ApplicationId:      applicationId,
 	}
 }
@@ -70,13 +71,13 @@ type Endpoint interface {
 type FetchRequest struct {
 
 	// The partition to search for messages
-	Partition string
+	Partition              string
 
 	// The message sequence id to start
-	StartId uint64
+	StartId                uint64
 
 	// A topic path to filter
-	TopicPath guble.Path
+	TopicPath              guble.Path
 
 	// The maximum number of messages to return
 	// AdditionalMessageCount == 0: Only the Message with StartId
@@ -85,10 +86,10 @@ type FetchRequest struct {
 	AdditionalMessageCount int
 
 	// The cannel to send the message back to the receiver
-	MessageC chan *guble.Message
+	MessageC               chan *guble.Message
 
 	// A Callback if an error occures
-	ErrorCallback chan error
+	ErrorCallback          chan error
 }
 
 // Interface for a persistance backend storing topics
