@@ -5,6 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/guble"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
@@ -43,6 +44,7 @@ var CreateModules = func(args Args) []interface{} {
 	return []interface{}{
 		server.NewWSHandlerFactory("/stream/"),
 		server.NewRestMessageApi("/api/"),
+		gcm.NewGCMConnector("/gcm/"),
 	}
 }
 
