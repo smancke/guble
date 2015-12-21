@@ -61,13 +61,13 @@ func (gcm *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Request, param
 	route := server.NewRoute(topic, gcm.channelFromRouter, gcm.closeRouteByRouter, gcmid, userid)
 	gcm.router.Subscribe(route)
 
-	saveSubscription(userid, gcmid, topic)
+	gcm.saveSubscription(userid, gcmid, topic)
 
 	fmt.Fprintf(w, "registered: %v\n", topic)
 }
 
 func (gcm *GCMConnector) saveSubscription(userid, gcmid, topic string) {
-	gcm.kvStore.Put(GCM_REGISTRATIONS_SCHEMA, userid+":"+topic, gcmid)
+	gcm.kvStore.Put(GCM_REGISTRATIONS_SCHEMA, userid+":"+topic, []byte(gcmid))
 }
 
 func removeTrailingSlash(path string) string {
