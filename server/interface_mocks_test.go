@@ -326,6 +326,16 @@ func (_mr *_MockKVStoreRecorder) Get(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Get", arg0, arg1)
 }
 
+func (_m *MockKVStore) IterateKeys(_param0 string, _param1 string) chan string {
+	ret := _m.ctrl.Call(_m, "IterateKeys", _param0, _param1)
+	ret0, _ := ret[0].(chan string)
+	return ret0
+}
+
+func (_mr *_MockKVStoreRecorder) IterateKeys(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "IterateKeys", arg0, arg1)
+}
+
 func (_m *MockKVStore) Put(_param0 string, _param1 string, _param2 []byte) error {
 	ret := _m.ctrl.Call(_m, "Put", _param0, _param1, _param2)
 	ret0, _ := ret[0].(error)
