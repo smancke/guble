@@ -9,7 +9,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -20,13 +19,13 @@ var ctrl *gomock.Controller
 
 func TestPostMessage(t *testing.T) {
 	defer initCtrl(t)()
-	defer enableDebugForMethod()()
+
 	a := assert.New(t)
 
 	// given:  a rest api with a message sink
 	routerMock := NewMockPubSubSource(ctrl)
 	kvStore := store.NewMemoryKVStore()
-	gcm := NewGCMConnector("/gcm")
+	gcm := NewGCMConnector("/gcm/")
 	gcm.SetRouter(routerMock)
 	gcm.SetKVStore(kvStore)
 
@@ -45,8 +44,7 @@ func TestPostMessage(t *testing.T) {
 	gcm.Register(w, req, params)
 
 	// the the result
-	fmt.Printf("--> %v\n", w.Body)
-	a.Equal("registered: /notifications", string(w.Body.Bytes()))
+	a.Equal("registered: /notifications\n", string(w.Body.Bytes()))
 }
 
 func TestRemoveTailingSlash(t *testing.T) {

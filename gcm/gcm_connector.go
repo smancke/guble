@@ -20,6 +20,7 @@ type GCMConnector struct {
 
 func NewGCMConnector(prefix string) *GCMConnector {
 	mux := httprouter.New()
+
 	gcm := &GCMConnector{mux: mux, prefix: prefix}
 
 	p := removeTrailingSlash(prefix)
