@@ -54,6 +54,12 @@ Build and start with the following commands:
 	./bin/guble-cli
 ```
 
+## Run Tests
+
+```
+    go test github.com/smancke/guble/...
+```
+
 ## Protocol
 The communication with the guble server is done by usual websockets.
 
