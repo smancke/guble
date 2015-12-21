@@ -107,6 +107,7 @@ type KVStore interface {
 	Put(schema, key string, value []byte) error
 	Get(schema, key string) (value []byte, exist bool, err error)
 	Delete(schema, key string) error
+	Iterate(schema string, keyPrefix string) (entries chan [2]string)
 	IterateKeys(schema string, keyPrefix string) (keys chan string)
 }
 

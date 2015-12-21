@@ -65,6 +65,29 @@ func (kvStore *SqliteKVStore) Get(schema, key string) (value []byte, exist bool,
 	return entry.Value, true, nil
 }
 
+func (kvStore *SqliteKVStore) Iterate(schema string, keyPrefix string) (entries chan [2]string) {
+	responseChan := make(chan [2]string, 100)
+
+	go func() {
+
+		rows, err := kvStore.db.Raw("select key, value from kv_entry where schema = ? and key LIKE ?", schema, keyPrefix+"%").
+			Rows()
+
+		if err != nil {
+			guble.Err("error fetching keys from db %v", err)
+		} else {
+			defer rows.Close()
+			for rows.Next() {
+				var key, value string
+				rows.Scan(&key, &value)
+				responseChan <- [2]string{key, value}
+			}
+		}
+		close(responseChan)
+	}()
+	return responseChan
+}
+
 func (kvStore *SqliteKVStore) IterateKeys(schema string, keyPrefix string) chan string {
 	responseChan := make(chan string, 100)
 

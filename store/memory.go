@@ -34,6 +34,20 @@ func (kvStore *MemoryKVStore) Delete(schema, key string) error {
 	return nil
 }
 
+func (kvStore *MemoryKVStore) Iterate(schema string, keyPrefix string) (entries chan [2]string) {
+	responseChan := make(chan [2]string, 100)
+	s := kvStore.getSchema(schema)
+	go func() {
+		for key, value := range s {
+			if strings.HasPrefix(key, keyPrefix) {
+				responseChan <- [2]string{key, string(value)}
+			}
+		}
+		close(responseChan)
+	}()
+	return responseChan
+}
+
 func (kvStore *MemoryKVStore) IterateKeys(schema string, keyPrefix string) chan string {
 	responseChan := make(chan string, 100)
 	s := kvStore.getSchema(schema)

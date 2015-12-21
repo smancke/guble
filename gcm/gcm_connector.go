@@ -11,6 +11,8 @@ import (
 	"net/http"
 )
 
+const GCM_REGISTRATIONS_SCHEMA = "gcm_registration"
+
 type GCMConnector struct {
 	router             server.PubSubSource
 	kvStore            store.KVStore
@@ -51,11 +53,21 @@ func (gcm *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (gcm *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	topic := params.ByName(`topic`)
-	guble.Info("gcm connector registration to userid=%q, gcmid=%q: %q", params.ByName(`userid`), params.ByName(`gcmid`), topic)
-	route := server.NewRoute(topic, gcm.channelFromRouter, gcm.closeRouteByRouter, params.ByName(`gcmid`), params.ByName("userid"))
+	userid := params.ByName("userid")
+	gcmid := params.ByName(`gcmid`)
+
+	guble.Info("gcm connector registration to userid=%q, gcmid=%q: %q", userid, gcmid, topic)
+
+	route := server.NewRoute(topic, gcm.channelFromRouter, gcm.closeRouteByRouter, gcmid, userid)
 	gcm.router.Subscribe(route)
-	//gcm.kvStore.Put(arg0, arg1, arg2)
+
+	saveSubscription(userid, gcmid, topic)
+
 	fmt.Fprintf(w, "registered: %v\n", topic)
+}
+
+func (gcm *GCMConnector) saveSubscription(userid, gcmid, topic string) {
+	gcm.kvStore.Put(GCM_REGISTRATIONS_SCHEMA, userid+":"+topic, gcmid)
 }
 
 func removeTrailingSlash(path string) string {

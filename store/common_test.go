@@ -35,13 +35,61 @@ func CommonTestPutGetDelete(t *testing.T, s KVStore) {
 	assertGet(a, s, "s2", "a", test3)
 }
 
+func CommonTestIterate(t *testing.T, s KVStore) {
+	a := assert.New(t)
+
+	a.NoError(s.Put("s1", "bli", test1))
+	a.NoError(s.Put("s1", "bla", test2))
+	a.NoError(s.Put("s1", "buu", test3))
+	a.NoError(s.Put("s2", "bli", test2))
+
+	asserChannelContainsEntries(a, s.Iterate("s1", "bl"),
+		[2]string{"bli", string(test1)},
+		[2]string{"bla", string(test2)})
+
+	asserChannelContainsEntries(a, s.Iterate("s1", ""),
+		[2]string{"bli", string(test1)},
+		[2]string{"bla", string(test2)},
+		[2]string{"buu", string(test3)})
+
+	asserChannelContainsEntries(a, s.Iterate("s1", "bla"),
+		[2]string{"bla", string(test2)})
+
+	asserChannelContainsEntries(a, s.Iterate("s1", "nothing"))
+
+	asserChannelContainsEntries(a, s.Iterate("s2", ""),
+		[2]string{"bli", string(test2)})
+}
+
+func asserChannelContainsEntries(a *assert.Assertions, entryC chan [2]string, expectedEntries ...[2]string) {
+	allEntries := make([][2]string, 0)
+
+loop:
+	for {
+		select {
+		case entry, ok := <-entryC:
+			if !ok {
+				break loop
+			}
+			allEntries = append(allEntries, entry)
+		case <-time.After(time.Second):
+			a.Fail("timeout")
+		}
+	}
+
+	a.Equal(len(expectedEntries), len(allEntries))
+	for _, expected := range expectedEntries {
+		a.Contains(allEntries, expected)
+	}
+}
+
 func CommonTestIterateKeys(t *testing.T, s KVStore) {
 	a := assert.New(t)
 
 	a.NoError(s.Put("s1", "bli", test1))
-	a.NoError(s.Put("s1", "bla", test1))
-	a.NoError(s.Put("s1", "buu", test1))
-	a.NoError(s.Put("s2", "bli", test1))
+	a.NoError(s.Put("s1", "bla", test2))
+	a.NoError(s.Put("s1", "buu", test3))
+	a.NoError(s.Put("s2", "bli", test2))
 
 	asserChannelContains(a, s.IterateKeys("s1", "bl"),
 		"bli", "bla")
