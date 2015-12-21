@@ -35,7 +35,7 @@ func TestPostMessage(t *testing.T) {
 	gcm.SetRouter(routerMock)
 	gcm.SetKVStore(kvStore)
 
-	url, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/notifications")
+	url, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe/notifications")
 	// and a http context
 	req := &http.Request{URL: url}
 	w := httptest.NewRecorder()
@@ -43,7 +43,7 @@ func TestPostMessage(t *testing.T) {
 	params := httprouter.Params{
 		httprouter.Param{Key: "userid", Value: "marvin"},
 		httprouter.Param{Key: "gcmid", Value: "gcmId123"},
-		httprouter.Param{Key: "topic", Value: "notifications"},
+		httprouter.Param{Key: "topic", Value: "/notifications"},
 	}
 
 	// when: I POST a message
