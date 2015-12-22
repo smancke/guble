@@ -40,6 +40,7 @@ func NewGCMConnector(prefix string, gcmApiKey string) *GCMConnector {
 
 	p := removeTrailingSlash(prefix)
 	mux.POST(p+"/:userid/:gcmid/subscribe/*topic", gcm.Subscribe)
+	mux.DELETE(p+"/:userid/:gcmid/unsubscribe/*topic", gcm.Unsubscribe) //DELETE or POST?
 
 	return gcm
 }
@@ -64,20 +65,43 @@ func (gcmConnector *GCMConnector) sendMessageToGCM(msg server.MsgAndRoute) {
 	payload := map[string]interface{}{"message": msg.Message.BodyAsString()}
 	var messageToGcm = gcm.NewMessage(payload, gcmId)
 	guble.Info("sending message to %v ...", gcmId)
-	result, err := gcmConnector.sender.Send(messageToGcm, 10)
+	result, err := gcmConnector.sender.Send(messageToGcm, 5)
 	if err != nil {
 		guble.Err("error sending message to cgm cgmid=%v: %v", gcmId, err.Error())
+		return
+	}
+
+	errorJson := result.Results[0].Error
+	if errorJson != "" {
+		gcmConnector.handleJsonError(errorJson, gcmId, msg.Route)
 	} else {
-		if result.Results[0].Error != "" {
-			if result.Results[0].Error == "NotRegistered" || result.Results[0].Error == "InvalidRegistration" {
-				guble.Debug("remove not registered cgm registration cgmid=%v", gcmId)
-				gcmConnector.removeSubscription(msg.Route)
-			} else {
-				guble.Err("unexpected error while sending to cgm cgmid=%v: %v", gcmId, result.Results[0].Error)
-			}
-		} else {
-			guble.Debug("delivered message to gcm cgmid=%v: %v", gcmId, result.Results[0].Error)
-		}
+		guble.Debug("delivered message to gcm cgmid=%v: %v", gcmId, errorJson)
+	}
+
+	//we only send to one receiver, so we know that we can replace the old id with the first registration id (=canonical id)
+	if (result.CanonicalIDs != 0) {
+		gcmConnector.replaceSubscriptionWithCanonicalID(msg.Route, result.Results[0].RegistrationID)
+	}
+}
+
+func (gcmConnector *GCMConnector) replaceSubscriptionWithCanonicalID(route *server.Route, newId string) {
+	oldGcmId := route.ApplicationId
+	topic := string(route.Path)
+	userId := route.UserId
+
+	guble.Info("replacing old gcmId %v with canonicalId %v", oldGcmId, newId)
+	gcmConnector.removeSubscription(route)
+	gcmConnector.subscribe(topic, userId, newId)
+}
+
+func (gcmConnector *GCMConnector) handleJsonError(jsonError string, gcmId string, route *server.Route) {
+	if jsonError == "NotRegistered" {
+		guble.Debug("remove not registered cgm registration cgmid=%v", gcmId)
+		gcmConnector.removeSubscription(route)
+	} else if (jsonError == "InvalidRegistration") {
+		guble.Err("the cgmid=%v is not registered. %v", gcmId, jsonError)
+	} else {
+		guble.Err("unexpected error while sending to cgm cgmid=%v: %v", gcmId, jsonError)
 	}
 }
 
@@ -107,16 +131,25 @@ func (gcmConnector *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Reque
 	userid := params.ByName("userid")
 	gcmid := params.ByName(`gcmid`)
 
+	gcmConnector.subscribe(topic, userid, gcmid)
+
+	fmt.Fprintf(w, "registered: %v\n", topic)
+}
+
+func (gcmConnector *GCMConnector) subscribe(topic string, userid string, gcmid string) {
 	guble.Info("gcm connector registration to userid=%q, gcmid=%q: %q", userid, gcmid, topic)
 
 	route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmConnector.closeRouteByRouter, gcmid, userid)
 	route.Id = "gcm-" + gcmid
 
 	gcmConnector.router.Subscribe(route)
-
 	gcmConnector.saveSubscription(userid, topic, gcmid)
+}
 
-	fmt.Fprintf(w, "registered: %v\n", topic)
+func (gcmConnector *GCMConnector) Unsubscribe(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+
+	guble.Err("TODO!!! de-registration")
+
 }
 
 func (gcmConnector *GCMConnector) removeSubscription(route *server.Route) {
