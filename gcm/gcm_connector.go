@@ -32,20 +32,20 @@ func NewGCMConnector(prefix string, gcmApiKey string) *GCMConnector {
 	mux := httprouter.New()
 	gcm := &GCMConnector{
 		mux:                mux,
-		prefix:             removeTrailingSlash(prefix),
+		prefix:             prefix,
 		channelFromRouter:  make(chan server.MsgAndRoute, 1000),
 		closeRouteByRouter: make(chan string),
 		stopChan:           make(chan bool, 1),
 		sender:             &gcm.Sender{ApiKey: gcmApiKey},
 	}
 
-	mux.POST(gcm.prefix+"/:userid/:gcmid/subscribe/*topic", gcm.Subscribe)
+	mux.POST(removeTrailingSlash(gcm.prefix)+"/:userid/:gcmid/subscribe/*topic", gcm.Subscribe)
 
 	return gcm
 }
 
 func (gcmConnector *GCMConnector) Start() {
-	broadcastRoute := server.NewRoute(gcmConnector.prefix+"/broadcast", gcmConnector.channelFromRouter, gcmConnector.closeRouteByRouter, "gcm_connector", "gcm_connector")
+	broadcastRoute := server.NewRoute(removeTrailingSlash(gcmConnector.prefix)+"/broadcast", gcmConnector.channelFromRouter, gcmConnector.closeRouteByRouter, "gcm_connector", "gcm_connector")
 	gcmConnector.router.Subscribe(broadcastRoute)
 	go func() {
 		gcmConnector.loadSubscriptions()
