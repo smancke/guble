@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/store"
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
@@ -87,8 +88,8 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 	assert.Equal(t, "bar", string(body))
 }
 
-func aMockedService() (*Service, *MockKVStore, *MockMessageSink, *MockPubSubSource) {
-	kvStore := NewMockKVStore(ctrl)
+func aMockedService() (*Service, store.KVStore, *MockMessageSink, *MockPubSubSource) {
+	kvStore := store.NewMemoryKVStore()
 	messageSink := NewMockMessageSink(ctrl)
 	pubSubSource := NewMockPubSubSource(ctrl)
 	return NewService("localhost:0", kvStore, messageSink, pubSubSource),
