@@ -47,19 +47,19 @@ func (factory *WSHandlerFactory) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	defer c.Close()
 
 	NewWSHandler(factory.Router, factory.MessageSink, &wsconn{c}, extractUserId(r.RequestURI)).
-		Start()
+	Start()
 }
 
 type WSHandler struct {
-	messageSouce        PubSubSource
-	messageSink         MessageSink
-	clientConn          WSConn
-	applicationId       string
-	userId              string
-	messagesToSend      chan *guble.Message
-	routeClosed         chan string
-	notificationsToSend chan *guble.NotificationMessage
-	subscriptions       map[guble.Path]*Route
+	messageSouce           PubSubSource
+	messageSink            MessageSink
+	clientConn             WSConn
+	applicationId          string
+	userId                 string
+	messagesAndRouteToSend chan MsgAndRoute
+	routeClosed            chan string
+	notificationsToSend    chan *guble.NotificationMessage
+	subscriptions          map[guble.Path]*Route
 }
 
 func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, wsConn WSConn, userId string) *WSHandler {
@@ -69,7 +69,7 @@ func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, wsConn WSC
 		clientConn:          wsConn,
 		applicationId:       xid.New().String(),
 		userId:              userId,
-		messagesToSend:      make(chan *guble.Message, 100),
+		messagesAndRouteToSend:      make(chan MsgAndRoute, 100),
 		notificationsToSend: make(chan *guble.NotificationMessage, 100),
 		routeClosed:         make(chan string, 100),
 		subscriptions:       make(map[guble.Path]*Route),
@@ -86,19 +86,19 @@ func (srv *WSHandler) Start() {
 func (srv *WSHandler) sendLoop() {
 	for {
 		select {
-		case msg, ok := <-srv.messagesToSend:
+		case msgAndRoute, ok := <-srv.messagesAndRouteToSend:
 			if !ok {
 				guble.Info("messageSouce closed the connection -> closing the websocket connection to applicationId=%v", srv.applicationId)
 				srv.clientConn.Close()
 				return
 			}
 			if guble.DebugEnabled() {
-				guble.Debug("deliver message to applicationId=%v: %v", srv.applicationId, msg.MetadataLine())
+				guble.Debug("deliver message to applicationId=%v: %v", srv.applicationId, msgAndRoute.Message.MetadataLine())
 			}
 			if guble.InfoEnabled() {
-				guble.Info("sending message: %v", msg.MetadataLine())
+				guble.Info("sending message: %v", msgAndRoute.Message.MetadataLine())
 			}
-			if err := srv.clientConn.Send(msg.Bytes()); err != nil {
+			if err := srv.clientConn.Send(msgAndRoute.Message.Bytes()); err != nil {
 				guble.Info("applicationId=%v closed the connection", srv.applicationId)
 				srv.cleanAndClose()
 				break
@@ -187,7 +187,7 @@ func (srv *WSHandler) handleSubscribe(cmd *guble.Cmd) {
 		srv.returnError(guble.ERROR_BAD_REQUEST, "subscribe command requires a path argument, but non given", cmd.Name)
 		return
 	}
-	route := NewRoute(cmd.Arg, srv.messagesToSend, srv.routeClosed, srv.applicationId, srv.userId)
+	route := NewRoute(cmd.Arg, srv.messagesAndRouteToSend, srv.routeClosed, srv.applicationId, srv.userId)
 	srv.messageSouce.Subscribe(route)
 	srv.subscriptions[route.Path] = route
 	srv.returnOK("subscribed-to", cmd.Arg)

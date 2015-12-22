@@ -34,7 +34,7 @@ func TestPostMessage(t *testing.T) {
 	})
 
 	kvStore := store.NewMemoryKVStore()
-	gcm := NewGCMConnector("/gcm/")
+	gcm := NewGCMConnector("/gcm/", "testApi")
 	gcm.SetRouter(routerMock)
 	gcm.SetKVStore(kvStore)
 
@@ -75,7 +75,7 @@ func TestSaveAndLoadSubscriptions(t *testing.T) {
 	}).AnyTimes()
 
 	kvStore := store.NewMemoryKVStore()
-	gcm := NewGCMConnector("/gcm/")
+	gcm := NewGCMConnector("/gcm/", "testApi")
 	gcm.SetRouter(routerMock)
 	gcm.SetKVStore(kvStore)
 

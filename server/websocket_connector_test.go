@@ -69,7 +69,7 @@ func TestAnIncommingMessageIsDelivered(t *testing.T) {
 
 	handler := runNewWsHandler(wsconn, pubSubSource, messageSink)
 
-	handler.messagesToSend <- aTestMessage
+	handler.messagesAndRouteToSend <- MsgAndRoute{Message: aTestMessage, Route: nil}
 	time.Sleep(time.Millisecond * 10)
 }
 

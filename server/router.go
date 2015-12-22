@@ -131,7 +131,7 @@ func (router *PubSubRouter) handleMessage(message *guble.Message) {
 func (router *PubSubRouter) deliverMessage(route Route, message *guble.Message) {
 	defer guble.PanicLogger()
 	select {
-	case route.C <- message:
+	case route.C <- MsgAndRoute{Message: message, Route: &route}:
 		// fine, we could send the message
 	default:
 		guble.Info("queue was full, closing delivery for route=%v to applicationId=%v", route.Path, route.ApplicationId)

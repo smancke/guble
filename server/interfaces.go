@@ -8,16 +8,21 @@ import (
 	"net/http"
 )
 
+type MsgAndRoute struct {
+	Message *guble.Message
+	Route   *Route
+}
+
 type Route struct {
 	Id                 string
 	Path               guble.Path
-	C                  chan *guble.Message
+	C                  chan MsgAndRoute
 	CloseRouteByRouter chan string
 	UserId             string
 	ApplicationId      string
 }
 
-func NewRoute(path string, channel chan *guble.Message, closeRouteByRouter chan string, applicationId string, userId string) *Route {
+func NewRoute(path string, channel chan MsgAndRoute, closeRouteByRouter chan string, applicationId string, userId string) *Route {
 	return &Route{
 		Id:                 xid.New().String(),
 		Path:               guble.Path(path),
