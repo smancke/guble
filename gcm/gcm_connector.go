@@ -87,7 +87,7 @@ func (gcmConnector *GCMConnector) sendMessageToGCM(msg server.MsgAndRoute) {
 	}
 
 	//we only send to one receiver, so we know that we can replace the old id with the first registration id (=canonical id)
-	if (result.CanonicalIDs != 0) {
+	if result.CanonicalIDs != 0 {
 		gcmConnector.replaceSubscriptionWithCanonicalID(msg.Route, result.Results[0].RegistrationID)
 	}
 }
@@ -132,7 +132,7 @@ func (gcmConnector *GCMConnector) handleJsonError(jsonError string, gcmId string
 	if jsonError == "NotRegistered" {
 		guble.Debug("remove not registered cgm registration cgmid=%v", gcmId)
 		gcmConnector.removeSubscription(route)
-	} else if (jsonError == "InvalidRegistration") {
+	} else if jsonError == "InvalidRegistration" {
 		guble.Err("the cgmid=%v is not registered. %v", gcmId, jsonError)
 	} else {
 		guble.Err("unexpected error while sending to cgm cgmid=%v: %v", gcmId, jsonError)

@@ -19,7 +19,7 @@ type Args struct {
 	Listen         string `arg:"-l,help: [Host:]Port the address to listen on (:8080)" env:"GUBLE_LISTEN"`
 	LogInfo        bool   `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
 	LogDebug       bool   `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
-	KVBackend      string `arg:"--kv-backend,help: The storage backend for the key value store to use: memory|sqlite (sqlite)" env:"GUBLE_KV_BACKEND"`
+	KVBackend      string `arg:"--kv-backend,help: The storage backend for the key value store to use: memory|sqlite (memory)" env:"GUBLE_KV_BACKEND"`
 	KVSqlitePath   string `arg:"--kv-sqlite-path,help: The path of the sqlite db for the key value store (/var/lib/guble/kv-store.db)" env:"GUBLE_KV_SQLITE_PATH"`
 	KVSqliteNoSync bool   `arg:"--kv-sqlite-no-sync,help: Disable sync the key value store after every write (enabled)" env:"GUBLE_KV_SQLITE_NO_SYNC"`
 	GcmApiKey      string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_APIKEY"`
@@ -93,7 +93,7 @@ func StartupService(args Args) *server.Service {
 func loadArgs() Args {
 	args := Args{
 		Listen:       ":8080",
-		KVBackend:    "sqlite",
+		KVBackend:    "memory",
 		KVSqlitePath: "/var/lib/guble/kv-store.db",
 	}
 

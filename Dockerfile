@@ -1,5 +1,5 @@
 FROM golang:onbuild
 
-ENTRYPOINT ["/go/bin/app", "--kv-backend", "memory"]
+ENTRYPOINT ["/go/bin/app"]
 
 EXPOSE 8080
