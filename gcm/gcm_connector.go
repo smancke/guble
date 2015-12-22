@@ -7,7 +7,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	//"github.com/googollee/go-gcm"
+	"github.com/alexjlockwood/gcm"
 
 	"fmt"
 	"net/http"
@@ -21,19 +21,21 @@ type GCMConnector struct {
 	kvStore            store.KVStore
 	mux                http.Handler
 	prefix             string
-	channelFromRouter  chan *guble.Message
+	channelFromRouter  chan server.MsgAndRoute
 	closeRouteByRouter chan string
 	stopChan           chan bool
+	sender             *gcm.Sender
 }
 
-func NewGCMConnector(prefix string) *GCMConnector {
+func NewGCMConnector(prefix string, gcmApiKey string) *GCMConnector {
 	mux := httprouter.New()
 	gcm := &GCMConnector{
 		mux:                mux,
 		prefix:             prefix,
-		channelFromRouter:  make(chan *guble.Message, 1000),
+		channelFromRouter:  make(chan server.MsgAndRoute, 1000),
 		closeRouteByRouter: make(chan string),
 		stopChan:           make(chan bool, 1),
+		sender:             &gcm.Sender{ApiKey: gcmApiKey},
 	}
 
 	p := removeTrailingSlash(prefix)
@@ -49,8 +51,11 @@ func (gcmConnector *GCMConnector) Start() {
 		for {
 			select {
 			case msg := <-gcmConnector.channelFromRouter:
-
-				guble.Err("!!!TODO: send message to gcm service %v,%v", msg.Id, msg.Path)
+				var gcmId = msg.Route.ApplicationId
+				payload := map[string]interface{}{"message": msg.Message.BodyAsString()}
+				var messageToGcm = gcm.NewMessage(payload, gcmId)
+				guble.Info("sending message to %v ...", gcmId)
+				gcmConnector.sender.Send(messageToGcm, 1)
 			case <-gcmConnector.stopChan:
 				return
 			}
@@ -87,8 +92,8 @@ func (gcmConnector *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Reque
 	guble.Info("gcm connector registration to userid=%q, gcmid=%q: %q", userid, gcmid, topic)
 
 	route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmConnector.closeRouteByRouter, gcmid, userid)
+	route.Id = "gcm-" + gcmid
 
-	// TODO: check, that multiple equal subscriptions are handled only once
 	gcmConnector.router.Subscribe(route)
 
 	gcmConnector.saveSubscription(userid, topic, gcmid)
