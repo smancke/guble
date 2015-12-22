@@ -7,6 +7,8 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	//"github.com/googollee/go-gcm"
+
 	"fmt"
 	"net/http"
 	"strings"
@@ -40,66 +42,66 @@ func NewGCMConnector(prefix string) *GCMConnector {
 	return gcm
 }
 
-func (gcm *GCMConnector) Start() {
+func (gcmConnector *GCMConnector) Start() {
 	go func() {
-		gcm.loadSubscriptions()
+		gcmConnector.loadSubscriptions()
 
 		for {
 			select {
-			case msg := <-gcm.channelFromRouter:
+			case msg := <-gcmConnector.channelFromRouter:
+
 				guble.Err("!!!TODO: send message to gcm service %v,%v", msg.Id, msg.Path)
-			case <-gcm.stopChan:
+			case <-gcmConnector.stopChan:
 				return
 			}
-
 		}
 	}()
 }
 
-func (gcm *GCMConnector) Stop() error {
-	gcm.stopChan <- true
+func (gcmConnector *GCMConnector) Stop() error {
+	gcmConnector.stopChan <- true
 	return nil
 }
 
-func (gcm *GCMConnector) GetPrefix() string {
-	return gcm.prefix
+func (gcmConnector *GCMConnector) GetPrefix() string {
+	return gcmConnector.prefix
 }
 
-func (gcm *GCMConnector) SetRouter(router server.PubSubSource) {
-	gcm.router = router
+func (gcmConnector *GCMConnector) SetRouter(router server.PubSubSource) {
+	gcmConnector.router = router
 }
 
-func (gcm *GCMConnector) SetKVStore(kvStore server.KVStore) {
-	gcm.kvStore = kvStore
+func (gcmConnector *GCMConnector) SetKVStore(kvStore server.KVStore) {
+	gcmConnector.kvStore = kvStore
 }
 
-func (gcm *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	gcm.mux.ServeHTTP(w, r)
+func (gcmConnector *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	gcmConnector.mux.ServeHTTP(w, r)
 }
 
-func (gcm *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (gcmConnector *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	topic := params.ByName(`topic`)
 	userid := params.ByName("userid")
 	gcmid := params.ByName(`gcmid`)
 
 	guble.Info("gcm connector registration to userid=%q, gcmid=%q: %q", userid, gcmid, topic)
 
-	route := server.NewRoute(topic, gcm.channelFromRouter, gcm.closeRouteByRouter, gcmid, userid)
+	route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmConnector.closeRouteByRouter, gcmid, userid)
 
 	// TODO: check, that multiple equal subscriptions are handled only once
-	gcm.router.Subscribe(route)
+	gcmConnector.router.Subscribe(route)
 
-	gcm.saveSubscription(userid, topic, gcmid)
+	gcmConnector.saveSubscription(userid, topic, gcmid)
 
 	fmt.Fprintf(w, "registered: %v\n", topic)
 }
 
-func (gcm *GCMConnector) saveSubscription(userid, topic, gcmid string) {
-	gcm.kvStore.Put(GCM_REGISTRATIONS_SCHEMA, userid+":"+topic, []byte(gcmid))
+func (gcmConnector *GCMConnector) saveSubscription(userid, topic, gcmid string) {
+	gcmConnector.kvStore.Put(GCM_REGISTRATIONS_SCHEMA, userid+":"+topic, []byte(gcmid))
 }
 
-func (gcm *GCMConnector) loadSubscriptions() {
-	subscriptions := gcm.kvStore.Iterate(GCM_REGISTRATIONS_SCHEMA, "")
+func (gcmConnector *GCMConnector) loadSubscriptions() {
+	subscriptions := gcmConnector.kvStore.Iterate(GCM_REGISTRATIONS_SCHEMA, "")
 	count := 0
 	for {
 		select {
@@ -114,8 +116,8 @@ func (gcm *GCMConnector) loadSubscriptions() {
 			gcmid := entry[1]
 
 			guble.Debug("renew gcm subscription: user=%v, topic=%v, gcmid=%v", userid, topic, gcmid)
-			route := server.NewRoute(topic, gcm.channelFromRouter, gcm.closeRouteByRouter, gcmid, userid)
-			gcm.router.Subscribe(route)
+			route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmConnector.closeRouteByRouter, gcmid, userid)
+			gcmConnector.router.Subscribe(route)
 			count++
 		}
 	}
