@@ -87,8 +87,8 @@ func (gcmConnector *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Reque
 	guble.Info("gcm connector registration to userid=%q, gcmid=%q: %q", userid, gcmid, topic)
 
 	route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmConnector.closeRouteByRouter, gcmid, userid)
+	route.Id = "gcm-" + gcmid
 
-	// TODO: check, that multiple equal subscriptions are handled only once
 	gcmConnector.router.Subscribe(route)
 
 	gcmConnector.saveSubscription(userid, topic, gcmid)

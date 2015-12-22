@@ -68,6 +68,8 @@ func (router *PubSubRouter) Stop() error {
 	return nil
 }
 
+// Add a route to the subscribers.
+// If there is already a route with same Application Id and Path, it will be replaced.
 func (router *PubSubRouter) Subscribe(r *Route) *Route {
 	req := SubscriptionRequest{
 		route:      r,
@@ -80,11 +82,16 @@ func (router *PubSubRouter) Subscribe(r *Route) *Route {
 
 func (router *PubSubRouter) subscribe(r *Route) {
 	guble.Info("subscribe applicationId=%v, path=%v", r.ApplicationId, r.Path)
+
 	routeList, present := router.routes[r.Path]
 	if !present {
 		routeList = []Route{}
 		router.routes[r.Path] = routeList
 	}
+
+	// try to remove, to avoid double subscriptions of the same app
+	routeList = remove(routeList, r)
+
 	router.routes[r.Path] = append(routeList, *r)
 }
 
@@ -173,10 +180,12 @@ func matchesTopic(messagePath, routePath guble.Path) bool {
 			(messagePathLen > routePathLen && string(messagePath)[routePathLen] == '/'))
 }
 
+// remove a route from the supplied list,
+// based on same ApplicationId id and same path
 func remove(slice []Route, route *Route) []Route {
 	position := -1
 	for p, r := range slice {
-		if r.Id == route.Id {
+		if r.ApplicationId == route.ApplicationId && r.Path == route.Path {
 			position = p
 		}
 	}

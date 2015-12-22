@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -22,12 +21,10 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 	channel := make(chan *guble.Message, chanSize)
 	closeRouteByRouter := make(chan string)
 	routeBlah1 := router.Subscribe(NewRoute("/blah", channel, closeRouteByRouter, "appid01", "user01"))
-	routeBlah2 := router.Subscribe(NewRoute("/blah", channel, closeRouteByRouter, "appid01", "user01"))
+	routeBlah2 := router.Subscribe(NewRoute("/blah", channel, closeRouteByRouter, "appid02", "user01"))
 
 	// and one route in another path
 	routeFoo := router.Subscribe(NewRoute("/foo", channel, closeRouteByRouter, "appid01", "user01"))
-
-	fmt.Printf("%+v\n", router)
 
 	// then
 	// they have correct ids
@@ -52,6 +49,22 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 	a.Equal(router.routes[guble.Path("/blah")][0].Id, routeBlah2.Id)
 
 	a.Nil(router.routes[guble.Path("/foo")])
+}
+
+func TestReplacingOfRoutes(t *testing.T) {
+	a := assert.New(t)
+
+	// Given a router with a route
+	router := NewPubSubRouter().Go()
+	router.Subscribe(NewRoute("/blah", nil, nil, "appid01", "user01"))
+
+	// when: i add another route with the same Application Id and Same Path
+	router.Subscribe(NewRoute("/blah", nil, nil, "appid01", "newUserId"))
+
+	// then: the router only contains the new route
+	a.Equal(1, len(router.routes))
+	a.Equal(1, len(router.routes["/blah"]))
+	a.Equal("newUserId", router.routes["/blah"][0].UserId)
 }
 
 func TestSimpleMessageSending(t *testing.T) {
