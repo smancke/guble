@@ -40,7 +40,6 @@ func NewGCMConnector(prefix string, gcmApiKey string) *GCMConnector {
 
 	p := removeTrailingSlash(prefix)
 	mux.POST(p+"/:userid/:gcmid/subscribe/*topic", gcm.Subscribe)
-	mux.DELETE(p+"/:userid/:gcmid/unsubscribe/*topic", gcm.Unsubscribe) //DELETE or POST?
 
 	return gcm
 }
@@ -144,12 +143,6 @@ func (gcmConnector *GCMConnector) subscribe(topic string, userid string, gcmid s
 
 	gcmConnector.router.Subscribe(route)
 	gcmConnector.saveSubscription(userid, topic, gcmid)
-}
-
-func (gcmConnector *GCMConnector) Unsubscribe(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-
-	guble.Err("TODO!!! de-registration")
-
 }
 
 func (gcmConnector *GCMConnector) removeSubscription(route *server.Route) {
