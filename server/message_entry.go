@@ -1,7 +1,8 @@
 package server
 
 import (
-	guble "github.com/smancke/guble/guble"
+	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/store"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,7 +19,7 @@ type MessageEntry struct {
 	router             MessageSink
 	topicSequences     map[string]uint64
 	topicSequencesLock sync.RWMutex
-	kvStore            KVStore
+	kvStore            store.KVStore
 }
 
 func NewMessageEntry(router MessageSink) *MessageEntry {
@@ -32,7 +33,7 @@ func (entry *MessageEntry) Start() {
 	go entry.startSequenceSync()
 }
 
-func (entry *MessageEntry) SetKVStore(kvStore KVStore) {
+func (entry *MessageEntry) SetKVStore(kvStore store.KVStore) {
 	entry.kvStore = kvStore
 }
 

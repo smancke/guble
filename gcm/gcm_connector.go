@@ -69,7 +69,7 @@ func (gcm *GCMConnector) SetRouter(router server.PubSubSource) {
 	gcm.router = router
 }
 
-func (gcm *GCMConnector) SetKVStore(kvStore server.KVStore) {
+func (gcm *GCMConnector) SetKVStore(kvStore store.KVStore) {
 	gcm.kvStore = kvStore
 }
 

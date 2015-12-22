@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/store"
 
 	"fmt"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 
 // This is the main class for simple startup of a server
 type Service struct {
-	kvStore       KVStore
+	kvStore       store.KVStore
 	webServer     *WebServer
 	messageSink   MessageSink
 	router        PubSubSource
@@ -23,7 +24,7 @@ type Service struct {
 
 // Registers the Main Router, where other modules can subscribe for messages
 
-func NewService(addr string, kvStore KVStore, messageSink MessageSink, router PubSubSource) *Service {
+func NewService(addr string, kvStore store.KVStore, messageSink MessageSink, router PubSubSource) *Service {
 	service := &Service{
 		stopListener:    make([]Stopable, 0, 5),
 		kvStore:         kvStore,
