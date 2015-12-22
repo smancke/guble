@@ -17,6 +17,7 @@ The goals of guble are, to have a message bus which is:
 
 ## Next TODOs
 
+* Remove Route.Id
 * Rest Endpoint for message publishing
 * Authentication and Access Management
 * Persistant Topic Sequences

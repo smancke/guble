@@ -51,16 +51,34 @@ func (gcmConnector *GCMConnector) Start() {
 		for {
 			select {
 			case msg := <-gcmConnector.channelFromRouter:
-				var gcmId = msg.Route.ApplicationId
-				payload := map[string]interface{}{"message": msg.Message.BodyAsString()}
-				var messageToGcm = gcm.NewMessage(payload, gcmId)
-				guble.Info("sending message to %v ...", gcmId)
-				gcmConnector.sender.Send(messageToGcm, 1)
+				go gcmConnector.sendMessageToGCM(msg)
 			case <-gcmConnector.stopChan:
 				return
 			}
 		}
 	}()
+}
+
+func (gcmConnector *GCMConnector) sendMessageToGCM(msg server.MsgAndRoute) {
+	gcmId := msg.Route.ApplicationId
+	payload := map[string]interface{}{"message": msg.Message.BodyAsString()}
+	var messageToGcm = gcm.NewMessage(payload, gcmId)
+	guble.Info("sending message to %v ...", gcmId)
+	result, err := gcmConnector.sender.Send(messageToGcm, 10)
+	if err != nil {
+		guble.Err("error sending message to cgm cgmid=%v: %v", gcmId, err.Error())
+	} else {
+		if result.Results[0].Error != "" {
+			if result.Results[0].Error == "NotRegistered" || result.Results[0].Error == "InvalidRegistration" {
+				guble.Debug("remove not registered cgm registration cgmid=%v", gcmId)
+				gcmConnector.removeSubscription(msg.Route)
+			} else {
+				guble.Err("unexpected error while sending to cgm cgmid=%v: %v", gcmId, result.Results[0].Error)
+			}
+		} else {
+			guble.Debug("delivered message to gcm cgmid=%v: %v", gcmId, result.Results[0].Error)
+		}
+	}
 }
 
 func (gcmConnector *GCMConnector) Stop() error {
@@ -99,6 +117,11 @@ func (gcmConnector *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Reque
 	gcmConnector.saveSubscription(userid, topic, gcmid)
 
 	fmt.Fprintf(w, "registered: %v\n", topic)
+}
+
+func (gcmConnector *GCMConnector) removeSubscription(route *server.Route) {
+	gcmConnector.router.Unsubscribe(route)
+	gcmConnector.kvStore.Delete(GCM_REGISTRATIONS_SCHEMA, route.UserId+":"+string(route.Path))
 }
 
 func (gcmConnector *GCMConnector) saveSubscription(userid, topic, gcmid string) {
