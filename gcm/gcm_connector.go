@@ -9,10 +9,10 @@ import (
 
 	"github.com/alexjlockwood/gcm"
 
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
-	"encoding/json"
 )
 
 const GCM_REGISTRATIONS_SCHEMA = "gcm_registration"
@@ -41,24 +41,23 @@ func NewGCMConnector(prefix string, gcmApiKey string) *GCMConnector {
 
 	mux.POST(gcm.prefix+"/:userid/:gcmid/subscribe/*topic", gcm.Subscribe)
 
-	broadcastRoute := server.NewRoute(gcm.prefix+"/broadcast", gcm.channelFromRouter, gcm.closeRouteByRouter, "gcm_connector", "gcm_connector")
-	gcm.router.Subscribe(broadcastRoute)
-
 	return gcm
 }
 
 func (gcmConnector *GCMConnector) Start() {
+	broadcastRoute := server.NewRoute(gcmConnector.prefix+"/broadcast", gcmConnector.channelFromRouter, gcmConnector.closeRouteByRouter, "gcm_connector", "gcm_connector")
+	gcmConnector.router.Subscribe(broadcastRoute)
 	go func() {
 		gcmConnector.loadSubscriptions()
 
 		for {
 			select {
 			case msg := <-gcmConnector.channelFromRouter:
-			if string(msg.Message.Path) == gcmConnector.prefix + "/broadcast" {
-				go gcmConnector.broadcastMessage(msg)
-			} else {
-				go gcmConnector.sendMessageToGCM(msg)
-			}
+				if string(msg.Message.Path) == gcmConnector.prefix+"/broadcast" {
+					go gcmConnector.broadcastMessage(msg)
+				} else {
+					go gcmConnector.sendMessageToGCM(msg)
+				}
 			case <-gcmConnector.stopChan:
 				return
 			}
@@ -106,16 +105,16 @@ func (gcmConnector *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 	//TODO
 
 	/*
-	payload := map[string]interface{}{"message": msg.Message.BodyAsString()}
+		payload := map[string]interface{}{"message": msg.Message.BodyAsString()}
 
-	var messageToGcm = gcm.NewMessage(payload, gcmId)
-	guble.Info("sending message to %v ...", gcmId)
-	result, err := gcmConnector.sender.Send(messageToGcm, 5)
-	if err != nil {
-		guble.Err("error sending message to cgm cgmid=%v: %v", gcmId, err.Error())
-		return
-	}
-	 */
+		var messageToGcm = gcm.NewMessage(payload, gcmId)
+		guble.Info("sending message to %v ...", gcmId)
+		result, err := gcmConnector.sender.Send(messageToGcm, 5)
+		if err != nil {
+			guble.Err("error sending message to cgm cgmid=%v: %v", gcmId, err.Error())
+			return
+		}
+	*/
 }
 
 func (gcmConnector *GCMConnector) replaceSubscriptionWithCanonicalID(route *server.Route, newId string) {
