@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"encoding/json"
 )
 
 const GCM_REGISTRATIONS_SCHEMA = "gcm_registration"
@@ -31,15 +32,17 @@ func NewGCMConnector(prefix string, gcmApiKey string) *GCMConnector {
 	mux := httprouter.New()
 	gcm := &GCMConnector{
 		mux:                mux,
-		prefix:             prefix,
+		prefix:             removeTrailingSlash(prefix),
 		channelFromRouter:  make(chan server.MsgAndRoute, 1000),
 		closeRouteByRouter: make(chan string),
 		stopChan:           make(chan bool, 1),
 		sender:             &gcm.Sender{ApiKey: gcmApiKey},
 	}
 
-	p := removeTrailingSlash(prefix)
-	mux.POST(p+"/:userid/:gcmid/subscribe/*topic", gcm.Subscribe)
+	mux.POST(gcm.prefix+"/:userid/:gcmid/subscribe/*topic", gcm.Subscribe)
+
+	broadcastRoute := server.NewRoute(gcm.prefix+"/broadcast", gcm.channelFromRouter, gcm.closeRouteByRouter, "gcm_connector", "gcm_connector")
+	gcm.router.Subscribe(broadcastRoute)
 
 	return gcm
 }
@@ -51,7 +54,11 @@ func (gcmConnector *GCMConnector) Start() {
 		for {
 			select {
 			case msg := <-gcmConnector.channelFromRouter:
+			if string(msg.Message.Path) == gcmConnector.prefix + "/broadcast" {
+				go gcmConnector.broadcastMessage(msg)
+			} else {
 				go gcmConnector.sendMessageToGCM(msg)
+			}
 			case <-gcmConnector.stopChan:
 				return
 			}
@@ -61,7 +68,9 @@ func (gcmConnector *GCMConnector) Start() {
 
 func (gcmConnector *GCMConnector) sendMessageToGCM(msg server.MsgAndRoute) {
 	gcmId := msg.Route.ApplicationId
-	payload := map[string]interface{}{"message": msg.Message.BodyAsString()}
+
+	payload := gcmConnector.parseMessageToMap(msg.Message)
+
 	var messageToGcm = gcm.NewMessage(payload, gcmId)
 	guble.Info("sending message to %v ...", gcmId)
 	result, err := gcmConnector.sender.Send(messageToGcm, 5)
@@ -81,6 +90,32 @@ func (gcmConnector *GCMConnector) sendMessageToGCM(msg server.MsgAndRoute) {
 	if (result.CanonicalIDs != 0) {
 		gcmConnector.replaceSubscriptionWithCanonicalID(msg.Route, result.Results[0].RegistrationID)
 	}
+}
+
+func (gcmConnector *GCMConnector) parseMessageToMap(msg *guble.Message) map[string]interface{} {
+	payload := map[string]interface{}{}
+	if msg.Body[0] == '{' {
+		json.Unmarshal(msg.Body, &payload)
+	} else {
+		payload["message"] = msg.BodyAsString()
+	}
+	return payload
+}
+
+func (gcmConnector *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
+	//TODO
+
+	/*
+	payload := map[string]interface{}{"message": msg.Message.BodyAsString()}
+
+	var messageToGcm = gcm.NewMessage(payload, gcmId)
+	guble.Info("sending message to %v ...", gcmId)
+	result, err := gcmConnector.sender.Send(messageToGcm, 5)
+	if err != nil {
+		guble.Err("error sending message to cgm cgmid=%v: %v", gcmId, err.Error())
+		return
+	}
+	 */
 }
 
 func (gcmConnector *GCMConnector) replaceSubscriptionWithCanonicalID(route *server.Route, newId string) {
