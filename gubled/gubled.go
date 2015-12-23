@@ -22,6 +22,7 @@ type Args struct {
 	KVBackend      string `arg:"--kv-backend,help: The storage backend for the key value store to use: memory|sqlite (memory)" env:"GUBLE_KV_BACKEND"`
 	KVSqlitePath   string `arg:"--kv-sqlite-path,help: The path of the sqlite db for the key value store (/var/lib/guble/kv-store.db)" env:"GUBLE_KV_SQLITE_PATH"`
 	KVSqliteNoSync bool   `arg:"--kv-sqlite-no-sync,help: Disable sync the key value store after every write (enabled)" env:"GUBLE_KV_SQLITE_NO_SYNC"`
+	GcmEnable      bool   `arg:"--gcm-enable-key: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
 	GcmApiKey      string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_APIKEY"`
 }
 
@@ -42,11 +43,18 @@ var CreateStoreBackend = func(args Args) store.KVStore {
 }
 
 var CreateModules = func(args Args) []interface{} {
-	return []interface{}{
+	modules := []interface{}{
 		server.NewWSHandlerFactory("/stream/"),
 		server.NewRestMessageApi("/api/"),
-		gcm.NewGCMConnector("/gcm/", args.GcmApiKey),
 	}
+
+	if args.GcmEnable {
+		guble.Info("google cloud messaging: enabled")
+		modules = append(modules, gcm.NewGCMConnector("/gcm/", args.GcmApiKey))
+	} else {
+		guble.Info("google cloud messaging: enabled")
+	}
+	return modules
 }
 
 func Main() {
@@ -64,6 +72,7 @@ func Main() {
 	if args.LogDebug {
 		guble.LogLevel = guble.LEVEL_DEBUG
 	}
+	guble.Info("args: %q", args)
 
 	service := StartupService(args)
 
