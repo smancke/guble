@@ -116,7 +116,7 @@ func (gcmConnector *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 				guble.Info("send message to %v receivers", count)
 				return
 			}
-			gcmId := entry[1]
+			gcmId := entry[0]
 			//TODO collect 1000 gcmIds and send them in one request!
 			broadcastMessage := gcm.NewMessage(payload, gcmId)
 			go func() {
@@ -132,20 +132,20 @@ func (gcmConnector *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 	}
 }
 
-func (gcmConnector *GCMConnector) replaceSubscriptionWithCanonicalID(route *server.Route, newId string) {
+func (gcmConnector *GCMConnector) replaceSubscriptionWithCanonicalID(route *server.Route, newGcmId string) {
 	oldGcmId := route.ApplicationId
 	topic := string(route.Path)
 	userId := route.UserId
 
-	guble.Info("replacing old gcmId %v with canonicalId %v", oldGcmId, newId)
-	gcmConnector.removeSubscription(route)
-	gcmConnector.subscribe(topic, userId, newId)
+	guble.Info("replacing old gcmId %v with canonicalId %v", oldGcmId, newGcmId)
+	gcmConnector.removeSubscription(route, oldGcmId)
+	gcmConnector.subscribe(topic, userId, newGcmId)
 }
 
 func (gcmConnector *GCMConnector) handleJsonError(jsonError string, gcmId string, route *server.Route) {
 	if jsonError == "NotRegistered" {
 		guble.Debug("remove not registered cgm registration cgmid=%v", gcmId)
-		gcmConnector.removeSubscription(route)
+		gcmConnector.removeSubscription(route, gcmId)
 	} else if jsonError == "InvalidRegistration" {
 		guble.Err("the cgmid=%v is not registered. %v", gcmId, jsonError)
 	} else {
@@ -194,13 +194,13 @@ func (gcmConnector *GCMConnector) subscribe(topic string, userid string, gcmid s
 	gcmConnector.saveSubscription(userid, topic, gcmid)
 }
 
-func (gcmConnector *GCMConnector) removeSubscription(route *server.Route) {
+func (gcmConnector *GCMConnector) removeSubscription(route *server.Route, gcmId string) {
 	gcmConnector.router.Unsubscribe(route)
-	gcmConnector.kvStore.Delete(GCM_REGISTRATIONS_SCHEMA, route.UserId+":"+string(route.Path))
+	gcmConnector.kvStore.Delete(GCM_REGISTRATIONS_SCHEMA, gcmId)
 }
 
 func (gcmConnector *GCMConnector) saveSubscription(userid, topic, gcmid string) {
-	gcmConnector.kvStore.Put(GCM_REGISTRATIONS_SCHEMA, userid+":"+topic, []byte(gcmid))
+	gcmConnector.kvStore.Put(GCM_REGISTRATIONS_SCHEMA, gcmid, []byte(userid+":"+topic))
 }
 
 func (gcmConnector *GCMConnector) loadSubscriptions() {
@@ -213,13 +213,13 @@ func (gcmConnector *GCMConnector) loadSubscriptions() {
 				guble.Info("renewed %v gcm subscriptions", count)
 				return
 			}
-			splitedKey := strings.SplitN(entry[0], ":", 2)
-			userid := splitedKey[0]
-			topic := splitedKey[1]
-			gcmid := entry[1]
+			gcmId := entry[0]
+			splitedValue := strings.SplitN(entry[1], ":", 2)
+			userid := splitedValue[0]
+			topic := splitedValue[1]
 
-			guble.Debug("renew gcm subscription: user=%v, topic=%v, gcmid=%v", userid, topic, gcmid)
-			route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmConnector.closeRouteByRouter, gcmid, userid)
+			guble.Debug("renew gcm subscription: user=%v, topic=%v, gcmid=%v", userid, topic, gcmId)
+			route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmConnector.closeRouteByRouter, gcmId, userid)
 			gcmConnector.router.Subscribe(route)
 			count++
 		}
