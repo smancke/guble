@@ -75,8 +75,6 @@ func Main() {
 	if args.LogDebug {
 		guble.LogLevel = guble.LEVEL_DEBUG
 	}
-	guble.Info("args: %q", args)
-
 	service := StartupService(args)
 
 	waitForTermination(func() {

@@ -1,49 +1,134 @@
-# guble messaging server [![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble)
+# guble messaging server
 
-guble is a simple messaging server, written in golang.
-Guble is in a very early state and unreleased. For now, this documentation is a draft, how it should work at a later state! If you like it, help me, or come back later ;-)
+guble is a simple user facing messaging and data replication server, written in golang.
 
-The goals of guble are, to have a message bus which is:
-* Very easy consumption of messages with web and mobile clients
-* Consumers should not need an api in addition to web sockets
-* Fast realtime messaging, as well as playback of messages from a commit-log
-* Reliable and scalable over multiple nodes
-* User aware sematics, to easily support message szenarios between people with their multiple devices
+[![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble)
 
-## Features
+# Overview
+Guble is in an early state and unreleased. The implemented features are already useful and working well,
+but we may change api's and implementation details, until reaching v0.5.
+
+The goal of guble is to be a simple and fast message bus for user interaction and replication of data between multiple devices:
+* Very easy consumption of messages with web and mobile clients.
+* Fast realtime messaging, as well as playback of messages from a persistant commit-log.
+* Reliable and scalable over multiple nodes.
+* User aware sematics, to easily support message szenarios between people with their multiple devices.
+* Batteries included: Guble should be usable as front facing server, without the need of a proxy layer.
+* Self contained: No mandatory dependencies to other services.
+
+## Working Features
 
 * In-memory dispatching of messages
+* Websocket api
+* Google cloud messaging adapter: Delivery of messages as gcm push notifications
 * Subscription to multiple topics and subtopics
+* Throughput: Delivery of ~50.000 messages per second (end-to-end)
 
-## Next TODOs
 
+## Table of Contents
+
+- [Conventions](#conventions)
+- [Roadmap](#Roadmap)
+- [Release 0.1](#Release-0.1)
+  - [Roadmap Release 0.2](#Roadmap-Release-0.2)
+  - [Roadmap Release 0.3](#-Roadmap-Release-0.3)
+  - [Roadmap Release 0.4](#-Roadmap-Release-0.4)
+- [Guble docker image](#Guble-docker-image)
+- [Build and run](#Build and run)
+  - [Build and start the sever](#Build-and-start-the-sever)
+  - [The gubble CLI](#The-gubble-CLI)
+  - [Run all tests](#Run-all-tests)
+- [Protocol-Reference](#Protocol-Reference)
+  - [WebsocketProtocol](#Websocket-Protocol)
+    - [Message-Format](#Message-Format)
+    - [Client Commands](#Client-Commands)
+  - [Topics](#Topics)
+  - [Authentication and Accessmanagement](#Authentication-and-Accessmanagement)
+
+# Roadmap
+
+## Release 0.1
+The first release 0.1 is expected mir or end of January 2016
+* Docker image for the client
+* Cleanup, documentation, and test coverage of the commandling client
 * Remove Route.Id
-* Rest Endpoint for message publishing
-* Authentication and Access Management
-* Persistant Topic Sequences
-* User Topics
-* Improve Logging (Maybe use of: https://github.com/Sirupsen/logrus)
+* Cleanup, documentation, and test coverage of the gcm connector
+* Documentation of the rest Endpoint for message publishing
+* User-facing documentation
 * Clean Shutdown
+
+## Roadmap Release 0.2
+* Improve Logging (Maybe use of: https://github.com/Sirupsen/logrus)
 * Better Approach for message buffering on huge message numbers
 * Client: (Re)-Setup of subscriptions after client reconnect
+* Stable Java-Script Client: https://github.com/smancke/gulbe-js
 
-## Roadmap
-
-If there is enough time, the following features may be realized:
-
+## Roadmap Release 0.3
+* Authentication and Access Management
 * Persistance and replay of messages
-* Acknowledgement of message delivery
-* Delivery semantics (e.g. user must read on one device)
-* Replication across multiple Servers
-* Additional REST API for message Publishing
-* Authentication and Accessmanagement
-* CRC32 Checksum for messages
 
-## Starting the guble server
+## Roadmap Release 0.4
+* Replication across multiple Servers
+* Delivery semantics (e.g. user must read on one device, deliver only to one device, notify if not connected, ..)
+* Maybe: Acknowledgement of message delivery
+
+
+# Guble docker image
+## Start the guble server
+There is an automated docker build for the master at docker hub.
+To start the server with docker simple type:
+```
+	docker run -p 8080:8080 smancke/guble
+```
+
+See available configuration options:
+```
+	docker run smancke/guble --help
+```
+
+All options can be supplied by command line or by a corresponding environment variable with the prefix `GUBLE_'.
+So, to let guble be more verbose, you can either use:
+```
+	docker run smancke/guble --log-info
+```
+or
+```
+	docker run -e GUBLE_LOG_INFO=true smancke/guble
+```
+
+## Connecting with the guble-cli
+The docker image has the guble command line client included. You can execute it within a running golang container and
+connect to the server.
+```
+docker run -d --name guble smancke/guble
+docker exec -it guble /go/bin/guble-cli
+```
+In the runnging client, you can use the commands from the websocket api, e.g:
+```
++ /foo   # register to topic /foo
+
+> /foo   # send a message to /foo
+{}       # with header {}
+Hello    # and body Hello
+```
+
+
+# Build and run
+Since go makes it very easy to build from source, you can
+compile guble with one command line.
+Prerequirement is an installed go environment and an empty directory. e.g.
+```
+sudo apt-get install golang
+mkdir guble && cd guble
+export GOPATH=`pwd`
+```
+
+## Build and start the sever
+Starting the guble server
 Build and start with the following commands:
 ```
-	go get -t github.com/smancke/guble/...
-	./bin/guble
+	go get github.com/smancke/guble
+	bin/guble --log-info
 ```
 
 ## The gubble CLI
@@ -51,18 +136,20 @@ For simle tesing and interaction, there is a cli client for gubble.
 Build and start with the following commands:
 
 ```
-	go install github.com/smancke/guble/guble-cli:
-	./bin/guble-cli
+	go get github.com/smancke/guble/guble-cli
+	bin/guble-cli
 ```
 
-## Run Tests
-
+## Run all tests
 ```
+    go get -t github.com/smancke/guble/...
     go test github.com/smancke/guble/...
 ```
 
-## Protocol
-The communication with the guble server is done by usual websockets.
+# Protocol Reference
+
+## Websocket Protocol
+The communication with the guble server is done by usual websockets, using the binary encoding.
 
 ### Message Format
 Payload messages send from the server to the client are all of in the following form:
@@ -208,7 +295,7 @@ subscription paths.
 The path delimiter gives the semantic of subtopics. With this, a subscription to a parent topic (e.g. `/foo`)
 also results in receiving all message of the sub topics (e.g. `/foo/bar`).
 
-### User Topics `/user` (TBD, not implemented in the first version)
+### User Topics `/user`
 Each user has its own Topic space.
 ```
     /user/<userId>
