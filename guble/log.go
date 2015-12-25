@@ -60,6 +60,7 @@ func Err(pattern string, args ...interface{}) {
 
 func PanicLogger() {
 	if r := recover(); r != nil {
+		log.Printf("PANIC %v", r)
 		getStackTraceMessage(fmt.Sprintf("%v", r))
 	}
 }

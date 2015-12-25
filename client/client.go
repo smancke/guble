@@ -38,7 +38,9 @@ func Open(url, origin string, channelSize int, autoReconnect bool) (*Client, err
 	} else {
 		go func() {
 			for {
-				c.readLoop()
+				if c.ws != nil {
+					c.readLoop()
+				}
 
 				select {
 				case <-c.shouldStop:
@@ -50,6 +52,7 @@ func Open(url, origin string, channelSize int, autoReconnect bool) (*Client, err
 					guble.Err("error on connect, retry in 1 second")
 					time.Sleep(time.Second * 1)
 				} else {
+					guble.Err("connected again")
 				}
 			}
 		}()
@@ -123,15 +126,16 @@ func (c *Client) Subscribe(path string) error {
 	return err
 }
 
-func (c *Client) Send(path string, body string) error {
-	return c.SendBytes(path, []byte(body))
+func (c *Client) Send(path string, body string, header string) error {
+	return c.SendBytes(path, []byte(body), header)
 }
 
-func (c *Client) SendBytes(path string, body []byte) error {
+func (c *Client) SendBytes(path string, body []byte, header string) error {
 	cmd := &guble.Cmd{
-		Name: guble.CMD_SEND,
-		Arg:  path,
-		Body: body,
+		Name:       guble.CMD_SEND,
+		Arg:        path,
+		Body:       body,
+		HeaderJson: header,
 	}
 
 	return c.WriteRawMessage(cmd.Bytes())

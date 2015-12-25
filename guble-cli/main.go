@@ -11,13 +11,14 @@ import (
 
 	"github.com/alexflint/go-arg"
 
-	"github.com/smancke/client"
+	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/guble"
 )
 
 type Args struct {
 	Verbose  bool     `arg:"-v,help: Display verbose server communication"`
 	Url      string   `arg:"help: The websocket url to connect (ws://localhost:8080/stream/)"`
+	User     string   `arg:"help: The user name to connect with (guble-cli)"`
 	Topics   []string `arg:"positional,help: The topics to subscribe on connect"`
 	LogInfo  bool     `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
 	LogDebug bool     `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
@@ -38,7 +39,8 @@ func main() {
 	}
 
 	origin := "http://localhost/"
-	client, err := client.Open(args.Url, origin, 100, true)
+	url := fmt.Sprintf("%v/user/%v", removeTrailingSlash(args.Url), args.User)
+	client, err := client.Open(url, origin, 100, true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,7 +49,6 @@ func main() {
 	go readLoop(client)
 
 	for _, topic := range args.Topics {
-		fmt.Printf("+ %v\n", topic)
 		client.Subscribe(topic)
 	}
 	waitForTermination(func() {})
@@ -57,6 +58,7 @@ func loadArgs() Args {
 	args := Args{
 		Verbose: false,
 		Url:     "ws://localhost:8080/stream/",
+		User:    "guble-cli",
 	}
 
 	arg.MustParse(&args)
@@ -75,9 +77,8 @@ func readLoop(client *client.Client) {
 		case error := <-client.Errors():
 			fmt.Println("ERROR: " + string(error.Bytes()))
 		case status := <-client.StatusMessages():
-			if args.Verbose {
-				fmt.Println(string(status.Bytes()))
-			}
+			fmt.Println(string(status.Bytes()))
+			fmt.Println()
 		}
 	}
 }
@@ -89,6 +90,14 @@ func writeLoop(client *client.Client) {
 			defer guble.PanicLogger()
 			reader := bufio.NewReader(os.Stdin)
 			text, _ := reader.ReadString('\n')
+			if strings.TrimSpace(text) == "" {
+				return
+			}
+
+			if strings.TrimSpace(text) == "?" || strings.TrimSpace(text) == "help" {
+				printHelp()
+				return
+			}
 
 			if strings.HasPrefix(text, ">") {
 				fmt.Print("header: ")
@@ -116,4 +125,20 @@ func waitForTermination(callback func()) {
 	log.Printf("%q", <-sigc)
 	callback()
 	os.Exit(0)
+}
+
+func printHelp() {
+	fmt.Println(`
+## Commands
++ /foo/bar      # subscribes to topic /foo/bar
+- /foo/bar      # unsubscribes from topic /foo/bar
+> /foo/bar 42   # send a message to /foo/bar with publisherid 42
+`)
+}
+
+func removeTrailingSlash(path string) string {
+	if len(path) > 0 && path[len(path)-1] == '/' {
+		return path[:len(path)-1]
+	}
+	return path
 }
