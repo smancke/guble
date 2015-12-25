@@ -51,10 +51,10 @@ func TestSendMessageWirthPublisherMessageId(t *testing.T) {
 func TestSendMessage(t *testing.T) {
 	defer initCtrl(t)()
 
-	commands := []string{"> /path\n\nHello, this is a test"}
+	commands := []string{"> /path\n{\"key\": \"value\"}\nHello, this is a test"}
 	wsconn, pubSubSource, messageSink := createDefaultMocks(commands)
 
-	messageSink.EXPECT().HandleMessage(messageMatcher{path: "/path", message: "Hello, this is a test"})
+	messageSink.EXPECT().HandleMessage(messageMatcher{path: "/path", message: "Hello, this is a test", header: `{"key": "value"}`})
 	wsconn.EXPECT().Send([]byte("#send"))
 
 	runNewWsHandler(wsconn, pubSubSource, messageSink)
@@ -144,12 +144,14 @@ type messageMatcher struct {
 	id      uint64
 	path    string
 	message string
+	header  string
 }
 
 func (n messageMatcher) Matches(x interface{}) bool {
 	return n.path == string(x.(*guble.Message).Path) &&
 		n.message == string(x.(*guble.Message).Body) &&
-		(n.id == 0 || n.id == x.(*guble.Message).Id)
+		(n.id == 0 || n.id == x.(*guble.Message).Id) &&
+		(n.header == "" || (n.header == x.(*guble.Message).HeaderJson))
 }
 
 func (n messageMatcher) String() string {

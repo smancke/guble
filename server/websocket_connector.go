@@ -47,7 +47,7 @@ func (factory *WSHandlerFactory) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	defer c.Close()
 
 	NewWSHandler(factory.Router, factory.MessageSink, &wsconn{c}, extractUserId(r.RequestURI)).
-	Start()
+		Start()
 }
 
 type WSHandler struct {
@@ -64,15 +64,15 @@ type WSHandler struct {
 
 func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, wsConn WSConn, userId string) *WSHandler {
 	server := &WSHandler{
-		messageSouce:        messageSouce,
-		messageSink:         messageSink,
-		clientConn:          wsConn,
-		applicationId:       xid.New().String(),
-		userId:              userId,
-		messagesAndRouteToSend:      make(chan MsgAndRoute, 100),
-		notificationsToSend: make(chan *guble.NotificationMessage, 100),
-		routeClosed:         make(chan string, 100),
-		subscriptions:       make(map[guble.Path]*Route),
+		messageSouce:           messageSouce,
+		messageSink:            messageSink,
+		clientConn:             wsConn,
+		applicationId:          xid.New().String(),
+		userId:                 userId,
+		messagesAndRouteToSend: make(chan MsgAndRoute, 100),
+		notificationsToSend:    make(chan *guble.NotificationMessage, 100),
+		routeClosed:            make(chan string, 100),
+		subscriptions:          make(map[guble.Path]*Route),
 	}
 	return server
 }
@@ -132,6 +132,7 @@ func (srv *WSHandler) receiveLoop() {
 			break
 		}
 
+		//guble.Debug("websocket_connector, raw message received: %v", string(message))
 		cmd, err := guble.ParseCmd(message)
 		if err != nil {
 			srv.returnError(guble.ERROR_BAD_REQUEST, "error parsing command. %v", err.Error())
@@ -162,7 +163,7 @@ func (srv *WSHandler) sendConnectionMessage() {
 }
 
 func (srv *WSHandler) handleSend(cmd *guble.Cmd) {
-	guble.Info("sending %q\n", string(cmd.Body))
+	guble.Debug("sending %v", string(cmd.Bytes()))
 	if len(cmd.Arg) == 0 {
 		srv.returnError(guble.ERROR_BAD_REQUEST, "send command requires a path argument, but non given", cmd.Name)
 		return
@@ -172,6 +173,7 @@ func (srv *WSHandler) handleSend(cmd *guble.Cmd) {
 		Path: guble.Path(args[0]),
 		PublisherApplicationId: srv.applicationId,
 		PublisherUserId:        srv.userId,
+		HeaderJson:             cmd.HeaderJson,
 		Body:                   cmd.Body,
 	}
 	if len(args) == 2 {

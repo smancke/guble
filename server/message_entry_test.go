@@ -56,17 +56,17 @@ func TestInrementingTheMessageId(t *testing.T) {
 	messageEntry := NewMessageEntry(routerMock)
 	messageEntry.SetKVStore(store.NewMemoryKVStore())
 
-	routerMock.EXPECT().HandleMessage(&messageMatcher{1, "/topic1", "topic1Message1"})
+	routerMock.EXPECT().HandleMessage(&messageMatcher{1, "/topic1", "topic1Message1", ""})
 	messageEntry.HandleMessage(
 		&guble.Message{Path: guble.Path("/topic1"), Body: []byte("topic1Message1")},
 	)
 
-	routerMock.EXPECT().HandleMessage(&messageMatcher{2, "/topic1", "topic1Message2"})
+	routerMock.EXPECT().HandleMessage(&messageMatcher{2, "/topic1", "topic1Message2", ""})
 	messageEntry.HandleMessage(
 		&guble.Message{Path: guble.Path("/topic1"), Body: []byte("topic1Message2")},
 	)
 
-	routerMock.EXPECT().HandleMessage(&messageMatcher{1, "/topic2", "topic2Message1"})
+	routerMock.EXPECT().HandleMessage(&messageMatcher{1, "/topic2", "topic2Message1", ""})
 	messageEntry.HandleMessage(
 		&guble.Message{Path: guble.Path("/topic2"), Body: []byte("topic2Message1")},
 	)

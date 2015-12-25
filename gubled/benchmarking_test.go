@@ -69,7 +69,7 @@ func (test *testgroup) Start() {
 	go func() {
 		for i := 0; i < test.messagesToSend; i++ {
 			body := fmt.Sprintf("Hallo-%v", i)
-			test.client2.Send(test.topic, body)
+			test.client2.Send(test.topic, body, "")
 		}
 		time.Sleep(time.Microsecond)
 	}()

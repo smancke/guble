@@ -20,13 +20,14 @@ func TestSimplePingPong(t *testing.T) {
 	expectStatusMessage(t, client1, guble.SUCCESS_SUBSCRIBED_TO, "/foo")
 
 	time.Sleep(time.Millisecond * 10)
-	client2.Send("/foo 42", "Hallo")
+	client2.Send("/foo 42", "Hallo", `{"key": "value"}`)
 	expectStatusMessage(t, client2, guble.SUCCESS_SEND, "42")
 
 	select {
 	case msg := <-client1.Messages():
 		assert.Equal(t, "Hallo", msg.BodyAsString())
 		assert.Equal(t, "user2", msg.PublisherUserId)
+		assert.Equal(t, `{"key": "value"}`, msg.HeaderJson)
 		assert.Equal(t, uint64(1), msg.Id)
 	case msg := <-client1.Errors():
 		t.Logf("received error: %v", msg)
