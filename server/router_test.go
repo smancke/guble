@@ -19,7 +19,7 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 
 	// when i add two routes in the same path
 	channel := make(chan MsgAndRoute, chanSize)
-	closeRouteByRouter := make(chan string)
+	closeRouteByRouter := make(chan Route)
 	routeBlah1 := router.Subscribe(NewRoute("/blah", channel, closeRouteByRouter, "appid01", "user01"))
 	routeBlah2 := router.Subscribe(NewRoute("/blah", channel, closeRouteByRouter, "appid02", "user01"))
 
@@ -27,18 +27,14 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 	routeFoo := router.Subscribe(NewRoute("/foo", channel, closeRouteByRouter, "appid01", "user01"))
 
 	// then
-	// they have correct ids
-	a.NotEqual("", routeBlah1.Id)
-	a.NotEqual(routeBlah1.Id, routeBlah2.Id)
-	a.NotEqual(routeBlah2.Id, routeFoo.Id)
 
-	// and the routes are stored
+	// the routes are stored
 	a.Equal(2, len(router.routes[guble.Path("/blah")]))
-	a.Equal(router.routes[guble.Path("/blah")][0].Id, routeBlah1.Id)
-	a.Equal(router.routes[guble.Path("/blah")][1].Id, routeBlah2.Id)
+	a.True(routeBlah1.equals(router.routes[guble.Path("/blah")][0]))
+	a.True(routeBlah2.equals(router.routes[guble.Path("/blah")][1]))
 
 	a.Equal(1, len(router.routes[guble.Path("/foo")]))
-	a.Equal(router.routes[guble.Path("/foo")][0].Id, routeFoo.Id)
+	a.True(routeFoo.equals(router.routes[guble.Path("/foo")][0]))
 
 	// WHEN i remove routes
 	router.Unsubscribe(routeBlah1)
@@ -46,7 +42,7 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 
 	// then they are gone
 	a.Equal(1, len(router.routes[guble.Path("/blah")]))
-	a.Equal(router.routes[guble.Path("/blah")][0].Id, routeBlah2.Id)
+	a.True(routeBlah2.equals(router.routes[guble.Path("/blah")][0]))
 
 	a.Nil(router.routes[guble.Path("/foo")])
 }
@@ -86,7 +82,7 @@ func TestRoutingWithSubTopics(t *testing.T) {
 	// Given a Multiplexer with route
 	router := NewPubSubRouter().Go()
 	channel := make(chan MsgAndRoute, chanSize)
-	closeRouteByRouter := make(chan string)
+	closeRouteByRouter := make(chan Route)
 	r := router.Subscribe(NewRoute("/blah", channel, closeRouteByRouter, "appid01", "user01"))
 
 	// when i send a message to a subroute
@@ -146,8 +142,8 @@ func TestRouteIsRemovedIfChannelIsFull(t *testing.T) {
 
 	// and the close channel contains this route
 	select {
-	case routeId := <-r.CloseRouteByRouter:
-		a.Equal(r.Id, routeId)
+	case route := <-r.CloseRouteByRouter:
+		a.True(r.equals(route))
 	case <-time.After(time.Millisecond):
 		a.Fail("no close message received")
 	}
@@ -155,7 +151,7 @@ func TestRouteIsRemovedIfChannelIsFull(t *testing.T) {
 
 func aRouterRoute() (*PubSubRouter, *Route) {
 	router := NewPubSubRouter().Go()
-	return router, router.Subscribe(NewRoute("/blah", make(chan MsgAndRoute, chanSize), make(chan string, 1), "appid01", "user01"))
+	return router, router.Subscribe(NewRoute("/blah", make(chan MsgAndRoute, chanSize), make(chan Route, 1), "appid01", "user01"))
 }
 
 func assertChannelContainsMessage(a *assert.Assertions, c chan MsgAndRoute, msg []byte) {

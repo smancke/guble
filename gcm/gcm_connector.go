@@ -23,7 +23,7 @@ type GCMConnector struct {
 	mux                http.Handler
 	prefix             string
 	channelFromRouter  chan server.MsgAndRoute
-	closeRouteByRouter chan string
+	closeRouteByRouter chan server.Route
 	stopChan           chan bool
 	sender             *gcm.Sender
 }
@@ -34,7 +34,7 @@ func NewGCMConnector(prefix string, gcmApiKey string) *GCMConnector {
 		mux:                mux,
 		prefix:             prefix,
 		channelFromRouter:  make(chan server.MsgAndRoute, 1000),
-		closeRouteByRouter: make(chan string),
+		closeRouteByRouter: make(chan server.Route),
 		stopChan:           make(chan bool, 1),
 		sender:             &gcm.Sender{ApiKey: gcmApiKey},
 	}
@@ -188,7 +188,6 @@ func (gcmConnector *GCMConnector) subscribe(topic string, userid string, gcmid s
 	guble.Info("gcm connector registration to userid=%q, gcmid=%q: %q", userid, gcmid, topic)
 
 	route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmConnector.closeRouteByRouter, gcmid, userid)
-	route.Id = "gcm-" + gcmid
 
 	gcmConnector.router.Subscribe(route)
 	gcmConnector.saveSubscription(userid, topic, gcmid)

@@ -57,7 +57,7 @@ type WSHandler struct {
 	applicationId          string
 	userId                 string
 	messagesAndRouteToSend chan MsgAndRoute
-	routeClosed            chan string
+	routeClosed            chan Route
 	notificationsToSend    chan *guble.NotificationMessage
 	subscriptions          map[guble.Path]*Route
 }
@@ -71,7 +71,7 @@ func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, wsConn WSC
 		userId:                 userId,
 		messagesAndRouteToSend: make(chan MsgAndRoute, 100),
 		notificationsToSend:    make(chan *guble.NotificationMessage, 100),
-		routeClosed:            make(chan string, 100),
+		routeClosed:            make(chan Route, 100),
 		subscriptions:          make(map[guble.Path]*Route),
 	}
 	return server

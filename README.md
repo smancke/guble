@@ -23,6 +23,7 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 * Google cloud messaging adapter: Delivery of messages as gcm push notifications
 * Subscription to multiple topics and subtopics
 * Throughput: Delivery of ~50.000 messages per second (end-to-end)
+* Docker image for client and server
 
 
 ## Table of Contents
@@ -48,7 +49,6 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 
 ## Release 0.1
 The first release 0.1 is expected mir or end of January 2016
-* Docker image for the client
 * Cleanup, documentation, and test coverage of the commandling client
 * Remove Route.Id
 * Cleanup, documentation, and test coverage of the gcm connector

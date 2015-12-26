@@ -4,8 +4,6 @@ import (
 	"github.com/smancke/guble/guble"
 	"github.com/smancke/guble/store"
 
-	"github.com/rs/xid"
-
 	"net/http"
 )
 
@@ -15,17 +13,21 @@ type MsgAndRoute struct {
 }
 
 type Route struct {
-	Id                 string
 	Path               guble.Path
 	C                  chan MsgAndRoute
-	CloseRouteByRouter chan string
+	CloseRouteByRouter chan Route
 	UserId             string
 	ApplicationId      string
 }
 
-func NewRoute(path string, channel chan MsgAndRoute, closeRouteByRouter chan string, applicationId string, userId string) *Route {
+func (r Route) equals(other Route) bool {
+	return r.Path == other.Path &&
+		r.UserId == other.UserId &&
+		r.ApplicationId == other.ApplicationId
+}
+
+func NewRoute(path string, channel chan MsgAndRoute, closeRouteByRouter chan Route, applicationId string, userId string) *Route {
 	return &Route{
-		Id:                 xid.New().String(),
 		Path:               guble.Path(path),
 		C:                  channel,
 		CloseRouteByRouter: closeRouteByRouter,

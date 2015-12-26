@@ -145,7 +145,7 @@ func (router *PubSubRouter) deliverMessage(route Route, message *guble.Message) 
 		// the message channel is blocked,
 		// so we notify this route, that we stopped delivery and kick it out
 		select {
-		case route.CloseRouteByRouter <- route.Id:
+		case route.CloseRouteByRouter <- route:
 		default:
 			// ignore, if the closedByRouter already was full
 		}
@@ -157,7 +157,7 @@ func (router *PubSubRouter) closeAllRoutes() {
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
 			select {
-			case route.CloseRouteByRouter <- route.Id:
+			case route.CloseRouteByRouter <- route:
 			default:
 				// ignore, if the closedByRouter already was full
 			}
