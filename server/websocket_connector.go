@@ -114,8 +114,8 @@ func (srv *WSHandler) sendLoop() {
 				srv.cleanAndClose()
 				break
 			}
-		case closedRouteId := <-srv.routeClosed:
-			guble.Info("INFO: router closed route %v -> closing the websocket connection to applicationId=%v", closedRouteId, srv.applicationId)
+		case closedRoute := <-srv.routeClosed:
+			guble.Info("INFO: router closed route %v -> closing the websocket connection to applicationId=%v", closedRoute, srv.applicationId)
 			srv.cleanAndClose()
 			return
 		}
