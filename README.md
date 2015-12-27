@@ -20,6 +20,7 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 
 * In-memory dispatching of messages
 * Websocket api
+* Commandline client and go client library
 * Google cloud messaging adapter: Delivery of messages as gcm push notifications
 * Subscription to multiple topics and subtopics
 * Throughput: Delivery of ~50.000 messages per second (end-to-end)
@@ -39,6 +40,7 @@ The goal of guble is to be a simple and fast message bus for user interaction an
   - [Run all tests](#run-all-tests)
 - [Clients](#clients)
 - [Protocol-Reference](#protocol-reference)
+  - [Rest Api](#rest-api)
   - [WebsocketProtocol](#websocket-protocol)
     - [Message-Format](#message-format)
     - [Client Commands](#client-commands)
@@ -48,11 +50,8 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 # Roadmap
 
 ## Release 0.1
-The first release 0.1 is expected mid or end of January 2016
-* Cleanup, documentation, and test coverage of the commandling client
+The first release 0.1 is expected start of January 2016
 * Cleanup, documentation, and test coverage of the gcm connector
-* Documentation of the rest Endpoint for message publishing
-* User-facing documentation
 * Clean Shutdown
 
 ## Roadmap Release 0.2
@@ -134,6 +133,29 @@ The following clients are available
 * __Java Script library__: (in beginning) https://github.com/smancke/guble-js
 
 # Protocol Reference
+
+## Rest Api
+Currently there is a minimalistic rest api, just for publishing messages.
+
+```
+POST /api/message/<topic>
+```
+Url Prameters:
+* __userId__: The PublisherUserId
+* __messageId__: The PublisherMessageId
+
+Headers:
+You can set fields in the header json from the message by providing the corresponding http headers with the prefix `X-Guble-`.
+
+Curl Example with the resulting message:
+```
+curl -X POST -H "x-Guble-Key: Value" --data Hello 'http://127.0.0.1:8080/api/message/foo?userId=marvin&messageId=42'
+
+# leads to:
+16,/foo,marvin,VoAdxGO3DBEn8vv8,42,2015-12-27T18:20:04+01:00
+{"Key":"Value"}
+Hello
+```
 
 ## Websocket Protocol
 The communication with the guble server is done by usual websockets, using the binary encoding.
