@@ -1,7 +1,7 @@
-# The guble commandline client
+# The guble command line client
 
 This is the command line client for the guble messaging server. It is intended
-demonstration and debugging use.
+for demonstration and debugging use.
 
 [![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble)
 
@@ -15,7 +15,7 @@ docker exec -it guble /go/bin/guble-cli
 ```
 
 
-## Building with fo from source
+## Building from source
 ```
 	go get github.com/smancke/guble/guble-cli
 	bin/guble-cli

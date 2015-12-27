@@ -59,7 +59,7 @@ The first release 0.1 is expected mid or end of January 2016
 * Improve Logging (Maybe use of: https://github.com/Sirupsen/logrus)
 * Better Approach for message buffering on huge message numbers
 * Client: (Re)-Setup of subscriptions after client reconnect
-* Stable Java-Script Client: https://github.com/smancke/gulbe-js
+* Stable Java-Script Client: https://github.com/smancke/guble-js
 
 ## Roadmap Release 0.3
 * Authentication and Access Management
@@ -129,11 +129,9 @@ Build and start with the following commands:
 
 # Clients
 The following clients are available
-__Commandline Client__: https://github.com/smancke/guble/tree/master/guble-cli
-
-__Go client library__: https://github.com/smancke/guble/tree/master/client
-
-__Java Script library__: (in beginning) https://github.com/smancke/gulbe-js
+* __Commandline Client__: https://github.com/smancke/guble/tree/master/guble-cli
+* __Go client library__: https://github.com/smancke/guble/tree/master/client
+* __Java Script library__: (in beginning) https://github.com/smancke/guble-js
 
 # Protocol Reference
 
