@@ -103,13 +103,13 @@ docker exec -it guble /go/bin/guble-cli
 ```
 In the runnging client, you can use the commands from the websocket api, e.g:
 ```
-+ /foo   # register to topic /foo
++ /foo   # subscribe to topic /foo
+- /foo   # unsubscribe from the topic /foo
 
 > /foo   # send a message to /foo
 {}       # with header {}
 Hello    # and body Hello
 ```
-
 
 # Build and run
 Since go makes it very easy to build from source, you can
