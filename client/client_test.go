@@ -162,7 +162,8 @@ func TestReceiveAMessage(t *testing.T) {
 		Return(4, []byte(anErrorNotification), nil)
 	call5 := connMock.EXPECT().ReadMessage().
 		Do(func() { <-close }).
-		Return(0, []byte{}, fmt.Errorf("expected close error"))
+		Return(0, []byte{}, fmt.Errorf("expected close error")).
+		AnyTimes()
 
 	call5.After(call4)
 	call4.After(call3)
