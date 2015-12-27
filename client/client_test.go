@@ -151,28 +151,23 @@ func TestReceiveAMessage(t *testing.T) {
 	connMock := NewMockWSConnection(ctrl)
 	close := make(chan bool, 1)
 
-	// I don't understand, how to order this
-
 	// normal message
-	connMock.EXPECT().ReadMessage().
+	call1 := connMock.EXPECT().ReadMessage().
 		Return(4, []byte(aNormalMessage), nil)
-
-	// close
-	connMock.EXPECT().ReadMessage().
+	call2 := connMock.EXPECT().ReadMessage().
+		Return(4, []byte(aSendNotification), nil)
+	call3 := connMock.EXPECT().ReadMessage().
+		Return(4, []byte("---"), nil)
+	call4 := connMock.EXPECT().ReadMessage().
+		Return(4, []byte(anErrorNotification), nil)
+	call5 := connMock.EXPECT().ReadMessage().
 		Do(func() { <-close }).
 		Return(0, []byte{}, fmt.Errorf("expected close error"))
 
-	// error notification
-	connMock.EXPECT().ReadMessage().
-		Return(4, []byte(anErrorNotification), nil)
-
-	// parse error
-	connMock.EXPECT().ReadMessage().
-		Return(4, []byte("---"), nil)
-
-	// send notification
-	connMock.EXPECT().ReadMessage().
-		Return(4, []byte(aSendNotification), nil)
+	call5.After(call4)
+	call4.After(call3)
+	call3.After(call2)
+	call2.After(call1)
 
 	c.WSConnectionFactory = MockConnectionFactory(connMock)
 
