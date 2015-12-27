@@ -1,125 +1,172 @@
 package client
 
 import (
-	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/smancke/guble/guble"
 	"net/http"
 	"time"
 )
 
-type Client struct {
-	ws             *websocket.Conn
-	messages       chan *guble.Message
-	statusMessages chan *guble.NotificationMessage
-	errors         chan *guble.NotificationMessage
-	url            string
-	origin         string
-	shouldStop     chan bool
-	autoReconnect  bool
+type WSConnection interface {
+	WriteMessage(messageType int, data []byte) error
+	ReadMessage() (messageType int, p []byte, err error)
+	Close() error
 }
 
+func DefaultConnectionFactory(url string, origin string) (WSConnection, error) {
+	guble.Info("connecting to %v", url)
+	header := http.Header{"Origin": []string{origin}}
+	conn, _, err := websocket.DefaultDialer.Dial(url, header)
+	if err != nil {
+		return nil, err
+	}
+	guble.Info("connected to %v", url)
+	return conn, nil
+}
+
+type Client struct {
+	ws                  WSConnection
+	messages            chan *guble.Message
+	statusMessages      chan *guble.NotificationMessage
+	errors              chan *guble.NotificationMessage
+	url                 string
+	origin              string
+	shouldStopChan      chan bool
+	shouldStopFlag      bool
+	autoReconnect       bool
+	WSConnectionFactory func(url string, origin string) (WSConnection, error)
+	// flag, to indicate if the client is connected
+	Connected bool
+}
+
+// shortcut for New() and Start()
 func Open(url, origin string, channelSize int, autoReconnect bool) (*Client, error) {
-	c := &Client{
+	c := New(url, origin, channelSize, autoReconnect)
+	c.WSConnectionFactory = DefaultConnectionFactory
+	return c, c.Start()
+}
+
+// Construct a new client, without starting the connection
+func New(url, origin string, channelSize int, autoReconnect bool) *Client {
+	return &Client{
 		messages:       make(chan *guble.Message, channelSize),
 		statusMessages: make(chan *guble.NotificationMessage, channelSize),
 		errors:         make(chan *guble.NotificationMessage, channelSize),
 		url:            url,
 		origin:         origin,
-		shouldStop:     make(chan bool, 1),
+		shouldStopChan: make(chan bool, 1),
 		autoReconnect:  autoReconnect,
 	}
+}
 
-	if err := c.connect(); err != nil {
-		return c, err
-	}
-	if !autoReconnect {
-		go c.readLoop()
+// Connect and start the read go routine.
+// If an error occurs on first connect, it will be returned.
+// Further connection errors will only be logged.
+func (c *Client) Start() error {
+	var err error
+	c.ws, err = c.WSConnectionFactory(c.url, c.origin)
+	c.Connected = err == nil
+
+	if c.autoReconnect {
+		go c.startWithReconnect()
 	} else {
-		go func() {
-			for {
-				if c.ws != nil {
-					c.readLoop()
-				}
-
-				select {
-				case <-c.shouldStop:
-					break
-				default:
-				}
-
-				if err := c.connect(); err != nil {
-					guble.Err("error on connect, retry in 1 second")
-					time.Sleep(time.Second * 1)
-				} else {
-					guble.Err("connected again")
-				}
-			}
-		}()
-
+		if c.Connected {
+			go c.readLoop()
+		}
 	}
-	return c, nil
+	return err
 }
 
-func (c *Client) connect() error {
-	guble.Info("connecting to %v", c.url)
-	var err error
-	header := http.Header{"Origin": []string{c.origin}}
-	c.ws, _, err = websocket.DefaultDialer.Dial(c.url, header)
-	//c.ws, err = websocket.Dial(c.url, "", c.origin)
-	if err != nil {
-		return err
-	}
-	guble.Info("connected to %v", c.url)
-	return nil
-}
-
-func (c *Client) readLoop() {
-	var err error
-	var parsed interface{}
-	connectionError := false
-	for !connectionError {
-		func() {
-			defer guble.PanicLogger()
-			var msg []byte
-			if _, msg, err = c.ws.ReadMessage(); err != nil {
-				select {
-				case <-c.shouldStop:
-					c.shouldStop <- true
-					return
-				default:
-					guble.Err("%#v", err.Error())
-					c.errors <- clientErrorMessage(err.Error())
-					connectionError = true
-					return
-				}
-			}
-			guble.Debug("client raw read> %s", msg)
-
-			parsed, err = guble.ParseMessage(msg)
-			if err != nil {
-				guble.Err("parsing message failed %v", err)
-				c.errors <- clientErrorMessage(err.Error())
+func (c *Client) startWithReconnect() {
+	for {
+		if c.Connected {
+			err := c.readLoop()
+			if err == nil {
 				return
 			}
+		}
 
-			switch message := parsed.(type) {
-			case *guble.Message:
-				c.messages <- message
-			case *guble.NotificationMessage:
-				if message.IsError {
-					c.errors <- message
-				} else {
-					c.statusMessages <- message
-				}
+		if c.shouldStop() {
+
+			return
+		}
+
+		var err error
+		c.ws, err = c.WSConnectionFactory(c.url, c.origin)
+		if err != nil {
+			c.Connected = false
+			guble.Err("error on connect, retry in 50ms: %v", err)
+			time.Sleep(time.Millisecond * 50)
+		} else {
+			c.Connected = true
+			guble.Err("connected again")
+		}
+	}
+}
+
+func (c *Client) readLoop() error {
+	for {
+		if _, msg, err := c.ws.ReadMessage(); err != nil {
+			c.Connected = false
+			if c.shouldStop() {
+				return nil
+			} else {
+				guble.Err("read error: %v", err.Error())
+				c.errors <- clientErrorMessage(err.Error())
+				return err
 			}
-		}()
+		} else {
+			guble.Debug("raw> %s", msg)
+			c.handleIncommoingMessage(msg)
+		}
+	}
+}
+
+func (c *Client) shouldStop() bool {
+	if c.shouldStopFlag {
+		return true
+	}
+	select {
+	case <-c.shouldStopChan:
+		c.shouldStopFlag = true
+		return true
+	default:
+		return false
+	}
+}
+
+func (c *Client) handleIncommoingMessage(msg []byte) {
+	parsed, err := guble.ParseMessage(msg)
+	if err != nil {
+		guble.Err("parsing message failed %v", err)
+		c.errors <- clientErrorMessage(err.Error())
+		return
+	}
+
+	switch message := parsed.(type) {
+	case *guble.Message:
+		c.messages <- message
+	case *guble.NotificationMessage:
+		if message.IsError {
+			c.errors <- message
+		} else {
+			c.statusMessages <- message
+		}
 	}
 }
 
 func (c *Client) Subscribe(path string) error {
 	cmd := &guble.Cmd{
 		Name: guble.CMD_SUBSCRIBE,
+		Arg:  path,
+	}
+	err := c.ws.WriteMessage(websocket.BinaryMessage, cmd.Bytes())
+	return err
+}
+
+func (c *Client) Unsubscribe(path string) error {
+	cmd := &guble.Cmd{
+		Name: guble.CMD_UNSUBSCRIBE,
 		Arg:  path,
 	}
 	err := c.ws.WriteMessage(websocket.BinaryMessage, cmd.Bytes())
@@ -158,7 +205,7 @@ func (c *Client) Errors() chan *guble.NotificationMessage {
 }
 
 func (c *Client) Close() {
-	c.shouldStop <- true
+	c.shouldStopChan <- true
 	c.ws.Close()
 }
 
@@ -168,8 +215,4 @@ func clientErrorMessage(message string) *guble.NotificationMessage {
 		Name:    "clientError",
 		Arg:     message,
 	}
-}
-
-func bytef(pattern string, args ...interface{}) []byte {
-	return []byte(fmt.Sprintf(pattern, args...))
 }

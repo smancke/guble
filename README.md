@@ -48,9 +48,9 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 # Roadmap
 
 ## Release 0.1
-The first release 0.1 is expected mir or end of January 2016
+The first release 0.1 is expected mid or end of January 2016
+* Implement unsubscribe
 * Cleanup, documentation, and test coverage of the commandling client
-* Remove Route.Id
 * Cleanup, documentation, and test coverage of the gcm connector
 * Documentation of the rest Endpoint for message publishing
 * User-facing documentation
@@ -64,13 +64,13 @@ The first release 0.1 is expected mir or end of January 2016
 
 ## Roadmap Release 0.3
 * Authentication and Access Management
+* Configuration of a cross origin policy
 * Persistance and replay of messages
 
 ## Roadmap Release 0.4
 * Replication across multiple Servers
 * Delivery semantics (e.g. user must read on one device, deliver only to one device, notify if not connected, ..)
 * Maybe: Acknowledgement of message delivery
-
 
 # Guble docker image
 ## Start the guble server
