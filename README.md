@@ -36,8 +36,8 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 - [Guble docker image](#guble-docker-image)
 - [Build and run](#build-and-run)
   - [Build and start the sever](#build-and-start-the-sever)
-  - [The gubble CLI](#the-gubble-cli)
   - [Run all tests](#run-all-tests)
+- [Clients](#clients)
 - [Protocol-Reference](#protocol-reference)
   - [WebsocketProtocol](#websocket-protocol)
     - [Message-Format](#message-format)
@@ -101,15 +101,7 @@ connect to the server.
 docker run -d --name guble smancke/guble
 docker exec -it guble /go/bin/guble-cli
 ```
-In the runnging client, you can use the commands from the websocket api, e.g:
-```
-+ /foo   # subscribe to topic /foo
-- /foo   # unsubscribe from the topic /foo
-
-> /foo   # send a message to /foo
-{}       # with header {}
-Hello    # and body Hello
-```
+Further documentation of the guble-cli can be found here: https://github.com/smancke/guble/tree/master/guble-cli
 
 # Build and run
 Since go makes it very easy to build from source, you can
@@ -129,20 +121,19 @@ Build and start with the following commands:
 	bin/guble --log-info
 ```
 
-## The gubble CLI
-For simle tesing and interaction, there is a cli client for gubble.
-Build and start with the following commands:
-
-```
-	go get github.com/smancke/guble/guble-cli
-	bin/guble-cli
-```
-
 ## Run all tests
 ```
     go get -t github.com/smancke/guble/...
     go test github.com/smancke/guble/...
 ```
+
+# Clients
+The following clients are available
+__Commandline Client__: https://github.com/smancke/guble/tree/master/guble-cli
+
+__Go client library__: https://github.com/smancke/guble/tree/master/client
+
+__Java Script library__: (in beginning) https://github.com/smancke/gulbe-js
 
 # Protocol Reference
 
@@ -173,7 +164,6 @@ Payload messages send from the server to the client are all of in the following 
 
 ### Client Commands
 The client can send the following commands.
-
 
 #### Send
 Publish a message for a topic
