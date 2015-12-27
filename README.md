@@ -49,7 +49,6 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 
 ## Release 0.1
 The first release 0.1 is expected mid or end of January 2016
-* Implement unsubscribe
 * Cleanup, documentation, and test coverage of the commandling client
 * Cleanup, documentation, and test coverage of the gcm connector
 * Documentation of the rest Endpoint for message publishing
