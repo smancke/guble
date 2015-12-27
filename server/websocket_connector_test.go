@@ -17,18 +17,26 @@ var aTestMessage = &guble.Message{
 	Body: []byte("Test"),
 }
 
-func TestSubscriptionMessage(t *testing.T) {
+func TestSubscribeAndUnsubscribe(t *testing.T) {
 	defer initCtrl(t)()
+	a := assert.New(t)
 
-	messages := []string{"+ /mock", "+ /foo"}
+	messages := []string{"+ /foo", "+ /bar", "- /foo"}
 	wsconn, pubSubSource, messageSink := createDefaultMocks(messages)
 
-	pubSubSource.EXPECT().Subscribe(routeMatcher{"/mock"}).Return(nil)
-	wsconn.EXPECT().Send([]byte("#subscribed-to /mock"))
 	pubSubSource.EXPECT().Subscribe(routeMatcher{"/foo"}).Return(nil)
-	wsconn.EXPECT().Send([]byte("#subscribed-to /foo"))
+	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /foo"))
 
-	runNewWsHandler(wsconn, pubSubSource, messageSink)
+	pubSubSource.EXPECT().Subscribe(routeMatcher{"/bar"}).Return(nil)
+	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /bar"))
+
+	pubSubSource.EXPECT().Unsubscribe(routeMatcher{"/foo"})
+	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_UNSUBSCRIBED_FROM + " /foo"))
+
+	wshandler := runNewWsHandler(wsconn, pubSubSource, messageSink)
+
+	a.Equal(1, len(wshandler.subscriptions))
+	a.Equal(guble.Path("/bar"), wshandler.subscriptions[guble.Path("/bar")].Path)
 }
 
 func TestSendMessageWirthPublisherMessageId(t *testing.T) {

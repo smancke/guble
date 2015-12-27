@@ -143,6 +143,8 @@ func (srv *WSHandler) receiveLoop() {
 			srv.handleSend(cmd)
 		case guble.CMD_SUBSCRIBE:
 			srv.handleSubscribe(cmd)
+		case guble.CMD_UNSUBSCRIBE:
+			srv.handleUnsubscribe(cmd)
 		default:
 			srv.returnError(guble.ERROR_BAD_REQUEST, "unknown command %v", cmd.Name)
 		}
@@ -192,7 +194,21 @@ func (srv *WSHandler) handleSubscribe(cmd *guble.Cmd) {
 	route := NewRoute(cmd.Arg, srv.messagesAndRouteToSend, srv.routeClosed, srv.applicationId, srv.userId)
 	srv.messageSouce.Subscribe(route)
 	srv.subscriptions[route.Path] = route
-	srv.returnOK("subscribed-to", cmd.Arg)
+	srv.returnOK(guble.SUCCESS_SUBSCRIBED_TO, cmd.Arg)
+}
+
+func (srv *WSHandler) handleUnsubscribe(cmd *guble.Cmd) {
+	if len(cmd.Arg) == 0 {
+		srv.returnError(guble.ERROR_BAD_REQUEST, "unsubscribe command requires a path argument, but non given", cmd.Name)
+		return
+	}
+	route, exist := srv.subscriptions[guble.Path(cmd.Arg)]
+	if exist {
+		srv.messageSouce.Unsubscribe(route)
+		delete(srv.subscriptions, route.Path)
+	}
+	// even if not subscribed, we return a success here, to be idempotent
+	srv.returnOK(guble.SUCCESS_UNSUBSCRIBED_FROM, cmd.Arg)
 }
 
 func (srv *WSHandler) cleanAndClose() {
