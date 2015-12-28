@@ -7,7 +7,7 @@ import (
 // Interface for a persistance backend storing topics
 type MessageStore interface {
 
-	// store a message within a partition
+	// Store a message within a partition
 	Store(partition string, msg *guble.Message) error
 
 	// fetch a set of messages
