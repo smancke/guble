@@ -1,14 +1,10 @@
 package store
 
-import (
-	"github.com/smancke/guble/guble"
-)
-
 // Interface for a persistance backend storing topics
 type MessageStore interface {
 
 	// Store a message within a partition
-	Store(partition string, msg *guble.Message) error
+	Store(partition string, msgId uint64, msg []byte) error
 
 	// fetch a set of messages
 	Fetch(FetchRequest)

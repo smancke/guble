@@ -6,7 +6,7 @@ set -x
 
 $GOPATH/bin/mockgen  -self_package server -package server \
             github.com/smancke/guble/server \
-            PubSubSource,MessageSink,WSConn,Startable,Stopable,SetRouter,SetMessageEntry,Endpoint,SetKVStore | sed -e 's/server "github.com\/smancke\/guble\/server"//' | sed -e 's/server\.//g' > $GOPATH/src/github.com/smancke/guble/server/mocks_server_gen_test.go_ \
+            PubSubSource,MessageSink,WSConn,Startable,Stopable,SetRouter,SetMessageEntry,Endpoint,SetKVStore,SetMessageStore | sed -e 's/server "github.com\/smancke\/guble\/server"//' | sed -e 's/server\.//g' > $GOPATH/src/github.com/smancke/guble/server/mocks_server_gen_test.go_ \
             && mv $GOPATH/src/github.com/smancke/guble/server/mocks_server_gen_test.go_ $GOPATH/src/github.com/smancke/guble/server/mocks_server_gen_test.go
 
 $GOPATH/bin/mockgen  -self_package client -package client \

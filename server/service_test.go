@@ -15,7 +15,7 @@ func TestStopingOfModules(t *testing.T) {
 	defer initCtrl(t)()
 
 	// given:
-	service, _, _, _ := aMockedService()
+	service, _, _, _, _ := aMockedService()
 
 	// whith a registered stopable
 	stopable := NewMockStopable(ctrl)
@@ -31,7 +31,7 @@ func TestStopingOfModulesTimeout(t *testing.T) {
 	defer initCtrl(t)()
 
 	// given:
-	service, _, _, _ := aMockedService()
+	service, _, _, _, _ := aMockedService()
 	service.StopGracePeriod = time.Millisecond * 5
 
 	// whith a registered stopable, which blocks to long on stop
@@ -51,27 +51,30 @@ func TestRegistrationOfSetter(t *testing.T) {
 	defer initCtrl(t)()
 
 	// given:
-	service, kvStore, messageSink, router := aMockedService()
+	service, kvStore, messageStore, messageSink, router := aMockedService()
 	setRouterMock := NewMockSetRouter(ctrl)
 	setMessageEntryMock := NewMockSetMessageEntry(ctrl)
 	setKVStore := NewMockSetKVStore(ctrl)
+	setMessageStore := NewMockSetMessageStore(ctrl)
 
 	// then I expect
 	setRouterMock.EXPECT().SetRouter(router)
 	setMessageEntryMock.EXPECT().SetMessageEntry(messageSink)
 	setKVStore.EXPECT().SetKVStore(kvStore)
+	setMessageStore.EXPECT().SetMessageStore(messageStore)
 
 	// when I register the modules
 	service.Register(setRouterMock)
 	service.Register(setMessageEntryMock)
 	service.Register(setKVStore)
+	service.Register(setMessageStore)
 }
 
 func TestEndpointRegisterAndServing(t *testing.T) {
 	defer initCtrl(t)()
 
 	// given:
-	service, _, _, _ := aMockedService()
+	service, _, _, _, _ := aMockedService()
 
 	// when I register an endpoint at path /foo
 	service.Register(&TestEndpoint{})
@@ -88,12 +91,14 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 	assert.Equal(t, "bar", string(body))
 }
 
-func aMockedService() (*Service, store.KVStore, *MockMessageSink, *MockPubSubSource) {
+func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockMessageSink, *MockPubSubSource) {
 	kvStore := store.NewMemoryKVStore()
+	messageStore := store.NewDummyMessageStore()
 	messageSink := NewMockMessageSink(ctrl)
 	pubSubSource := NewMockPubSubSource(ctrl)
-	return NewService("localhost:0", kvStore, messageSink, pubSubSource),
+	return NewService("localhost:0", kvStore, messageStore, messageSink, pubSubSource),
 		kvStore,
+		messageStore,
 		messageSink,
 		pubSubSource
 

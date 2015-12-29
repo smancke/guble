@@ -13,6 +13,7 @@ import (
 // This is the main class for simple startup of a server
 type Service struct {
 	kvStore       store.KVStore
+	messageStore  store.MessageStore
 	webServer     *WebServer
 	messageSink   MessageSink
 	router        PubSubSource
@@ -24,10 +25,11 @@ type Service struct {
 
 // Registers the Main Router, where other modules can subscribe for messages
 
-func NewService(addr string, kvStore store.KVStore, messageSink MessageSink, router PubSubSource) *Service {
+func NewService(addr string, kvStore store.KVStore, messageStore store.MessageStore, messageSink MessageSink, router PubSubSource) *Service {
 	service := &Service{
 		stopListener:    make([]Stopable, 0, 5),
 		kvStore:         kvStore,
+		messageStore:    messageStore,
 		webServer:       NewWebServer(addr),
 		messageSink:     messageSink,
 		router:          router,
@@ -76,6 +78,12 @@ func (service *Service) Register(module interface{}) {
 	case SetKVStore:
 		guble.Debug("inject KVStore to %v", name)
 		m.SetKVStore(service.kvStore)
+	}
+
+	switch m := module.(type) {
+	case SetMessageStore:
+		guble.Debug("inject MessageStore to %v", name)
+		m.SetMessageStore(service.messageStore)
 	}
 
 	switch m := module.(type) {

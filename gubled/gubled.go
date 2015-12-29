@@ -1,10 +1,6 @@
 package gubled
 
 import (
-	"os"
-	"os/signal"
-	"syscall"
-
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/guble"
 	"github.com/smancke/guble/server"
@@ -13,6 +9,10 @@ import (
 	"fmt"
 	"github.com/alexflint/go-arg"
 	"github.com/caarlos0/env"
+	"os"
+	"os/signal"
+	"path"
+	"syscall"
 )
 
 type Args struct {
@@ -22,11 +22,13 @@ type Args struct {
 	KVBackend      string `arg:"--kv-backend,help: The storage backend for the key value store to use: memory|sqlite (memory)" env:"GUBLE_KV_BACKEND"`
 	KVSqlitePath   string `arg:"--kv-sqlite-path,help: The path of the sqlite db for the key value store (/var/lib/guble/kv-store.db)" env:"GUBLE_KV_SQLITE_PATH"`
 	KVSqliteNoSync bool   `arg:"--kv-sqlite-no-sync,help: Disable sync the key value store after every write (enabled)" env:"GUBLE_KV_SQLITE_NO_SYNC"`
+	MSBackend      string `arg:"--ms-backend,help: The message storage backend (experimental): none|file (memory)" env:"GUBLE_MS_BACKEND"`
+	MSPath         string `arg:"--ms-path,help: The path for message storage if 'file' is enabled (/var/lib/guble)" env:"GUBLE_MS_PATH"`
 	GcmEnable      bool   `arg:"--gcm-enable: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
 	GcmApiKey      string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
 }
 
-var CreateStoreBackend = func(args Args) store.KVStore {
+var CreateKVStoreBackend = func(args Args) store.KVStore {
 	switch args.KVBackend {
 	case "memory":
 		return store.NewMemoryKVStore()
@@ -37,8 +39,27 @@ var CreateStoreBackend = func(args Args) store.KVStore {
 		}
 		return db
 	default:
-		guble.Err("unknown key value backend: %q", args.KVBackend)
 		panic(fmt.Errorf("unknown key value backend: %q", args.KVBackend))
+	}
+}
+
+var CreateMessageStoreBackend = func(args Args) store.MessageStore {
+	switch args.MSBackend {
+	case "none", "":
+		return store.NewDummyMessageStore()
+	case "file":
+		guble.Info("using FileMessageStore in directory: %q", args.MSPath)
+		testfile := path.Join(args.MSPath, "testfile")
+		f, err := os.Create(testfile)
+		if err != nil {
+			panic(fmt.Errorf("directory for message store not present/writeable %q: %v", args.MSPath, err))
+		}
+		f.Close()
+		os.Remove(testfile)
+
+		return store.NewFileMessageStore(args.MSPath)
+	default:
+		panic(fmt.Errorf("unknown message store backend: %q", args.MSBackend))
 	}
 }
 
@@ -86,7 +107,8 @@ func StartupService(args Args) *server.Service {
 	router := server.NewPubSubRouter().Go()
 	service := server.NewService(
 		args.Listen,
-		CreateStoreBackend(args),
+		CreateKVStoreBackend(args),
+		CreateMessageStoreBackend(args),
 		server.NewMessageEntry(router),
 		router,
 	)
@@ -105,6 +127,8 @@ func loadArgs() Args {
 		Listen:       ":8080",
 		KVBackend:    "memory",
 		KVSqlitePath: "/var/lib/guble/kv-store.db",
+		MSBackend:    "none",
+		MSPath:       "/var/lib/guble",
 	}
 
 	env.Parse(&args)

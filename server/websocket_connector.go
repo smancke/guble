@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/store"
 
 	"github.com/gorilla/websocket"
 	"github.com/rs/xid"
@@ -17,9 +18,10 @@ var webSocketUpgrader = websocket.Upgrader{
 }
 
 type WSHandlerFactory struct {
-	Router      PubSubSource
-	MessageSink MessageSink
-	prefix      string
+	Router       PubSubSource
+	MessageSink  MessageSink
+	prefix       string
+	messageStore store.MessageStore
 }
 
 func NewWSHandlerFactory(prefix string) *WSHandlerFactory {
@@ -38,6 +40,10 @@ func (factory *WSHandlerFactory) SetRouter(router PubSubSource) {
 	factory.Router = router
 }
 
+func (entry *WSHandlerFactory) SetMessageStore(messageStore store.MessageStore) {
+	entry.messageStore = messageStore
+}
+
 func (factory *WSHandlerFactory) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := webSocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -46,30 +52,34 @@ func (factory *WSHandlerFactory) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	}
 	defer c.Close()
 
-	NewWSHandler(factory.Router, factory.MessageSink, &wsconn{c}, extractUserId(r.RequestURI)).
+	NewWSHandler(factory.Router, factory.MessageSink, factory.messageStore, &wsconn{c}, extractUserId(r.RequestURI)).
 		Start()
 }
 
 type WSHandler struct {
 	messageSouce           PubSubSource
 	messageSink            MessageSink
+	messageStore           store.MessageStore
 	clientConn             WSConn
 	applicationId          string
 	userId                 string
 	messagesAndRouteToSend chan MsgAndRoute
+	rawToSend              chan []byte
 	routeClosed            chan Route
 	notificationsToSend    chan *guble.NotificationMessage
 	subscriptions          map[guble.Path]*Route
 }
 
-func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, wsConn WSConn, userId string) *WSHandler {
+func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, messageStore store.MessageStore, wsConn WSConn, userId string) *WSHandler {
 	server := &WSHandler{
 		messageSouce:           messageSouce,
 		messageSink:            messageSink,
+		messageStore:           messageStore,
 		clientConn:             wsConn,
 		applicationId:          xid.New().String(),
 		userId:                 userId,
 		messagesAndRouteToSend: make(chan MsgAndRoute, 100),
+		rawToSend:              make(chan []byte, 100),
 		notificationsToSend:    make(chan *guble.NotificationMessage, 100),
 		routeClosed:            make(chan Route, 100),
 		subscriptions:          make(map[guble.Path]*Route),
@@ -114,6 +124,12 @@ func (srv *WSHandler) sendLoop() {
 				srv.cleanAndClose()
 				break
 			}
+		case raw := <-srv.rawToSend:
+			if err := srv.clientConn.Send(raw); err != nil {
+				guble.Info("applicationId=%v closed the connection", srv.applicationId)
+				srv.cleanAndClose()
+				break
+			}
 		case closedRoute := <-srv.routeClosed:
 			guble.Info("INFO: router closed route %v -> closing the websocket connection to applicationId=%v", closedRoute, srv.applicationId)
 			srv.cleanAndClose()
@@ -145,6 +161,8 @@ func (srv *WSHandler) receiveLoop() {
 			srv.handleSubscribe(cmd)
 		case guble.CMD_UNSUBSCRIBE:
 			srv.handleUnsubscribe(cmd)
+		case guble.CMD_REPLAY:
+			srv.handleReplay(cmd)
 		default:
 			srv.returnError(guble.ERROR_BAD_REQUEST, "unknown command %v", cmd.Name)
 		}
@@ -186,9 +204,46 @@ func (srv *WSHandler) handleSend(cmd *guble.Cmd) {
 	srv.returnOK(guble.SUCCESS_SEND, msg.PublisherMessageId)
 }
 
+func (srv *WSHandler) handleReplay(cmd *guble.Cmd) {
+	if len(cmd.Arg) == 0 {
+		srv.returnError(guble.ERROR_BAD_REQUEST, "replay command requires a topic argument, but non given")
+		return
+	}
+
+	messages := make(chan []byte)
+	errors := make(chan error)
+	srv.messageStore.Fetch(store.FetchRequest{
+		Partition:     cmd.Arg,
+		StartId:       0,
+		Direction:     1,
+		Count:         100,
+		MessageC:      messages,
+		ErrorCallback: errors,
+	})
+
+	go func() {
+		guble.Info("start replay")
+		for {
+			select {
+			case msg, open := <-messages:
+				if !open {
+					guble.Info("replay done")
+					return
+				}
+				guble.Info("replay send %v", string(msg))
+				srv.rawToSend <- msg
+			case err := <-errors:
+				guble.Err("replay error %v", err)
+				srv.returnError(guble.ERROR_INTERNAL_SERVER, err.Error())
+			}
+		}
+	}()
+
+}
+
 func (srv *WSHandler) handleSubscribe(cmd *guble.Cmd) {
 	if len(cmd.Arg) == 0 {
-		srv.returnError(guble.ERROR_BAD_REQUEST, "subscribe command requires a path argument, but non given", cmd.Name)
+		srv.returnError(guble.ERROR_BAD_REQUEST, "subscribe command requires a path argument, but non given")
 		return
 	}
 	route := NewRoute(cmd.Arg, srv.messagesAndRouteToSend, srv.routeClosed, srv.applicationId, srv.userId)
@@ -199,7 +254,7 @@ func (srv *WSHandler) handleSubscribe(cmd *guble.Cmd) {
 
 func (srv *WSHandler) handleUnsubscribe(cmd *guble.Cmd) {
 	if len(cmd.Arg) == 0 {
-		srv.returnError(guble.ERROR_BAD_REQUEST, "unsubscribe command requires a path argument, but non given", cmd.Name)
+		srv.returnError(guble.ERROR_BAD_REQUEST, "unsubscribe command requires a path argument, but non given")
 		return
 	}
 	route, exist := srv.subscriptions[guble.Path(cmd.Arg)]

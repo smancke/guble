@@ -20,6 +20,7 @@ type MessageEntry struct {
 	topicSequences     map[string]uint64
 	topicSequencesLock sync.RWMutex
 	kvStore            store.KVStore
+	messageStore       store.MessageStore
 }
 
 func NewMessageEntry(router MessageSink) *MessageEntry {
@@ -37,19 +38,27 @@ func (entry *MessageEntry) SetKVStore(kvStore store.KVStore) {
 	entry.kvStore = kvStore
 }
 
-// Take the message and forward it to the router.
-func (entry *MessageEntry) HandleMessage(message *guble.Message) {
-	message.Id = entry.nextIdForTopic(string(message.Path))
-	message.PublishingTime = time.Now().Format(time.RFC3339)
-	entry.router.HandleMessage(message)
+func (entry *MessageEntry) SetMessageStore(messageStore store.MessageStore) {
+	entry.messageStore = messageStore
 }
 
-func (entry *MessageEntry) nextIdForTopic(topicPath string) uint64 {
+// Take the message and forward it to the router.
+func (entry *MessageEntry) HandleMessage(msg *guble.Message) {
+	partition := entry.getPartitionFromTopic(msg.Path)
+	msg.Id = entry.nextIdForTopic(partition)
+	msg.PublishingTime = time.Now().Format(time.RFC3339)
+	entry.messageStore.Store(partition, msg.Id, msg.Bytes())
+	entry.router.HandleMessage(msg)
+}
+
+func (entry *MessageEntry) getPartitionFromTopic(topicPath guble.Path) string {
 	if len(topicPath) > 0 && topicPath[0] == '/' {
 		topicPath = topicPath[1:]
 	}
-	topicKey := strings.SplitN(topicPath, "/", 2)[0]
+	return strings.SplitN(string(topicPath), "/", 2)[0]
+}
 
+func (entry *MessageEntry) nextIdForTopic(topicKey string) uint64 {
 	entry.topicSequencesLock.Lock()
 	defer entry.topicSequencesLock.Unlock()
 

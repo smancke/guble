@@ -11,6 +11,7 @@ const (
 	CMD_SEND        = ">"
 	CMD_SUBSCRIBE   = "+"
 	CMD_UNSUBSCRIBE = "-"
+	CMD_REPLAY      = "replay"
 )
 
 // Representation of a command, which the client sends to the server

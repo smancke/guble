@@ -19,6 +19,7 @@ func TestMessagesGetAPublishingTime(t *testing.T) {
 	routerMock := NewMockMessageSink(ctrl)
 	messageEntry := NewMessageEntry(routerMock)
 	messageEntry.SetKVStore(store.NewMemoryKVStore())
+	messageEntry.SetMessageStore(store.NewDummyMessageStore())
 
 	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *guble.Message) {
 		t, e := time.Parse(time.RFC3339, msg.PublishingTime)
@@ -32,16 +33,26 @@ func TestMessagesGetAPublishingTime(t *testing.T) {
 	)
 }
 
+func Test_getPartitionFromTopic(t *testing.T) {
+	a := assert.New(t)
+	messageEntry := &MessageEntry{}
+	a.Equal("foo", messageEntry.getPartitionFromTopic(guble.Path("/foo/bar/bazz")))
+	a.Equal("foo", messageEntry.getPartitionFromTopic(guble.Path("/foo")))
+	a.Equal("", messageEntry.getPartitionFromTopic(guble.Path("/")))
+	a.Equal("", messageEntry.getPartitionFromTopic(guble.Path("")))
+}
+
 func TestNextIdForTopic(t *testing.T) {
 	defer initCtrl(t)()
 	a := assert.New(t)
 
 	messageEntry := NewMessageEntry(NewMockMessageSink(ctrl))
 	messageEntry.SetKVStore(store.NewMemoryKVStore())
+	messageEntry.SetMessageStore(store.NewDummyMessageStore())
 	a.Equal(uint64(1), messageEntry.nextIdForTopic("/bli/bla"))
 	a.Equal(uint64(2), messageEntry.nextIdForTopic("/bli/bla"))
-	a.Equal(uint64(3), messageEntry.nextIdForTopic("/bli/BLUBB"))
-	a.Equal(uint64(4), messageEntry.nextIdForTopic("/bli/bla"))
+	a.Equal(uint64(1), messageEntry.nextIdForTopic("/bli/BLUBB"))
+	a.Equal(uint64(3), messageEntry.nextIdForTopic("/bli/bla"))
 
 	a.Equal(uint64(1), messageEntry.nextIdForTopic("/another/topic1"))
 	a.Equal(uint64(1), messageEntry.nextIdForTopic("/WithoutSubtopic"))
@@ -55,6 +66,7 @@ func TestInrementingTheMessageId(t *testing.T) {
 	routerMock := NewMockMessageSink(ctrl)
 	messageEntry := NewMessageEntry(routerMock)
 	messageEntry.SetKVStore(store.NewMemoryKVStore())
+	messageEntry.SetMessageStore(store.NewDummyMessageStore())
 
 	routerMock.EXPECT().HandleMessage(&messageMatcher{1, "/topic1", "topic1Message1", ""})
 	messageEntry.HandleMessage(

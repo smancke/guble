@@ -80,3 +80,8 @@ type Endpoint interface {
 type SetKVStore interface {
 	SetKVStore(kvStore store.KVStore)
 }
+
+// Interface for modules, which need access to the message store
+type SetMessageStore interface {
+	SetMessageStore(messageStore store.MessageStore)
+}
