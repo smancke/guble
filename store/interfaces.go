@@ -18,7 +18,7 @@ type MessageStore interface {
 type FetchRequest struct {
 
 	// The Store name to search for messages
-	StoreName string
+	Partition string
 
 	// The message sequence id to start
 	StartId uint64
