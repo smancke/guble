@@ -7,7 +7,11 @@ import (
 	"path/filepath"
 )
 
-const MESSAGES_PER_FILE = 10000
+var MAGIC_NUMBER = []byte{42, 249, 180, 108, 82, 75, 222, 182}
+
+var FILE_FORMAT_VERSION = []byte{1}
+
+var MESSAGES_PER_FILE = uint64(10000)
 
 type FileMessageStore struct {
 	basedir string
@@ -47,12 +51,27 @@ func (s *FileMessageStore) createNextAppendFiles(msgId uint64) error {
 
 	firstMessageIdForFile := s.firstMessageIdForFile(msgId)
 
-	file, err := os.Create(s.filenameByMessageId(firstMessageIdForFile))
+	file, err := os.OpenFile(s.filenameByMessageId(firstMessageIdForFile), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return err
 	}
 
-	index, errIndex := os.Create(s.indexFilenameByMessageId(firstMessageIdForFile))
+	// write file header on new files
+	if stat, _ := file.Stat(); stat.Size() == 0 {
+		s.appendFileWritePosition = uint64(stat.Size())
+
+		_, err = file.Write(MAGIC_NUMBER)
+		if err != nil {
+			return err
+		}
+
+		_, err = file.Write(FILE_FORMAT_VERSION)
+		if err != nil {
+			return err
+		}
+	}
+
+	index, errIndex := os.OpenFile(s.indexFilenameByMessageId(firstMessageIdForFile), os.O_RDWR|os.O_CREATE, 0666)
 	if errIndex != nil {
 		defer file.Close()
 		defer os.Remove(file.Name())
@@ -63,7 +82,8 @@ func (s *FileMessageStore) createNextAppendFiles(msgId uint64) error {
 	s.appendIndexFile = index
 	s.appendFirstId = firstMessageIdForFile
 	s.appendLastId = firstMessageIdForFile + MESSAGES_PER_FILE - 1
-	s.appendFileWritePosition = 0
+	stat, err := file.Stat()
+	s.appendFileWritePosition = uint64(stat.Size())
 	return nil
 }
 
@@ -98,12 +118,13 @@ func (s *FileMessageStore) Store(msgId uint64, msg []byte) error {
 	}
 
 	// write the index entry to the index file
-	mi := &mIndex{
-		MessageId:  msgId,
-		FileOffset: s.appendFileWritePosition + uint64(len(sizeAndId)),
-	}
+	indexPosition := int64(12 * (msgId % MESSAGES_PER_FILE))
+	messageOffset := s.appendFileWritePosition + uint64(len(sizeAndId))
+	messageOffsetBuff := make([]byte, 12)
+	binary.LittleEndian.PutUint64(messageOffsetBuff, messageOffset)
+	binary.LittleEndian.PutUint32(messageOffsetBuff[8:], uint32(len(msg)))
 
-	if _, err := s.appendIndexFile.Write(mi.Bytes()); err != nil {
+	if _, err := s.appendIndexFile.WriteAt(messageOffsetBuff, indexPosition); err != nil {
 		return err
 	}
 
@@ -112,8 +133,135 @@ func (s *FileMessageStore) Store(msgId uint64, msg []byte) error {
 }
 
 // fetch a set of messages
-func (s *FileMessageStore) Fetch(FetchRequest) {
+func (s *FileMessageStore) Fetch(req FetchRequest) {
+	go func() {
+		fetchList, err := s.calculateFetchList(req)
+		if err != nil {
+			req.ErrorCallback <- err
+			return
+		}
 
+		err = s.fetchByFetchlist(fetchList, req.MessageC)
+		if err != nil {
+			req.ErrorCallback <- err
+			return
+		}
+		close(req.MessageC)
+	}()
+}
+
+// fetch the messages in the supplied fetchlist and send them to the channel
+func (s *FileMessageStore) fetchByFetchlist(fetchList []fetchEntry, messageC chan []byte) error {
+	var fileId uint64
+	var file *os.File
+	var err error
+	for _, f := range fetchList {
+		// ensure, that we read on the correct file
+		if file == nil || fileId != f.fileId {
+			file, err = s.checkoutMessagefile(f.fileId)
+			if err != nil {
+				return err
+			}
+			defer s.releaseMessagefile(f.fileId, file)
+			fileId = f.fileId
+		}
+
+		msg := make([]byte, f.size, f.size)
+		_, err = file.ReadAt(msg, f.offset)
+		if err != nil {
+			return err
+		}
+		messageC <- msg
+	}
+	return nil
+}
+
+type fetchEntry struct {
+	messageId uint64
+	fileId    uint64
+	offset    int64
+	size      int
+}
+
+// returns a list of fetchEntry records for all message in the fetch request.
+func (s *FileMessageStore) calculateFetchList(req FetchRequest) ([]fetchEntry, error) {
+	if req.Direction == 0 {
+		req.Direction = 1
+	}
+	nextId := req.StartId
+	result := make([]fetchEntry, 0, req.Count)
+	var file *os.File
+	var fileId uint64
+	for len(result) < req.Count && nextId >= 0 {
+
+		nextFileId := s.firstMessageIdForFile(nextId)
+
+		// ensure, that we read on the correct file
+		if file == nil || nextFileId != fileId {
+			var err error
+			file, err = s.checkoutIndexfile(nextFileId)
+			if err != nil {
+				if os.IsNotExist(err) {
+					return result, nil
+				}
+				return nil, err
+			}
+			defer s.releaseIndexfile(fileId, file)
+			fileId = nextFileId
+		}
+
+		indexPosition := int64(12 * (nextId % MESSAGES_PER_FILE))
+		msgOffsetBuff := make([]byte, 12)
+
+		if stat, err := file.Stat(); err != nil {
+			return nil, err
+		} else if indexPosition < stat.Size() {
+
+			if _, err := file.ReadAt(msgOffsetBuff, indexPosition); err != nil {
+				return nil, err
+			}
+			msgOffset := binary.LittleEndian.Uint64(msgOffsetBuff)
+			msgSize := binary.LittleEndian.Uint32(msgOffsetBuff[8:])
+
+			if msgOffset != uint64(0) { // only append, if the message exists
+				result = append(result, fetchEntry{
+					messageId: nextId,
+					fileId:    fileId,
+					offset:    int64(msgOffset),
+					size:      int(msgSize),
+				})
+			}
+		}
+
+		nextId += uint64(req.Direction)
+	}
+	return result, nil
+}
+
+// Return a file handle to the message file with the supplied file id.
+// The returned file handle may be shared for multiple go routines.
+func (s *FileMessageStore) checkoutMessagefile(fileId uint64) (*os.File, error) {
+	return os.Open(s.filenameByMessageId(fileId))
+}
+
+// Release a message file handle
+func (s *FileMessageStore) releaseMessagefile(fileId uint64, file *os.File) {
+	file.Close()
+}
+
+// Return a file handle to the index file with the supplied file id.
+// The returned file handle may be shared for multiple go routines.
+func (s *FileMessageStore) checkoutIndexfile(fileId uint64) (*os.File, error) {
+	return os.Open(s.indexFilenameByMessageId(fileId))
+}
+
+// Release an index file handle
+func (s *FileMessageStore) releaseIndexfile(fileId uint64, file *os.File) {
+	file.Close()
+}
+
+func (s *FileMessageStore) getSortedStartNumbersFromFiles() []uint64 {
+	return []uint64{}
 }
 
 func (s *FileMessageStore) firstMessageIdForFile(messageId uint64) uint64 {
@@ -126,36 +274,4 @@ func (s *FileMessageStore) filenameByMessageId(messageId uint64) string {
 
 func (s *FileMessageStore) indexFilenameByMessageId(messageId uint64) string {
 	return filepath.Join(s.basedir, fmt.Sprintf("%s-%020d.idx", s.name, messageId))
-}
-
-const INDEX_SIZE_BYTES = 17
-
-type mIndex struct {
-	MessageId  uint64
-	FileOffset uint64
-	Deleted    bool
-}
-
-func readMIndex(b []byte) *mIndex {
-	return &mIndex{
-		MessageId:  binary.LittleEndian.Uint64(b),
-		FileOffset: binary.LittleEndian.Uint64(b[8:]),
-		Deleted:    b[16] == 1,
-	}
-}
-
-func (mindex *mIndex) writeTo(b []byte) {
-	binary.LittleEndian.PutUint64(b, mindex.MessageId)
-	binary.LittleEndian.PutUint64(b[8:], mindex.FileOffset)
-	if mindex.Deleted {
-		b[16] = 1
-	} else {
-		b[16] = 0
-	}
-}
-
-func (mindex *mIndex) Bytes() []byte {
-	b := make([]byte, INDEX_SIZE_BYTES)
-	mindex.writeTo(b)
-	return b
 }

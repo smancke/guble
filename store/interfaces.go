@@ -17,23 +17,25 @@ type MessageStore interface {
 // A fetch request for fetching messages in a MessageStore
 type FetchRequest struct {
 
-	// The partition to search for messages
-	Partition string
+	// The Store name to search for messages
+	StoreName string
 
 	// The message sequence id to start
 	StartId uint64
 
-	// A topic path to filter
-	TopicPath guble.Path
+	// Direction == 0: Only the Message with StartId
+	// Direction == 1: Fetch also the next Count Messages with a higher MessageId
+	// Direction == -1: Fetch also the next Count Messages with a lower MessageId
+	Direction int
 
 	// The maximum number of messages to return
-	// AdditionalMessageCount == 0: Only the Message with StartId
-	// AdditionalMessageCount >0: Fetch also the next AdditionalMessageCount Messages with a higher MessageId
-	// AdditionalMessageCount <0: Fetch also the next AdditionalMessageCount Messages with a lower MessageId
-	AdditionalMessageCount int
+	Count int
+
+	// The message prefix to filter
+	Prefix []byte
 
 	// The cannel to send the message back to the receiver
-	MessageC chan *guble.Message
+	MessageC chan []byte
 
 	// A Callback if an error occures
 	ErrorCallback chan error
