@@ -4,9 +4,46 @@ import (
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
+	"path"
 	"testing"
 	"time"
 )
+
+func Test_MessagePartition_scanFiles(t *testing.T) {
+	a := assert.New(t)
+	dir, _ := ioutil.TempDir("", "partition_store_test")
+	defer os.RemoveAll(dir)
+	store, _ := NewMessagePartition(dir, "myMessages")
+
+	a.NoError(ioutil.WriteFile(path.Join(dir, "myMessages-00000000000000420000.idx"), []byte{}, 0777))
+	a.NoError(ioutil.WriteFile(path.Join(dir, "myMessages-00000000000000000000.idx"), []byte{}, 0777))
+	a.NoError(ioutil.WriteFile(path.Join(dir, "myMessages-00000000000000010000.idx"), []byte{}, 0777))
+
+	fileIds, err := store.scanFiles()
+	a.NoError(err)
+	a.Equal([]uint64{
+		0,
+		10000,
+		420000,
+	}, fileIds)
+}
+
+func Test_MessagePartition_correctIdAfterRestart(t *testing.T) {
+	a := assert.New(t)
+	dir, _ := ioutil.TempDir("", "partition_store_test")
+	defer os.RemoveAll(dir)
+	store, _ := NewMessagePartition(dir, "myMessages")
+
+	a.NoError(store.Store(uint64(0), []byte("aaaaaaaaaa")))
+	a.NoError(store.Store(uint64(1), []byte("aaaaaaaaaa")))
+	a.NoError(store.Store(uint64(2), []byte("aaaaaaaaaa")))
+	a.Equal(uint64(2), fne(store.MaxMessageId()))
+	a.NoError(store.Close())
+
+	newStore, err := NewMessagePartition(dir, "myMessages")
+	a.NoError(err)
+	a.Equal(uint64(2), fne(newStore.MaxMessageId()))
+}
 
 func TestCreateNextAppendFiles(t *testing.T) {
 	a := assert.New(t)
@@ -14,7 +51,7 @@ func TestCreateNextAppendFiles(t *testing.T) {
 	// given: a store
 	dir, _ := ioutil.TempDir("", "partition_store_test")
 	defer os.RemoveAll(dir)
-	store := NewMessagePartition(dir, "myMessages")
+	store, _ := NewMessagePartition(dir, "myMessages")
 
 	// when i create append files
 	a.NoError(store.createNextAppendFiles(uint64(424242)))
@@ -46,13 +83,13 @@ func Test_Storing_Two_Messages_With_Append(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	// when i store a message
-	store := NewMessagePartition(dir, "myMessages")
+	store, _ := NewMessagePartition(dir, "myMessages")
 	a.NoError(store.Store(0x1, []byte("abc")))
 	a.NoError(store.Close())
 
 	// and I add another message with a new store
-	store = NewMessagePartition(dir, "myMessages")
-	a.NoError(store.Store(0x3, []byte("defgh")))
+	store, _ = NewMessagePartition(dir, "myMessages")
+	a.NoError(store.Store(0x2, []byte("defgh")))
 	a.NoError(store.Close())
 
 	// then both files as expected
@@ -66,7 +103,7 @@ func Test_Storing_Two_Messages_With_Append(t *testing.T) {
 		'a', 'b', 'c',
 
 		5, 0, 0, 0, // len(defgh) == 5
-		3, 0, 0, 0, 0, 0, 0, 0, // id == 3
+		2, 0, 0, 0, 0, 0, 0, 0, // id == 3
 		'd', 'e', 'f', 'g', 'h', // defgh
 	}, msgs[9:])
 
@@ -77,9 +114,7 @@ func Test_Storing_Two_Messages_With_Append(t *testing.T) {
 		0, 0, 0, 0, // size == 0
 		21, 0, 0, 0, 0, 0, 0, 0, // id 1: offset
 		3, 0, 0, 0, // size == 0
-		0, 0, 0, 0, 0, 0, 0, 0, // id 2: not set
-		0, 0, 0, 0, // size == 0
-		36, 0, 0, 0, 0, 0, 0, 0, // id 3: offset
+		36, 0, 0, 0, 0, 0, 0, 0, // id 2: offset
 		5, 0, 0, 0, // size == 5
 	}, idx)
 }
@@ -88,7 +123,7 @@ func Benchmark_Storing_HelloWorld_Messages(b *testing.B) {
 	a := assert.New(b)
 	dir, _ := ioutil.TempDir("", "partition_store_test")
 	defer os.RemoveAll(dir)
-	store := NewMessagePartition(dir, "myMessages")
+	store, _ := NewMessagePartition(dir, "myMessages")
 
 	b.ResetTimer()
 	for i := 0; i <= b.N; i++ {
@@ -102,7 +137,7 @@ func Benchmark_Storing_1Kb_Messages(b *testing.B) {
 	a := assert.New(b)
 	dir, _ := ioutil.TempDir("", "partition_store_test")
 	defer os.RemoveAll(dir)
-	store := NewMessagePartition(dir, "myMessages")
+	store, _ := NewMessagePartition(dir, "myMessages")
 
 	message := make([]byte, 1024)
 	for i, _ := range message {
@@ -121,7 +156,7 @@ func Benchmark_Storing_1MB_Messages(b *testing.B) {
 	a := assert.New(b)
 	dir, _ := ioutil.TempDir("", "partition_store_test")
 	defer os.RemoveAll(dir)
-	store := NewMessagePartition(dir, "myMessages")
+	store, _ := NewMessagePartition(dir, "myMessages")
 
 	message := make([]byte, 1024*1024)
 	for i, _ := range message {
@@ -151,11 +186,15 @@ func Test_calculateFetchList(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	// when i store a message
-	store := NewMessagePartition(dir, "myMessages")
+	store, _ := NewMessagePartition(dir, "myMessages")
+	store.maxMessageId = uint64(2) // hack, for test setup
 	a.NoError(store.Store(uint64(3), []byte("aaaaaaaaaa")))
 	a.NoError(store.Store(uint64(4), []byte("bbbbbbbbbb")))
+	store.maxMessageId = uint64(9) // hack, for test setup
 	a.NoError(store.Store(uint64(10), []byte("cccccccccc")))
+	store.maxMessageId = MESSAGES_PER_FILE - uint64(1) // hack, for test setup
 	a.NoError(store.Store(MESSAGES_PER_FILE, []byte("1111111111")))
+	store.maxMessageId = MESSAGES_PER_FILE + uint64(4) // hack, for test setup
 	a.NoError(store.Store(MESSAGES_PER_FILE+uint64(5), []byte("2222222222")))
 	defer a.NoError(store.Close())
 
@@ -234,11 +273,15 @@ func Test_Partition_Fetch(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	// when i store a message
-	store := NewMessagePartition(dir, "myMessages")
+	store, _ := NewMessagePartition(dir, "myMessages")
+	store.maxMessageId = uint64(2) // hack, for test setup
 	a.NoError(store.Store(uint64(3), []byte("aaaaaaaaaa")))
 	a.NoError(store.Store(uint64(4), []byte("bbbbbbbbbb")))
+	store.maxMessageId = uint64(9) // hack, for test setup
 	a.NoError(store.Store(uint64(10), []byte("cccccccccc")))
+	store.maxMessageId = MESSAGES_PER_FILE - uint64(1) // hack, for test setup
 	a.NoError(store.Store(MESSAGES_PER_FILE, []byte("1111111111")))
+	store.maxMessageId = MESSAGES_PER_FILE + uint64(4) // hack, for test setup
 	a.NoError(store.Store(MESSAGES_PER_FILE+uint64(5), []byte("2222222222")))
 	defer a.NoError(store.Close())
 
@@ -334,4 +377,29 @@ func Test_firstMessageIdForFile(t *testing.T) {
 	a.Equal(uint64(0), store.firstMessageIdForFile(42))
 	a.Equal(MESSAGES_PER_FILE, store.firstMessageIdForFile(MESSAGES_PER_FILE))
 	a.Equal(MESSAGES_PER_FILE, store.firstMessageIdForFile(MESSAGES_PER_FILE+uint64(1)))
+}
+
+func Test_calculateMaxMessageIdFromIndex(t *testing.T) {
+	a := assert.New(t)
+	dir, _ := ioutil.TempDir("", "partition_store_test")
+	defer os.RemoveAll(dir)
+
+	// when i store a message
+	store, _ := NewMessagePartition(dir, "myMessages")
+	a.NoError(store.Store(uint64(1), []byte("aaaaaaaaaa")))
+	a.NoError(store.Store(uint64(2), []byte("bbbbbbbbbb")))
+
+	maxMessageId, err := store.calculateMaxMessageIdFromIndex(uint64(0))
+	a.NoError(err)
+	a.Equal(uint64(2), maxMessageId)
+}
+
+func Test_MessagePartition_ErrorOnWrongMessageId(t *testing.T) {
+	a := assert.New(t)
+	dir, _ := ioutil.TempDir("", "partition_store_test")
+	defer os.RemoveAll(dir)
+
+	// when i store a message
+	store, _ := NewMessagePartition(dir, "myMessages")
+	a.Error(store.Store(42, []byte{}))
 }

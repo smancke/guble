@@ -80,8 +80,9 @@ func (fms *FileMessageStore) partitionStore(partition string) (*MessagePartition
 				return nil, err
 			}
 		}
-		partitionStore = NewMessagePartition(dir, partition)
-		if err := partitionStore.Start(); err != nil {
+		var err error
+		partitionStore, err = NewMessagePartition(dir, partition)
+		if err != nil {
 			return nil, err
 		}
 		fms.partitions[partition] = partitionStore
