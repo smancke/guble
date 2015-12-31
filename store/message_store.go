@@ -45,6 +45,16 @@ func (fms *FileMessageStore) Stop() error {
 	return returnError
 }
 
+func (fms *FileMessageStore) StoreTx(partition string,
+	callback func(msgId uint64) (msg []byte)) error {
+
+	p, err := fms.partitionStore(partition)
+	if err != nil {
+		return err
+	}
+	return p.StoreTx(partition, callback)
+}
+
 // store a message within a partition
 func (fms *FileMessageStore) Store(partition string, msgId uint64, msg []byte) error {
 	p, err := fms.partitionStore(partition)

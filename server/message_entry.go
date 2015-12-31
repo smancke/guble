@@ -29,16 +29,14 @@ func (entry *MessageEntry) SetMessageStore(messageStore store.MessageStore) {
 // Take the message and forward it to the router.
 func (entry *MessageEntry) HandleMessage(msg *guble.Message) error {
 	partition := entry.getPartitionFromTopic(msg.Path)
-	id, err := entry.messageStore.MaxMessageId(partition)
-	if err != nil {
-		guble.Err("error accessing message id for partition %v: %v", partition, err)
-		return err
+
+	txCallback := func(msgId uint64) []byte {
+		msg.Id = msgId
+		msg.PublishingTime = time.Now().Format(time.RFC3339)
+		return msg.Bytes()
 	}
 
-	msg.Id = id + 1
-	msg.PublishingTime = time.Now().Format(time.RFC3339)
-
-	if err := entry.messageStore.Store(partition, msg.Id, msg.Bytes()); err != nil {
+	if err := entry.messageStore.StoreTx(partition, txCallback); err != nil {
 		guble.Err("error storing message in partition %v: %v", partition, err)
 		return err
 	}

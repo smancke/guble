@@ -97,8 +97,8 @@ func TestConnectErrorWithReconnection(t *testing.T) {
 	a.Error(err)
 	a.False(c.Connected)
 
-	// when we wait for two iterations
-	time.Sleep(time.Millisecond * 101)
+	// when we wait for two iterations and 10ms buffer time to connect
+	time.Sleep(time.Millisecond * 110)
 
 	// then we got connected
 	a.True(c.Connected)

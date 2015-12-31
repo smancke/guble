@@ -57,3 +57,13 @@ func (_m *MockMessageStore) Store(_param0 string, _param1 uint64, _param2 []byte
 func (_mr *_MockMessageStoreRecorder) Store(arg0, arg1, arg2 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Store", arg0, arg1, arg2)
 }
+
+func (_m *MockMessageStore) StoreTx(_param0 string, _param1 func(uint64) []byte) error {
+	ret := _m.ctrl.Call(_m, "StoreTx", _param0, _param1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockMessageStoreRecorder) StoreTx(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "StoreTx", arg0, arg1)
+}

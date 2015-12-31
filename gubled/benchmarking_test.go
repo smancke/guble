@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/guble"
+	"io/ioutil"
 	"log"
+	"os"
 	"time"
 )
 
@@ -29,6 +31,69 @@ func newTestgroup(t *testing.T, groupId int, addr string, messagesToSend int) *t
 		done:           make(chan bool),
 		messagesToSend: messagesToSend,
 	}
+}
+
+func TestThroughput(t *testing.T) {
+	dir, _ := ioutil.TempDir("", "guble_benchmark_test")
+	defer os.RemoveAll(dir)
+
+	service := StartupService(Args{Listen: "localhost:0", KVBackend: "memory", MSBackend: "file", MSPath: dir})
+	defer func() {
+		service.Stop()
+	}()
+	time.Sleep(time.Millisecond * 10)
+
+	testgroupCount := 2
+	messagesPerGroup := 400
+	log.Printf("init the %v testgroups", testgroupCount)
+	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
+	for i, _ := range testgroups {
+		testgroups[i] = newTestgroup(t, i, service.GetWebServer().GetAddr(), messagesPerGroup)
+	}
+
+	// init test
+	log.Print("init the testgroups")
+	for i, _ := range testgroups {
+		testgroups[i].Init()
+	}
+
+	defer func() {
+		// cleanup tests
+		log.Print("cleanup the testgroups")
+		for i, _ := range testgroups {
+			testgroups[i].Clean()
+		}
+	}()
+
+	// start test
+	log.Print("start the testgroups")
+	start := time.Now()
+	for i, _ := range testgroups {
+		go testgroups[i].Start()
+	}
+
+	log.Print("wait for finishing")
+	timeout := time.After(time.Second * 60)
+	for i, test := range testgroups {
+		//fmt.Printf("wating for test %v\n", i)
+		select {
+		case successFlag := <-test.done:
+			if !successFlag {
+				t.Logf("testgroup %v returned with error", i)
+				t.FailNow()
+				return
+			}
+		case <-timeout:
+			t.Log("timeout. testgroups not ready before timeout")
+			t.Fail()
+			return
+		}
+	}
+
+	end := time.Now()
+	totalMessages := testgroupCount * messagesPerGroup
+	throughput := float64(totalMessages) / end.Sub(start).Seconds()
+	log.Printf("finished! Throughput: %v/sec (%v message in %v)", int(throughput), totalMessages, end.Sub(start))
 }
 
 func (test *testgroup) Init() {
@@ -99,66 +164,4 @@ func (test *testgroup) Start() {
 func (test *testgroup) Clean() {
 	test.client1.Close()
 	test.client2.Close()
-}
-
-func TestThroughput(t *testing.T) {
-	defer enableDebugForMethod()()
-
-	service := StartupService(Args{Listen: "localhost:0", KVBackend: "memory"})
-	defer func() {
-		service.Stop()
-	}()
-	time.Sleep(time.Millisecond * 10)
-
-	testgroupCount := 2
-	messagesPerGroup := 200
-	log.Printf("init the %v testgroups", testgroupCount)
-	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
-	for i, _ := range testgroups {
-		testgroups[i] = newTestgroup(t, i, service.GetWebServer().GetAddr(), messagesPerGroup)
-	}
-
-	// init test
-	log.Print("init the testgroups")
-	for i, _ := range testgroups {
-		testgroups[i].Init()
-	}
-
-	defer func() {
-		// cleanup tests
-		log.Print("cleanup the testgroups")
-		for i, _ := range testgroups {
-			testgroups[i].Clean()
-		}
-	}()
-
-	// start test
-	log.Print("start the testgroups")
-	start := time.Now()
-	for i, _ := range testgroups {
-		go testgroups[i].Start()
-	}
-
-	log.Print("wait for finishing")
-	timeout := time.After(time.Second * 60)
-	for i, test := range testgroups {
-		//fmt.Printf("wating for test %v\n", i)
-		select {
-		case successFlag := <-test.done:
-			if !successFlag {
-				t.Logf("testgroup %v returned with error", i)
-				t.FailNow()
-				return
-			}
-		case <-timeout:
-			t.Log("timeout. testgroups not ready before timeout")
-			t.Fail()
-			return
-		}
-	}
-
-	end := time.Now()
-	totalMessages := testgroupCount * messagesPerGroup
-	throughput := float64(totalMessages) / end.Sub(start).Seconds()
-	log.Printf("finished! Throughput: %v/sec (%v message in %v)", int(throughput), totalMessages, end.Sub(start))
 }

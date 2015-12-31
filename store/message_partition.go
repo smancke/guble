@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var MAGIC_NUMBER = []byte{42, 249, 180, 108, 82, 75, 222, 182}
@@ -27,17 +28,22 @@ type MessagePartition struct {
 	appendLastId            uint64
 	appendFileWritePosition uint64
 	maxMessageId            uint64
+	mutex                   *sync.RWMutex
 }
 
 func NewMessagePartition(basedir string, storeName string) (*MessagePartition, error) {
 	p := &MessagePartition{
 		basedir: basedir,
 		name:    storeName,
+		mutex:   &sync.RWMutex{},
 	}
 	return p, p.initialize()
 }
 
 func (p *MessagePartition) initialize() error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	fileList, err := p.scanFiles()
 	if err != nil {
 		return err
@@ -86,6 +92,9 @@ func (p *MessagePartition) scanFiles() ([]uint64, error) {
 }
 
 func (p *MessagePartition) MaxMessageId() (uint64, error) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	return p.maxMessageId, nil
 }
 
@@ -146,16 +155,33 @@ func (p *MessagePartition) createNextAppendFiles(msgId uint64) error {
 }
 
 func (p *MessagePartition) Close() error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	return p.closeAppendFiles()
 }
 
+func (p *MessagePartition) StoreTx(partition string,
+	callback func(msgId uint64) (msg []byte)) error {
+
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	msgId := p.maxMessageId + 1
+	return p.store(msgId, callback(msgId))
+}
+
 func (p *MessagePartition) Store(msgId uint64, msg []byte) error {
-	maxId, err := p.MaxMessageId()
-	if err != nil {
-		return err
-	}
-	if msgId > 1+maxId {
-		return fmt.Errorf("Invalid message id for partition %v. Next id should be %v, but was %q", p.name, 1+maxId, msgId)
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	return p.store(msgId, msg)
+}
+
+func (p *MessagePartition) store(msgId uint64, msg []byte) error {
+
+	if msgId != 1+p.maxMessageId {
+		return fmt.Errorf("Invalid message id for partition %v. Next id should be %v, but was %q", p.name, 1+p.maxMessageId, msgId)
 	}
 	if msgId > p.appendLastId ||
 		p.appendFile == nil ||
@@ -195,9 +221,7 @@ func (p *MessagePartition) Store(msgId uint64, msg []byte) error {
 
 	p.appendFileWritePosition += uint64(len(sizeAndId) + len(msg))
 
-	if msgId > p.maxMessageId {
-		p.maxMessageId = msgId
-	}
+	p.maxMessageId = msgId
 	return nil
 }
 

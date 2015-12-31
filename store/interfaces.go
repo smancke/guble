@@ -4,9 +4,15 @@ package store
 type MessageStore interface {
 
 	// Store a message within a partition.
-	// The message id must not be greater than MaxMessageId +1.
-	// Lower message ids are allowed
+	// The message id must be equal to MaxMessageId +1.
+	// So the caller has to maintain the consistance between
+	// fetching an id and storing the message.
 	Store(partition string, msgId uint64, msg []byte) error
+
+	// retrieve the next availabe id and store the message
+	// in one atomic transaction
+	StoreTx(partition string,
+		callback func(msgId uint64) (msg []byte)) error
 
 	// fetch a set of messages
 	// The results, as well as errors are communicated asynchronously using

@@ -34,7 +34,6 @@ func Test_MessagePartition_correctIdAfterRestart(t *testing.T) {
 	defer os.RemoveAll(dir)
 	store, _ := NewMessagePartition(dir, "myMessages")
 
-	a.NoError(store.Store(uint64(0), []byte("aaaaaaaaaa")))
 	a.NoError(store.Store(uint64(1), []byte("aaaaaaaaaa")))
 	a.NoError(store.Store(uint64(2), []byte("aaaaaaaaaa")))
 	a.Equal(uint64(2), fne(store.MaxMessageId()))
@@ -126,7 +125,7 @@ func Benchmark_Storing_HelloWorld_Messages(b *testing.B) {
 	store, _ := NewMessagePartition(dir, "myMessages")
 
 	b.ResetTimer()
-	for i := 0; i <= b.N; i++ {
+	for i := 1; i <= b.N; i++ {
 		a.NoError(store.Store(uint64(i), []byte("Hello World")))
 	}
 	a.NoError(store.Close())
@@ -145,7 +144,7 @@ func Benchmark_Storing_1Kb_Messages(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i <= b.N; i++ {
+	for i := 1; i <= b.N; i++ {
 		a.NoError(store.Store(uint64(i), message))
 	}
 	a.NoError(store.Close())
@@ -164,7 +163,7 @@ func Benchmark_Storing_1MB_Messages(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i <= b.N; i++ {
+	for i := 1; i <= b.N; i++ {
 		a.NoError(store.Store(uint64(i), message))
 	}
 	a.NoError(store.Close())

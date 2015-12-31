@@ -53,8 +53,28 @@ func (fms *DummyMessageStore) Stop() error {
 	return nil
 }
 
+func (fms *DummyMessageStore) StoreTx(partition string,
+	callback func(msgId uint64) (msg []byte)) error {
+
+	fms.topicSequencesLock.Lock()
+	defer fms.topicSequencesLock.Unlock()
+
+	msgId, err := fms.maxMessageId(partition)
+	if err != nil {
+		return err
+	}
+	msgId++
+	return fms.store(partition, msgId, callback(msgId))
+}
+
 func (fms *DummyMessageStore) Store(partition string, msgId uint64, msg []byte) error {
-	maxId, err := fms.MaxMessageId(partition)
+	fms.topicSequencesLock.Lock()
+	defer fms.topicSequencesLock.Unlock()
+	return fms.store(partition, msgId, msg)
+}
+
+func (fms *DummyMessageStore) store(partition string, msgId uint64, msg []byte) error {
+	maxId, err := fms.maxMessageId(partition)
 	if err != nil {
 		return err
 	}
@@ -72,6 +92,10 @@ func (fms *DummyMessageStore) Fetch(req FetchRequest) {
 func (fms *DummyMessageStore) MaxMessageId(partition string) (uint64, error) {
 	fms.topicSequencesLock.Lock()
 	defer fms.topicSequencesLock.Unlock()
+	return fms.maxMessageId(partition)
+}
+
+func (fms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
 
 	sequenceValue, exist := fms.topicSequences[partition]
 	if !exist {
@@ -91,9 +115,6 @@ func (fms *DummyMessageStore) MaxMessageId(partition string) (uint64, error) {
 
 // the the id to a new value
 func (fms *DummyMessageStore) setId(partition string, id uint64) {
-	fms.topicSequencesLock.Lock()
-	defer fms.topicSequencesLock.Unlock()
-
 	fms.topicSequences[partition] = id
 }
 

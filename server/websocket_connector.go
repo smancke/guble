@@ -217,7 +217,7 @@ func (srv *WSHandler) handleReplay(cmd *guble.Cmd) {
 		Partition:     cmd.Arg,
 		StartId:       0,
 		Direction:     1,
-		Count:         100,
+		Count:         20000,
 		MessageC:      messages,
 		ErrorCallback: errors,
 	})
