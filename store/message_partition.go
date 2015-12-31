@@ -21,6 +21,7 @@ type MessagePartition struct {
 	appendFirstId           uint64
 	appendLastId            uint64
 	appendFileWritePosition uint64
+	maxMessageId            uint64
 }
 
 func NewMessagePartition(basedir string, storeName string) *MessagePartition {
@@ -30,34 +31,49 @@ func NewMessagePartition(basedir string, storeName string) *MessagePartition {
 	}
 }
 
-func (s *MessagePartition) closeAppendFiles() error {
-	if s.appendFile != nil {
-		if err := s.appendFile.Close(); err != nil {
-			if s.appendIndexFile != nil {
-				defer s.appendIndexFile.Close()
+func (p *MessagePartition) Start() error {
+	//fileList, err := p.scanFiles()
+	return nil
+}
+
+// Returns the start messages ids for all available message files
+// in a sorted list
+func (p *MessagePartition) scanFiles() ([]uint64, error) {
+	return nil, nil
+}
+
+func (p *MessagePartition) MaxMessageId() (uint64, error) {
+	return p.maxMessageId, nil
+}
+
+func (p *MessagePartition) closeAppendFiles() error {
+	if p.appendFile != nil {
+		if err := p.appendFile.Close(); err != nil {
+			if p.appendIndexFile != nil {
+				defer p.appendIndexFile.Close()
 			}
 			return err
 		}
 	}
 
-	if s.appendIndexFile != nil {
-		return s.appendIndexFile.Close()
+	if p.appendIndexFile != nil {
+		return p.appendIndexFile.Close()
 	}
 	return nil
 }
 
-func (s *MessagePartition) createNextAppendFiles(msgId uint64) error {
+func (p *MessagePartition) createNextAppendFiles(msgId uint64) error {
 
-	firstMessageIdForFile := s.firstMessageIdForFile(msgId)
+	firstMessageIdForFile := p.firstMessageIdForFile(msgId)
 
-	file, err := os.OpenFile(s.filenameByMessageId(firstMessageIdForFile), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	file, err := os.OpenFile(p.filenameByMessageId(firstMessageIdForFile), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return err
 	}
 
 	// write file header on new files
 	if stat, _ := file.Stat(); stat.Size() == 0 {
-		s.appendFileWritePosition = uint64(stat.Size())
+		p.appendFileWritePosition = uint64(stat.Size())
 
 		_, err = file.Write(MAGIC_NUMBER)
 		if err != nil {
@@ -70,35 +86,35 @@ func (s *MessagePartition) createNextAppendFiles(msgId uint64) error {
 		}
 	}
 
-	index, errIndex := os.OpenFile(s.indexFilenameByMessageId(firstMessageIdForFile), os.O_RDWR|os.O_CREATE, 0666)
+	index, errIndex := os.OpenFile(p.indexFilenameByMessageId(firstMessageIdForFile), os.O_RDWR|os.O_CREATE, 0666)
 	if errIndex != nil {
 		defer file.Close()
 		defer os.Remove(file.Name())
 		return err
 	}
 
-	s.appendFile = file
-	s.appendIndexFile = index
-	s.appendFirstId = firstMessageIdForFile
-	s.appendLastId = firstMessageIdForFile + MESSAGES_PER_FILE - 1
+	p.appendFile = file
+	p.appendIndexFile = index
+	p.appendFirstId = firstMessageIdForFile
+	p.appendLastId = firstMessageIdForFile + MESSAGES_PER_FILE - 1
 	stat, err := file.Stat()
-	s.appendFileWritePosition = uint64(stat.Size())
+	p.appendFileWritePosition = uint64(stat.Size())
 	return nil
 }
 
-func (s *MessagePartition) Close() error {
-	return s.closeAppendFiles()
+func (p *MessagePartition) Close() error {
+	return p.closeAppendFiles()
 }
 
-func (s *MessagePartition) Store(msgId uint64, msg []byte) error {
-	if msgId > s.appendLastId ||
-		s.appendFile == nil ||
-		s.appendIndexFile == nil {
+func (p *MessagePartition) Store(msgId uint64, msg []byte) error {
+	if msgId > p.appendLastId ||
+		p.appendFile == nil ||
+		p.appendIndexFile == nil {
 
-		if err := s.closeAppendFiles(); err != nil {
+		if err := p.closeAppendFiles(); err != nil {
 			return err
 		}
-		if err := s.createNextAppendFiles(msgId); err != nil {
+		if err := p.createNextAppendFiles(msgId); err != nil {
 			return err
 		}
 	}
@@ -107,40 +123,44 @@ func (s *MessagePartition) Store(msgId uint64, msg []byte) error {
 	sizeAndId := make([]byte, 12)
 	binary.LittleEndian.PutUint32(sizeAndId, uint32(len(msg)))
 	binary.LittleEndian.PutUint64(sizeAndId[4:], msgId)
-	if _, err := s.appendFile.Write(sizeAndId); err != nil {
+	if _, err := p.appendFile.Write(sizeAndId); err != nil {
 		return err
 	}
 
 	// write the message
-	if _, err := s.appendFile.Write(msg); err != nil {
+	if _, err := p.appendFile.Write(msg); err != nil {
 		return err
 	}
 
 	// write the index entry to the index file
 	indexPosition := int64(12 * (msgId % MESSAGES_PER_FILE))
-	messageOffset := s.appendFileWritePosition + uint64(len(sizeAndId))
+	messageOffset := p.appendFileWritePosition + uint64(len(sizeAndId))
 	messageOffsetBuff := make([]byte, 12)
 	binary.LittleEndian.PutUint64(messageOffsetBuff, messageOffset)
 	binary.LittleEndian.PutUint32(messageOffsetBuff[8:], uint32(len(msg)))
 
-	if _, err := s.appendIndexFile.WriteAt(messageOffsetBuff, indexPosition); err != nil {
+	if _, err := p.appendIndexFile.WriteAt(messageOffsetBuff, indexPosition); err != nil {
 		return err
 	}
 
-	s.appendFileWritePosition += uint64(len(sizeAndId) + len(msg))
+	p.appendFileWritePosition += uint64(len(sizeAndId) + len(msg))
+
+	if msgId > p.maxMessageId {
+		p.maxMessageId = msgId
+	}
 	return nil
 }
 
 // fetch a set of messages
-func (s *MessagePartition) Fetch(req FetchRequest) {
+func (p *MessagePartition) Fetch(req FetchRequest) {
 	go func() {
-		fetchList, err := s.calculateFetchList(req)
+		fetchList, err := p.calculateFetchList(req)
 		if err != nil {
 			req.ErrorCallback <- err
 			return
 		}
 
-		err = s.fetchByFetchlist(fetchList, req.MessageC)
+		err = p.fetchByFetchlist(fetchList, req.MessageC)
 		if err != nil {
 			req.ErrorCallback <- err
 			return
@@ -150,18 +170,18 @@ func (s *MessagePartition) Fetch(req FetchRequest) {
 }
 
 // fetch the messages in the supplied fetchlist and send them to the channel
-func (s *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC chan []byte) error {
+func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC chan []byte) error {
 	var fileId uint64
 	var file *os.File
 	var err error
 	for _, f := range fetchList {
 		// ensure, that we read on the correct file
 		if file == nil || fileId != f.fileId {
-			file, err = s.checkoutMessagefile(f.fileId)
+			file, err = p.checkoutMessagefile(f.fileId)
 			if err != nil {
 				return err
 			}
-			defer s.releaseMessagefile(f.fileId, file)
+			defer p.releaseMessagefile(f.fileId, file)
 			fileId = f.fileId
 		}
 
@@ -183,7 +203,7 @@ type fetchEntry struct {
 }
 
 // returns a list of fetchEntry records for all message in the fetch request.
-func (s *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, error) {
+func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, error) {
 	if req.Direction == 0 {
 		req.Direction = 1
 	}
@@ -193,19 +213,19 @@ func (s *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 	var fileId uint64
 	for len(result) < req.Count && nextId >= 0 {
 
-		nextFileId := s.firstMessageIdForFile(nextId)
+		nextFileId := p.firstMessageIdForFile(nextId)
 
 		// ensure, that we read on the correct file
 		if file == nil || nextFileId != fileId {
 			var err error
-			file, err = s.checkoutIndexfile(nextFileId)
+			file, err = p.checkoutIndexfile(nextFileId)
 			if err != nil {
 				if os.IsNotExist(err) {
 					return result, nil
 				}
 				return nil, err
 			}
-			defer s.releaseIndexfile(fileId, file)
+			defer p.releaseIndexfile(fileId, file)
 			fileId = nextFileId
 		}
 
@@ -238,39 +258,39 @@ func (s *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 }
 
 // Return a file handle to the message file with the supplied file id.
-// The returned file handle may be shared for multiple go routines.
-func (s *MessagePartition) checkoutMessagefile(fileId uint64) (*os.File, error) {
-	return os.Open(s.filenameByMessageId(fileId))
+// The returned file handle may be shared for multiple go routinep.
+func (p *MessagePartition) checkoutMessagefile(fileId uint64) (*os.File, error) {
+	return os.Open(p.filenameByMessageId(fileId))
 }
 
 // Release a message file handle
-func (s *MessagePartition) releaseMessagefile(fileId uint64, file *os.File) {
+func (p *MessagePartition) releaseMessagefile(fileId uint64, file *os.File) {
 	file.Close()
 }
 
 // Return a file handle to the index file with the supplied file id.
-// The returned file handle may be shared for multiple go routines.
-func (s *MessagePartition) checkoutIndexfile(fileId uint64) (*os.File, error) {
-	return os.Open(s.indexFilenameByMessageId(fileId))
+// The returned file handle may be shared for multiple go routinep.
+func (p *MessagePartition) checkoutIndexfile(fileId uint64) (*os.File, error) {
+	return os.Open(p.indexFilenameByMessageId(fileId))
 }
 
 // Release an index file handle
-func (s *MessagePartition) releaseIndexfile(fileId uint64, file *os.File) {
+func (p *MessagePartition) releaseIndexfile(fileId uint64, file *os.File) {
 	file.Close()
 }
 
-func (s *MessagePartition) getSortedStartNumbersFromFiles() []uint64 {
+func (p *MessagePartition) getSortedStartNumbersFromFiles() []uint64 {
 	return []uint64{}
 }
 
-func (s *MessagePartition) firstMessageIdForFile(messageId uint64) uint64 {
+func (p *MessagePartition) firstMessageIdForFile(messageId uint64) uint64 {
 	return messageId - messageId%MESSAGES_PER_FILE
 }
 
-func (s *MessagePartition) filenameByMessageId(messageId uint64) string {
-	return filepath.Join(s.basedir, fmt.Sprintf("%s-%020d.msg", s.name, messageId))
+func (p *MessagePartition) filenameByMessageId(messageId uint64) string {
+	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.msg", p.name, messageId))
 }
 
-func (s *MessagePartition) indexFilenameByMessageId(messageId uint64) string {
-	return filepath.Join(s.basedir, fmt.Sprintf("%s-%020d.idx", s.name, messageId))
+func (p *MessagePartition) indexFilenameByMessageId(messageId uint64) string {
+	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.name, messageId))
 }

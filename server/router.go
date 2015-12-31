@@ -116,9 +116,10 @@ func (router *PubSubRouter) unsubscribe(r *Route) {
 	}
 }
 
-func (router *PubSubRouter) HandleMessage(message *guble.Message) {
+func (router *PubSubRouter) HandleMessage(message *guble.Message) error {
 	router.messageIn <- message
 	runtime.Gosched()
+	return nil
 }
 
 func (router *PubSubRouter) handleMessage(message *guble.Message) {

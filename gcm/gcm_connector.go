@@ -44,7 +44,7 @@ func NewGCMConnector(prefix string, gcmApiKey string) *GCMConnector {
 	return gcm
 }
 
-func (gcmConnector *GCMConnector) Start() {
+func (gcmConnector *GCMConnector) Start() error {
 	broadcastRoute := server.NewRoute(removeTrailingSlash(gcmConnector.prefix)+"/broadcast", gcmConnector.channelFromRouter, gcmConnector.closeRouteByRouter, "gcm_connector", "gcm_connector")
 	gcmConnector.router.Subscribe(broadcastRoute)
 	go func() {
@@ -63,6 +63,7 @@ func (gcmConnector *GCMConnector) Start() {
 			}
 		}
 	}()
+	return nil
 }
 
 func (gcmConnector *GCMConnector) sendMessageToGCM(msg server.MsgAndRoute) {

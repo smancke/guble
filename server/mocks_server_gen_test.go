@@ -71,8 +71,10 @@ func (_m *MockMessageSink) EXPECT() *_MockMessageSinkRecorder {
 	return _m.recorder
 }
 
-func (_m *MockMessageSink) HandleMessage(_param0 *guble.Message) {
-	_m.ctrl.Call(_m, "HandleMessage", _param0)
+func (_m *MockMessageSink) HandleMessage(_param0 *guble.Message) error {
+	ret := _m.ctrl.Call(_m, "HandleMessage", _param0)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 func (_mr *_MockMessageSinkRecorder) HandleMessage(arg0 interface{}) *gomock.Call {
@@ -149,8 +151,10 @@ func (_m *MockStartable) EXPECT() *_MockStartableRecorder {
 	return _m.recorder
 }
 
-func (_m *MockStartable) Start() {
-	_m.ctrl.Call(_m, "Start")
+func (_m *MockStartable) Start() error {
+	ret := _m.ctrl.Call(_m, "Start")
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 func (_mr *_MockStartableRecorder) Start() *gomock.Call {

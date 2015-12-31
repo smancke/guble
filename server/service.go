@@ -36,6 +36,7 @@ func NewService(addr string, kvStore store.KVStore, messageStore store.MessageSt
 		StopGracePeriod: time.Second * 2,
 	}
 	service.Register(service.kvStore)
+	service.Register(service.messageStore)
 	service.Register(service.webServer)
 	service.Register(service.messageSink)
 	service.Register(service.router)
@@ -103,10 +104,19 @@ func (service *Service) AddHandler(prefix string, handler http.Handler) {
 	service.webServer.mux.Handle(prefix, handler)
 }
 
-func (service *Service) Start() {
+func (service *Service) Start() error {
+	el := guble.NewErrorList("Errors occured while startup the service: ")
+
 	for _, startable := range service.startListener {
-		startable.Start()
+		name := reflect.TypeOf(startable).String()
+
+		guble.Debug("starting module %v", name)
+		if err := startable.Start(); err != nil {
+			guble.Err("error on startup module %v", name)
+			el.Add(err)
+		}
 	}
+	return el.ErrorOrNil()
 }
 
 func (service *Service) AddStopListener(stopable Stopable) {

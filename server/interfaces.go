@@ -42,7 +42,7 @@ type PubSubSource interface {
 }
 
 type MessageSink interface {
-	HandleMessage(message *guble.Message)
+	HandleMessage(message *guble.Message) error
 }
 
 // WSConn is a wrapper interface for the needed functions of the websocket.Conn
@@ -54,7 +54,7 @@ type WSConn interface {
 }
 
 type Startable interface {
-	Start()
+	Start() error
 }
 
 type Stopable interface {

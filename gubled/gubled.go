@@ -117,7 +117,13 @@ func StartupService(args Args) *server.Service {
 		service.Register(module)
 	}
 
-	service.Start()
+	if err := service.Start(); err != nil {
+		guble.Err(err.Error())
+		if err := service.Stop(); err != nil {
+			guble.Err(err.Error())
+		}
+		os.Exit(1)
+	}
 
 	return service
 }

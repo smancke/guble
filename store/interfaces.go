@@ -3,11 +3,18 @@ package store
 // Interface for a persistance backend storing topics
 type MessageStore interface {
 
-	// Store a message within a partition
+	// Store a message within a partition.
+	// The message id must not be greater than MaxMessageId +1.
+	// Lower message ids are allowed
 	Store(partition string, msgId uint64, msg []byte) error
 
 	// fetch a set of messages
+	// The results, as well as errors are communicated asynchronously using
+	// the channels, supplied by the FetchRequest.
 	Fetch(FetchRequest)
+
+	// Returns the hightest message id for a particular partition
+	MaxMessageId(partition string) (uint64, error)
 }
 
 // A fetch request for fetching messages in a MessageStore

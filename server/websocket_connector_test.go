@@ -1,14 +1,16 @@
 package server
 
 import (
+	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/store"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 
 	"fmt"
-	guble "github.com/smancke/guble/guble"
 	"strings"
+	"testing"
+	"time"
 )
 
 var aTestMessage = &guble.Message{
@@ -22,7 +24,7 @@ func TestSubscribeAndUnsubscribe(t *testing.T) {
 	a := assert.New(t)
 
 	messages := []string{"+ /foo", "+ /bar", "- /foo"}
-	wsconn, pubSubSource, messageSink := createDefaultMocks(messages)
+	wsconn, pubSubSource, messageSink, messageStore := createDefaultMocks(messages)
 
 	pubSubSource.EXPECT().Subscribe(routeMatcher{"/foo"}).Return(nil)
 	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /foo"))
@@ -33,7 +35,7 @@ func TestSubscribeAndUnsubscribe(t *testing.T) {
 	pubSubSource.EXPECT().Unsubscribe(routeMatcher{"/foo"})
 	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_UNSUBSCRIBED_FROM + " /foo"))
 
-	wshandler := runNewWsHandler(wsconn, pubSubSource, messageSink)
+	wshandler := runNewWsHandler(wsconn, pubSubSource, messageSink, messageStore)
 
 	a.Equal(1, len(wshandler.subscriptions))
 	a.Equal(guble.Path("/bar"), wshandler.subscriptions[guble.Path("/bar")].Path)
@@ -44,7 +46,7 @@ func TestSendMessageWirthPublisherMessageId(t *testing.T) {
 
 	// given: a send command with PublisherMessageId
 	commands := []string{"> /path 42"}
-	wsconn, pubSubSource, messageSink := createDefaultMocks(commands)
+	wsconn, pubSubSource, messageSink, messageStore := createDefaultMocks(commands)
 
 	messageSink.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *guble.Message) {
 		assert.Equal(t, guble.Path("/path"), msg.Path)
@@ -53,29 +55,29 @@ func TestSendMessageWirthPublisherMessageId(t *testing.T) {
 
 	wsconn.EXPECT().Send([]byte("#send 42"))
 
-	runNewWsHandler(wsconn, pubSubSource, messageSink)
+	runNewWsHandler(wsconn, pubSubSource, messageSink, messageStore)
 }
 
 func TestSendMessage(t *testing.T) {
 	defer initCtrl(t)()
 
 	commands := []string{"> /path\n{\"key\": \"value\"}\nHello, this is a test"}
-	wsconn, pubSubSource, messageSink := createDefaultMocks(commands)
+	wsconn, pubSubSource, messageSink, messageStore := createDefaultMocks(commands)
 
 	messageSink.EXPECT().HandleMessage(messageMatcher{path: "/path", message: "Hello, this is a test", header: `{"key": "value"}`})
 	wsconn.EXPECT().Send([]byte("#send"))
 
-	runNewWsHandler(wsconn, pubSubSource, messageSink)
+	runNewWsHandler(wsconn, pubSubSource, messageSink, messageStore)
 }
 
 func TestAnIncommingMessageIsDelivered(t *testing.T) {
 	defer initCtrl(t)()
 
-	wsconn, pubSubSource, messageSink := createDefaultMocks([]string{})
+	wsconn, pubSubSource, messageSink, messageStore := createDefaultMocks([]string{})
 
 	wsconn.EXPECT().Send(aTestMessage.Bytes())
 
-	handler := runNewWsHandler(wsconn, pubSubSource, messageSink)
+	handler := runNewWsHandler(wsconn, pubSubSource, messageSink, messageStore)
 
 	handler.messagesAndRouteToSend <- MsgAndRoute{Message: aTestMessage, Route: nil}
 	time.Sleep(time.Millisecond * 10)
@@ -85,7 +87,7 @@ func TestBadCommands(t *testing.T) {
 	defer initCtrl(t)()
 
 	badRequests := []string{"XXXX", "", ">", ">/foo", "+", "-", "send /foo"}
-	wsconn, pubSubSource, messageSink := createDefaultMocks(badRequests)
+	wsconn, pubSubSource, messageSink, messageStore := createDefaultMocks(badRequests)
 
 	counter := 0
 
@@ -100,14 +102,13 @@ func TestBadCommands(t *testing.T) {
 		}
 		return nil
 	}).AnyTimes()
-	runNewWsHandler(wsconn, pubSubSource, messageSink)
+	runNewWsHandler(wsconn, pubSubSource, messageSink, messageStore)
 
 	assert.Equal(t, len(badRequests), counter, "expected number of bad requests does not match")
 }
 
-func runNewWsHandler(wsconn *MockWSConn, pubSubSource *MockPubSubSource, messageSink *MockMessageSink) *WSHandler {
-	// TODO!!!
-	handler := NewWSHandler(pubSubSource, messageSink, nil, wsconn, "testuser")
+func runNewWsHandler(wsconn *MockWSConn, pubSubSource *MockPubSubSource, messageSink *MockMessageSink, messageStore store.MessageStore) *WSHandler {
+	handler := NewWSHandler(pubSubSource, messageSink, messageStore, wsconn, "testuser")
 	go func() {
 		handler.Start()
 	}()
@@ -115,7 +116,7 @@ func runNewWsHandler(wsconn *MockWSConn, pubSubSource *MockPubSubSource, message
 	return handler
 }
 
-func createDefaultMocks(inputMessages []string) (*MockWSConn, *MockPubSubSource, *MockMessageSink) {
+func createDefaultMocks(inputMessages []string) (*MockWSConn, *MockPubSubSource, *MockMessageSink, *MockMessageStore) {
 	inputMessagesC := make(chan []byte, 10)
 	for _, msg := range inputMessages {
 		inputMessagesC <- []byte(msg)
@@ -123,6 +124,7 @@ func createDefaultMocks(inputMessages []string) (*MockWSConn, *MockPubSubSource,
 
 	pubSubSource := NewMockPubSubSource(ctrl)
 	messageSink := NewMockMessageSink(ctrl)
+	messageStore := NewMockMessageStore(ctrl)
 
 	wsconn := NewMockWSConn(ctrl)
 	wsconn.EXPECT().Receive(gomock.Any()).Do(func(message *[]byte) error {
@@ -132,7 +134,7 @@ func createDefaultMocks(inputMessages []string) (*MockWSConn, *MockPubSubSource,
 
 	wsconn.EXPECT().Send(connectedNotificationMatcher{})
 
-	return wsconn, pubSubSource, messageSink
+	return wsconn, pubSubSource, messageSink, messageStore
 }
 
 // --- routeMatcher ---------

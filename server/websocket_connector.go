@@ -52,7 +52,7 @@ func (factory *WSHandlerFactory) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	}
 	defer c.Close()
 
-	NewWSHandler(factory.Router, factory.MessageSink, factory.messageStore, &wsconn{c}, extractUserId(r.RequestURI)).
+	_ = NewWSHandler(factory.Router, factory.MessageSink, factory.messageStore, &wsconn{c}, extractUserId(r.RequestURI)).
 		Start()
 }
 
@@ -87,10 +87,11 @@ func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, messageSto
 	return server
 }
 
-func (srv *WSHandler) Start() {
+func (srv *WSHandler) Start() error {
 	srv.sendConnectionMessage()
 	go srv.sendLoop()
 	srv.receiveLoop()
+	return nil
 }
 
 func (srv *WSHandler) sendLoop() {

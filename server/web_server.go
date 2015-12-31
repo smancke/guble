@@ -2,7 +2,6 @@ package server
 
 import (
 	"github.com/smancke/guble/guble"
-	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -23,16 +22,16 @@ func NewWebServer(addr string) *WebServer {
 	}
 }
 
-func (ws *WebServer) Start() {
-	go func() {
-		guble.Info("starting up at %v", ws.addr)
-		ws.server = &http.Server{Addr: ws.addr, Handler: ws.mux}
-		var err error
-		ws.ln, err = net.Listen("tcp", ws.addr)
-		if err != nil {
-			log.Panicf("Listen: " + err.Error())
-		}
+func (ws *WebServer) Start() error {
+	guble.Info("starting up at %v", ws.addr)
+	ws.server = &http.Server{Addr: ws.addr, Handler: ws.mux}
+	var err error
+	ws.ln, err = net.Listen("tcp", ws.addr)
+	if err != nil {
+		return err
+	}
 
+	go func() {
 		err = ws.server.Serve(tcpKeepAliveListener{ws.ln.(*net.TCPListener)})
 
 		if err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
@@ -40,6 +39,7 @@ func (ws *WebServer) Start() {
 		}
 		guble.Info("http server stopped")
 	}()
+	return nil
 }
 
 func (ws *WebServer) Stop() error {

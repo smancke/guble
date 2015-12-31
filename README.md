@@ -51,19 +51,25 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 
 ## Release 0.1
 The first release 0.1 is expected start of January 2016
-* Cleanup, documentation, and test coverage of the gcm connector
+* Persistance and replay of messages
+** Replay command implementation
+** Correct Locking in the message store
+** Replay command in cli help
+** Reusage of file handle on multiple concurrent calls
+** Solution for the key-value store and the message id
 * Clean Shutdown
+* Better Approach for message buffering on huge message numbers
 
 ## Roadmap Release 0.2
 * Improve Logging (Maybe use of: https://github.com/Sirupsen/logrus)
-* Better Approach for message buffering on huge message numbers
 * Client: (Re)-Setup of subscriptions after client reconnect
 * Stable Java-Script Client: https://github.com/smancke/guble-js
 
 ## Roadmap Release 0.3
+* Cleanup, documentation, and test coverage of the gcm connector
 * Authentication and Access Management
 * Configuration of a cross origin policy
-* Persistance and replay of messages
+* Configuration of different persistant strategies for topics
 
 ## Roadmap Release 0.4
 * Replication across multiple Servers

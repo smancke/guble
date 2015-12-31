@@ -22,6 +22,14 @@ func NewFileMessageStore(basedir string) *FileMessageStore {
 	}
 }
 
+func (fms *FileMessageStore) MaxMessageId(partition string) (uint64, error) {
+	p, err := fms.partitionStore(partition)
+	if err != nil {
+		return 0, err
+	}
+	return p.MaxMessageId()
+}
+
 func (fms *FileMessageStore) Stop() error {
 	fms.mutex.Lock()
 	defer fms.mutex.Unlock()
@@ -73,6 +81,9 @@ func (fms *FileMessageStore) partitionStore(partition string) (*MessagePartition
 			}
 		}
 		partitionStore = NewMessagePartition(dir, partition)
+		if err := partitionStore.Start(); err != nil {
+			return nil, err
+		}
 		fms.partitions[partition] = partitionStore
 	}
 	return partitionStore, nil

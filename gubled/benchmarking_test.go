@@ -102,7 +102,7 @@ func (test *testgroup) Clean() {
 }
 
 func TestThroughput(t *testing.T) {
-	guble.LogLevel = guble.LEVEL_ERR
+	defer enableDebugForMethod()()
 
 	service := StartupService(Args{Listen: "localhost:0", KVBackend: "memory"})
 	defer func() {
