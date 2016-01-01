@@ -19,6 +19,7 @@ type DummyMessageStore struct {
 	topicSequences     map[string]uint64
 	topicSequencesLock sync.RWMutex
 	kvStore            KVStore
+	isSyncStarted      bool
 	// used to send the stop request to the syc goroutine
 	stopC chan bool
 	// answer fromt he syc goroutine, when it is stopped
@@ -44,10 +45,15 @@ func (fms *DummyMessageStore) Start() error {
 		return errors.New("DummyMessageStore needs KVStore to be se set on Start()")
 	}
 	go fms.startSequenceSync()
+	fms.isSyncStarted = true
+
 	return nil
 }
 
 func (fms *DummyMessageStore) Stop() error {
+	if !fms.isSyncStarted {
+		return nil
+	}
 	fms.stopC <- true
 	<-fms.stoppedC
 	return nil

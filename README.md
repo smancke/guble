@@ -48,20 +48,20 @@ The goal of guble is to be a simple and fast message bus for user interaction an
   - [Authentication and Accessmanagement](#authentication-and-accessmanagement)
 
 # Roadmap
+This is the current, fast changing idea of a roadmap and todo-list.
 
 ## Release 0.1
 The first release 0.1 is expected start of January 2016
 * Persistance and replay of messages
 ** Replay command implementation
-** Correct Locking in the message store
 ** Replay command in cli help
-** Reusage of file handle on multiple concurrent calls
-** Solution for the key-value store and the message id
 * Clean Shutdown
 * Better Approach for message buffering on huge message numbers
 
 ## Roadmap Release 0.2
 * Improve Logging (Maybe use of: https://github.com/Sirupsen/logrus)
+* Rename package guble to protocol or gublep
+* Change time from iso to timestamp
 * Client: (Re)-Setup of subscriptions after client reconnect
 * Stable Java-Script Client: https://github.com/smancke/guble-js
 
@@ -169,17 +169,17 @@ The communication with the guble server is done by usual websockets, using the b
 ### Message Format
 Payload messages send from the server to the client are all of in the following form:
 ```
-    <sequenceId:int64>,<path:string>,<publisherUserId:string>,<publisherApplicationId:string>,<publisherMessageId:string>,<messagePublishingTime:iso-date>\n
+    <path:string>,<sequenceId:int64>,<publisherUserId:string>,<publisherApplicationId:string>,<publisherMessageId:string>,<messagePublishingTime:iso-date>\n
     [<application headers json>]\n
     <body>
 
     example 1:
-    42,/foo/bar,user01,phone1,id123,2015-01-01T12:00:00+01:00
+    /foo/bar,42,user01,phone1,id123,2015-01-01T12:00:00+01:00
     {"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}
     Hello World
 
     example 2:
-    42,/foo/bar,user01,54sdcj8sd7,id123,2015-01-01T12:00:00+01:00
+    /foo/bar,42,user01,54sdcj8sd7,id123,2015-01-01T12:00:00+01:00
 
     anyByteData
 ```

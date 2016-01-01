@@ -6,11 +6,11 @@ import (
 	"testing"
 )
 
-var aNormalMessage = `42,/foo/bar,user01,phone01,id123,2015-01-01T12:00:00+01:00
+var aNormalMessage = `/foo/bar,42,user01,phone01,id123,2015-01-01T12:00:00+01:00
 {"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}
 Hello World`
 
-var aMinimalMessage = "42,/,,,,2015-01-01T12:00:00+01:00"
+var aMinimalMessage = "/,42,,,,2015-01-01T12:00:00+01:00"
 
 var aConnectedNotification = `#connected You are connected to the server.
 {"ApplicationId": "phone1", "UserId": "user01", "Time": "2015-01-01T12:00:00+01:00"}`

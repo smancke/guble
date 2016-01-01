@@ -13,13 +13,15 @@ import (
 
 func TestStopingOfModules(t *testing.T) {
 	defer initCtrl(t)()
-
+	defer enableDebugForMethod()()
 	// given:
 	service, _, _, _, _ := aMockedService()
 
 	// whith a registered stopable
 	stopable := NewMockStopable(ctrl)
 	service.Register(stopable)
+
+	service.Start()
 
 	// when i stop the service,
 	// the stopable is called

@@ -70,9 +70,9 @@ func (msg *Message) Bytes() []byte {
 }
 
 func (msg *Message) writeMetadataLine(buff *bytes.Buffer) {
-	buff.WriteString(strconv.FormatUint(msg.Id, 10))
-	buff.WriteString(",")
 	buff.WriteString(string(msg.Path))
+	buff.WriteString(",")
+	buff.WriteString(strconv.FormatUint(msg.Id, 10))
 	buff.WriteString(",")
 	buff.WriteString(msg.PublisherUserId)
 	buff.WriteString(",")
@@ -157,18 +157,18 @@ func parseMessage(message []byte) (interface{}, error) {
 		return nil, fmt.Errorf("message metadata has to have 6 fields, but was %v", parts[0])
 	}
 
-	id, err := strconv.ParseUint(meta[0], 10, 0)
-	if err != nil {
-		return nil, fmt.Errorf("message metadata has to start with integer id, but was %v", meta[0])
+	if len(meta[0]) == 0 || meta[0][0] != '/' {
+		return nil, fmt.Errorf("message has invalid topic, got %v", meta[0])
 	}
 
-	if len(meta[1]) == 0 || meta[1][0] != '/' {
-		return nil, fmt.Errorf("message has invalid topic, got %v", meta[1])
+	id, err := strconv.ParseUint(meta[1], 10, 0)
+	if err != nil {
+		return nil, fmt.Errorf("message metadata to have an integer id as second field, but was %v", meta[1])
 	}
 
 	msg := &Message{
 		Id:                     id,
-		Path:                   Path(meta[1]),
+		Path:                   Path(meta[0]),
 		PublisherUserId:        meta[2],
 		PublisherApplicationId: meta[3],
 		PublisherMessageId:     meta[4],
