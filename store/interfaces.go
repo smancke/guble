@@ -21,6 +21,16 @@ type MessageStore interface {
 
 	// Returns the hightest message id for a particular partition
 	MaxMessageId(partition string) (uint64, error)
+
+	// Executed the supplied function within the locking context of the message partition
+	// this ensures, that wile the code is executed, no change to the supplied maxMessageId can occur.
+	// The error result if the fnToExecute or an error while locking will be returned by DoInTx.
+	DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error
+}
+
+type MessageAndId struct {
+	Id      uint64
+	Message []byte
 }
 
 // A fetch request for fetching messages in a MessageStore
@@ -44,7 +54,7 @@ type FetchRequest struct {
 	Prefix []byte
 
 	// The cannel to send the message back to the receiver
-	MessageC chan []byte
+	MessageC chan MessageAndId
 
 	// A Callback if an error occures
 	ErrorCallback chan error

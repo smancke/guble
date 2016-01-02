@@ -27,18 +27,18 @@ func TestSubscribeAndUnsubscribe(t *testing.T) {
 	wsconn, pubSubSource, messageSink, messageStore := createDefaultMocks(messages)
 
 	pubSubSource.EXPECT().Subscribe(routeMatcher{"/foo"}).Return(nil)
-	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /foo"))
+	//wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /foo"))
 
 	pubSubSource.EXPECT().Subscribe(routeMatcher{"/bar"}).Return(nil)
-	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /bar"))
+	//wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /bar"))
 
 	pubSubSource.EXPECT().Unsubscribe(routeMatcher{"/foo"})
-	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_UNSUBSCRIBED_FROM + " /foo"))
+	//wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_UNSUBSCRIBED_FROM + " /foo"))
 
 	wshandler := runNewWsHandler(wsconn, pubSubSource, messageSink, messageStore)
 
-	a.Equal(1, len(wshandler.subscriptions))
-	a.Equal(guble.Path("/bar"), wshandler.subscriptions[guble.Path("/bar")].Path)
+	a.Equal(1, len(wshandler.receiver))
+	a.Equal(guble.Path("/bar"), wshandler.receiver[guble.Path("/bar")].path)
 }
 
 func TestSendMessageWirthPublisherMessageId(t *testing.T) {
@@ -79,8 +79,8 @@ func TestAnIncommingMessageIsDelivered(t *testing.T) {
 
 	handler := runNewWsHandler(wsconn, pubSubSource, messageSink, messageStore)
 
-	handler.messagesAndRouteToSend <- MsgAndRoute{Message: aTestMessage, Route: nil}
-	time.Sleep(time.Millisecond * 10)
+	handler.sendChannel <- aTestMessage.Bytes()
+	time.Sleep(time.Millisecond * 2)
 }
 
 func TestBadCommands(t *testing.T) {
@@ -102,6 +102,7 @@ func TestBadCommands(t *testing.T) {
 		}
 		return nil
 	}).AnyTimes()
+
 	runNewWsHandler(wsconn, pubSubSource, messageSink, messageStore)
 
 	assert.Equal(t, len(badRequests), counter, "expected number of bad requests does not match")
@@ -112,7 +113,7 @@ func runNewWsHandler(wsconn *MockWSConn, pubSubSource *MockPubSubSource, message
 	go func() {
 		handler.Start()
 	}()
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 2)
 	return handler
 }
 

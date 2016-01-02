@@ -13,7 +13,6 @@ import (
 
 func TestStopingOfModules(t *testing.T) {
 	defer initCtrl(t)()
-	defer enableDebugForMethod()()
 	// given:
 	service, _, _, _, _ := aMockedService()
 

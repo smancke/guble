@@ -31,12 +31,11 @@ type GCMConnector struct {
 func NewGCMConnector(prefix string, gcmApiKey string) *GCMConnector {
 	mux := httprouter.New()
 	gcm := &GCMConnector{
-		mux:                mux,
-		prefix:             prefix,
-		channelFromRouter:  make(chan server.MsgAndRoute, 1000),
-		closeRouteByRouter: make(chan server.Route),
-		stopChan:           make(chan bool, 1),
-		sender:             &gcm.Sender{ApiKey: gcmApiKey},
+		mux:               mux,
+		prefix:            prefix,
+		channelFromRouter: make(chan server.MsgAndRoute, 1000),
+		stopChan:          make(chan bool, 1),
+		sender:            &gcm.Sender{ApiKey: gcmApiKey},
 	}
 
 	mux.POST(removeTrailingSlash(gcm.prefix)+"/:userid/:gcmid/subscribe/*topic", gcm.Subscribe)
@@ -45,7 +44,7 @@ func NewGCMConnector(prefix string, gcmApiKey string) *GCMConnector {
 }
 
 func (gcmConnector *GCMConnector) Start() error {
-	broadcastRoute := server.NewRoute(removeTrailingSlash(gcmConnector.prefix)+"/broadcast", gcmConnector.channelFromRouter, gcmConnector.closeRouteByRouter, "gcm_connector", "gcm_connector")
+	broadcastRoute := server.NewRoute(removeTrailingSlash(gcmConnector.prefix)+"/broadcast", gcmConnector.channelFromRouter, "gcm_connector", "gcm_connector")
 	gcmConnector.router.Subscribe(broadcastRoute)
 	go func() {
 		gcmConnector.loadSubscriptions()
@@ -188,7 +187,7 @@ func (gcmConnector *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Reque
 func (gcmConnector *GCMConnector) subscribe(topic string, userid string, gcmid string) {
 	guble.Info("gcm connector registration to userid=%q, gcmid=%q: %q", userid, gcmid, topic)
 
-	route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmConnector.closeRouteByRouter, gcmid, userid)
+	route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmid, userid)
 
 	gcmConnector.router.Subscribe(route)
 	gcmConnector.saveSubscription(userid, topic, gcmid)
@@ -219,7 +218,7 @@ func (gcmConnector *GCMConnector) loadSubscriptions() {
 			topic := splitedValue[1]
 
 			guble.Debug("renew gcm subscription: user=%v, topic=%v, gcmid=%v", userid, topic, gcmId)
-			route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmConnector.closeRouteByRouter, gcmId, userid)
+			route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmId, userid)
 			gcmConnector.router.Subscribe(route)
 			count++
 		}

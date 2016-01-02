@@ -101,6 +101,16 @@ func (fms *DummyMessageStore) MaxMessageId(partition string) (uint64, error) {
 	return fms.maxMessageId(partition)
 }
 
+func (fms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error {
+	fms.topicSequencesLock.Lock()
+	defer fms.topicSequencesLock.Unlock()
+	maxId, err := fms.maxMessageId(partition)
+	if err != nil {
+		return err
+	}
+	return fnToExecute(maxId)
+}
+
 func (fms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
 
 	sequenceValue, exist := fms.topicSequences[partition]

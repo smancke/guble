@@ -19,12 +19,11 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 
 	// when i add two routes in the same path
 	channel := make(chan MsgAndRoute, chanSize)
-	closeRouteByRouter := make(chan Route)
-	routeBlah1 := router.Subscribe(NewRoute("/blah", channel, closeRouteByRouter, "appid01", "user01"))
-	routeBlah2 := router.Subscribe(NewRoute("/blah", channel, closeRouteByRouter, "appid02", "user01"))
+	routeBlah1 := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
+	routeBlah2 := router.Subscribe(NewRoute("/blah", channel, "appid02", "user01"))
 
 	// and one route in another path
-	routeFoo := router.Subscribe(NewRoute("/foo", channel, closeRouteByRouter, "appid01", "user01"))
+	routeFoo := router.Subscribe(NewRoute("/foo", channel, "appid01", "user01"))
 
 	// then
 
@@ -52,10 +51,10 @@ func TestReplacingOfRoutes(t *testing.T) {
 
 	// Given a router with a route
 	router := NewPubSubRouter().Go()
-	router.Subscribe(NewRoute("/blah", nil, nil, "appid01", "user01"))
+	router.Subscribe(NewRoute("/blah", nil, "appid01", "user01"))
 
 	// when: i add another route with the same Application Id and Same Path
-	router.Subscribe(NewRoute("/blah", nil, nil, "appid01", "newUserId"))
+	router.Subscribe(NewRoute("/blah", nil, "appid01", "newUserId"))
 
 	// then: the router only contains the new route
 	a.Equal(1, len(router.routes))
@@ -82,8 +81,7 @@ func TestRoutingWithSubTopics(t *testing.T) {
 	// Given a Multiplexer with route
 	router := NewPubSubRouter().Go()
 	channel := make(chan MsgAndRoute, chanSize)
-	closeRouteByRouter := make(chan Route)
-	r := router.Subscribe(NewRoute("/blah", channel, closeRouteByRouter, "appid01", "user01"))
+	r := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
 
 	// when i send a message to a subroute
 	router.HandleMessage(&guble.Message{Path: "/blah/blub", Body: aTestByteMessage})
@@ -140,18 +138,28 @@ func TestRouteIsRemovedIfChannelIsFull(t *testing.T) {
 		a.Fail("Not returning!")
 	}
 
-	// and the close channel contains this route
+	// fetch messages from the channel
+	for i := 0; i < chanSize; i++ {
+		select {
+		case _, open := <-r.C:
+			a.True(open)
+		case <-time.After(time.Millisecond * 10):
+			a.Fail("error not enough messages in channel")
+		}
+	}
+
+	// and the channel is closed
 	select {
-	case route := <-r.CloseRouteByRouter:
-		a.True(r.equals(route))
-	case <-time.After(time.Millisecond):
-		a.Fail("no close message received")
+	case _, open := <-r.C:
+		a.False(open)
+	default:
+		a.Fail("channel was not closed")
 	}
 }
 
 func aRouterRoute() (*PubSubRouter, *Route) {
 	router := NewPubSubRouter().Go()
-	return router, router.Subscribe(NewRoute("/blah", make(chan MsgAndRoute, chanSize), make(chan Route, 1), "appid01", "user01"))
+	return router, router.Subscribe(NewRoute("/blah", make(chan MsgAndRoute, chanSize), "appid01", "user01"))
 }
 
 func assertChannelContainsMessage(a *assert.Assertions, c chan MsgAndRoute, msg []byte) {

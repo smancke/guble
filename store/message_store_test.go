@@ -35,7 +35,7 @@ func Test_Fetch(t *testing.T) {
 	}
 
 	for _, testcase := range testCases {
-		testcase.req.MessageC = make(chan []byte)
+		testcase.req.MessageC = make(chan MessageAndId)
 		testcase.req.ErrorCallback = make(chan error)
 
 		messages := []string{}
@@ -48,7 +48,7 @@ func Test_Fetch(t *testing.T) {
 				if !open {
 					break loop
 				}
-				messages = append(messages, string(msg))
+				messages = append(messages, string(msg.Message))
 			case err := <-testcase.req.ErrorCallback:
 				a.Fail(err.Error())
 				break loop

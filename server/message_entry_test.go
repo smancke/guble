@@ -41,12 +41,3 @@ func Test_MessageEntry_MessagesIsStored_And_GetsCorrectParameters(t *testing.T) 
 
 	a.Equal(routedMsg.Bytes(), storedMsg)
 }
-
-func Test_MessageEntry_getPartitionFromTopic(t *testing.T) {
-	a := assert.New(t)
-	messageEntry := &MessageEntry{}
-	a.Equal("foo", messageEntry.getPartitionFromTopic(guble.Path("/foo/bar/bazz")))
-	a.Equal("foo", messageEntry.getPartitionFromTopic(guble.Path("/foo")))
-	a.Equal("", messageEntry.getPartitionFromTopic(guble.Path("/")))
-	a.Equal("", messageEntry.getPartitionFromTopic(guble.Path("")))
-}

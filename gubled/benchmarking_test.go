@@ -34,6 +34,7 @@ func newTestgroup(t *testing.T, groupId int, addr string, messagesToSend int) *t
 }
 
 func TestThroughput(t *testing.T) {
+	//defer enableDebugForMethod()()
 	dir, _ := ioutil.TempDir("", "guble_benchmark_test")
 	defer os.RemoveAll(dir)
 
@@ -43,7 +44,7 @@ func TestThroughput(t *testing.T) {
 	}()
 	time.Sleep(time.Millisecond * 10)
 
-	testgroupCount := 2
+	testgroupCount := 20
 	messagesPerGroup := 400
 	log.Printf("init the %v testgroups", testgroupCount)
 	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
@@ -101,7 +102,7 @@ func (test *testgroup) Init() {
 	var err error
 	location := "ws://" + test.addr + "/stream/user/xy"
 	//location := "ws://gathermon.mancke.net:8080"
-	//location := "ws://127.0.0.1:8080"
+	//location := "ws://127.0.0.1:8080/stream/"
 	test.client1, err = client.Open(location, "http://localhost/", 10, false)
 	if err != nil {
 		panic(err)
@@ -114,7 +115,8 @@ func (test *testgroup) Init() {
 	test.expectStatusMessage(guble.SUCCESS_CONNECTED, "You are connected to the server.")
 
 	test.client1.Subscribe(test.topic)
-	test.expectStatusMessage(guble.SUCCESS_SUBSCRIBED_TO, test.topic)
+	time.Sleep(time.Millisecond * 5)
+	//test.expectStatusMessage(guble.SUCCESS_SUBSCRIBED_TO, test.topic)
 }
 
 func (test *testgroup) expectStatusMessage(name string, arg string) {
@@ -152,7 +154,7 @@ func (test *testgroup) Start() {
 			test.t.Fail()
 			return
 		case <-time.After(time.Second * 5):
-			test.t.Logf("[%v] no message received for 1 second, expected message %v", test.groupId, i)
+			test.t.Logf("[%v] no message received for 5 seconds, expected message %v", test.groupId, i)
 			test.done <- false
 			test.t.Fail()
 			return

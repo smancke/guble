@@ -161,6 +161,12 @@ func (p *MessagePartition) Close() error {
 	return p.closeAppendFiles()
 }
 
+func (p *MessagePartition) DoInTx(fnToExecute func(maxMessageId uint64) error) error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	return fnToExecute(p.maxMessageId)
+}
+
 func (p *MessagePartition) StoreTx(partition string,
 	callback func(msgId uint64) (msg []byte)) error {
 
@@ -244,7 +250,8 @@ func (p *MessagePartition) Fetch(req FetchRequest) {
 }
 
 // fetch the messages in the supplied fetchlist and send them to the channel
-func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC chan []byte) error {
+func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC chan MessageAndId) error {
+
 	var fileId uint64
 	var file *os.File
 	var err error
@@ -264,7 +271,7 @@ func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC cha
 		if err != nil {
 			return err
 		}
-		messageC <- msg
+		messageC <- MessageAndId{f.messageId, msg}
 	}
 	return nil
 }
@@ -282,7 +289,11 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 		req.Direction = 1
 	}
 	nextId := req.StartId
-	result := make([]fetchEntry, 0, req.Count)
+	initialCap := req.Count
+	if initialCap > 100 {
+		initialCap = 100
+	}
+	result := make([]fetchEntry, 0, initialCap)
 	var file *os.File
 	var fileId uint64
 	for len(result) < req.Count && nextId >= 0 {

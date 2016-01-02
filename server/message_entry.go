@@ -3,7 +3,7 @@ package server
 import (
 	"github.com/smancke/guble/guble"
 	"github.com/smancke/guble/store"
-	"strings"
+
 	"time"
 )
 
@@ -28,25 +28,16 @@ func (entry *MessageEntry) SetMessageStore(messageStore store.MessageStore) {
 
 // Take the message and forward it to the router.
 func (entry *MessageEntry) HandleMessage(msg *guble.Message) error {
-	partition := entry.getPartitionFromTopic(msg.Path)
-
 	txCallback := func(msgId uint64) []byte {
 		msg.Id = msgId
 		msg.PublishingTime = time.Now().Format(time.RFC3339)
 		return msg.Bytes()
 	}
 
-	if err := entry.messageStore.StoreTx(partition, txCallback); err != nil {
-		guble.Err("error storing message in partition %v: %v", partition, err)
+	if err := entry.messageStore.StoreTx(msg.Path.Partition(), txCallback); err != nil {
+		guble.Err("error storing message in partition %v: %v", msg.Path.Partition(), err)
 		return err
 	}
 
 	return entry.router.HandleMessage(msg)
-}
-
-func (entry *MessageEntry) getPartitionFromTopic(topicPath guble.Path) string {
-	if len(topicPath) > 0 && topicPath[0] == '/' {
-		topicPath = topicPath[1:]
-	}
-	return strings.SplitN(string(topicPath), "/", 2)[0]
 }

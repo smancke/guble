@@ -19,13 +19,13 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 ## Working Features
 
 * In-memory dispatching of messages
+* Persistance of topics with replay of messages
 * Websocket api
 * Commandline client and go client library
 * Google cloud messaging adapter: Delivery of messages as gcm push notifications
 * Subscription to multiple topics and subtopics
 * Throughput: Delivery of ~50.000 messages per second (end-to-end)
 * Docker image for client and server
-
 
 ## Table of Contents
 
@@ -48,15 +48,15 @@ The goal of guble is to be a simple and fast message bus for user interaction an
   - [Authentication and Accessmanagement](#authentication-and-accessmanagement)
 
 # Roadmap
-This is the current, fast changing idea of a roadmap and todo-list.
+This is the current (and fast changing) roadmap and todo-list:
 
 ## Release 0.1
 The first release 0.1 is expected start of January 2016
 * Persistance and replay of messages
 ** Replay command implementation
 ** Replay command in cli help
-* Clean Shutdown
 * Better Approach for message buffering on huge message numbers
+* Clean Shutdown
 
 ## Roadmap Release 0.2
 * Improve Logging (Maybe use of: https://github.com/Sirupsen/logrus)
@@ -64,12 +64,16 @@ The first release 0.1 is expected start of January 2016
 * Change time from iso to timestamp
 * Client: (Re)-Setup of subscriptions after client reconnect
 * Stable Java-Script Client: https://github.com/smancke/guble-js
+* Correct behaviour for receive command with maxCount on subtopics
+* Make Notification Messages optional by client configuration
+* Cancel of fetch in the message store and multiple concurrent fetch Commands for the same topic
 
 ## Roadmap Release 0.3
 * Cleanup, documentation, and test coverage of the gcm connector
 * Authentication and Access Management
 * Configuration of a cross origin policy
 * Configuration of different persistant strategies for topics
+* Client configurable message size limit with fetching by url
 
 ## Roadmap Release 0.4
 * Replication across multiple Servers
@@ -205,18 +209,44 @@ Publish a message for a topic
     Hello World
 ```
 
-#### Subscribe
-Subscribe to a path (e.g. a topic or subtopic)
+#### Receive
+Receive messages from a path (e.g. a topic or subtopic).
+This command can be used to subscribe for incoming messages on a topic,
+as well as for replaying the message history.
 ```
-    + <path>
+    + <path> [<startId>[,<maxCount>]]
+```
+* `path`: The topic to receive the messages from.
+* `startId`: The message id to start the replay.
+** If no startId is given, only future messages will be received (simple subscribe)
+** If the startId is negative, it is interpreted as relative count of last messages in the history.
+* `maxCount`: The maximum number of messages to replay.
 
-    example:
-    + /foo
-    + /foo/bar
+__Note__: Currently the maxCount does not work correctly on subtopics.
+
+Examples:
+```
+    + /foo         # Subscribe to all future messages matching /foo
+    + /foo/bar     # Subscribe to all future messages matching /foo/bar
+
+    + /foo 0       # Receive all message from the topic and subscribe for further incoming messages.
+
+    + /foo 42      # Receive all message with message ids >= 42
+                   # from the topic and subscribe for further incoming messages.
+
+    + /foo 0 20    # Receive the first (oldest) 20 messages within the topic and stop.
+                   # (If the topic has less messages, it will stop after receiving all existing ones.)
+
+    + /foo -20     # Receive the last (newest) 20 messages from the topic and then
+                   # subscribe for further incoming messages.
+
+    + /foo -20 20  # Receive the last (newest) 20 messages within the topic and stop.
+                   # (If the topic has less messages, it will stop after receiving all existing ones.)
 ```
 
-#### Unsubscribe  (TBD)
-Unsubscribe from a path (e.g. a topic or subtopic)
+#### Unsubscribe/Cancel
+Cancel further receiving of messages from a path (e.g. a topic or subtopic).
+
 ```
     - <path>
 

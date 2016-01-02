@@ -168,3 +168,11 @@ func TestParsingErrorNotificationMessage(t *testing.T) {
 	assert.Equal("", msg.Json)
 	assert.Equal(true, msg.IsError)
 }
+
+func Test_Message_getPartitionFromTopic(t *testing.T) {
+	a := assert.New(t)
+	a.Equal("foo", Path("/foo/bar/bazz").Partition())
+	a.Equal("foo", Path("/foo").Partition())
+	a.Equal("", Path("/").Partition())
+	a.Equal("", Path("").Partition())
+}

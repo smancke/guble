@@ -74,6 +74,14 @@ func (fms *FileMessageStore) Fetch(req FetchRequest) {
 	p.Fetch(req)
 }
 
+func (fms *FileMessageStore) DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error {
+	p, err := fms.partitionStore(partition)
+	if err != nil {
+		return err
+	}
+	return p.DoInTx(fnToExecute)
+}
+
 func (fms *FileMessageStore) partitionStore(partition string) (*MessagePartition, error) {
 	fms.mutex.Lock()
 	defer fms.mutex.Unlock()

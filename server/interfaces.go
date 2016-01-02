@@ -13,11 +13,10 @@ type MsgAndRoute struct {
 }
 
 type Route struct {
-	Path               guble.Path
-	C                  chan MsgAndRoute
-	CloseRouteByRouter chan Route
-	UserId             string
-	ApplicationId      string
+	Path          guble.Path
+	C             chan MsgAndRoute
+	UserId        string
+	ApplicationId string
 }
 
 func (r Route) equals(other Route) bool {
@@ -26,13 +25,12 @@ func (r Route) equals(other Route) bool {
 		r.ApplicationId == other.ApplicationId
 }
 
-func NewRoute(path string, channel chan MsgAndRoute, closeRouteByRouter chan Route, applicationId string, userId string) *Route {
+func NewRoute(path string, channel chan MsgAndRoute, applicationId string, userId string) *Route {
 	return &Route{
-		Path:               guble.Path(path),
-		C:                  channel,
-		CloseRouteByRouter: closeRouteByRouter,
-		UserId:             userId,
-		ApplicationId:      applicationId,
+		Path:          guble.Path(path),
+		C:             channel,
+		UserId:        userId,
+		ApplicationId: applicationId,
 	}
 }
 

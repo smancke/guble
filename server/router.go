@@ -143,13 +143,7 @@ func (router *PubSubRouter) deliverMessage(route Route, message *guble.Message) 
 		// fine, we could send the message
 	default:
 		guble.Info("queue was full, closing delivery for route=%v to applicationId=%v", route.Path, route.ApplicationId)
-		// the message channel is blocked,
-		// so we notify this route, that we stopped delivery and kick it out
-		select {
-		case route.CloseRouteByRouter <- route:
-		default:
-			// ignore, if the closedByRouter already was full
-		}
+		close(route.C)
 		router.unsubscribe(&route)
 	}
 }
@@ -157,11 +151,8 @@ func (router *PubSubRouter) deliverMessage(route Route, message *guble.Message) 
 func (router *PubSubRouter) closeAllRoutes() {
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
-			select {
-			case route.CloseRouteByRouter <- route:
-			default:
-				// ignore, if the closedByRouter already was full
-			}
+			close(route.C)
+			router.unsubscribe(&route)
 		}
 	}
 }
