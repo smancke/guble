@@ -44,8 +44,8 @@ func TestThroughput(t *testing.T) {
 	}()
 	time.Sleep(time.Millisecond * 10)
 
-	testgroupCount := 20
-	messagesPerGroup := 400
+	testgroupCount := 4
+	messagesPerGroup := 1000
 	log.Printf("init the %v testgroups", testgroupCount)
 	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
 	for i, _ := range testgroups {

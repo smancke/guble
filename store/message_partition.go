@@ -106,10 +106,13 @@ func (p *MessagePartition) closeAppendFiles() error {
 			}
 			return err
 		}
+		p.appendFile = nil
 	}
 
 	if p.appendIndexFile != nil {
-		return p.appendIndexFile.Close()
+		err := p.appendIndexFile.Close()
+		p.appendIndexFile = nil
+		return err
 	}
 	return nil
 }
@@ -151,6 +154,7 @@ func (p *MessagePartition) createNextAppendFiles(msgId uint64) error {
 	p.appendLastId = firstMessageIdForFile + MESSAGES_PER_FILE - 1
 	stat, err := file.Stat()
 	p.appendFileWritePosition = uint64(stat.Size())
+
 	return nil
 }
 
@@ -228,6 +232,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 	p.appendFileWritePosition += uint64(len(sizeAndId) + len(msg))
 
 	p.maxMessageId = msgId
+
 	return nil
 }
 
@@ -255,7 +260,16 @@ func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC cha
 	var fileId uint64
 	var file *os.File
 	var err error
+	var lastMsgId uint64
 	for _, f := range fetchList {
+		if lastMsgId == 0 {
+			lastMsgId = f.messageId - 1
+		}
+		if lastMsgId+uint64(1) != f.messageId {
+			panic(fmt.Sprintf("ERROR: lastMsgId +1 != f.messageId: %v != %v", lastMsgId+1, f.messageId))
+		}
+		lastMsgId = f.messageId
+
 		// ensure, that we read on the correct file
 		if file == nil || fileId != f.fileId {
 			file, err = p.checkoutMessagefile(f.fileId)
@@ -294,10 +308,25 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 		initialCap = 100
 	}
 	result := make([]fetchEntry, 0, initialCap)
+	defer func() {
+		lastMsgId := uint64(0)
+		for _, v := range result {
+			if lastMsgId == 0 {
+				lastMsgId = v.messageId - 1
+			}
+			if lastMsgId+uint64(1) != v.messageId {
+				for i, v2 := range result {
+					fmt.Printf("%v->%v\n", i, v2.messageId)
+				}
+
+				panic(fmt.Sprintf("ERROR-2: lastMsgId +1 != f.messageId: %v != %v", lastMsgId+1, v.messageId))
+			}
+			lastMsgId = v.messageId
+		}
+	}()
 	var file *os.File
 	var fileId uint64
 	for len(result) < req.Count && nextId >= 0 {
-
 		nextFileId := p.firstMessageIdForFile(nextId)
 
 		// ensure, that we read on the correct file
@@ -316,23 +345,22 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 
 		indexPosition := int64(uint64(INDEX_ENTRY_SIZE) * (nextId % MESSAGES_PER_FILE))
 
-		if stat, err := file.Stat(); err != nil {
-			return nil, err
-		} else if indexPosition < stat.Size() {
-
-			msgOffset, msgSize, err := readIndexEntry(file, indexPosition)
-			if err != nil {
+		msgOffset, msgSize, err := readIndexEntry(file, indexPosition)
+		if err != nil {
+			if err.Error() == "EOF" {
+				return result, nil // we reached the end of the index
+			} else {
 				return nil, err
 			}
+		}
 
-			if msgOffset != uint64(0) { // only append, if the message exists
-				result = append(result, fetchEntry{
-					messageId: nextId,
-					fileId:    fileId,
-					offset:    int64(msgOffset),
-					size:      int(msgSize),
-				})
-			}
+		if msgOffset != uint64(0) { // only append, if the message exists
+			result = append(result, fetchEntry{
+				messageId: nextId,
+				fileId:    fileId,
+				offset:    int64(msgOffset),
+				size:      int(msgSize),
+			})
 		}
 
 		nextId += uint64(req.Direction)
