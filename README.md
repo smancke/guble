@@ -257,23 +257,6 @@ Cancel further receiving of messages from a path (e.g. a topic or subtopic).
     - /foo/bar
 ```
 
-#### Replay (TBD, not implemented in the first version)
-Replay all messages from a specific topic, which are newer than the supllied message id.
-If `maxCount` is supplied, only the maxCount newest messages are supplied.
-```
-    replay <lastSequenceId>[,<maxCount>] /<topic>
-
-    examples:
-    // replay all messages in the topic /events:
-    replay -1 /events
-    
-    // replay all messages with sequenceId > 42:
-    replay 42 /events
-    
-    // replay the last 10 messages:
-    replay -1,10 /events
-```
-
 ### Server Status messages
 The server sends status messages to the client. All positive status messages start with `>`.
 Status messages reporting an error start with `!`. Status messages are in the form.
@@ -366,6 +349,3 @@ The topics of such a group are located at:
 ```
     /user/<groupId>
 ```
-
-## Authentication and Accessmanagement
-TBD ..

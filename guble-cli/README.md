@@ -23,12 +23,13 @@ docker exec -it guble /go/bin/guble-cli
 
 ## Start options
 ```
-usage: guble-cli [--verbose] [--url URL] [--user USER] [--log-info] [--log-debug] [TOPICS [TOPICS ...]]
+usage: guble-cli [--exit] [--verbose] [--url URL] [--user USER] [--log-info] [--log-debug] [COMMANDS [COMMANDS ...]]
 
 positional arguments:
-  topics
+  commands
 
 options:
+  --exit, -x              Exit after sending the commands
   --verbose, -v           Display verbose server communication
   --url URL               The websocket url to connect (ws://localhost:8080/stream/)
   --user USER             The user name to connect with (guble-cli)

@@ -16,10 +16,11 @@ import (
 )
 
 type Args struct {
+	Exit     bool     `arg:"-x,help: Exit after sending the commands"`
+	Commands []string `arg:"positional,help: The commands to send after startup"`
 	Verbose  bool     `arg:"-v,help: Display verbose server communication"`
 	Url      string   `arg:"help: The websocket url to connect (ws://localhost:8080/stream/)"`
 	User     string   `arg:"help: The user name to connect with (guble-cli)"`
-	Topics   []string `arg:"positional,help: The topics to subscribe on connect"`
 	LogInfo  bool     `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
 	LogDebug bool     `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
 }
@@ -48,8 +49,11 @@ func main() {
 	go writeLoop(client)
 	go readLoop(client)
 
-	for _, topic := range args.Topics {
-		client.Subscribe(topic)
+	for _, cmd := range args.Commands {
+		client.WriteRawMessage([]byte(cmd))
+	}
+	if args.Exit {
+		return
 	}
 	waitForTermination(func() {})
 }
