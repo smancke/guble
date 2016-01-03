@@ -46,7 +46,7 @@ func TestParsingASubscribeCommand(t *testing.T) {
 	cmd, err := ParseCmd([]byte(aSubscribeCommand))
 	assert.NoError(err)
 
-	assert.Equal(CMD_SUBSCRIBE, cmd.Name)
+	assert.Equal(CMD_RECEIVE, cmd.Name)
 	assert.Equal("/foo/bar", cmd.Arg)
 	assert.Equal("", cmd.HeaderJson)
 	assert.Nil(cmd.Body)
@@ -54,7 +54,7 @@ func TestParsingASubscribeCommand(t *testing.T) {
 
 func TestSerializeASubscribeCommand(t *testing.T) {
 	cmd := &Cmd{
-		Name: CMD_SUBSCRIBE,
+		Name: CMD_RECEIVE,
 		Arg:  "/foo/bar",
 	}
 

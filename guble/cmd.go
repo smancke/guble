@@ -8,10 +8,9 @@ import (
 
 // Valid command names
 const (
-	CMD_SEND        = ">"
-	CMD_SUBSCRIBE   = "+"
-	CMD_UNSUBSCRIBE = "-"
-	CMD_REPLAY      = "replay"
+	CMD_SEND    = ">"
+	CMD_RECEIVE = "+"
+	CMD_CANCEL  = "-"
 )
 
 // Representation of a command, which the client sends to the server

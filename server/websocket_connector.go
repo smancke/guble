@@ -127,9 +127,9 @@ func (srv *WSHandler) receiveLoop() {
 		switch cmd.Name {
 		case guble.CMD_SEND:
 			srv.handleSendCmd(cmd)
-		case guble.CMD_SUBSCRIBE:
+		case guble.CMD_RECEIVE:
 			srv.handleReceiveCmd(cmd)
-		case guble.CMD_UNSUBSCRIBE:
+		case guble.CMD_CANCEL:
 			srv.handleCancelCmd(cmd)
 		default:
 			srv.sendError(guble.ERROR_BAD_REQUEST, "unknown command %v", cmd.Name)
