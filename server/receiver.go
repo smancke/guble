@@ -194,12 +194,10 @@ func (rec *Receiver) fetch() error {
 
 	rec.messageStore.Fetch(fetch)
 
-	guble.Info("start replay")
 	for {
 		select {
 		case msgAndId, open := <-fetch.MessageC:
 			if !open {
-				guble.Info("replay done")
 				// TODO: should we send a notification, here?
 				return nil
 			}

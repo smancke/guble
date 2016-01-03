@@ -52,25 +52,23 @@ This is the current (and fast changing) roadmap and todo-list:
 
 ## Release 0.1
 The first release 0.1 is expected start of January 2016
-* Persistance and replay of messages
-** Tests for replay command implementation
-** Replay command in cli help
+TODOs left for 0.1:
 * Clean Shutdown
-* rename subscribe and unsubscribe commands
-* Logging in the receiver
-* remove userId from route
 * (re) adjust subscription notifications
 
 ## Roadmap Release 0.2
+This release contains a lot of small things and the JavaScript API.
+
+* Stable Java-Script Client: https://github.com/smancke/guble-js
 * Improve Logging (Maybe use of: https://github.com/Sirupsen/logrus)
 * Rename package guble to protocol or gublep
 * Change time from iso to timestamp
-* Client: (Re)-Setup of subscriptions after client reconnect
-* Stable Java-Script Client: https://github.com/smancke/guble-js
 * Correct behaviour for receive command with maxCount on subtopics
 * Make Notification Messages optional by client configuration
 * Cancel of fetch in the message store and multiple concurrent fetch Commands for the same topic
 * Adjust semantics for partiontion, user and groups
+* Remove userId from route
+* Client: (Re)-Setup of subscriptions after client reconnect
 
 ## Roadmap Release 0.3
 * Cleanup, documentation, and test coverage of the gcm connector
