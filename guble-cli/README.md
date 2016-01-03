@@ -39,13 +39,15 @@ options:
 ## Commands in the client
 In the running client, you can use the commands from the websocket api, e.g:
 ```
-?        # prints some usage info
-+ /foo   # subscribe to topic /foo
-- /foo   # unsubscribe from the topic /foo
+?           # prints some usage info
++ /foo/bar  # subscribe to the topic /foo/bar
++ /foo 0    # read from message 0 and subscribe to the topic /foo
++ /foo 0 5  # read messages 0-5 from /foo
++ /foo -5   # read the last 5 messages and subscribe to the topic /foo
+- /foo      # cancel the subscription for /foo
 
-> /foo   # send a message to /foo
-{}       # with header {}
-Hello    # and body Hello
+> /foo         # send a message to /foo
+> /foo/bar 42  # send a message to /foo/bar with publisherid 42
 ```
 
 

@@ -130,9 +130,17 @@ func waitForTermination(callback func()) {
 func printHelp() {
 	fmt.Println(`
 ## Commands
-+ /foo/bar      # subscribes to topic /foo/bar
-- /foo/bar      # unsubscribes from topic /foo/bar
-> /foo/bar 42   # send a message to /foo/bar with publisherid 42
+?           # print this info
+
++ /foo/bar  # subscribe to the topic /foo/bar
++ /foo 0    # read from message 0 and subscribe to the topic /foo
++ /foo 0 5  # read messages 0-5 from /foo
++ /foo -5   # read the last 5 messages and subscribe to the topic /foo
+
+- /foo      # cancel the subscription for /foo
+
+> /foo         # send a message to /foo
+> /foo/bar 42  # send a message to /foo/bar with publisherid 42
 `)
 }
 
