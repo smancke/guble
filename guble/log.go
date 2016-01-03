@@ -55,13 +55,14 @@ func Err(pattern string, args ...interface{}) {
 	if ErrEnabled() {
 		msg := fmt.Sprintf(pattern, args...)
 		log.Printf("ERROR (%v): %v", identifyLogOrigin(), msg)
+		log.Printf(getStackTraceMessage(msg))
 	}
 }
 
 func PanicLogger() {
 	if r := recover(); r != nil {
-		log.Printf("PANIC %v", r)
-		getStackTraceMessage(fmt.Sprintf("%v", r))
+		log.Printf("PANIC (%v): %v", identifyLogOrigin(), r)
+		log.Printf(getStackTraceMessage(fmt.Sprintf("%v", r)))
 	}
 }
 

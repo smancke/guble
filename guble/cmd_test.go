@@ -34,6 +34,12 @@ func TestSerializeASendCommand(t *testing.T) {
 	assert.Equal(t, aSendCommand, string(cmd.Bytes()))
 }
 
+func Test_Cmd_EmptyCommand_Error(t *testing.T) {
+	assert := assert.New(t)
+	_, err := ParseCmd([]byte{})
+	assert.Error(err)
+}
+
 func TestParsingASubscribeCommand(t *testing.T) {
 	assert := assert.New(t)
 

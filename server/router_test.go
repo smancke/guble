@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"fmt"
 	guble "github.com/smancke/guble/guble"
 )
 
@@ -138,6 +139,8 @@ func TestRouteIsRemovedIfChannelIsFull(t *testing.T) {
 		a.Fail("Not returning!")
 	}
 
+	time.Sleep(time.Millisecond * 1)
+
 	// fetch messages from the channel
 	for i := 0; i < chanSize; i++ {
 		select {
@@ -153,6 +156,7 @@ func TestRouteIsRemovedIfChannelIsFull(t *testing.T) {
 	case _, open := <-r.C:
 		a.False(open)
 	default:
+		fmt.Printf("len(r.C): %v", len(r.C))
 		a.Fail("channel was not closed")
 	}
 }

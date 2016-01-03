@@ -19,6 +19,13 @@ var MESSAGES_PER_FILE = uint64(10000)
 
 var INDEX_ENTRY_SIZE = 12
 
+type fetchEntry struct {
+	messageId uint64
+	fileId    uint64
+	offset    int64
+	size      int
+}
+
 type MessagePartition struct {
 	basedir                 string
 	name                    string
@@ -265,9 +272,6 @@ func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC cha
 		if lastMsgId == 0 {
 			lastMsgId = f.messageId - 1
 		}
-		if lastMsgId+uint64(1) != f.messageId {
-			panic(fmt.Sprintf("ERROR: lastMsgId +1 != f.messageId: %v != %v", lastMsgId+1, f.messageId))
-		}
 		lastMsgId = f.messageId
 
 		// ensure, that we read on the correct file
@@ -290,13 +294,6 @@ func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC cha
 	return nil
 }
 
-type fetchEntry struct {
-	messageId uint64
-	fileId    uint64
-	offset    int64
-	size      int
-}
-
 // returns a list of fetchEntry records for all message in the fetch request.
 func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, error) {
 	if req.Direction == 0 {
@@ -308,22 +305,6 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 		initialCap = 100
 	}
 	result := make([]fetchEntry, 0, initialCap)
-	defer func() {
-		lastMsgId := uint64(0)
-		for _, v := range result {
-			if lastMsgId == 0 {
-				lastMsgId = v.messageId - 1
-			}
-			if lastMsgId+uint64(1) != v.messageId {
-				for i, v2 := range result {
-					fmt.Printf("%v->%v\n", i, v2.messageId)
-				}
-
-				panic(fmt.Sprintf("ERROR-2: lastMsgId +1 != f.messageId: %v != %v", lastMsgId+1, v.messageId))
-			}
-			lastMsgId = v.messageId
-		}
-	}()
 	var file *os.File
 	var fileId uint64
 	for len(result) < req.Count && nextId >= 0 {
@@ -398,10 +379,6 @@ func (p *MessagePartition) checkoutIndexfile(fileId uint64) (*os.File, error) {
 // Release an index file handle
 func (p *MessagePartition) releaseIndexfile(fileId uint64, file *os.File) {
 	file.Close()
-}
-
-func (p *MessagePartition) getSortedStartNumbersFromFiles() []uint64 {
-	return []uint64{}
 }
 
 func (p *MessagePartition) firstMessageIdForFile(messageId uint64) uint64 {

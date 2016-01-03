@@ -41,7 +41,7 @@ func NewReceiverFromCmd(applicationId string, cmd *guble.Cmd, sendChannel chan [
 		messageStore:  messageStore,
 		cancelChannel: make(chan bool, 1),
 	}
-	if len(cmd.Arg) == 0 {
+	if len(cmd.Arg) == 0 || cmd.Arg[0] != '/' {
 		return nil, fmt.Errorf("command requires at least a path argument, but non given")
 	}
 	args := strings.SplitN(cmd.Arg, " ", 3)
@@ -68,6 +68,7 @@ func NewReceiverFromCmd(applicationId string, cmd *guble.Cmd, sendChannel chan [
 
 // start the receiver loop
 func (rec *Receiver) Start() error {
+	rec.shouldStop = false
 	if rec.doFetch && !rec.doSubscription {
 		go rec.fetchOnlyLoop()
 	} else {
@@ -76,25 +77,15 @@ func (rec *Receiver) Start() error {
 	return nil
 }
 
-func (rec *Receiver) fetchOnlyLoop() {
-	err := rec.fetch()
-	if err != nil {
-		guble.Err("error while fetching: %v, %+v", err.Error(), rec)
-		rec.sendError(guble.ERROR_INTERNAL_SERVER, err.Error())
-	}
-}
-
 func (rec *Receiver) subscriptionLoop() {
 	for !rec.shouldStop {
 		if rec.doFetch {
-			//fmt.Printf(" fetch lastSendId=%v\n", rec.lastSendId)
 
 			if err := rec.fetch(); err != nil {
 				guble.Err("error while fetching: %v, %+v", err.Error(), rec)
 				rec.sendError(guble.ERROR_INTERNAL_SERVER, err.Error())
 				return
 			}
-			//fmt.Printf(" fetch done lastSendId=%v\n", rec.lastSendId)
 
 			if err := rec.messageStore.DoInTx(rec.path.Partition(), rec.subscribeIfNoUnreadMessagesAvailable); err != nil {
 				if err == unread_messages_available {
@@ -133,18 +124,53 @@ func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) e
 }
 
 func (rec *Receiver) subscribe() {
-	rec.route = NewRoute(string(rec.path), make(chan MsgAndRoute, 10), rec.applicationId, "TODO: remove userId from route")
+	// TODO: how to size this channel
+	rec.route = NewRoute(string(rec.path), make(chan MsgAndRoute, 3), rec.applicationId, "TODO: remove userId from route")
 	rec.messageSouce.Subscribe(rec.route)
 }
 
-func (rec *Receiver) fetch() error {
+func (rec *Receiver) receiveFromSubscription() {
+	for {
+		select {
+		case msgAndRoute, ok := <-rec.route.C:
+			if !ok {
+				guble.Debug("messageSouce closed the channel returning from subscription", rec.applicationId)
+				return
+			}
+			if guble.DebugEnabled() {
+				guble.Debug("deliver message to applicationId=%v: %v", rec.applicationId, msgAndRoute.Message.MetadataLine())
+			}
+			if msgAndRoute.Message.Id > rec.lastSendId {
+				rec.lastSendId = msgAndRoute.Message.Id
+				rec.sendChannel <- msgAndRoute.Message.Bytes()
+			} else {
+				guble.Debug("dropping message %v, because it was already sent to client", msgAndRoute.Message.Id)
+			}
+		case <-rec.cancelChannel:
+			rec.shouldStop = true
+			rec.messageSouce.Unsubscribe(rec.route)
+			rec.route = nil
+			// TODO: what for a notification should we send here? message srv.sendOK(guble.SUCCESS_UNSUBSCRIBED_FROM, cmd.Arg)
+			return
+		}
 
+	}
+}
+
+func (rec *Receiver) fetchOnlyLoop() {
+	err := rec.fetch()
+	if err != nil {
+		guble.Err("error while fetching: %v, %+v", err.Error(), rec)
+		rec.sendError(guble.ERROR_INTERNAL_SERVER, err.Error())
+	}
+}
+
+func (rec *Receiver) fetch() error {
 	var err error
 
 	fetch := store.FetchRequest{
-		Partition: rec.path.Partition(),
-		// TODO: How to size this channel
-		MessageC:      make(chan store.MessageAndId, 10),
+		Partition:     rec.path.Partition(),
+		MessageC:      make(chan store.MessageAndId, 3),
 		ErrorCallback: make(chan error),
 		Prefix:        []byte(rec.path),
 		Count:         rec.maxCount,
@@ -187,34 +213,6 @@ func (rec *Receiver) fetch() error {
 			// TODO implement cancellation in message store
 			return nil
 		}
-	}
-}
-
-func (rec *Receiver) receiveFromSubscription() {
-	for {
-		select {
-		case msgAndRoute, ok := <-rec.route.C:
-			if !ok {
-				guble.Debug("messageSouce closed the channel returning from subscription", rec.applicationId)
-				return
-			}
-			if guble.DebugEnabled() {
-				guble.Debug("deliver message to applicationId=%v: %v", rec.applicationId, msgAndRoute.Message.MetadataLine())
-			}
-			if msgAndRoute.Message.Id > rec.lastSendId {
-				rec.lastSendId = msgAndRoute.Message.Id
-				rec.sendChannel <- msgAndRoute.Message.Bytes()
-			} else {
-				guble.Debug("dropping message %v, because it was already sent to client", msgAndRoute.Message.Id)
-			}
-		case <-rec.cancelChannel:
-			rec.shouldStop = true
-			rec.messageSouce.Unsubscribe(rec.route)
-			rec.route = nil
-			// TODO: what for a notification should we send here? message srv.sendOK(guble.SUCCESS_UNSUBSCRIBED_FROM, cmd.Arg)
-			return
-		}
-
 	}
 }
 

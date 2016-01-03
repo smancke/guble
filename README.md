@@ -53,10 +53,13 @@ This is the current (and fast changing) roadmap and todo-list:
 ## Release 0.1
 The first release 0.1 is expected start of January 2016
 * Persistance and replay of messages
-** Replay command implementation
+** Tests for replay command implementation
 ** Replay command in cli help
-* Better Approach for message buffering on huge message numbers
 * Clean Shutdown
+* rename subscribe and unsubscribe commands
+* Logging in the receiver
+* remove userId from route
+* (re) adjust subscription notifications
 
 ## Roadmap Release 0.2
 * Improve Logging (Maybe use of: https://github.com/Sirupsen/logrus)
@@ -67,6 +70,7 @@ The first release 0.1 is expected start of January 2016
 * Correct behaviour for receive command with maxCount on subtopics
 * Make Notification Messages optional by client configuration
 * Cancel of fetch in the message store and multiple concurrent fetch Commands for the same topic
+* Adjust semantics for partiontion, user and groups
 
 ## Roadmap Release 0.3
 * Cleanup, documentation, and test coverage of the gcm connector

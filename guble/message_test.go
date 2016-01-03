@@ -49,6 +49,7 @@ func TestSerializeANormalMessage(t *testing.T) {
 
 	// then: the serialisation is as expected
 	assert.Equal(t, aNormalMessage, string(msg.Bytes()))
+	assert.Equal(t, "Hello World", msg.BodyAsString())
 
 	// and: the first line is as expected
 	assert.Equal(t, strings.SplitN(aNormalMessage, "\n", 2)[0], msg.MetadataLine())
@@ -141,6 +142,16 @@ func TestSerializeANotificationMessage(t *testing.T) {
 	}
 
 	assert.Equal(t, aConnectedNotification, string(msg.Bytes()))
+}
+
+func TestSerializeAnErrorMessage(t *testing.T) {
+	msg := &NotificationMessage{
+		Name:    ERROR_BAD_REQUEST,
+		Arg:     "you are so bad.",
+		IsError: true,
+	}
+
+	assert.Equal(t, "!"+ERROR_BAD_REQUEST+" "+"you are so bad.", string(msg.Bytes()))
 }
 
 func TestSerializeANotificationMessageWithEmptyArg(t *testing.T) {

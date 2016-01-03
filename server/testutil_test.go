@@ -4,7 +4,9 @@ import (
 	"github.com/smancke/guble/guble"
 
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 var ctrl *gomock.Controller
@@ -25,4 +27,13 @@ func enableDebugForMethod() func() {
 	reset := guble.LogLevel
 	guble.LogLevel = guble.LEVEL_DEBUG
 	return func() { guble.LogLevel = reset }
+}
+
+func expectDone(a *assert.Assertions, doneChannel chan bool) {
+	select {
+	case <-doneChannel:
+		return
+	case <-time.After(time.Second):
+		a.Fail("timeout")
+	}
 }
