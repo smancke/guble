@@ -24,7 +24,7 @@ type PubSubRouter struct {
 func NewPubSubRouter() *PubSubRouter {
 	return &PubSubRouter{
 		routes:          make(map[guble.Path][]Route),
-		messageIn:       make(chan *guble.Message, 500*100),
+		messageIn:       make(chan *guble.Message, 500),
 		subscribeChan:   make(chan SubscriptionRequest, 10),
 		unsubscribeChan: make(chan SubscriptionRequest, 10),
 		stop:            make(chan bool, 1),
