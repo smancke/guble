@@ -5,8 +5,8 @@ guble is a simple user facing messaging and data replication server, written in 
 [![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble)
 
 # Overview
-Guble is in an early state and unreleased. The implemented features are already useful and working well,
-but we may change api's and implementation details, until reaching v0.5.
+Guble is in an early state. It is already working well and very useful, but the protocol, API's and storage formats may
+change without further announcement (until reaching v0.5. If you intend to use guble already, please get in contact.
 
 The goal of guble is to be a simple and fast message bus for user interaction and replication of data between multiple devices:
 * Very easy consumption of messages with web and mobile clients.
@@ -18,13 +18,12 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 
 ## Working Features
 
-* In-memory dispatching of messages
-* Persistance of topics with replay of messages
-* Websocket api
+* Publishing and subscription of messages to topics and subtopics
+* Persistent message store with transparent live and offline fetching 
+* Websocket api and REST api for message publishing
 * Commandline client and go client library
 * Google cloud messaging adapter: Delivery of messages as gcm push notifications
-* Subscription to multiple topics and subtopics
-* Throughput: Delivery of ~50.000 messages per second (end-to-end)
+* Throughput: Delivery of ~35.000 persistant messages per second (end-to-end, on an old notebook)
 * Docker image for client and server
 
 ## Table of Contents
@@ -53,12 +52,13 @@ This is the current (and fast changing) roadmap and todo-list:
 ## Release 0.1
 The first release 0.1 is expected start of January 2016
 TODOs left for 0.1:
-* Clean Shutdown
 * (re) adjust subscription notifications
+* Make file store the default
 
 ## Roadmap Release 0.2
 This release contains a lot of small things and the JavaScript API.
 
+* Clean Shutdown
 * Stable Java-Script Client: https://github.com/smancke/guble-js
 * Improve Logging (Maybe use of: https://github.com/Sirupsen/logrus)
 * Rename package guble to protocol or gublep
@@ -287,9 +287,18 @@ This notification confirms, that the messaging system has successfully received 
     {"sequenceId": "sequence id", "path": "/foo", "publisherMessageId": "publishers message id", "messagePublishingTime": "iso-date"}
 ```
 
-#### Subscribe success notification
-This notification confirms, a sucessful subscribe message.
+#### Receive success notification
+Depending on the type ot `+` (receive) command, up to three notification messages will be send back..
 
+#1 When the fetch operation starts
+```
+    #ok-fetch-start <path>
+```
+#2  When the fetch operation is done
+```
+    #ok-fetch-done <path>
+```
+#3  When the subscription to new messages was taken
 ```
     #ok-subscribed-to <path>
 ```
