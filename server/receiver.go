@@ -124,9 +124,9 @@ func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) e
 }
 
 func (rec *Receiver) subscribe() {
-	// TODO: how to size this channel
 	rec.route = NewRoute(string(rec.path), make(chan MsgAndRoute, 3), rec.applicationId, "TODO: remove userId from route")
 	rec.messageSouce.Subscribe(rec.route)
+	rec.sendOK(guble.SUCCESS_SUBSCRIBED_TO, string(rec.path))
 }
 
 func (rec *Receiver) receiveFromSubscription() {
@@ -150,7 +150,7 @@ func (rec *Receiver) receiveFromSubscription() {
 			rec.shouldStop = true
 			rec.messageSouce.Unsubscribe(rec.route)
 			rec.route = nil
-			// TODO: what for a notification should we send here? message srv.sendOK(guble.SUCCESS_UNSUBSCRIBED_FROM, cmd.Arg)
+			rec.sendOK(guble.SUCCESS_CANCELED, string(rec.path))
 			return
 		}
 
@@ -172,6 +172,7 @@ func (rec *Receiver) fetch() error {
 		Partition:     rec.path.Partition(),
 		MessageC:      make(chan store.MessageAndId, 3),
 		ErrorCallback: make(chan error),
+		StartCallback: make(chan int),
 		Prefix:        []byte(rec.path),
 		Count:         rec.maxCount,
 	}
@@ -196,9 +197,11 @@ func (rec *Receiver) fetch() error {
 
 	for {
 		select {
+		case numberOfResults := <-fetch.StartCallback:
+			rec.sendOK(guble.SUCCESS_FETCH_START, fmt.Sprintf("%v %v", rec.path, numberOfResults))
 		case msgAndId, open := <-fetch.MessageC:
 			if !open {
-				// TODO: should we send a notification, here?
+				rec.sendOK(guble.SUCCESS_FETCH_END, string(rec.path))
 				return nil
 			}
 			guble.Debug("replay send %v, %v", msgAndId.Id, string(msgAndId.Message))
@@ -208,6 +211,7 @@ func (rec *Receiver) fetch() error {
 			return err
 		case <-rec.cancelChannel:
 			rec.shouldStop = true
+			rec.sendOK(guble.SUCCESS_CANCELED, string(rec.path))
 			// TODO implement cancellation in message store
 			return nil
 		}

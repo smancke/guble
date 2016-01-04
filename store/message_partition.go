@@ -252,6 +252,8 @@ func (p *MessagePartition) Fetch(req FetchRequest) {
 			return
 		}
 
+		req.StartCallback <- len(fetchList)
+
 		err = p.fetchByFetchlist(fetchList, req.MessageC)
 		if err != nil {
 			req.ErrorCallback <- err

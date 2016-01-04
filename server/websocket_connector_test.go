@@ -19,7 +19,7 @@ var aTestMessage = &guble.Message{
 	Body: []byte("Test"),
 }
 
-func TestSubscribeAndUnsubscribe(t *testing.T) {
+func Test_WSHandler_SubscribeAndUnsubscribe(t *testing.T) {
 	defer initCtrl(t)()
 	a := assert.New(t)
 
@@ -27,13 +27,13 @@ func TestSubscribeAndUnsubscribe(t *testing.T) {
 	wsconn, pubSubSource, messageSink, messageStore := createDefaultMocks(messages)
 
 	pubSubSource.EXPECT().Subscribe(routeMatcher{"/foo"}).Return(nil)
-	//wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /foo"))
+	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /foo"))
 
 	pubSubSource.EXPECT().Subscribe(routeMatcher{"/bar"}).Return(nil)
-	//wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /bar"))
+	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /bar"))
 
 	pubSubSource.EXPECT().Unsubscribe(routeMatcher{"/foo"})
-	//wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_UNSUBSCRIBED_FROM + " /foo"))
+	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_CANCELED + " /foo"))
 
 	wshandler := runNewWsHandler(wsconn, pubSubSource, messageSink, messageStore)
 

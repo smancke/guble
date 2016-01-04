@@ -1,7 +1,6 @@
 package server
 
 import (
-	"runtime"
 	"strings"
 
 	guble "github.com/smancke/guble/guble"
@@ -39,11 +38,7 @@ func (router *PubSubRouter) Go() *PubSubRouter {
 
 				select {
 				case message := <-router.messageIn:
-					if float32(len(router.messageIn))/float32(cap(router.messageIn)) > 0.9 {
-						guble.Warn("router.messageIn channel very full: current=%v, max=\n", len(router.messageIn), cap(router.messageIn))
-					}
 					router.handleMessage(message)
-					//log.Println("DEBUG: GO: after handleMessage")
 				case subscriber := <-router.subscribeChan:
 					router.subscribe(subscriber.route)
 					subscriber.doneNotify <- true
@@ -52,10 +47,9 @@ func (router *PubSubRouter) Go() *PubSubRouter {
 					unsubscriber.doneNotify <- true
 				case <-router.stop:
 					router.closeAllRoutes()
-					//log.Println("DEBUG: stopping message multiplexer")
+					guble.Debug("stopping message router")
 					break
 				}
-				runtime.Gosched()
 			}()
 		}
 	}()
@@ -64,7 +58,6 @@ func (router *PubSubRouter) Go() *PubSubRouter {
 
 func (router *PubSubRouter) Stop() error {
 	router.stop <- true
-	runtime.Gosched()
 	return nil
 }
 
@@ -117,8 +110,11 @@ func (router *PubSubRouter) unsubscribe(r *Route) {
 }
 
 func (router *PubSubRouter) HandleMessage(message *guble.Message) error {
+	if float32(len(router.messageIn))/float32(cap(router.messageIn)) > 0.9 {
+		guble.Warn("router.messageIn channel very full: current=%v, max=%v\n", len(router.messageIn), cap(router.messageIn))
+		//time.Sleep(time.Millisecond * 1000)
+	}
 	router.messageIn <- message
-	runtime.Gosched()
 	return nil
 }
 

@@ -34,14 +34,18 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 
 	// fetch first, starting at 0
 	fetch_first1 := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
-		a.Equal("foo", r.Partition)
-		a.Equal(1, r.Direction)
-		a.Equal(uint64(0), r.StartId)
-		a.Equal(int(math.MaxInt32), r.Count)
+		go func() {
+			a.Equal("foo", r.Partition)
+			a.Equal(1, r.Direction)
+			a.Equal(uint64(0), r.StartId)
+			a.Equal(int(math.MaxInt32), r.Count)
 
-		r.MessageC <- store.MessageAndId{Id: uint64(1), Message: []byte("fetch_first1-a")}
-		r.MessageC <- store.MessageAndId{Id: uint64(2), Message: []byte("fetch_first1-b")}
-		close(r.MessageC)
+			r.StartCallback <- 2
+
+			r.MessageC <- store.MessageAndId{Id: uint64(1), Message: []byte("fetch_first1-a")}
+			r.MessageC <- store.MessageAndId{Id: uint64(2), Message: []byte("fetch_first1-b")}
+			close(r.MessageC)
+		}()
 	})
 
 	// there is a gap between fetched and max id
@@ -53,13 +57,16 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 
 	// fetch again, starting at 3, because, there is still a gap
 	fetch_first2 := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
-		a.Equal("foo", r.Partition)
-		a.Equal(1, r.Direction)
-		a.Equal(uint64(3), r.StartId)
-		a.Equal(int(math.MaxInt32), r.Count)
+		go func() {
+			a.Equal("foo", r.Partition)
+			a.Equal(1, r.Direction)
+			a.Equal(uint64(3), r.StartId)
+			a.Equal(int(math.MaxInt32), r.Count)
 
-		r.MessageC <- store.MessageAndId{Id: uint64(3), Message: []byte("fetch_first2-a")}
-		close(r.MessageC)
+			r.StartCallback <- 1
+			r.MessageC <- store.MessageAndId{Id: uint64(3), Message: []byte("fetch_first2-a")}
+			close(r.MessageC)
+		}()
 	})
 	fetch_first2.After(messageId1)
 
@@ -81,11 +88,14 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 
 	// router closed, so we fetch again, starting at 6 (after meesages from subscribe)
 	fetch_after := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
-		a.Equal(uint64(6), r.StartId)
-		a.Equal(int(math.MaxInt32), r.Count)
+		go func() {
+			a.Equal(uint64(6), r.StartId)
+			a.Equal(int(math.MaxInt32), r.Count)
 
-		r.MessageC <- store.MessageAndId{Id: uint64(6), Message: []byte("fetch_after-a")}
-		close(r.MessageC)
+			r.StartCallback <- 1
+			r.MessageC <- store.MessageAndId{Id: uint64(6), Message: []byte("fetch_after-a")}
+			close(r.MessageC)
+		}()
 	})
 	fetch_after.After(subscribe)
 
@@ -109,17 +119,29 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	}()
 
 	expectMessages(a, msgChannel,
+		"#"+guble.SUCCESS_FETCH_START+" /foo 2",
 		"fetch_first1-a",
 		"fetch_first1-b",
+		"#"+guble.SUCCESS_FETCH_END+" /foo",
+		"#"+guble.SUCCESS_FETCH_START+" /foo 1",
 		"fetch_first2-a",
+		"#"+guble.SUCCESS_FETCH_END+" /foo",
+		"#"+guble.SUCCESS_SUBSCRIBED_TO+" /foo",
 		",4,,,,\n\nrouter-a",
 		",5,,,,\n\nrouter-b",
+		"#"+guble.SUCCESS_FETCH_START+" /foo 1",
 		"fetch_after-a",
+		"#"+guble.SUCCESS_FETCH_END+" /foo",
+		"#"+guble.SUCCESS_SUBSCRIBED_TO+" /foo",
 	)
 
-	routerMock.EXPECT().Unsubscribe(gomock.Any())
 	time.Sleep(time.Millisecond)
+	routerMock.EXPECT().Unsubscribe(gomock.Any())
 	rec.Stop()
+
+	expectMessages(a, msgChannel,
+		"#"+guble.SUCCESS_CANCELED+" /foo",
+	)
 
 	expectDone(a, subscriptionLoopDone)
 }
@@ -131,17 +153,17 @@ func Test_Receiver_Fetch_Returns_Correct_Messages(t *testing.T) {
 	rec, msgChannel, _, messageStore, err := aMockedReceiver("/foo 0 2")
 	a.NoError(err)
 
-	messages := []store.MessageAndId{
-		store.MessageAndId{Id: uint64(1), Message: []byte("The answer ")},
-		store.MessageAndId{Id: uint64(2), Message: []byte("is 42")},
-	}
+	messages := []string{"The answer ", "is 42"}
 	done := make(chan bool)
 	messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
-		for _, m := range messages {
-			r.MessageC <- m
-		}
-		close(r.MessageC)
-		done <- true
+		go func() {
+			r.StartCallback <- len(messages)
+			for i, m := range messages {
+				r.MessageC <- store.MessageAndId{Id: uint64(i + 1), Message: []byte(m)}
+			}
+			close(r.MessageC)
+			done <- true
+		}()
 	})
 
 	fetchHasTerminated := make(chan bool)
@@ -151,14 +173,9 @@ func Test_Receiver_Fetch_Returns_Correct_Messages(t *testing.T) {
 	}()
 	expectDone(a, done)
 
-	for _, m := range messages {
-		select {
-		case msg := <-msgChannel:
-			a.Equal(m.Message, msg)
-		case <-time.After(time.Millisecond * 10):
-			a.Fail("timeout")
-		}
-	}
+	expectMessages(a, msgChannel, "#"+guble.SUCCESS_FETCH_START+" /foo 2")
+	expectMessages(a, msgChannel, messages...)
+	expectMessages(a, msgChannel, "#"+guble.SUCCESS_FETCH_END+" /foo")
 
 	expectDone(a, fetchHasTerminated)
 	ctrl.Finish()
@@ -275,7 +292,7 @@ func expectMessages(a *assert.Assertions, msgChannel chan []byte, message ...str
 		case msg := <-msgChannel:
 			a.Equal(m, string(msg))
 		case <-time.After(time.Millisecond * 100):
-			a.Fail("timeout")
+			a.Fail("timeout: " + m)
 		}
 	}
 }

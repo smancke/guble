@@ -13,7 +13,7 @@ var testBytes = []byte("test")
 func init() {
 	// disable error output while testing
 	// because also negative tests are tested
-	guble.LogLevel = guble.LEVEL_ERR + 1
+	guble.LogLevel = guble.LEVEL_WARN
 }
 
 func initCtrl(t *testing.T) func() {

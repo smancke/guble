@@ -45,7 +45,7 @@ func TestThroughput(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	testgroupCount := 4
-	messagesPerGroup := 1000
+	messagesPerGroup := 400
 	log.Printf("init the %v testgroups", testgroupCount)
 	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
 	for i, _ := range testgroups {
@@ -116,7 +116,7 @@ func (test *testgroup) Init() {
 
 	test.client1.Subscribe(test.topic)
 	time.Sleep(time.Millisecond * 5)
-	//test.expectStatusMessage(guble.SUCCESS_SUBSCRIBED_TO, test.topic)
+	test.expectStatusMessage(guble.SUCCESS_SUBSCRIBED_TO, test.topic)
 }
 
 func (test *testgroup) expectStatusMessage(name string, arg string) {
@@ -137,8 +137,8 @@ func (test *testgroup) Start() {
 		for i := 0; i < test.messagesToSend; i++ {
 			body := fmt.Sprintf("Hallo-%v", i)
 			test.client2.Send(test.topic, body, "")
+			time.Sleep(time.Microsecond * 50)
 		}
-		time.Sleep(time.Microsecond)
 	}()
 
 	for i := 0; i < test.messagesToSend; i++ {

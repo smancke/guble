@@ -34,6 +34,6 @@ func expectDone(a *assert.Assertions, doneChannel chan bool) {
 	case <-doneChannel:
 		return
 	case <-time.After(time.Second):
-		a.Fail("timeout")
+		a.Fail("timeout in expectDone")
 	}
 }

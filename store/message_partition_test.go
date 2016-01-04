@@ -333,10 +333,20 @@ func Test_Partition_Fetch(t *testing.T) {
 		testcase.req.Partition = "myMessages"
 		testcase.req.MessageC = make(chan MessageAndId)
 		testcase.req.ErrorCallback = make(chan error)
+		testcase.req.StartCallback = make(chan int)
 
 		messages := []string{}
 
 		store.Fetch(testcase.req)
+
+		select {
+		case numberOfResults := <-testcase.req.StartCallback:
+			a.Equal(len(testcase.expectedResults), numberOfResults)
+		case <-time.After(time.Second):
+			a.Fail("timeout")
+			return
+		}
+
 	loop:
 		for {
 			select {

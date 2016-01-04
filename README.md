@@ -224,7 +224,7 @@ as well as for replaying the message history.
 ** If the startId is negative, it is interpreted as relative count of last messages in the history.
 * `maxCount`: The maximum number of messages to replay.
 
-__Note__: Currently the maxCount does not work correctly on subtopics.
+__Note__: Currently the fetching of stored messages does not recognize subtopics
 
 Examples:
 ```
@@ -275,7 +275,7 @@ Status messages reporting an error start with `!`. Status messages are in the fo
     {"ApplicationId": "the app id", "UserId": "the user id", "Time": "the server time as iso date"}
 
     example:
-    #ok-connected You are connected to the server.
+    #connected You are connected to the server.
     {"ApplicationId": "phone1", "UserId": "user01", "Time": "2015-01-01T12:00:00+01:00"}
 ```
 
@@ -283,24 +283,39 @@ Status messages reporting an error start with `!`. Status messages are in the fo
 This notification confirms, that the messaging system has successfully received the message and now starts transmiting it to the subscribers.
 
 ```
-    #ok-send <publisherMessageId>
+    #send <publisherMessageId>
     {"sequenceId": "sequence id", "path": "/foo", "publisherMessageId": "publishers message id", "messagePublishingTime": "iso-date"}
 ```
 
 #### Receive success notification
-Depending on the type ot `+` (receive) command, up to three notification messages will be send back..
+Depending on the type of `+` (receive) command, up to three differnt notification messages will be send back.
+Be aware, that a server may send more receive notifications, that you would expect in first place, e.g. when:
+* Additional messages are stored, while the first fetching is in progress
+* The server decided to meanwhile stop the online subscription and change to fetching,
+  if your client is to slow to read all incomming messages fast enough.
 
 #1 When the fetch operation starts
 ```
-    #ok-fetch-start <path>
+    #fetch-start <path> <count>
 ```
+* `path`: The topic path
+* `count`: The number of messages which will be returned
+
 #2  When the fetch operation is done
 ```
-    #ok-fetch-done <path>
+    #fetch-done <path>
 ```
+* `path`: The topic path
 #3  When the subscription to new messages was taken
 ```
-    #ok-subscribed-to <path>
+    #subscribed-to <path>
+```
+* `path`: The topic path
+
+#### Cancel success notification
+A cancel operation is confirmed by the following notification.
+```
+    #canceled <path>
 ```
 
 #### Send error notification

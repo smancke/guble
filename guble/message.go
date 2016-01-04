@@ -85,13 +85,15 @@ func (msg *Message) writeMetadataLine(buff *bytes.Buffer) {
 
 // Valid constants for the NotificationMessage.Name
 const (
-	SUCCESS_CONNECTED         = "connected"
-	SUCCESS_SEND              = "send"
-	SUCCESS_SUBSCRIBED_TO     = "subscribed-to"
-	SUCCESS_UNSUBSCRIBED_FROM = "unsubscribed-from"
-	ERROR_SEND                = "error-send"
-	ERROR_BAD_REQUEST         = "error-bad-request"
-	ERROR_INTERNAL_SERVER     = "error-server-internal"
+	SUCCESS_CONNECTED     = "connected"
+	SUCCESS_SEND          = "send"
+	SUCCESS_FETCH_START   = "fetch-start"
+	SUCCESS_FETCH_END     = "fetch-end"
+	SUCCESS_SUBSCRIBED_TO = "subscribed-to"
+	SUCCESS_CANCELED      = "canceled"
+	ERROR_SEND            = "error-send"
+	ERROR_BAD_REQUEST     = "error-bad-request"
+	ERROR_INTERNAL_SERVER = "error-server-internal"
 )
 
 // Representation of a status messages or error message, send from the server

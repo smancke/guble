@@ -58,6 +58,11 @@ type FetchRequest struct {
 
 	// A Callback if an error occures
 	ErrorCallback chan error
+
+	// Through the start callback, the totall number or result
+	// is returned, before sending the first message.
+	// The Fech() methods blocks on puting the number to the start callback
+	StartCallback chan int
 }
 
 // Interface for a persistance backend, storing key value pairs.

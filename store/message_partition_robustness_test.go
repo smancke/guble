@@ -71,6 +71,7 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 			Count:         math.MaxInt32,
 			MessageC:      msgC,
 			ErrorCallback: errorC,
+			StartCallback: make(chan int, 1),
 		})
 
 	fetch:
