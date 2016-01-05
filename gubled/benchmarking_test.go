@@ -100,9 +100,9 @@ func TestThroughput(t *testing.T) {
 func (test *testgroup) Init() {
 	test.topic = fmt.Sprintf("/%v-foo", test.groupId)
 	var err error
-	//location := "ws://" + test.addr + "/stream/user/xy"
+	location := "ws://" + test.addr + "/stream/user/xy"
 	//location := "ws://gathermon.mancke.net:8080/stream/"
-	location := "ws://127.0.0.1:8080/stream/"
+	//location := "ws://127.0.0.1:8080/stream/"
 	test.client1, err = client.Open(location, "http://localhost/", 10, false)
 	if err != nil {
 		panic(err)
