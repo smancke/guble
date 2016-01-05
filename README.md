@@ -1,8 +1,8 @@
 # guble messaging server
 
-guble is a simple user facing messaging and data replication server, written in golang.
+guble [![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble) [![Release](https://img.shields.io/github/release/smancke/guble.svg)](https://github.com/smancke/guble/releases/latest) [![Docker](https://img.shields.io/docker/pulls/smancke/guble.svg)](https://hub.docker.com/r/smancke/guble/)
 
-[![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble)
+guble is a simple user facing messaging and data replication server, written in golang.
 
 # Overview
 Guble is in an early state. It is already working well and very useful, but the protocol, API's and storage formats may
@@ -16,7 +16,7 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 * Batteries included: Guble should be usable as front facing server, without the need of a proxy layer.
 * Self contained: No mandatory dependencies to other services.
 
-## Working Features
+## Working Features (v0.1)
 
 * Publishing and subscription of messages to topics and subtopics
 * Persistent message store with transparent live and offline fetching 
@@ -56,11 +56,6 @@ During the tests, the memory consumption of the server was arround ~25 MB.
 
 # Roadmap
 This is the current (and fast changing) roadmap and todo-list:
-
-## Release 0.1
-The first release 0.1 is expected start of January 2016
-TODOs left for 0.1:
-* Make file store the default
 
 ## Roadmap Release 0.2
 This release contains a lot of small things and the JavaScript API.
