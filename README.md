@@ -307,23 +307,23 @@ Be aware, that a server may send more receive notifications, that you would expe
 * The server decided to meanwhile stop the online subscription and change to fetching,
   if your client is to slow to read all incomming messages fast enough.
 
-#1 When the fetch operation starts
+1. When the fetch operation starts
 ```
     #fetch-start <path> <count>
 ```
-* `path`: The topic path
-* `count`: The number of messages which will be returned
+** `path`: The topic path
+** `count`: The number of messages which will be returned
 
-#2  When the fetch operation is done
+2.  When the fetch operation is done
 ```
     #fetch-done <path>
 ```
-* `path`: The topic path
-#3  When the subscription to new messages was taken
+** `path`: The topic path
+3.  When the subscription to new messages was taken
 ```
     #subscribed-to <path>
 ```
-* `path`: The topic path
+** `path`: The topic path
 
 #### Cancel success notification
 A cancel operation is confirmed by the following notification.
