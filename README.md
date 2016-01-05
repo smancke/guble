@@ -112,6 +112,12 @@ or
 	docker run -e GUBLE_LOG_INFO=true smancke/guble
 ```
 
+The docker image has an volume mount point at `/var/lib/guble`. So you should use
+```
+	docker run -p 8080:8080 -v /host/storage/path:/var/lib/guble smancke/guble
+```
+
+
 ## Connecting with the guble-cli
 The docker image has the guble command line client included. You can execute it within a running golang container and
 connect to the server.

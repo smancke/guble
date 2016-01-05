@@ -16,24 +16,22 @@ import (
 )
 
 type Args struct {
-	Listen         string `arg:"-l,help: [Host:]Port the address to listen on (:8080)" env:"GUBLE_LISTEN"`
-	LogInfo        bool   `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
-	LogDebug       bool   `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
-	KVBackend      string `arg:"--kv-backend,help: The storage backend for the key value store to use: memory|sqlite (memory)" env:"GUBLE_KV_BACKEND"`
-	KVSqlitePath   string `arg:"--kv-sqlite-path,help: The path of the sqlite db for the key value store (/var/lib/guble/kv-store.db)" env:"GUBLE_KV_SQLITE_PATH"`
-	KVSqliteNoSync bool   `arg:"--kv-sqlite-no-sync,help: Disable sync the key value store after every write (enabled)" env:"GUBLE_KV_SQLITE_NO_SYNC"`
-	MSBackend      string `arg:"--ms-backend,help: The message storage backend (experimental): none|file (memory)" env:"GUBLE_MS_BACKEND"`
-	MSPath         string `arg:"--ms-path,help: The path for message storage if 'file' is enabled (/var/lib/guble)" env:"GUBLE_MS_PATH"`
-	GcmEnable      bool   `arg:"--gcm-enable: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
-	GcmApiKey      string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
+	Listen      string `arg:"-l,help: [Host:]Port the address to listen on (:8080)" env:"GUBLE_LISTEN"`
+	LogInfo     bool   `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
+	LogDebug    bool   `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
+	StoragePath string `arg:"--storage-path,help: The path for storing messages and key value data if 'file' is enabled (/var/lib/guble)" env:"GUBLE_STORAGE_PATH"`
+	KVBackend   string `arg:"--kv-backend,help: The storage backend for the key value store to use: file|memory (file)" env:"GUBLE_KV_BACKEND"`
+	MSBackend   string `arg:"--ms-backend,help: The message storage backend : file|memory (file)" env:"GUBLE_MS_BACKEND"`
+	GcmEnable   bool   `arg:"--gcm-enable: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
+	GcmApiKey   string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
 }
 
 var CreateKVStoreBackend = func(args Args) store.KVStore {
 	switch args.KVBackend {
 	case "memory":
 		return store.NewMemoryKVStore()
-	case "sqlite":
-		db := store.NewSqliteKVStore(args.KVSqlitePath, args.KVSqliteNoSync)
+	case "file":
+		db := store.NewSqliteKVStore(path.Join(args.StoragePath, "kv-store.db"), true)
 		if err := db.Open(); err != nil {
 			panic(err)
 		}
@@ -48,16 +46,16 @@ var CreateMessageStoreBackend = func(args Args) store.MessageStore {
 	case "none", "":
 		return store.NewDummyMessageStore()
 	case "file":
-		guble.Info("using FileMessageStore in directory: %q", args.MSPath)
-		testfile := path.Join(args.MSPath, "testfile")
+		guble.Info("using FileMessageStore in directory: %q", args.StoragePath)
+		testfile := path.Join(args.StoragePath, "testfile")
 		f, err := os.Create(testfile)
 		if err != nil {
-			panic(fmt.Errorf("directory for message store not present/writeable %q: %v", args.MSPath, err))
+			panic(fmt.Errorf("directory for message store not present/writeable %q: %v", args.StoragePath, err))
 		}
 		f.Close()
 		os.Remove(testfile)
 
-		return store.NewFileMessageStore(args.MSPath)
+		return store.NewFileMessageStore(args.StoragePath)
 	default:
 		panic(fmt.Errorf("unknown message store backend: %q", args.MSBackend))
 	}
@@ -130,11 +128,10 @@ func StartupService(args Args) *server.Service {
 
 func loadArgs() Args {
 	args := Args{
-		Listen:       ":8080",
-		KVBackend:    "memory",
-		KVSqlitePath: "/var/lib/guble/kv-store.db",
-		MSBackend:    "none",
-		MSPath:       "/var/lib/guble",
+		Listen:      ":8080",
+		KVBackend:   "file",
+		MSBackend:   "file",
+		StoragePath: "/var/lib/guble",
 	}
 
 	env.Parse(&args)

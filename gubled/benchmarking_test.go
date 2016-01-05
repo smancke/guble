@@ -38,7 +38,7 @@ func TestThroughput(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "guble_benchmark_test")
 	defer os.RemoveAll(dir)
 
-	service := StartupService(Args{Listen: "localhost:0", KVBackend: "memory", MSBackend: "file", MSPath: dir})
+	service := StartupService(Args{Listen: "localhost:0", KVBackend: "memory", MSBackend: "file", StoragePath: dir})
 	defer func() {
 		service.Stop()
 	}()
