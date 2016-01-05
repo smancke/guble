@@ -45,7 +45,7 @@ func TestThroughput(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	testgroupCount := 4
-	messagesPerGroup := 400
+	messagesPerGroup := 100
 	log.Printf("init the %v testgroups", testgroupCount)
 	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
 	for i, _ := range testgroups {
@@ -100,9 +100,9 @@ func TestThroughput(t *testing.T) {
 func (test *testgroup) Init() {
 	test.topic = fmt.Sprintf("/%v-foo", test.groupId)
 	var err error
-	location := "ws://" + test.addr + "/stream/user/xy"
-	//location := "ws://gathermon.mancke.net:8080"
-	//location := "ws://127.0.0.1:8080/stream/"
+	//location := "ws://" + test.addr + "/stream/user/xy"
+	//location := "ws://gathermon.mancke.net:8080/stream/"
+	location := "ws://127.0.0.1:8080/stream/"
 	test.client1, err = client.Open(location, "http://localhost/", 10, false)
 	if err != nil {
 		panic(err)
@@ -115,8 +115,8 @@ func (test *testgroup) Init() {
 	test.expectStatusMessage(guble.SUCCESS_CONNECTED, "You are connected to the server.")
 
 	test.client1.Subscribe(test.topic)
-	time.Sleep(time.Millisecond * 5)
-	test.expectStatusMessage(guble.SUCCESS_SUBSCRIBED_TO, test.topic)
+	time.Sleep(time.Millisecond * 1)
+	//test.expectStatusMessage(guble.SUCCESS_SUBSCRIBED_TO, test.topic)
 }
 
 func (test *testgroup) expectStatusMessage(name string, arg string) {
@@ -137,7 +137,6 @@ func (test *testgroup) Start() {
 		for i := 0; i < test.messagesToSend; i++ {
 			body := fmt.Sprintf("Hallo-%v", i)
 			test.client2.Send(test.topic, body, "")
-			time.Sleep(time.Microsecond * 50)
 		}
 	}()
 

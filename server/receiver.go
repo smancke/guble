@@ -16,30 +16,32 @@ var unread_messages_available = errors.New("unread messages available")
 // A receiver is a helper class, for managing a combined pull push on a topic.
 // It is used for implementation of the + (receive) command in the gubble protocol.
 type Receiver struct {
-	cancelChannel  chan bool
-	sendChannel    chan []byte
-	applicationId  string
-	messageSouce   PubSubSource
-	messageStore   store.MessageStore
-	path           guble.Path
-	doFetch        bool
-	doSubscription bool
-	startId        int64
-	maxCount       int
-	lastSendId     uint64
-	shouldStop     bool
-	route          *Route
+	cancelChannel       chan bool
+	sendChannel         chan []byte
+	applicationId       string
+	messageSouce        PubSubSource
+	messageStore        store.MessageStore
+	path                guble.Path
+	doFetch             bool
+	doSubscription      bool
+	startId             int64
+	maxCount            int
+	lastSendId          uint64
+	shouldStop          bool
+	route               *Route
+	enableNotifications bool
 }
 
 // Parses the info in the command
 func NewReceiverFromCmd(applicationId string, cmd *guble.Cmd, sendChannel chan []byte, messageSouce PubSubSource, messageStore store.MessageStore) (*Receiver, error) {
 	var err error
 	rec := &Receiver{
-		applicationId: applicationId,
-		sendChannel:   sendChannel,
-		messageSouce:  messageSouce,
-		messageStore:  messageStore,
-		cancelChannel: make(chan bool, 1),
+		applicationId:       applicationId,
+		sendChannel:         sendChannel,
+		messageSouce:        messageSouce,
+		messageStore:        messageStore,
+		cancelChannel:       make(chan bool, 1),
+		enableNotifications: true,
 	}
 	if len(cmd.Arg) == 0 || cmd.Arg[0] != '/' {
 		return nil, fmt.Errorf("command requires at least a path argument, but non given")
@@ -234,10 +236,12 @@ func (rec *Receiver) sendError(name string, argPattern string, params ...interfa
 }
 
 func (rec *Receiver) sendOK(name string, argPattern string, params ...interface{}) {
-	n := &guble.NotificationMessage{
-		Name:    name,
-		Arg:     fmt.Sprintf(argPattern, params...),
-		IsError: false,
+	if rec.enableNotifications {
+		n := &guble.NotificationMessage{
+			Name:    name,
+			Arg:     fmt.Sprintf(argPattern, params...),
+			IsError: false,
+		}
+		rec.sendChannel <- n.Bytes()
 	}
-	rec.sendChannel <- n.Bytes()
 }

@@ -145,7 +145,7 @@ func TestReceiveAMessage(t *testing.T) {
 	a := assert.New(t)
 
 	// given a client
-	c := New("url", "origin", 1, false)
+	c := New("url", "origin", 10, false)
 
 	// with a closeable connection
 	connMock := NewMockWSConnection(ctrl)

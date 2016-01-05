@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	guble "github.com/smancke/guble/guble"
+	"runtime"
+	"time"
 )
 
 type SubscriptionRequest struct {
@@ -39,6 +41,7 @@ func (router *PubSubRouter) Go() *PubSubRouter {
 				select {
 				case message := <-router.messageIn:
 					router.handleMessage(message)
+					runtime.Gosched()
 				case subscriber := <-router.subscribeChan:
 					router.subscribe(subscriber.route)
 					subscriber.doneNotify <- true
@@ -112,7 +115,7 @@ func (router *PubSubRouter) unsubscribe(r *Route) {
 func (router *PubSubRouter) HandleMessage(message *guble.Message) error {
 	if float32(len(router.messageIn))/float32(cap(router.messageIn)) > 0.9 {
 		guble.Warn("router.messageIn channel very full: current=%v, max=%v\n", len(router.messageIn), cap(router.messageIn))
-		//time.Sleep(time.Millisecond * 1000)
+		time.Sleep(time.Millisecond)
 	}
 	router.messageIn <- message
 	return nil

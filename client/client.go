@@ -148,9 +148,15 @@ func (c *Client) handleIncommoingMessage(msg []byte) {
 		c.messages <- message
 	case *guble.NotificationMessage:
 		if message.IsError {
-			c.errors <- message
+			select {
+			case c.errors <- message:
+			default:
+			}
 		} else {
-			c.statusMessages <- message
+			select {
+			case c.statusMessages <- message:
+			default:
+			}
 		}
 	}
 }

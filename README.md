@@ -23,8 +23,16 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 * Websocket api and REST api for message publishing
 * Commandline client and go client library
 * Google cloud messaging adapter: Delivery of messages as gcm push notifications
-* Throughput: Delivery of ~35.000 persistant messages per second (end-to-end, on an old notebook)
 * Docker image for client and server
+
+## Throughput
+Measured on an old notebook with i5-2520M, dual core and SSD. Payload was a 'Hello Word'.
+Load driver and server were set up on the same machine, so 50% of the cpu was allocated to the load driver.
+
+* End-2-End: Delivery of ~35.000 persistant messages per second
+* Fetching: Receive of ~70.000 persistant messages per second
+
+During the tests, the memory consumption of the server was arround ~25 MB.
 
 ## Table of Contents
 
@@ -52,7 +60,6 @@ This is the current (and fast changing) roadmap and todo-list:
 ## Release 0.1
 The first release 0.1 is expected start of January 2016
 TODOs left for 0.1:
-* (re) adjust subscription notifications
 * Make file store the default
 
 ## Roadmap Release 0.2

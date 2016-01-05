@@ -7,6 +7,7 @@ import (
 
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -14,9 +15,8 @@ import (
 
 func Benchmark_E2E_Fetch_HelloWorld_Messages(b *testing.B) {
 	a := assert.New(b)
-
 	dir, _ := ioutil.TempDir("", "guble_benchmark_test")
-	//defer os.RemoveAll(dir)
+	defer os.RemoveAll(dir)
 
 	service := StartupService(Args{Listen: "localhost:0", KVBackend: "memory", MSBackend: "file", MSPath: dir})
 	defer service.Stop()
@@ -25,16 +25,23 @@ func Benchmark_E2E_Fetch_HelloWorld_Messages(b *testing.B) {
 
 	// fill the topic
 	location := "ws://" + service.GetWebServer().GetAddr() + "/stream/user/xy"
-	c, err := client.Open(location, "http://localhost/", 1000, false)
+	c, err := client.Open(location, "http://localhost/", 1000, true)
 	a.NoError(err)
 
 	for i := 1; i <= b.N; i++ {
 		a.NoError(c.Send("/hello", fmt.Sprintf("Hello %v", i), ""))
+		select {
+		case <-c.StatusMessages():
+			// wait for, but ignore
+		case <-time.After(time.Millisecond * 50):
+			a.Fail("timeout on send notification")
+			return
+		}
 	}
 
 	start := time.Now()
 	b.ResetTimer()
-	c.WriteRawMessage([]byte("replay /hello"))
+	c.WriteRawMessage([]byte("+ /hello 0 1000000"))
 	for i := 1; i <= b.N; i++ {
 		select {
 		case msg := <-c.Messages():
@@ -42,9 +49,7 @@ func Benchmark_E2E_Fetch_HelloWorld_Messages(b *testing.B) {
 		case error := <-c.Errors():
 			a.Fail(string(error.Bytes()))
 			return
-		case <-c.StatusMessages():
-			// ignore
-		case <-time.After(time.Millisecond * 50):
+		case <-time.After(time.Second):
 			a.Fail("timeout on message: " + strconv.Itoa(i))
 			return
 		}

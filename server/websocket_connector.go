@@ -75,7 +75,7 @@ func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, messageSto
 		clientConn:    wsConn,
 		applicationId: xid.New().String(),
 		userId:        userId,
-		sendChannel:   make(chan []byte, 100),
+		sendChannel:   make(chan []byte, 10),
 		receiver:      make(map[guble.Path]*Receiver),
 	}
 	return server
