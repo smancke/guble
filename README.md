@@ -60,28 +60,31 @@ This is the current (and fast changing) roadmap and todo-list:
 ## Roadmap Release 0.2
 This release contains a lot of small things and the JavaScript API.
 
-* Clean Shutdown
 * Stable Java-Script Client: https://github.com/smancke/guble-js
+* Minimal example chat application
+* Clean Shutdown
 * Improve Logging (Maybe use of: https://github.com/Sirupsen/logrus)
+* Correct behaviour for receive command with maxCount on subtopics
 * Rename package guble to protocol or gublep
 * Change time from iso to timestamp
-* Correct behaviour for receive command with maxCount on subtopics
-* Make Notification Messages optional by client configuration
-* Cancel of fetch in the message store and multiple concurrent fetch Commands for the same topic
-* Adjust semantics for partiontion, user and groups
 * Remove userId from route
+* Cancel of fetch in the message store and multiple concurrent fetch Commands for the same topic
+* Adjust semantics for partition, user and groups
 * Client: (Re)-Setup of subscriptions after client reconnect
+* Make Notification Messages optional by client configuration
 
 ## Roadmap Release 0.3
 * Cleanup, documentation, and test coverage of the gcm connector
 * Authentication and Access Management
 * Configuration of a cross origin policy
+* https support in the service
 * Configuration of different persistant strategies for topics
 * Client configurable message size limit with fetching by url
 
 ## Roadmap Release 0.4
 * Replication across multiple Servers
 * Delivery semantics (e.g. user must read on one device, deliver only to one device, notify if not connected, ..)
+* Maybe index based search of messages using [golucene](https://github.com/balzaczyy/golucene)
 * Maybe: Acknowledgement of message delivery
 
 # Guble docker image
