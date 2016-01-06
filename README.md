@@ -1,6 +1,8 @@
-# guble [![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble) [![Release](https://img.shields.io/github/release/smancke/guble.svg)](https://github.com/smancke/guble/releases/latest) [![Docker](https://img.shields.io/docker/pulls/smancke/guble.svg)](https://hub.docker.com/r/smancke/guble/)
+# guble messaging server
 
-guble is a simple user facing messaging and data replication server, written in golang.
+Guble is a simple user facing messaging and data replication server, written in golang.
+
+[![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble) [![Release](https://img.shields.io/github/release/smancke/guble.svg)](https://github.com/smancke/guble/releases/latest) [![Docker](https://img.shields.io/docker/pulls/smancke/guble.svg)](https://hub.docker.com/r/smancke/guble/) [![Coverage Status](https://coveralls.io/repos/smancke/guble/badge.svg?branch=master&service=github)](https://coveralls.io/github/smancke/guble?branch=master)
 
 # Overview
 Guble is in an early state. It is already working well and very useful, but the protocol, API's and storage formats may
