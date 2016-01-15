@@ -36,6 +36,11 @@ func Test_log_functions(t *testing.T) {
 	a.Contains(w.String(), "ERROR")
 	a.Contains(w.String(), "guble.Test_log_functions")
 	a.Contains(w.String(), "err")
+
+	w.Reset()
+	ErrWithoutTrace("err")
+	a.Contains(w.String(), "ERROR")
+	a.Contains(w.String(), "err")
 }
 
 func Test_log_functions_only_error_enabled(t *testing.T) {

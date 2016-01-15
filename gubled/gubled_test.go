@@ -9,6 +9,19 @@ import (
 	"testing"
 )
 
+func TestValidateStoragePath(t *testing.T) {
+	a := assert.New(t)
+
+	valid := os.TempDir()
+	invalid := os.TempDir() + "/non-existing-directory-for-guble-test"
+
+	a.NoError(ValidateStoragePath(Args{StoragePath: valid, MSBackend: "file"}))
+	a.NoError(ValidateStoragePath(Args{StoragePath: invalid}))
+
+	a.Error(ValidateStoragePath(Args{StoragePath: invalid, MSBackend: "file"}))
+	a.Error(ValidateStoragePath(Args{StoragePath: invalid, KVBackend: "file"}))
+}
+
 func TestCreateKVStoreBackend(t *testing.T) {
 	a := assert.New(t)
 

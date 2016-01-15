@@ -26,6 +26,23 @@ type Args struct {
 	GcmApiKey   string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
 }
 
+var ValidateStoragePath = func(args Args) error {
+	if args.KVBackend == "file" || args.MSBackend == "file" {
+		testfile := path.Join(args.StoragePath, "write-test-file")
+		f, err := os.Create(testfile)
+		if err != nil {
+			guble.ErrWithoutTrace("Storage path not present/writeable %q: %v", args.StoragePath, err)
+			if args.StoragePath == "/var/lib/guble" {
+				guble.ErrWithoutTrace("Use --storage-path=<path> to override the default location, or create the directy with RW rights.")
+			}
+			return err
+		}
+		f.Close()
+		os.Remove(testfile)
+	}
+	return nil
+}
+
 var CreateKVStoreBackend = func(args Args) store.KVStore {
 	switch args.KVBackend {
 	case "memory":
@@ -47,14 +64,6 @@ var CreateMessageStoreBackend = func(args Args) store.MessageStore {
 		return store.NewDummyMessageStore()
 	case "file":
 		guble.Info("using FileMessageStore in directory: %q", args.StoragePath)
-		testfile := path.Join(args.StoragePath, "testfile")
-		f, err := os.Create(testfile)
-		if err != nil {
-			panic(fmt.Errorf("directory for message store not present/writeable %q: %v", args.StoragePath, err))
-		}
-		f.Close()
-		os.Remove(testfile)
-
 		return store.NewFileMessageStore(args.StoragePath)
 	default:
 		panic(fmt.Errorf("unknown message store backend: %q", args.MSBackend))
@@ -94,6 +103,11 @@ func Main() {
 	if args.LogDebug {
 		guble.LogLevel = guble.LEVEL_DEBUG
 	}
+
+	if err := ValidateStoragePath(args); err != nil {
+		os.Exit(1)
+	}
+
 	service := StartupService(args)
 
 	waitForTermination(func() {

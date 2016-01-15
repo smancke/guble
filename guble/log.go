@@ -59,6 +59,13 @@ func Err(pattern string, args ...interface{}) {
 	}
 }
 
+func ErrWithoutTrace(pattern string, args ...interface{}) {
+	if ErrEnabled() {
+		msg := fmt.Sprintf(pattern, args...)
+		log.Printf("ERROR: %v", msg)
+	}
+}
+
 func PanicLogger() {
 	if r := recover(); r != nil {
 		log.Printf("PANIC (%v): %v", identifyLogOrigin(), r)
