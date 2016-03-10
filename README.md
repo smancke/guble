@@ -67,21 +67,21 @@ This release contains a lot of small changes and the JavaScript API.
 
 * Stable JavaScript client: https://github.com/smancke/guble-js
 * Minimal example chat application
+* Authentication and access management
+* Userspecific persistant subscriptions accross all clients of the user
+* Client: (re-)setup of subscriptions after client reconnect
 * Clean shutdown
+* Change sqlite to bolt
 * Improve logging (Maybe use of https://github.com/Sirupsen/logrus)
 * Correct behaviour of receive command with `maxCount` on subtopics
 * Rename package "guble" to "protocol" or "gublep"
 * Change time from ISO 8601 to unix timestamp
 * Remove `userId` from route
 * Cancel of fetch in the message store and multiple concurrent fetch commands for the same topic
-* Adjust semantics for partition, user and groups
-* Client: (re-)setup of subscriptions after client reconnect
 * Make notification messages optional by client configuration
 
 ## Roadmap Release 0.3
 * Cleanup, documentation, and test coverage of the GCM connector
-* Authentication and access management
-* Configuration of same-origin policy
 * HTTPS support in the service
 * Configuration of different persistence strategies for topics
 * Message size limit configurable by the client with fetching by URL
