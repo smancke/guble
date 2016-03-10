@@ -56,7 +56,7 @@ func (kvStore *SqliteKVStore) Put(schema, key string, value []byte) error {
 func (kvStore *SqliteKVStore) Get(schema, key string) (value []byte, exist bool, err error) {
 	entry := &kvEntry{}
 	if err := kvStore.db.First(&entry, "schema = ? and key = ?", schema, key).Error; err != nil {
-		if err == gorm.RecordNotFound {
+		if err == gorm.ErrRecordNotFound {
 			return nil, false, nil
 		}
 		return nil, false, err
@@ -156,7 +156,7 @@ func (kvStore *SqliteKVStore) Open() error {
 			return err
 		}
 	}
-	kvStore.db = &gormdb
+	kvStore.db = gormdb
 	return nil
 }
 
