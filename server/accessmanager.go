@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"io"
-	"bytes"
 )
 
 
@@ -35,7 +34,6 @@ func (am RestAccessManager) AccessAllowed(accessType AccessType, userId string, 
 	url += "&user="+ userId
 	url += "&path="+string(path)
 	resp, err := http.DefaultClient.Get(url)
-	defer resp.Close()
 
 	if(err != nil) {
 		//TODO log error

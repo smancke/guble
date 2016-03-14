@@ -25,12 +25,14 @@ type PubSubRouter struct {
 }
 
 func NewPubSubRouter() *PubSubRouter {
+	guble.Err("new router")
 	return &PubSubRouter{
 		routes:          make(map[guble.Path][]Route),
 		messageIn:       make(chan *guble.Message, 500),
 		subscribeChan:   make(chan SubscriptionRequest, 10),
 		unsubscribeChan: make(chan SubscriptionRequest, 10),
 		stop:            make(chan bool, 1),
+		accessManager:	NewAllowAllAccessManager(true),
 	}
 }
 
