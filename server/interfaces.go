@@ -83,3 +83,13 @@ type SetKVStore interface {
 type SetMessageStore interface {
 	SetMessageStore(messageStore store.MessageStore)
 }
+
+type AccessType int
+const (
+	READ AccessType = iota
+	WRITE
+)
+
+type AccessManager interface {
+	AccessAllowed(accessType AccessType, userId string, path guble.Path) bool
+}

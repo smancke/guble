@@ -33,12 +33,12 @@ type Receiver struct {
 }
 
 // Parses the info in the command
-func NewReceiverFromCmd(applicationId string, cmd *guble.Cmd, sendChannel chan []byte, messageSouce PubSubSource, messageStore store.MessageStore) (*Receiver, error) {
+func NewReceiverFromCmd(applicationId string, cmd *guble.Cmd, sendChannel chan []byte, messageSource PubSubSource, messageStore store.MessageStore) (*Receiver, error) {
 	var err error
 	rec := &Receiver{
 		applicationId:       applicationId,
 		sendChannel:         sendChannel,
-		messageSouce:        messageSouce,
+		messageSouce:        messageSource,
 		messageStore:        messageStore,
 		cancelChannel:       make(chan bool, 1),
 		enableNotifications: true,
@@ -139,6 +139,9 @@ func (rec *Receiver) receiveFromSubscription() {
 				guble.Debug("messageSouce closed the channel returning from subscription", rec.applicationId)
 				return
 			}
+
+
+
 			if guble.DebugEnabled() {
 				guble.Debug("deliver message to applicationId=%v: %v", rec.applicationId, msgAndRoute.Message.MetadataLine())
 			}

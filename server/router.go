@@ -6,6 +6,7 @@ import (
 	guble "github.com/smancke/guble/guble"
 	"runtime"
 	"time"
+	"errors"
 )
 
 type SubscriptionRequest struct {
@@ -20,6 +21,7 @@ type PubSubRouter struct {
 	subscribeChan   chan SubscriptionRequest
 	unsubscribeChan chan SubscriptionRequest
 	stop            chan bool
+	accessManager   AccessManager
 }
 
 func NewPubSubRouter() *PubSubRouter {
@@ -67,6 +69,10 @@ func (router *PubSubRouter) Stop() error {
 // Add a route to the subscribers.
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *PubSubRouter) Subscribe(r *Route) *Route {
+	if(!router.accessManager.AccessAllowed(READ, r.UserId, r.Path)) {
+		//TODO send error message to requesting user
+		return r;
+	}
 	req := SubscriptionRequest{
 		route:      r,
 		doneNotify: make(chan bool),
@@ -113,6 +119,10 @@ func (router *PubSubRouter) unsubscribe(r *Route) {
 }
 
 func (router *PubSubRouter) HandleMessage(message *guble.Message) error {
+	if(!router.accessManager.AccessAllowed(WRITE, message.PublisherUserId, message.Path)) {
+		return errors.New("User not allowed to post message to topic.")
+	}
+
 	if float32(len(router.messageIn))/float32(cap(router.messageIn)) > 0.9 {
 		guble.Warn("router.messageIn channel very full: current=%v, max=%v\n", len(router.messageIn), cap(router.messageIn))
 		time.Sleep(time.Millisecond)
