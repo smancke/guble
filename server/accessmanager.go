@@ -3,7 +3,7 @@ import (
 	"github.com/smancke/guble/guble"
 	"fmt"
 	"net/http"
-	"io"
+	"io/ioutil"
 )
 
 
@@ -25,24 +25,34 @@ func NewRestAccessManager(url string) RestAccessManager {
 }
 
 func (am RestAccessManager) AccessAllowed(accessType AccessType, userId string, path guble.Path) bool {
-	url := string(am)+"?type="
+	url := string(am) + "?type="
 	if (accessType == READ) {
 		url += "read"
 	} else {
 		url += "write"
 	}
-	url += "&user="+ userId
-	url += "&path="+string(path)
+
+	url += "&userId=" + userId
+	url += "&path=" + string(path)
+
 	resp, err := http.DefaultClient.Get(url)
 
-	if(err != nil) {
-		//TODO log error
+	defer resp.Body.Close()
+
+	if (err != nil) {
+
+		fmt.Println("FAILZ: %s", err)
 		return false
 	}
 
-	buff := make([]byte, 4, 4)
-	io.ReadFull(resp.Body, buff)
-	if("true" == string(buff)) {
+	responseBody, err := ioutil.ReadAll(resp.Body)
+
+	if (err != nil || resp.StatusCode != 200) {
+		fmt.Println("FAILZ: %s %s", string(responseBody), err)
+		return false
+	}
+
+	if ("true" == string(responseBody)) {
 		return true
 	}
 

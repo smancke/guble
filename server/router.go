@@ -25,14 +25,13 @@ type PubSubRouter struct {
 }
 
 func NewPubSubRouter() *PubSubRouter {
-	guble.Err("new router")
 	return &PubSubRouter{
 		routes:          make(map[guble.Path][]Route),
 		messageIn:       make(chan *guble.Message, 500),
 		subscribeChan:   make(chan SubscriptionRequest, 10),
 		unsubscribeChan: make(chan SubscriptionRequest, 10),
 		stop:            make(chan bool, 1),
-		accessManager:	NewAllowAllAccessManager(true),
+		accessManager:   NewAllowAllAccessManager(true),
 	}
 }
 
@@ -71,7 +70,7 @@ func (router *PubSubRouter) Stop() error {
 // Add a route to the subscribers.
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *PubSubRouter) Subscribe(r *Route) *Route {
-	if(!router.accessManager.AccessAllowed(READ, r.UserId, r.Path)) {
+	if (!router.accessManager.AccessAllowed(READ, r.UserId, r.Path)) {
 		//TODO send error message to requesting user
 		return r;
 	}
@@ -121,11 +120,11 @@ func (router *PubSubRouter) unsubscribe(r *Route) {
 }
 
 func (router *PubSubRouter) HandleMessage(message *guble.Message) error {
-	if(!router.accessManager.AccessAllowed(WRITE, message.PublisherUserId, message.Path)) {
+	if (!router.accessManager.AccessAllowed(WRITE, message.PublisherUserId, message.Path)) {
 		return errors.New("User not allowed to post message to topic.")
 	}
 
-	if float32(len(router.messageIn))/float32(cap(router.messageIn)) > 0.9 {
+	if float32(len(router.messageIn)) / float32(cap(router.messageIn)) > 0.9 {
 		guble.Warn("router.messageIn channel very full: current=%v, max=%v\n", len(router.messageIn), cap(router.messageIn))
 		time.Sleep(time.Millisecond)
 	}
@@ -151,7 +150,7 @@ func (router *PubSubRouter) deliverMessage(route Route, message *guble.Message) 
 	defer guble.PanicLogger()
 	select {
 	case route.C <- MsgAndRoute{Message: message, Route: &route}:
-		// fine, we could send the message
+	// fine, we could send the message
 	default:
 		guble.Info("queue was full, closing delivery for route=%v to applicationId=%v", route.Path, route.ApplicationId)
 		close(route.C)
@@ -179,8 +178,8 @@ func matchesTopic(messagePath, routePath guble.Path) bool {
 	messagePathLen := len(string(messagePath))
 	routePathLen := len(string(routePath))
 	return strings.HasPrefix(string(messagePath), string(routePath)) &&
-		(messagePathLen == routePathLen ||
-			(messagePathLen > routePathLen && string(messagePath)[routePathLen] == '/'))
+	(messagePathLen == routePathLen ||
+	(messagePathLen > routePathLen && string(messagePath)[routePathLen] == '/'))
 }
 
 // remove a route from the supplied list,
@@ -195,5 +194,5 @@ func remove(slice []Route, route *Route) []Route {
 	if position == -1 {
 		return slice
 	}
-	return append(slice[:position], slice[position+1:]...)
+	return append(slice[:position], slice[position + 1:]...)
 }
