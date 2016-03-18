@@ -10,7 +10,6 @@ import (
 type AllowAllAccessManager bool
 
 func NewAllowAllAccessManager(allowAll bool) AllowAllAccessManager {
-	fmt.Println("LOLZ")
 	return AllowAllAccessManager(allowAll)
 }
 
@@ -37,26 +36,20 @@ func (am RestAccessManager) AccessAllowed(accessType AccessType, userId string, 
 
 	resp, err := http.DefaultClient.Get(url)
 
-	defer resp.Body.Close()
-
 	if (err != nil) {
-
-		fmt.Println("FAILZ: %s", err)
+		guble.Warn("RestAccessManager: %v", err)
 		return false
 	}
-
+	defer resp.Body.Close()
 	responseBody, err := ioutil.ReadAll(resp.Body)
 
 	if (err != nil || resp.StatusCode != 200) {
-		fmt.Println("FAILZ: %s %s", string(responseBody), err)
+		fmt.Println("RestAccessManager: ", string(responseBody), err)
 		return false
 	}
 
-	if ("true" == string(responseBody)) {
-		return true
-	}
+	guble.Debug("RestAccessManager: %v, %v, %v, %v", accessType, userId, path, string(responseBody))
 
-
-	return false
+	return "true" == string(responseBody)
 
 }

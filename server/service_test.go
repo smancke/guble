@@ -97,7 +97,7 @@ func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockMessage
 	messageStore := store.NewDummyMessageStore()
 	messageSink := NewMockMessageSink(ctrl)
 	pubSubSource := NewMockPubSubSource(ctrl)
-	return NewService("localhost:0", kvStore, messageStore, messageSink, pubSubSource),
+	return NewService("localhost:0", kvStore, messageStore, messageSink, pubSubSource, NewAllowAllAccessManager(true)),
 		kvStore,
 		messageStore,
 		messageSink,

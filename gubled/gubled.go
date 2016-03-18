@@ -123,7 +123,7 @@ func StartupService(args Args) *server.Service {
 		CreateMessageStoreBackend(args),
 		server.NewMessageEntry(router),
 		router,
-	)
+		server.NewRestAccessManager("http://localhost:9000/follow/accessAllowed"))
 
 	for _, module := range CreateModules(args) {
 		service.Register(module)

@@ -35,6 +35,10 @@ func NewPubSubRouter() *PubSubRouter {
 	}
 }
 
+func (router *PubSubRouter) SetAccessManager(accessManager AccessManager) {
+	router.accessManager = accessManager
+}
+
 func (router *PubSubRouter) Go() *PubSubRouter {
 	go func() {
 		for {
@@ -69,10 +73,11 @@ func (router *PubSubRouter) Stop() error {
 
 // Add a route to the subscribers.
 // If there is already a route with same Application Id and Path, it will be replaced.
-func (router *PubSubRouter) Subscribe(r *Route) *Route {
-	if (!router.accessManager.AccessAllowed(READ, r.UserId, r.Path)) {
-		//TODO send error message to requesting user
-		return r;
+func (router *PubSubRouter) Subscribe(r *Route) (*Route, error) {
+	guble.Debug("subscribe %v, %v, %v", router.accessManager, r.UserId, r.Path)
+	accessAllowed := router.accessManager.AccessAllowed(READ, r.UserId, r.Path)
+	if (!accessAllowed) {
+		return r, errors.New("not allowed")
 	}
 	req := SubscriptionRequest{
 		route:      r,
@@ -80,7 +85,7 @@ func (router *PubSubRouter) Subscribe(r *Route) *Route {
 	}
 	router.subscribeChan <- req
 	<-req.doneNotify
-	return r
+	return r, nil
 }
 
 func (router *PubSubRouter) subscribe(r *Route) {
@@ -120,6 +125,7 @@ func (router *PubSubRouter) unsubscribe(r *Route) {
 }
 
 func (router *PubSubRouter) HandleMessage(message *guble.Message) error {
+	guble.Debug("Route.HandleMessage: %v %v", message.PublisherUserId, message.Path)
 	if (!router.accessManager.AccessAllowed(WRITE, message.PublisherUserId, message.Path)) {
 		return errors.New("User not allowed to post message to topic.")
 	}

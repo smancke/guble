@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"bytes"
 )
 
 var webSocketUpgrader = websocket.Upgrader{
@@ -18,10 +19,11 @@ var webSocketUpgrader = websocket.Upgrader{
 }
 
 type WSHandlerFactory struct {
-	Router       PubSubSource
-	MessageSink  MessageSink
-	prefix       string
-	messageStore store.MessageStore
+	Router        PubSubSource
+	MessageSink   MessageSink
+	prefix        string
+	messageStore  store.MessageStore
+	accessManager AccessManager
 }
 
 func NewWSHandlerFactory(prefix string) *WSHandlerFactory {
@@ -44,6 +46,10 @@ func (entry *WSHandlerFactory) SetMessageStore(messageStore store.MessageStore) 
 	entry.messageStore = messageStore
 }
 
+func (entry *WSHandlerFactory) SetAccessManager(accessManager AccessManager) {
+	entry.accessManager = accessManager
+}
+
 func (factory *WSHandlerFactory) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := webSocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -52,8 +58,8 @@ func (factory *WSHandlerFactory) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	}
 	defer c.Close()
 
-	_ = NewWSHandler(factory.Router, factory.MessageSink, factory.messageStore, &wsconn{c}, extractUserId(r.RequestURI)).
-		Start()
+	_ = NewWSHandler(factory.Router, factory.MessageSink, factory.messageStore, &wsconn{c}, extractUserId(r.RequestURI), factory.accessManager).
+	Start()
 }
 
 type WSHandler struct {
@@ -65,9 +71,10 @@ type WSHandler struct {
 	userId        string
 	sendChannel   chan []byte
 	receiver      map[guble.Path]*Receiver
+	accessManager AccessManager
 }
 
-func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, messageStore store.MessageStore, wsConn WSConn, userId string) *WSHandler {
+func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, messageStore store.MessageStore, wsConn WSConn, userId string, accessManager AccessManager) *WSHandler {
 	server := &WSHandler{
 		messageSouce:  messageSouce,
 		messageSink:   messageSink,
@@ -77,6 +84,7 @@ func NewWSHandler(messageSouce PubSubSource, messageSink MessageSink, messageSto
 		userId:        userId,
 		sendChannel:   make(chan []byte, 10),
 		receiver:      make(map[guble.Path]*Receiver),
+		accessManager: accessManager,
 	}
 	return server
 }
@@ -92,20 +100,47 @@ func (srv *WSHandler) sendLoop() {
 	for {
 		select {
 		case raw := <-srv.sendChannel:
-			if guble.DebugEnabled() {
-				if len(raw) < 80 {
-					guble.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v", srv.userId, srv.applicationId, len(raw), string(raw))
-				} else {
-					guble.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v...", srv.userId, srv.applicationId, len(raw), string(raw[0:79]))
+
+		   if(srv.checkAccess(raw)) {
+				if guble.DebugEnabled() {
+					if len(raw) < 80 {
+						guble.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v", srv.userId, srv.applicationId, len(raw), string(raw))
+					} else {
+						guble.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v...", srv.userId, srv.applicationId, len(raw), string(raw[0:79]))
+					}
 				}
-			}
-			if err := srv.clientConn.Send(raw); err != nil {
-				guble.Info("applicationId=%v closed the connection", srv.applicationId)
-				srv.cleanAndClose()
-				break
+
+				if err := srv.clientConn.Send(raw); err != nil {
+					guble.Info("applicationId=%v closed the connection", srv.applicationId)
+					srv.cleanAndClose()
+					break
+				}
 			}
 		}
 	}
+}
+
+func (srv *WSHandler) checkAccess(raw []byte) bool {
+	guble.Debug("raw message: %v", string(raw))
+	if raw[0] == byte('/') {
+		path := getPathFromRawMessage(raw)
+		guble.Debug("Received msg %v %v", srv.userId, path)
+		return len(path) == 0 || srv.accessManager.AccessAllowed(READ, srv.userId, path)
+
+	}
+	return true;
+}
+
+func getPathFromRawMessage(raw []byte) guble.Path {
+	path := &bytes.Buffer{}
+	for _, b := range raw {
+		if strings.EqualFold(string(b), ",") {
+			break
+		}
+		path.WriteByte(b);
+	}
+	return guble.Path(path.String())
+
 }
 
 func (srv *WSHandler) receiveLoop() {
@@ -147,7 +182,8 @@ func (srv *WSHandler) sendConnectionMessage() {
 }
 
 func (srv *WSHandler) handleReceiveCmd(cmd *guble.Cmd) {
-	rec, err := NewReceiverFromCmd(srv.applicationId, cmd, srv.sendChannel, srv.messageSouce, srv.messageStore)
+
+	rec, err := NewReceiverFromCmd(srv.applicationId, cmd, srv.sendChannel, srv.messageSouce, srv.messageStore, srv.userId)
 
 	if err != nil {
 		guble.Info("client error in handleReceiveCmd: %v", err.Error())
