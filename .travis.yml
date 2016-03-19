@@ -10,7 +10,7 @@ before_install:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/modocache/gover
 script:
-  - ginkgo -r  -cover  -coverpkg=./... 
+  - ginkgo -r  -cover  -coverpkg=./... -trace
   - gover ...
   - goveralls -coverprofile=gover.coverprofile -service=travis-ci
 
