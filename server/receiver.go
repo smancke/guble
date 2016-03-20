@@ -168,7 +168,7 @@ func (rec *Receiver) fetchOnlyLoop() {
 }
 
 func (rec *Receiver) fetch() error {
-	var err error
+	//var err error
 
 	fetch := store.FetchRequest{
 		Partition:     rec.path.Partition(),
@@ -186,9 +186,11 @@ func (rec *Receiver) fetch() error {
 			fetch.Count = math.MaxInt32
 		}
 	} else {
-		fetch.Direction = -1
-		if fetch.StartId, err = rec.messageStore.MaxMessageId(rec.path.Partition()); err != nil {
+		fetch.Direction = 1
+		if maxId, err := rec.messageStore.MaxMessageId(rec.path.Partition()); err != nil {
 			return err
+		} else {
+			fetch.StartId = maxId + 1 + uint64(rec.startId)
 		}
 		if rec.maxCount == 0 {
 			fetch.Count = -1 * int(rec.startId)

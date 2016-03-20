@@ -187,23 +187,28 @@ func Test_Receiver_Fetch_Produces_Correct_Fetch_Requests(t *testing.T) {
 	testcases := []struct {
 		desc   string
 		arg    string
+		maxId  int
 		expect store.FetchRequest
 	}{
 		{desc: "simple forward fetch",
 			arg:    "/foo 0 20",
+			maxId:  -1,
 			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartId: uint64(0), Count: 20},
 		},
 		{desc: "forward fetch without bounds",
 			arg:    "/foo 0",
+			maxId:  -1,
 			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartId: uint64(0), Count: math.MaxInt32},
 		},
 		{desc: "backward fetch to top",
 			arg:    "/foo -20",
-			expect: store.FetchRequest{Partition: "foo", Direction: -1, StartId: uint64(42), Count: 20},
+			maxId:  42,
+			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartId: uint64(23), Count: 20},
 		},
 		{desc: "backward fetch with count",
 			arg:    "/foo -1 10",
-			expect: store.FetchRequest{Partition: "foo", Direction: -1, StartId: uint64(42), Count: 10},
+			maxId:  42,
+			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartId: uint64(42), Count: 10},
 		},
 	}
 
@@ -213,9 +218,9 @@ func Test_Receiver_Fetch_Produces_Correct_Fetch_Requests(t *testing.T) {
 		rec, _, _, messageStore, err := aMockedReceiver(test.arg)
 		a.NoError(err, test.desc)
 
-		if test.expect.Direction == -1 { //}&& test.expect.StartId == 0 {
+		if test.maxId != -1 {
 			messageStore.EXPECT().MaxMessageId(test.expect.Partition).
-				Return(uint64(42), nil)
+				Return(uint64(test.maxId), nil)
 		}
 
 		done := make(chan bool)
