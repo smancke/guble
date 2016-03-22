@@ -31,7 +31,6 @@ func NewPubSubRouter() *PubSubRouter {
 		subscribeChan:   make(chan SubscriptionRequest, 10),
 		unsubscribeChan: make(chan SubscriptionRequest, 10),
 		stop:            make(chan bool, 1),
-		accessManager:   NewAllowAllAccessManager(true),
 	}
 }
 
@@ -40,6 +39,10 @@ func (router *PubSubRouter) SetAccessManager(accessManager AccessManager) {
 }
 
 func (router *PubSubRouter) Go() *PubSubRouter {
+
+	if router.accessManager == nil {
+		panic("AccessManager not set. Cannot start.")
+	}
 	go func() {
 		for {
 			func() {

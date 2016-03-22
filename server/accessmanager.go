@@ -1,9 +1,9 @@
 package server
 import (
 	"github.com/smancke/guble/guble"
-	"fmt"
 	"net/http"
 	"io/ioutil"
+	"net/url"
 )
 
 
@@ -24,17 +24,19 @@ func NewRestAccessManager(url string) RestAccessManager {
 }
 
 func (am RestAccessManager) AccessAllowed(accessType AccessType, userId string, path guble.Path) bool {
-	url := string(am) + "?type="
+
+	u, _ := url.Parse(string(am))
+	q := u.Query()
 	if (accessType == READ) {
-		url += "read"
+		q.Set("type", "read")
 	} else {
-		url += "write"
+		q.Set("type", "write")
 	}
 
-	url += "&userId=" + userId
-	url += "&path=" + string(path)
+	q.Set("userId", userId)
+	q.Set("path", string(path))
 
-	resp, err := http.DefaultClient.Get(url)
+	resp, err := http.DefaultClient.Get(u.String())
 
 	if (err != nil) {
 		guble.Warn("RestAccessManager: %v", err)
@@ -44,7 +46,8 @@ func (am RestAccessManager) AccessAllowed(accessType AccessType, userId string, 
 	responseBody, err := ioutil.ReadAll(resp.Body)
 
 	if (err != nil || resp.StatusCode != 200) {
-		fmt.Println("RestAccessManager: ", string(responseBody), err)
+		guble.Info("error getting permission", err)
+		guble.Debug("error getting permission", responseBody)
 		return false
 	}
 

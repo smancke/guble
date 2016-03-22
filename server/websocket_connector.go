@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	"bytes"
 )
 
 var webSocketUpgrader = websocket.Upgrader{
@@ -101,7 +100,7 @@ func (srv *WSHandler) sendLoop() {
 		select {
 		case raw := <-srv.sendChannel:
 
-		   if(srv.checkAccess(raw)) {
+			if (srv.checkAccess(raw)) {
 				if guble.DebugEnabled() {
 					if len(raw) < 80 {
 						guble.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v", srv.userId, srv.applicationId, len(raw), string(raw))
@@ -132,15 +131,8 @@ func (srv *WSHandler) checkAccess(raw []byte) bool {
 }
 
 func getPathFromRawMessage(raw []byte) guble.Path {
-	path := &bytes.Buffer{}
-	for _, b := range raw {
-		if strings.EqualFold(string(b), ",") {
-			break
-		}
-		path.WriteByte(b);
-	}
-	return guble.Path(path.String())
-
+	i := strings.Index(string(raw), ",")
+	return guble.Path(raw[:i])
 }
 
 func (srv *WSHandler) receiveLoop() {

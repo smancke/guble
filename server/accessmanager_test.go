@@ -4,6 +4,8 @@ import (
 	"github.com/smancke/guble/guble"
 	"github.com/stretchr/testify/assert"
 	"fmt"
+	"net/http/httptest"
+	"net/http"
 )
 
 type TestAccessManager struct {
@@ -47,14 +49,28 @@ func Test_AllowAllAccessManager(t *testing.T) {
 
 }
 
-// this test needs an external service running
-// TODO create mock service for testing
-func Dont_Test_RestAccessManager(t *testing.T) {
+
+func Test_RestAccessManager_Allowed(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("true"))
+	}))
+
+	defer ts.Close()
 	a := assert.New(t)
-	am := NewRestAccessManager("http://localhost:9000/follow/accessAllowed")
-	a.False(am.AccessAllowed(READ, "user", "/foo"))
+	am := NewRestAccessManager(ts.URL)
 	a.True(am.AccessAllowed(READ, "foo", "/foo"))
 	a.True(am.AccessAllowed(WRITE, "foo", "/foo"))
 
-	a.False(am.AccessAllowed(READ, "user", "invalidpath"))
+}
+
+func Test_RestAccessManager_Not_Allowed(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("false"))
+	}))
+
+	defer ts.Close()
+	am := NewRestAccessManager(ts.URL)
+	a := assert.New(t)
+	a.False(am.AccessAllowed(READ, "user", "/foo"))
+
 }
