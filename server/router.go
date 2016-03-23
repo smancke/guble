@@ -6,6 +6,7 @@ import (
 	guble "github.com/smancke/guble/guble"
 	"runtime"
 	"time"
+	"errors"
 )
 
 type SubscriptionRequest struct {
@@ -20,6 +21,7 @@ type PubSubRouter struct {
 	subscribeChan   chan SubscriptionRequest
 	unsubscribeChan chan SubscriptionRequest
 	stop            chan bool
+	accessManager   AccessManager
 }
 
 func NewPubSubRouter() *PubSubRouter {
@@ -32,7 +34,15 @@ func NewPubSubRouter() *PubSubRouter {
 	}
 }
 
+func (router *PubSubRouter) SetAccessManager(accessManager AccessManager) {
+	router.accessManager = accessManager
+}
+
 func (router *PubSubRouter) Go() *PubSubRouter {
+
+	if router.accessManager == nil {
+		panic("AccessManager not set. Cannot start.")
+	}
 	go func() {
 		for {
 			func() {
@@ -66,14 +76,19 @@ func (router *PubSubRouter) Stop() error {
 
 // Add a route to the subscribers.
 // If there is already a route with same Application Id and Path, it will be replaced.
-func (router *PubSubRouter) Subscribe(r *Route) *Route {
+func (router *PubSubRouter) Subscribe(r *Route) (*Route, error) {
+	guble.Debug("subscribe %v, %v, %v", router.accessManager, r.UserId, r.Path)
+	accessAllowed := router.accessManager.AccessAllowed(READ, r.UserId, r.Path)
+	if (!accessAllowed) {
+		return r, errors.New("not allowed")
+	}
 	req := SubscriptionRequest{
 		route:      r,
 		doneNotify: make(chan bool),
 	}
 	router.subscribeChan <- req
 	<-req.doneNotify
-	return r
+	return r, nil
 }
 
 func (router *PubSubRouter) subscribe(r *Route) {
@@ -113,7 +128,12 @@ func (router *PubSubRouter) unsubscribe(r *Route) {
 }
 
 func (router *PubSubRouter) HandleMessage(message *guble.Message) error {
-	if float32(len(router.messageIn))/float32(cap(router.messageIn)) > 0.9 {
+	guble.Debug("Route.HandleMessage: %v %v", message.PublisherUserId, message.Path)
+	if (!router.accessManager.AccessAllowed(WRITE, message.PublisherUserId, message.Path)) {
+		return errors.New("User not allowed to post message to topic.")
+	}
+
+	if float32(len(router.messageIn)) / float32(cap(router.messageIn)) > 0.9 {
 		guble.Warn("router.messageIn channel very full: current=%v, max=%v\n", len(router.messageIn), cap(router.messageIn))
 		time.Sleep(time.Millisecond)
 	}
@@ -139,7 +159,7 @@ func (router *PubSubRouter) deliverMessage(route Route, message *guble.Message) 
 	defer guble.PanicLogger()
 	select {
 	case route.C <- MsgAndRoute{Message: message, Route: &route}:
-		// fine, we could send the message
+	// fine, we could send the message
 	default:
 		guble.Info("queue was full, closing delivery for route=%v to applicationId=%v", route.Path, route.ApplicationId)
 		close(route.C)
@@ -167,8 +187,8 @@ func matchesTopic(messagePath, routePath guble.Path) bool {
 	messagePathLen := len(string(messagePath))
 	routePathLen := len(string(routePath))
 	return strings.HasPrefix(string(messagePath), string(routePath)) &&
-		(messagePathLen == routePathLen ||
-			(messagePathLen > routePathLen && string(messagePath)[routePathLen] == '/'))
+	(messagePathLen == routePathLen ||
+	(messagePathLen > routePathLen && string(messagePath)[routePathLen] == '/'))
 }
 
 // remove a route from the supplied list,
@@ -183,5 +203,5 @@ func remove(slice []Route, route *Route) []Route {
 	if position == -1 {
 		return slice
 	}
-	return append(slice[:position], slice[position+1:]...)
+	return append(slice[:position], slice[position + 1:]...)
 }

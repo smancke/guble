@@ -1,10 +1,9 @@
 package server
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
-
+	"github.com/stretchr/testify/assert"
 	"fmt"
 	guble "github.com/smancke/guble/guble"
 )
@@ -16,15 +15,17 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a Multiplexer
-	router := NewPubSubRouter().Go()
+	router := NewPubSubRouter()
+	router.SetAccessManager(NewAllowAllAccessManager(true))
+	router.Go()
 
 	// when i add two routes in the same path
 	channel := make(chan MsgAndRoute, chanSize)
-	routeBlah1 := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
-	routeBlah2 := router.Subscribe(NewRoute("/blah", channel, "appid02", "user01"))
+	routeBlah1, _ := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
+	routeBlah2, _ := router.Subscribe(NewRoute("/blah", channel, "appid02", "user01"))
 
 	// and one route in another path
-	routeFoo := router.Subscribe(NewRoute("/foo", channel, "appid01", "user01"))
+	routeFoo, _ := router.Subscribe(NewRoute("/foo", channel, "appid01", "user01"))
 
 	// then
 
@@ -47,11 +48,66 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 	a.Nil(router.routes[guble.Path("/foo")])
 }
 
+func Test_SubscribeNotAllowed(t *testing.T ) {
+	a := assert.New(t)
+
+	tam := NewTestAccessManager();
+
+	router := NewPubSubRouter()
+	router.SetAccessManager(AccessManager(tam))
+	router.Go()
+
+	channel := make(chan MsgAndRoute, chanSize)
+	_, e := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
+
+	// default TestAccessManager denies all
+	a.NotNil(e)
+
+	// now add permissions
+	tam.allow("user01", "/blah")
+
+	// and user shall be allowed to subscribe
+	_, e = router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
+
+	a.Nil(e)
+
+}
+
+func Test_HandleMessageNotAllowed(t *testing.T ) {
+	a := assert.New(t)
+
+	tam := NewTestAccessManager();
+
+	// Given a Multiplexer with route
+	router, r := aRouterRoute()
+
+	// using TestAccessManager
+	router.SetAccessManager(AccessManager(tam))
+
+	// when i send a message to the route
+	e := router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage, PublisherUserId:r.UserId})
+
+	// an error shall be returned
+	a.NotNil(e)
+
+	// and when permission is granted
+	tam.allow(r.UserId, r.Path)
+
+	// sending message
+	e = router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage, PublisherUserId:r.UserId})
+
+	// shall give no error
+	a.Nil(e)
+}
+
 func TestReplacingOfRoutes(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a router with a route
-	router := NewPubSubRouter().Go()
+	router := NewPubSubRouter()
+	router.SetAccessManager(NewAllowAllAccessManager(true))
+	router.Go()
+
 	router.Subscribe(NewRoute("/blah", nil, "appid01", "user01"))
 
 	// when: i add another route with the same Application Id and Same Path
@@ -80,9 +136,12 @@ func TestRoutingWithSubTopics(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a Multiplexer with route
-	router := NewPubSubRouter().Go()
+	router := NewPubSubRouter()
+	router.SetAccessManager(NewAllowAllAccessManager(true))
+	router.Go()
+
 	channel := make(chan MsgAndRoute, chanSize)
-	r := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
+	r, _ := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
 
 	// when i send a message to a subroute
 	router.HandleMessage(&guble.Message{Path: "/blah/blub", Body: aTestByteMessage})
@@ -162,8 +221,11 @@ func TestRouteIsRemovedIfChannelIsFull(t *testing.T) {
 }
 
 func aRouterRoute() (*PubSubRouter, *Route) {
-	router := NewPubSubRouter().Go()
-	return router, router.Subscribe(NewRoute("/blah", make(chan MsgAndRoute, chanSize), "appid01", "user01"))
+	router := NewPubSubRouter()
+	router.SetAccessManager(NewAllowAllAccessManager(true))
+	router.Go()
+	route, _ :=router.Subscribe(NewRoute("/blah", make(chan MsgAndRoute, chanSize), "appid01", "user01"))
+	return router, route
 }
 
 func assertChannelContainsMessage(a *assert.Assertions, c chan MsgAndRoute, msg []byte) {

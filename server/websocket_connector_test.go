@@ -26,10 +26,10 @@ func Test_WSHandler_SubscribeAndUnsubscribe(t *testing.T) {
 	messages := []string{"+ /foo", "+ /bar", "- /foo"}
 	wsconn, pubSubSource, messageSink, messageStore := createDefaultMocks(messages)
 
-	pubSubSource.EXPECT().Subscribe(routeMatcher{"/foo"}).Return(nil)
+	pubSubSource.EXPECT().Subscribe(routeMatcher{"/foo"}).Return(nil, nil)
 	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /foo"))
 
-	pubSubSource.EXPECT().Subscribe(routeMatcher{"/bar"}).Return(nil)
+	pubSubSource.EXPECT().Subscribe(routeMatcher{"/bar"}).Return(nil, nil)
 	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /bar"))
 
 	pubSubSource.EXPECT().Unsubscribe(routeMatcher{"/foo"})
@@ -83,6 +83,36 @@ func TestAnIncommingMessageIsDelivered(t *testing.T) {
 	time.Sleep(time.Millisecond * 2)
 }
 
+func TestAnIncommingMessageIsNotAllowed(t *testing.T) {
+	defer initCtrl(t)()
+
+	wsconn, pubSubSource, messageSink, messageStore := createDefaultMocks([]string{})
+
+	tam := NewTestAccessManager()
+
+	handler := NewWSHandler(pubSubSource, messageSink, messageStore, wsconn, "testuser", AccessManager(tam))
+	go func() {
+		handler.Start()
+	}()
+	time.Sleep(time.Millisecond * 2)
+
+	handler.sendChannel <- aTestMessage.Bytes()
+	time.Sleep(time.Millisecond * 2)
+	//nothing shall have been sent
+
+
+	//now allow
+	tam.allow("testuser", guble.Path("/foo"))
+
+	wsconn.EXPECT().Send(aTestMessage.Bytes())
+
+	time.Sleep(time.Millisecond * 2)
+
+	handler.sendChannel <- aTestMessage.Bytes()
+	time.Sleep(time.Millisecond * 2)
+
+}
+
 func TestBadCommands(t *testing.T) {
 	defer initCtrl(t)()
 
@@ -109,7 +139,7 @@ func TestBadCommands(t *testing.T) {
 }
 
 func runNewWsHandler(wsconn *MockWSConn, pubSubSource *MockPubSubSource, messageSink *MockMessageSink, messageStore store.MessageStore) *WSHandler {
-	handler := NewWSHandler(pubSubSource, messageSink, messageStore, wsconn, "testuser")
+	handler := NewWSHandler(pubSubSource, messageSink, messageStore, wsconn, "testuser", NewAllowAllAccessManager(true))
 	go func() {
 		handler.Start()
 	}()

@@ -12,20 +12,21 @@ import (
 
 // This is the main class for simple startup of a server
 type Service struct {
-	kvStore       store.KVStore
-	messageStore  store.MessageStore
-	webServer     *WebServer
-	messageSink   MessageSink
-	router        PubSubSource
-	stopListener  []Stopable
-	startListener []Startable
+	kvStore         store.KVStore
+	messageStore    store.MessageStore
+	webServer       *WebServer
+	messageSink     MessageSink
+	router          PubSubSource
+	stopListener    []Stopable
+	startListener   []Startable
+	accessManager   AccessManager
 	// The time given to each Module on Stop()
 	StopGracePeriod time.Duration
 }
 
 // Registers the Main Router, where other modules can subscribe for messages
 
-func NewService(addr string, kvStore store.KVStore, messageStore store.MessageStore, messageSink MessageSink, router PubSubSource) *Service {
+func NewService(addr string, kvStore store.KVStore, messageStore store.MessageStore, messageSink MessageSink, router PubSubSource, accessManager AccessManager) *Service {
 	service := &Service{
 		stopListener:    make([]Stopable, 0, 5),
 		kvStore:         kvStore,
@@ -33,13 +34,16 @@ func NewService(addr string, kvStore store.KVStore, messageStore store.MessageSt
 		webServer:       NewWebServer(addr),
 		messageSink:     messageSink,
 		router:          router,
+		accessManager:   accessManager,
 		StopGracePeriod: time.Second * 2,
 	}
+	service.Register(service.accessManager)
 	service.Register(service.kvStore)
 	service.Register(service.messageStore)
 	service.Register(service.webServer)
 	service.Register(service.messageSink)
 	service.Register(service.router)
+
 	return service
 }
 
@@ -97,6 +101,12 @@ func (service *Service) Register(module interface{}) {
 	case SetMessageEntry:
 		guble.Debug("inject MessageEntry to %v", name)
 		m.SetMessageEntry(service.messageSink)
+	}
+
+	switch m := module.(type) {
+	case SetAccessManager:
+		guble.Debug("inject AccessManager to %v", name)
+		m.SetAccessManager(service.accessManager)
 	}
 }
 

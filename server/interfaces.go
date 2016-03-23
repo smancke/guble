@@ -35,7 +35,7 @@ func NewRoute(path string, channel chan MsgAndRoute, applicationId string, userI
 }
 
 type PubSubSource interface {
-	Subscribe(r *Route) *Route
+	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
 }
 
@@ -82,4 +82,18 @@ type SetKVStore interface {
 // Interface for modules, which need access to the message store
 type SetMessageStore interface {
 	SetMessageStore(messageStore store.MessageStore)
+}
+
+type SetAccessManager interface {
+	SetAccessManager(accessManager AccessManager)
+}
+
+type AccessType int
+const (
+	READ AccessType = iota
+	WRITE
+)
+
+type AccessManager interface {
+	AccessAllowed(accessType AccessType, userId string, path guble.Path) bool
 }

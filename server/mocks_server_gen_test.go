@@ -32,10 +32,11 @@ func (_m *MockPubSubSource) EXPECT() *_MockPubSubSourceRecorder {
 	return _m.recorder
 }
 
-func (_m *MockPubSubSource) Subscribe(_param0 *Route) *Route {
+func (_m *MockPubSubSource) Subscribe(_param0 *Route) (*Route, error) {
 	ret := _m.ctrl.Call(_m, "Subscribe", _param0)
 	ret0, _ := ret[0].(*Route)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 func (_mr *_MockPubSubSourceRecorder) Subscribe(arg0 interface{}) *gomock.Call {

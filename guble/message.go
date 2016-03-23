@@ -91,6 +91,7 @@ const (
 	SUCCESS_FETCH_END     = "fetch-end"
 	SUCCESS_SUBSCRIBED_TO = "subscribed-to"
 	SUCCESS_CANCELED      = "canceled"
+	ERROR_SUBSCRIBED_TO   = "error-subscribed-to"
 	ERROR_SEND            = "error-send"
 	ERROR_BAD_REQUEST     = "error-bad-request"
 	ERROR_INTERNAL_SERVER = "error-server-internal"
