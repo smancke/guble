@@ -72,7 +72,7 @@ var CreateMessageStoreBackend = func(args Args) store.MessageStore {
 
 var CreateModules = func(args Args) []interface{} {
 	modules := []interface{}{
-		server.NewWSHandlerFactory("/stream/"),
+		server.NewWSHandle("/stream/"),
 		server.NewRestMessageApi("/api/"),
 	}
 

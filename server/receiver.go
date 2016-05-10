@@ -11,13 +11,13 @@ import (
 	"strings"
 )
 
-var unread_messages_available = errors.New("unread messages available")
+var errUnreadMsgsAvailable = errors.New("unread messages available")
 
 // A receiver is a helper class, for managing a combined pull push on a topic.
 // It is used for implementation of the + (receive) command in the gubble protocol.
 type Receiver struct {
-	cancelChannel       chan bool
-	sendChannel         chan []byte
+	cancelCh            chan bool
+	sendCh              chan []byte
 	applicationId       string
 	messageSouce        PubSubSource
 	messageStore        store.MessageStore
@@ -30,20 +30,26 @@ type Receiver struct {
 	shouldStop          bool
 	route               *Route
 	enableNotifications bool
-	userId				string
+	userId              string
 }
 
 // Parses the info in the command
-func NewReceiverFromCmd(applicationId string, cmd *guble.Cmd, sendChannel chan []byte, messageSource PubSubSource, messageStore store.MessageStore, userId string) (*Receiver, error) {
+func NewReceiverFromCmd(
+	applicationId string,
+	cmd *guble.Cmd,
+	sendCh chan []byte,
+	messageSource PubSubSource,
+	messageStore store.MessageStore,
+	userId string) (*Receiver, error) {
 	var err error
 	rec := &Receiver{
 		applicationId:       applicationId,
-		sendChannel:         sendChannel,
+		sendCh:              sendCh,
 		messageSouce:        messageSource,
 		messageStore:        messageStore,
-		cancelChannel:       make(chan bool, 1),
+		cancelCh:            make(chan bool, 1),
 		enableNotifications: true,
-		userId:				 userId,
+		userId:              userId,
 	}
 	if len(cmd.Arg) == 0 || cmd.Arg[0] != '/' {
 		return nil, fmt.Errorf("command requires at least a path argument, but non given")
@@ -92,8 +98,8 @@ func (rec *Receiver) subscriptionLoop() {
 			}
 
 			if err := rec.messageStore.DoInTx(rec.path.Partition(), rec.subscribeIfNoUnreadMessagesAvailable); err != nil {
-				if err == unread_messages_available {
-					//fmt.Printf(" unread_messages_available lastSendId=%v\n", rec.lastSendId)
+				if err == errUnreadMsgsAvailable {
+					//fmt.Printf(" errUnreadMsgsAvailable lastSendId=%v\n", rec.lastSendId)
 					rec.startId = int64(rec.lastSendId + 1)
 					continue // fetch again
 				} else {
@@ -121,7 +127,7 @@ func (rec *Receiver) subscriptionLoop() {
 
 func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) error {
 	if maxMessageId > rec.lastSendId {
-		return unread_messages_available
+		return errUnreadMsgsAvailable
 	}
 	rec.subscribe()
 	return nil
@@ -130,7 +136,7 @@ func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) e
 func (rec *Receiver) subscribe() {
 	rec.route = NewRoute(string(rec.path), make(chan MsgAndRoute, 3), rec.applicationId, rec.userId)
 	_, err := rec.messageSouce.Subscribe(rec.route)
-	if(err != nil) {
+	if err != nil {
 		rec.sendError(guble.ERROR_SUBSCRIBED_TO, string(rec.path), err.Error())
 	} else {
 		rec.sendOK(guble.SUCCESS_SUBSCRIBED_TO, string(rec.path))
@@ -151,11 +157,11 @@ func (rec *Receiver) receiveFromSubscription() {
 			}
 			if msgAndRoute.Message.Id > rec.lastSendId {
 				rec.lastSendId = msgAndRoute.Message.Id
-				rec.sendChannel <- msgAndRoute.Message.Bytes()
+				rec.sendCh <- msgAndRoute.Message.Bytes()
 			} else {
 				guble.Debug("dropping message %v, because it was already sent to client", msgAndRoute.Message.Id)
 			}
-		case <-rec.cancelChannel:
+		case <-rec.cancelCh:
 			rec.shouldStop = true
 			rec.messageSouce.Unsubscribe(rec.route)
 			rec.route = nil
@@ -217,10 +223,10 @@ func (rec *Receiver) fetch() error {
 			}
 			guble.Debug("replay send %v, %v", msgAndId.Id, string(msgAndId.Message))
 			rec.lastSendId = msgAndId.Id
-			rec.sendChannel <- msgAndId.Message
+			rec.sendCh <- msgAndId.Message
 		case err := <-fetch.ErrorCallback:
 			return err
-		case <-rec.cancelChannel:
+		case <-rec.cancelCh:
 			rec.shouldStop = true
 			rec.sendOK(guble.SUCCESS_CANCELED, string(rec.path))
 			// TODO implement cancellation in message store
@@ -231,7 +237,7 @@ func (rec *Receiver) fetch() error {
 
 // stop/cancel the receiver
 func (rec *Receiver) Stop() error {
-	rec.cancelChannel <- true
+	rec.cancelCh <- true
 	return nil
 }
 
@@ -241,7 +247,7 @@ func (rec *Receiver) sendError(name string, argPattern string, params ...interfa
 		Arg:     fmt.Sprintf(argPattern, params...),
 		IsError: true,
 	}
-	rec.sendChannel <- n.Bytes()
+	rec.sendCh <- n.Bytes()
 }
 
 func (rec *Receiver) sendOK(name string, argPattern string, params ...interface{}) {
@@ -251,6 +257,6 @@ func (rec *Receiver) sendOK(name string, argPattern string, params ...interface{
 			Arg:     fmt.Sprintf(argPattern, params...),
 			IsError: false,
 		}
-		rec.sendChannel <- n.Bytes()
+		rec.sendCh <- n.Bytes()
 	}
 }
