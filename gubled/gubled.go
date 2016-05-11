@@ -26,7 +26,7 @@ type Args struct {
 	GcmApiKey   string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
 }
 
-var ValidateStoragePath = func(args Args) error {
+func ValidateStoragePath(args Args) error {
 	if args.KVBackend == "file" || args.MSBackend == "file" {
 		testfile := path.Join(args.StoragePath, "write-test-file")
 		f, err := os.Create(testfile)
@@ -43,7 +43,7 @@ var ValidateStoragePath = func(args Args) error {
 	return nil
 }
 
-var CreateKVStoreBackend = func(args Args) store.KVStore {
+func CreateKVStoreBackend(args Args) store.KVStore {
 	switch args.KVBackend {
 	case "memory":
 		return store.NewMemoryKVStore()
@@ -58,7 +58,7 @@ var CreateKVStoreBackend = func(args Args) store.KVStore {
 	}
 }
 
-var CreateMessageStoreBackend = func(args Args) store.MessageStore {
+func CreateMessageStoreBackend(args Args) store.MessageStore {
 	switch args.MSBackend {
 	case "none", "":
 		return store.NewDummyMessageStore()
@@ -70,7 +70,7 @@ var CreateMessageStoreBackend = func(args Args) store.MessageStore {
 	}
 }
 
-var CreateModules = func(args Args) []interface{} {
+func CreateModules(args Args) []interface{} {
 	modules := []interface{}{
 		server.NewWSHandlerFactory("/stream/"),
 		server.NewRestMessageApi("/api/"),
@@ -111,7 +111,10 @@ func Main() {
 	service := StartupService(args)
 
 	waitForTermination(func() {
-		service.Stop()
+		err := service.Stop()
+		if err != nil {
+			guble.Err("Service: ", err)
+		}
 	})
 }
 
