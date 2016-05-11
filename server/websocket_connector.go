@@ -57,7 +57,7 @@ func (handle *WSHandle) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 
-	NewWSConn(handle, &wsconn{c}, extractUserId(r.RequestURI)).Start()
+	NewWS(handle, &wsconn{c}, extractUserId(r.RequestURI)).Start()
 }
 
 // wsconnImpl is a Wrapper of the websocket.Conn
@@ -79,6 +79,7 @@ func (conn *wsconn) Receive(bytes *[]byte) (err error) {
 	return err
 }
 
+// Represents a websocket
 type WS struct {
 	*WSHandle
 	*wsconn
@@ -88,7 +89,7 @@ type WS struct {
 	receivers     map[guble.Path]*Receiver
 }
 
-func NewWSConn(handle *WSHandle, wsConn *wsconn, userId string) *WS {
+func NewWS(handle *WSHandle, wsConn *wsconn, userId string) *WS {
 	return &WS{
 		WSHandle:      handle,
 		wsconn:        wsConn,
@@ -185,7 +186,6 @@ func (ws *WS) sendConnectionMessage() {
 }
 
 func (ws *WS) handleReceiveCmd(cmd *guble.Cmd) {
-
 	rec, err := NewReceiverFromCmd(
 		ws.applicationId,
 		cmd,
