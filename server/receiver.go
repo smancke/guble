@@ -16,8 +16,8 @@ var errUnreadMsgsAvailable = errors.New("unread messages available")
 // A receiver is a helper class, for managing a combined pull push on a topic.
 // It is used for implementation of the + (receive) command in the gubble protocol.
 type Receiver struct {
-	cancelCh            chan bool
-	sendCh              chan []byte
+	cancelChannel       chan bool
+	sendChannel         chan []byte
 	applicationId       string
 	messageSouce        PubSubSource
 	messageStore        store.MessageStore
@@ -37,17 +37,17 @@ type Receiver struct {
 func NewReceiverFromCmd(
 	applicationId string,
 	cmd *guble.Cmd,
-	sendCh chan []byte,
+	sendChannel chan []byte,
 	messageSource PubSubSource,
 	messageStore store.MessageStore,
 	userId string) (*Receiver, error) {
 	var err error
 	rec := &Receiver{
 		applicationId:       applicationId,
-		sendCh:              sendCh,
+		sendChannel:         sendChannel,
 		messageSouce:        messageSource,
 		messageStore:        messageStore,
-		cancelCh:            make(chan bool, 1),
+		cancelChannel:       make(chan bool, 1),
 		enableNotifications: true,
 		userId:              userId,
 	}
@@ -157,11 +157,11 @@ func (rec *Receiver) receiveFromSubscription() {
 			}
 			if msgAndRoute.Message.Id > rec.lastSendId {
 				rec.lastSendId = msgAndRoute.Message.Id
-				rec.sendCh <- msgAndRoute.Message.Bytes()
+				rec.sendChannel <- msgAndRoute.Message.Bytes()
 			} else {
 				guble.Debug("dropping message %v, because it was already sent to client", msgAndRoute.Message.Id)
 			}
-		case <-rec.cancelCh:
+		case <-rec.cancelChannel:
 			rec.shouldStop = true
 			rec.messageSouce.Unsubscribe(rec.route)
 			rec.route = nil
@@ -223,10 +223,10 @@ func (rec *Receiver) fetch() error {
 			}
 			guble.Debug("replay send %v, %v", msgAndId.Id, string(msgAndId.Message))
 			rec.lastSendId = msgAndId.Id
-			rec.sendCh <- msgAndId.Message
+			rec.sendChannel <- msgAndId.Message
 		case err := <-fetch.ErrorCallback:
 			return err
-		case <-rec.cancelCh:
+		case <-rec.cancelChannel:
 			rec.shouldStop = true
 			rec.sendOK(guble.SUCCESS_CANCELED, string(rec.path))
 			// TODO implement cancellation in message store
@@ -237,7 +237,7 @@ func (rec *Receiver) fetch() error {
 
 // stop/cancel the receiver
 func (rec *Receiver) Stop() error {
-	rec.cancelCh <- true
+	rec.cancelChannel <- true
 	return nil
 }
 
@@ -247,7 +247,7 @@ func (rec *Receiver) sendError(name string, argPattern string, params ...interfa
 		Arg:     fmt.Sprintf(argPattern, params...),
 		IsError: true,
 	}
-	rec.sendCh <- n.Bytes()
+	rec.sendChannel <- n.Bytes()
 }
 
 func (rec *Receiver) sendOK(name string, argPattern string, params ...interface{}) {
@@ -257,6 +257,6 @@ func (rec *Receiver) sendOK(name string, argPattern string, params ...interface{
 			Arg:     fmt.Sprintf(argPattern, params...),
 			IsError: false,
 		}
-		rec.sendCh <- n.Bytes()
+		rec.sendChannel <- n.Bytes()
 	}
 }

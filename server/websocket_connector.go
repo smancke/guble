@@ -85,7 +85,7 @@ type WebSocket struct {
 	*wsconn
 	applicationId string
 	userId        string
-	sendCh        chan []byte
+	sendChannel   chan []byte
 	receivers     map[guble.Path]*Receiver
 }
 
@@ -95,7 +95,7 @@ func NewWebSocket(handler *WSHandler, wsConn *wsconn, userId string) *WebSocket 
 		wsconn:        wsConn,
 		applicationId: xid.New().String(),
 		userId:        userId,
-		sendCh:        make(chan []byte, 10),
+		sendChannel:   make(chan []byte, 10),
 		receivers:     make(map[guble.Path]*Receiver),
 	}
 }
@@ -110,7 +110,7 @@ func (ws *WebSocket) Start() error {
 func (ws *WebSocket) sendLoop() {
 	for {
 		select {
-		case raw := <-ws.sendCh:
+		case raw := <-ws.sendChannel:
 
 			if ws.checkAccess(raw) {
 				if guble.DebugEnabled() {
@@ -182,14 +182,14 @@ func (ws *WebSocket) sendConnectionMessage() {
 		Arg:  "You are connected to the server.",
 		Json: fmt.Sprintf(`{"ApplicationId": "%s", "UserId": "%s", "Time": "%s"}`, ws.applicationId, ws.userId, time.Now().Format(time.RFC3339)),
 	}
-	ws.sendCh <- n.Bytes()
+	ws.sendChannel <- n.Bytes()
 }
 
 func (ws *WebSocket) handleReceiveCmd(cmd *guble.Cmd) {
 	rec, err := NewReceiverFromCmd(
 		ws.applicationId,
 		cmd,
-		ws.sendCh,
+		ws.sendChannel,
 		ws.Router,
 		ws.messageStore,
 		ws.userId,
@@ -257,7 +257,7 @@ func (ws *WebSocket) sendError(name string, argPattern string, params ...interfa
 		Arg:     fmt.Sprintf(argPattern, params...),
 		IsError: true,
 	}
-	ws.sendCh <- n.Bytes()
+	ws.sendChannel <- n.Bytes()
 }
 
 func (ws *WebSocket) sendOK(name string, argPattern string, params ...interface{}) {
@@ -266,5 +266,5 @@ func (ws *WebSocket) sendOK(name string, argPattern string, params ...interface{
 		Arg:     fmt.Sprintf(argPattern, params...),
 		IsError: false,
 	}
-	ws.sendCh <- n.Bytes()
+	ws.sendChannel <- n.Bytes()
 }
