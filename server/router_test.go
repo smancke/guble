@@ -2,7 +2,7 @@ package server
 
 import (
 	"fmt"
-	guble "github.com/smancke/guble/guble"
+	"github.com/smancke/guble/guble"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
