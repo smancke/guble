@@ -82,17 +82,17 @@ func (conn *wsconn) Receive(bytes *[]byte) (err error) {
 // Represents a websocket
 type WebSocket struct {
 	*WSHandler
-	*wsconn
+	WSConnection
 	applicationId string
 	userId        string
 	sendChannel   chan []byte
 	receivers     map[guble.Path]*Receiver
 }
 
-func NewWebSocket(handler *WSHandler, wsConn *wsconn, userId string) *WebSocket {
+func NewWebSocket(handler *WSHandler, wsConn WSConnection, userId string) *WebSocket {
 	return &WebSocket{
 		WSHandler:     handler,
-		wsconn:        wsConn,
+		WSConnection:  wsConn,
 		applicationId: xid.New().String(),
 		userId:        userId,
 		sendChannel:   make(chan []byte, 10),

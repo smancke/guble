@@ -19,7 +19,7 @@ var aTestMessage = &guble.Message{
 	Body: []byte("Test"),
 }
 
-func Test_WSHandler_SubscribeAndUnsubscribe(t *testing.T) {
+func TestWebSocket_SubscribeAndUnsubscribe(t *testing.T) {
 	defer initCtrl(t)()
 	a := assert.New(t)
 
@@ -35,13 +35,13 @@ func Test_WSHandler_SubscribeAndUnsubscribe(t *testing.T) {
 	pubSubSource.EXPECT().Unsubscribe(routeMatcher{"/foo"})
 	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_CANCELED + " /foo"))
 
-	wshandler := runNewWsHandler(wsconn, pubSubSource, messageSink, messageStore)
+	websocket := runNewWebSocket(wsconn, pubSubSource, messageSink, messageStore, nil)
 
-	a.Equal(1, len(wshandler.receiver))
-	a.Equal(guble.Path("/bar"), wshandler.receiver[guble.Path("/bar")].path)
+	a.Equal(1, len(websocket.receivers))
+	a.Equal(guble.Path("/bar"), websocket.receivers[guble.Path("/bar")].path)
 }
 
-func TestSendMessageWirthPublisherMessageId(t *testing.T) {
+func TestSendMessageWithPublisherMessageId(t *testing.T) {
 	defer initCtrl(t)()
 
 	// given: a send command with PublisherMessageId
@@ -55,7 +55,7 @@ func TestSendMessageWirthPublisherMessageId(t *testing.T) {
 
 	wsconn.EXPECT().Send([]byte("#send 42"))
 
-	runNewWsHandler(wsconn, pubSubSource, messageSink, messageStore)
+	runNewWebSocket(wsconn, pubSubSource, messageSink, messageStore, nil)
 }
 
 func TestSendMessage(t *testing.T) {
@@ -67,7 +67,7 @@ func TestSendMessage(t *testing.T) {
 	messageSink.EXPECT().HandleMessage(messageMatcher{path: "/path", message: "Hello, this is a test", header: `{"key": "value"}`})
 	wsconn.EXPECT().Send([]byte("#send"))
 
-	runNewWsHandler(wsconn, pubSubSource, messageSink, messageStore)
+	runNewWebSocket(wsconn, pubSubSource, messageSink, messageStore, nil)
 }
 
 func TestAnIncommingMessageIsDelivered(t *testing.T) {
@@ -77,7 +77,7 @@ func TestAnIncommingMessageIsDelivered(t *testing.T) {
 
 	wsconn.EXPECT().Send(aTestMessage.Bytes())
 
-	handler := runNewWsHandler(wsconn, pubSubSource, messageSink, messageStore)
+	handler := runNewWebSocket(wsconn, pubSubSource, messageSink, messageStore, nil)
 
 	handler.sendChannel <- aTestMessage.Bytes()
 	time.Sleep(time.Millisecond * 2)
@@ -90,7 +90,11 @@ func TestAnIncommingMessageIsNotAllowed(t *testing.T) {
 
 	tam := NewTestAccessManager()
 
-	handler := NewWSHandler(pubSubSource, messageSink, messageStore, wsconn, "testuser", AccessManager(tam))
+	handler := NewWebSocket(
+		testWSHandler(pubSubSource, messageSink, messageStore, AccessManager(tam)),
+		wsconn,
+		"testuser",
+	)
 	go func() {
 		handler.Start()
 	}()
@@ -99,7 +103,6 @@ func TestAnIncommingMessageIsNotAllowed(t *testing.T) {
 	handler.sendChannel <- aTestMessage.Bytes()
 	time.Sleep(time.Millisecond * 2)
 	//nothing shall have been sent
-
 
 	//now allow
 	tam.allow("testuser", guble.Path("/foo"))
@@ -133,18 +136,48 @@ func TestBadCommands(t *testing.T) {
 		return nil
 	}).AnyTimes()
 
-	runNewWsHandler(wsconn, pubSubSource, messageSink, messageStore)
+	runNewWebSocket(wsconn, pubSubSource, messageSink, messageStore, nil)
 
 	assert.Equal(t, len(badRequests), counter, "expected number of bad requests does not match")
 }
 
-func runNewWsHandler(wsconn *MockWSConn, pubSubSource *MockPubSubSource, messageSink *MockMessageSink, messageStore store.MessageStore) *WSHandler {
-	handler := NewWSHandler(pubSubSource, messageSink, messageStore, wsconn, "testuser", NewAllowAllAccessManager(true))
+func testWSHandler(
+	pubSubSource *MockPubSubSource,
+	messageSink *MockMessageSink,
+	messageStore store.MessageStore,
+	accessManager AccessManager) *WSHandler {
+
+	return &WSHandler{
+		Router:        pubSubSource,
+		MessageSink:   messageSink,
+		prefix:        "/prefix",
+		messageStore:  messageStore,
+		accessManager: accessManager,
+	}
+}
+
+func runNewWebSocket(
+	wsconn *MockWSConn,
+	pubSubSource *MockPubSubSource,
+	messageSink *MockMessageSink,
+	messageStore store.MessageStore,
+	accessManager AccessManager) *WebSocket {
+
+	if accessManager == nil {
+		accessManager = NewAllowAllAccessManager(true)
+	}
+	websocket := NewWebSocket(
+		testWSHandler(pubSubSource, messageSink, messageStore, accessManager),
+		wsconn,
+		"testuser",
+	)
+
 	go func() {
-		handler.Start()
+		websocket.Start()
 	}()
+
 	time.Sleep(time.Millisecond * 2)
-	return handler
+	return websocket
 }
 
 func createDefaultMocks(inputMessages []string) (*MockWSConn, *MockPubSubSource, *MockMessageSink, *MockMessageStore) {
