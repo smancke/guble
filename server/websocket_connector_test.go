@@ -19,7 +19,7 @@ var aTestMessage = &guble.Message{
 	Body: []byte("Test"),
 }
 
-func TestWebSocket_SubscribeAndUnsubscribe(t *testing.T) {
+func Test_WebSocket_SubscribeAndUnsubscribe(t *testing.T) {
 	defer initCtrl(t)()
 	a := assert.New(t)
 
@@ -41,7 +41,7 @@ func TestWebSocket_SubscribeAndUnsubscribe(t *testing.T) {
 	a.Equal(guble.Path("/bar"), websocket.receivers[guble.Path("/bar")].path)
 }
 
-func TestSendMessageWithPublisherMessageId(t *testing.T) {
+func Test_SendMessageWithPublisherMessageId(t *testing.T) {
 	defer initCtrl(t)()
 
 	// given: a send command with PublisherMessageId
@@ -58,7 +58,7 @@ func TestSendMessageWithPublisherMessageId(t *testing.T) {
 	runNewWebSocket(wsconn, pubSubSource, messageSink, messageStore, nil)
 }
 
-func TestSendMessage(t *testing.T) {
+func Test_SendMessage(t *testing.T) {
 	defer initCtrl(t)()
 
 	commands := []string{"> /path\n{\"key\": \"value\"}\nHello, this is a test"}
@@ -70,7 +70,7 @@ func TestSendMessage(t *testing.T) {
 	runNewWebSocket(wsconn, pubSubSource, messageSink, messageStore, nil)
 }
 
-func TestAnIncommingMessageIsDelivered(t *testing.T) {
+func Test_AnIncommingMessageIsDelivered(t *testing.T) {
 	defer initCtrl(t)()
 
 	wsconn, pubSubSource, messageSink, messageStore := createDefaultMocks([]string{})
@@ -83,7 +83,7 @@ func TestAnIncommingMessageIsDelivered(t *testing.T) {
 	time.Sleep(time.Millisecond * 2)
 }
 
-func TestAnIncommingMessageIsNotAllowed(t *testing.T) {
+func Test_AnIncommingMessageIsNotAllowed(t *testing.T) {
 	defer initCtrl(t)()
 
 	wsconn, pubSubSource, messageSink, messageStore := createDefaultMocks([]string{})
@@ -116,7 +116,7 @@ func TestAnIncommingMessageIsNotAllowed(t *testing.T) {
 
 }
 
-func TestBadCommands(t *testing.T) {
+func Test_BadCommands(t *testing.T) {
 	defer initCtrl(t)()
 
 	badRequests := []string{"XXXX", "", ">", ">/foo", "+", "-", "send /foo"}
