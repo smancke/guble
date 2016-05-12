@@ -3,7 +3,7 @@ package server
 import (
 	"strings"
 
-	guble "github.com/smancke/guble/guble"
+	"github.com/smancke/guble/guble"
 	"runtime"
 	"time"
 	"errors"
