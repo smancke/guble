@@ -12,14 +12,14 @@ import (
 
 // This is the main class for simple startup of a server
 type Service struct {
-	kvStore         store.KVStore
-	messageStore    store.MessageStore
-	webServer       *WebServer
-	messageSink     MessageSink
-	router          PubSubSource
-	stopListener    []Stopable
-	startListener   []Startable
-	accessManager   AccessManager
+	kvStore       store.KVStore
+	messageStore  store.MessageStore
+	webServer     *WebServer
+	messageSink   MessageSink
+	router        PubSubSource
+	stopListener  []Stopable
+	startListener []Startable
+	accessManager AccessManager
 	// The time given to each Module on Stop()
 	StopGracePeriod time.Duration
 }

@@ -43,9 +43,9 @@ type MessageSink interface {
 	HandleMessage(message *guble.Message) error
 }
 
-// WSConn is a wrapper interface for the needed functions of the websocket.Conn
+// WSConnection is a wrapper interface for the needed functions of the websocket.Conn
 // It is introduced for testability of the WSHandler
-type WSConn interface {
+type WSConnection interface {
 	Close()
 	Send(bytes []byte) (err error)
 	Receive(bytes *[]byte) (err error)
@@ -89,6 +89,7 @@ type SetAccessManager interface {
 }
 
 type AccessType int
+
 const (
 	READ AccessType = iota
 	WRITE

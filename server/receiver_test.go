@@ -51,8 +51,8 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	// there is a gap between fetched and max id
 	messageId1 := messageStore.EXPECT().DoInTx(gomock.Any(), gomock.Any()).
 		Do(func(partition string, callback func(maxMessageId uint64) error) {
-		callback(uint64(3))
-	}).Return(unread_messages_available)
+			callback(uint64(3))
+		}).Return(errUnreadMsgsAvailable)
 	messageId1.After(fetch_first1)
 
 	// fetch again, starting at 3, because, there is still a gap
@@ -73,8 +73,8 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	// the gap is closed
 	messageId2 := messageStore.EXPECT().DoInTx(gomock.Any(), gomock.Any()).
 		Do(func(partition string, callback func(maxMessageId uint64) error) {
-		callback(uint64(3))
-	})
+			callback(uint64(3))
+		})
 	messageId2.After(fetch_first2)
 
 	// subscribe
@@ -102,8 +102,8 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	// no gap
 	messageId3 := messageStore.EXPECT().DoInTx(gomock.Any(), gomock.Any()).
 		Do(func(partition string, callback func(maxMessageId uint64) error) {
-		callback(uint64(6))
-	})
+			callback(uint64(6))
+		})
 
 	messageId3.After(fetch_after)
 
