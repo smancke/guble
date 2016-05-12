@@ -1,11 +1,11 @@
 package server
 
 import (
-	"testing"
-	"time"
-	"github.com/stretchr/testify/assert"
 	"fmt"
 	guble "github.com/smancke/guble/guble"
+	"github.com/stretchr/testify/assert"
+	"testing"
+	"time"
 )
 
 var aTestByteMessage = []byte("Hello World!")
@@ -48,10 +48,10 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 	a.Nil(router.routes[guble.Path("/foo")])
 }
 
-func Test_SubscribeNotAllowed(t *testing.T ) {
+func Test_SubscribeNotAllowed(t *testing.T) {
 	a := assert.New(t)
 
-	tam := NewTestAccessManager();
+	tam := NewTestAccessManager()
 
 	router := NewPubSubRouter()
 	router.SetAccessManager(AccessManager(tam))
@@ -73,10 +73,10 @@ func Test_SubscribeNotAllowed(t *testing.T ) {
 
 }
 
-func Test_HandleMessageNotAllowed(t *testing.T ) {
+func Test_HandleMessageNotAllowed(t *testing.T) {
 	a := assert.New(t)
 
-	tam := NewTestAccessManager();
+	tam := NewTestAccessManager()
 
 	// Given a Multiplexer with route
 	router, r := aRouterRoute()
@@ -85,7 +85,7 @@ func Test_HandleMessageNotAllowed(t *testing.T ) {
 	router.SetAccessManager(AccessManager(tam))
 
 	// when i send a message to the route
-	e := router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage, PublisherUserId:r.UserId})
+	e := router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage, PublisherUserId: r.UserId})
 
 	// an error shall be returned
 	a.NotNil(e)
@@ -94,7 +94,7 @@ func Test_HandleMessageNotAllowed(t *testing.T ) {
 	tam.allow(r.UserId, r.Path)
 
 	// sending message
-	e = router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage, PublisherUserId:r.UserId})
+	e = router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage, PublisherUserId: r.UserId})
 
 	// shall give no error
 	a.Nil(e)
@@ -224,7 +224,7 @@ func aRouterRoute() (*PubSubRouter, *Route) {
 	router := NewPubSubRouter()
 	router.SetAccessManager(NewAllowAllAccessManager(true))
 	router.Go()
-	route, _ :=router.Subscribe(NewRoute("/blah", make(chan MsgAndRoute, chanSize), "appid01", "user01"))
+	route, _ := router.Subscribe(NewRoute("/blah", make(chan MsgAndRoute, chanSize), "appid01", "user01"))
 	return router, route
 }
 
