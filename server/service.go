@@ -59,52 +59,44 @@ func NewService(addr string, kvStore store.KVStore, messageStore store.MessageSt
 func (service *Service) Register(module interface{}) {
 	name := reflect.TypeOf(module).String()
 
-	switch m := module.(type) {
-	case Stopable:
-		guble.Info("register %v as StopListener", name)
-		service.AddStopListener(m)
-	}
-
-	switch m := module.(type) {
-	case Startable:
+	if m, ok := module.(Startable); ok {
 		guble.Info("register %v as StartListener", name)
 		service.AddStartListener(m)
 	}
 
-	switch m := module.(type) {
-	case Endpoint:
+	if m, ok := module.(Endpoint); ok {
 		guble.Info("register %v as Endpoint to %v", name, m.GetPrefix())
 		service.AddHandler(m.GetPrefix(), m)
 	}
 
+	if m, ok := module.(Stopable); ok {
+		guble.Info("register %v as StopListener", name)
+		service.AddStopListener(m)
+	}
+
 	// do the injections ...
 
-	switch m := module.(type) {
-	case SetKVStore:
+	if m, ok := module.(SetKVStore); ok {
 		guble.Debug("inject KVStore to %v", name)
 		m.SetKVStore(service.kvStore)
 	}
 
-	switch m := module.(type) {
-	case SetMessageStore:
+	if m, ok := module.(SetMessageStore); ok {
 		guble.Debug("inject MessageStore to %v", name)
 		m.SetMessageStore(service.messageStore)
 	}
 
-	switch m := module.(type) {
-	case SetRouter:
+	if m, ok := module.(SetRouter); ok {
 		guble.Debug("inject Router to %v", name)
 		m.SetRouter(service.router)
 	}
 
-	switch m := module.(type) {
-	case SetMessageEntry:
+	if m, ok := module.(SetMessageEntry); ok {
 		guble.Debug("inject MessageEntry to %v", name)
 		m.SetMessageEntry(service.messageSink)
 	}
 
-	switch m := module.(type) {
-	case SetAccessManager:
+	if m, ok := module.(SetAccessManager); ok {
 		guble.Debug("inject AccessManager to %v", name)
 		m.SetAccessManager(service.accessManager)
 	}

@@ -111,7 +111,10 @@ func Main() {
 	service := StartupService(args)
 
 	waitForTermination(func() {
-		service.Stop()
+		err := service.Stop()
+		if err != nil {
+			guble.Err("Service: ", err)
+		}
 	})
 }
 
