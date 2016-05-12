@@ -66,31 +66,38 @@ This is the current (and fast changing) roadmap and todo list:
 This release contains a lot of small changes and the JavaScript API.
 
 * Stable JavaScript client: https://github.com/smancke/guble-js
-* Minimal example chat application
 * Authentication and access management
-* Userspecific persistant subscriptions accross all clients of the user
-* Client: (re-)setup of subscriptions after client reconnect
+* Add Consul as KV Backend strategy
 * Clean shutdown
-* Change sqlite to bolt
 * Improve logging (Maybe use of https://github.com/Sirupsen/logrus)
-* Correct behaviour of receive command with `maxCount` on subtopics
 * Rename package "guble" to "protocol" or "gublep"
 * Change time from ISO 8601 to unix timestamp
 * Remove `userId` from route
-* Cancel of fetch in the message store and multiple concurrent fetch commands for the same topic
-* Make notification messages optional by client configuration
 
 ## Roadmap Release 0.3
+* Storing the sequence Id of topics in kv store, if we turn of persistance
+* Replication across multiple servers
 * Cleanup, documentation, and test coverage of the GCM connector
-* HTTPS support in the service
-* Configuration of different persistence strategies for topics
-* Message size limit configurable by the client with fetching by URL
+* Make notification messages optional by client configuration
+* Load testing with 5000 connections per instance
+* Introduce Health Check Ressource
+* Introduce Basic Metrics API
 
 ## Roadmap Release 0.4
-* Replication across multiple servers
-* Delivery semantics: user must read on one device, deliver only to one device, notify if not connected, etc.
+* Change sqlite to bolt
 * (TBD) Index-based search of messages using [GoLucene](https://github.com/balzaczyy/golucene)
 * (TBD) Acknowledgement of message delivery
+* Correct behaviour of receive command with `maxCount` on subtopics
+* Configuration of different persistence strategies for topics
+
+## Roadmap Release 0.5
+* Delivery semantics: user must read on one device, deliver only to one device, notify if not connected, etc.
+* HTTPS support in the service
+* Cancel of fetch in the message store and multiple concurrent fetch commands for the same topic
+* Minimal example chat application
+* Userspecific persistant subscriptions accross all clients of the user
+* Client: (re-)setup of subscriptions after client reconnect
+* Message size limit configurable by the client with fetching by URL
 
 # Guble Docker Image
 We are providing Docker images of the server and client for your convenience.

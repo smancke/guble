@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-var unread_messages_available = errors.New("unread messages available")
+var errUnreadMsgsAvailable = errors.New("unread messages available")
 
 // A receiver is a helper class, for managing a combined pull push on a topic.
 // It is used for implementation of the + (receive) command in the gubble protocol.
@@ -30,11 +30,17 @@ type Receiver struct {
 	shouldStop          bool
 	route               *Route
 	enableNotifications bool
-	userId				string
+	userId              string
 }
 
 // Parses the info in the command
-func NewReceiverFromCmd(applicationId string, cmd *guble.Cmd, sendChannel chan []byte, messageSource PubSubSource, messageStore store.MessageStore, userId string) (*Receiver, error) {
+func NewReceiverFromCmd(
+	applicationId string,
+	cmd *guble.Cmd,
+	sendChannel chan []byte,
+	messageSource PubSubSource,
+	messageStore store.MessageStore,
+	userId string) (*Receiver, error) {
 	var err error
 	rec := &Receiver{
 		applicationId:       applicationId,
@@ -43,7 +49,7 @@ func NewReceiverFromCmd(applicationId string, cmd *guble.Cmd, sendChannel chan [
 		messageStore:        messageStore,
 		cancelChannel:       make(chan bool, 1),
 		enableNotifications: true,
-		userId:				 userId,
+		userId:              userId,
 	}
 	if len(cmd.Arg) == 0 || cmd.Arg[0] != '/' {
 		return nil, fmt.Errorf("command requires at least a path argument, but non given")
@@ -92,8 +98,8 @@ func (rec *Receiver) subscriptionLoop() {
 			}
 
 			if err := rec.messageStore.DoInTx(rec.path.Partition(), rec.subscribeIfNoUnreadMessagesAvailable); err != nil {
-				if err == unread_messages_available {
-					//fmt.Printf(" unread_messages_available lastSendId=%v\n", rec.lastSendId)
+				if err == errUnreadMsgsAvailable {
+					//fmt.Printf(" errUnreadMsgsAvailable lastSendId=%v\n", rec.lastSendId)
 					rec.startId = int64(rec.lastSendId + 1)
 					continue // fetch again
 				} else {
@@ -121,7 +127,7 @@ func (rec *Receiver) subscriptionLoop() {
 
 func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) error {
 	if maxMessageId > rec.lastSendId {
-		return unread_messages_available
+		return errUnreadMsgsAvailable
 	}
 	rec.subscribe()
 	return nil
@@ -130,7 +136,7 @@ func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) e
 func (rec *Receiver) subscribe() {
 	rec.route = NewRoute(string(rec.path), make(chan MsgAndRoute, 3), rec.applicationId, rec.userId)
 	_, err := rec.messageSouce.Subscribe(rec.route)
-	if(err != nil) {
+	if err != nil {
 		rec.sendError(guble.ERROR_SUBSCRIBED_TO, string(rec.path), err.Error())
 	} else {
 		rec.sendOK(guble.SUCCESS_SUBSCRIBED_TO, string(rec.path))
