@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// This scruct represents a message in the guble protocol, as the server sends to the client.
+// This struct represents a message in the guble protocol, as the server sends it to the client.
 type Message struct {
 
 	// The sequenceId of the message, which is given by the
@@ -29,7 +29,7 @@ type Message struct {
 	// The time of publishing, as iso date string
 	PublishingTime string
 
-	// The header line of the message (optional). If set, than this has to be a valid json object structure.
+	// The header line of the message (optional). If set, than this has to be a valid JSON object structure.
 	HeaderJson string
 
 	// The message payload
@@ -92,7 +92,6 @@ const (
 	SUCCESS_SUBSCRIBED_TO = "subscribed-to"
 	SUCCESS_CANCELED      = "canceled"
 	ERROR_SUBSCRIBED_TO   = "error-subscribed-to"
-	ERROR_SEND            = "error-send"
 	ERROR_BAD_REQUEST     = "error-bad-request"
 	ERROR_INTERNAL_SERVER = "error-server-internal"
 )

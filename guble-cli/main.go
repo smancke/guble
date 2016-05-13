@@ -78,8 +78,8 @@ func readLoop(client *client.Client) {
 			} else {
 				fmt.Printf("%v: %v\n", incomingMessage.PublisherUserId, incomingMessage.BodyAsString())
 			}
-		case error := <-client.Errors():
-			fmt.Println("ERROR: " + string(error.Bytes()))
+		case e := <-client.Errors():
+			fmt.Println("ERROR: " + string(e.Bytes()))
 		case status := <-client.StatusMessages():
 			fmt.Println(string(status.Bytes()))
 			fmt.Println()
