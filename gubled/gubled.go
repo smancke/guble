@@ -72,7 +72,7 @@ var CreateMessageStoreBackend = func(args Args) store.MessageStore {
 
 var CreateModules = func(args Args) []interface{} {
 	modules := []interface{}{
-		server.NewWSHandlerFactory("/stream/"),
+		server.NewWSHandler("/stream/"),
 		server.NewRestMessageApi("/api/"),
 	}
 
@@ -111,7 +111,10 @@ func Main() {
 	service := StartupService(args)
 
 	waitForTermination(func() {
-		service.Stop()
+		err := service.Stop()
+		if err != nil {
+			guble.Err("Service: ", err)
+		}
 	})
 }
 
