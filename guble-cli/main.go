@@ -19,7 +19,7 @@ type Args struct {
 	Exit     bool     `arg:"-x,help: Exit after sending the commands"`
 	Commands []string `arg:"positional,help: The commands to send after startup"`
 	Verbose  bool     `arg:"-v,help: Display verbose server communication"`
-	Url      string   `arg:"help: The websocket url to connect (ws://localhost:8080/stream/)"`
+	URL      string   `arg:"help: The websocket url to connect (ws://localhost:8080/stream/)"`
 	User     string   `arg:"help: The user name to connect with (guble-cli)"`
 	LogInfo  bool     `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
 	LogDebug bool     `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
@@ -40,7 +40,7 @@ func main() {
 	}
 
 	origin := "http://localhost/"
-	url := fmt.Sprintf("%v/user/%v", removeTrailingSlash(args.Url), args.User)
+	url := fmt.Sprintf("%v/user/%v", removeTrailingSlash(args.URL), args.User)
 	client, err := client.Open(url, origin, 100, true)
 	if err != nil {
 		log.Fatal(err)
@@ -61,7 +61,7 @@ func main() {
 func loadArgs() Args {
 	args := Args{
 		Verbose: false,
-		Url:     "ws://localhost:8080/stream/",
+		URL:     "ws://localhost:8080/stream/",
 		User:    "guble-cli",
 	}
 
