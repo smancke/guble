@@ -77,8 +77,8 @@ func (router *PubSubRouter) Stop() error {
 // Add a route to the subscribers.
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *PubSubRouter) Subscribe(r *Route) (*Route, error) {
-	guble.Debug("subscribe %v, %v, %v", router.accessManager, r.UserId, r.Path)
-	accessAllowed := router.accessManager.AccessAllowed(READ, r.UserId, r.Path)
+	guble.Debug("subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
+	accessAllowed := router.accessManager.AccessAllowed(READ, r.UserID, r.Path)
 	if !accessAllowed {
 		return r, errors.New("not allowed")
 	}
@@ -92,7 +92,7 @@ func (router *PubSubRouter) Subscribe(r *Route) (*Route, error) {
 }
 
 func (router *PubSubRouter) subscribe(r *Route) {
-	guble.Info("subscribe applicationId=%v, path=%v", r.ApplicationId, r.Path)
+	guble.Info("subscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
 
 	routeList, present := router.routes[r.Path]
 	if !present {
@@ -116,7 +116,7 @@ func (router *PubSubRouter) Unsubscribe(r *Route) {
 }
 
 func (router *PubSubRouter) unsubscribe(r *Route) {
-	guble.Info("unsubscribe applicationId=%v, path=%v", r.ApplicationId, r.Path)
+	guble.Info("unsubscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
 	routeList, present := router.routes[r.Path]
 	if !present {
 		return
@@ -161,7 +161,7 @@ func (router *PubSubRouter) deliverMessage(route Route, message *guble.Message) 
 	case route.C <- MsgAndRoute{Message: message, Route: &route}:
 	// fine, we could send the message
 	default:
-		guble.Info("queue was full, closing delivery for route=%v to applicationId=%v", route.Path, route.ApplicationId)
+		guble.Info("queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)
 		close(route.C)
 		router.unsubscribe(&route)
 	}
@@ -192,11 +192,11 @@ func matchesTopic(messagePath, routePath guble.Path) bool {
 }
 
 // remove a route from the supplied list,
-// based on same ApplicationId id and same path
+// based on same ApplicationID id and same path
 func remove(slice []Route, route *Route) []Route {
 	position := -1
 	for p, r := range slice {
-		if r.ApplicationId == route.ApplicationId && r.Path == route.Path {
+		if r.ApplicationID == route.ApplicationID && r.Path == route.Path {
 			position = p
 		}
 	}
