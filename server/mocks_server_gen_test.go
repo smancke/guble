@@ -6,7 +6,7 @@ package server
 import (
 	gomock "github.com/golang/mock/gomock"
 	guble "github.com/smancke/guble/guble"
-	
+
 	store "github.com/smancke/guble/store"
 	http "net/http"
 )

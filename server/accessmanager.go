@@ -1,11 +1,11 @@
 package server
+
 import (
 	"github.com/smancke/guble/guble"
-	"net/http"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 )
-
 
 type AllowAllAccessManager bool
 
@@ -14,7 +14,7 @@ func NewAllowAllAccessManager(allowAll bool) AllowAllAccessManager {
 }
 
 func (am AllowAllAccessManager) AccessAllowed(accessType AccessType, userId string, path guble.Path) bool {
-	return bool(am);
+	return bool(am)
 }
 
 type RestAccessManager string
@@ -27,7 +27,7 @@ func (am RestAccessManager) AccessAllowed(accessType AccessType, userId string, 
 
 	u, _ := url.Parse(string(am))
 	q := u.Query()
-	if (accessType == READ) {
+	if accessType == READ {
 		q.Set("type", "read")
 	} else {
 		q.Set("type", "write")
@@ -38,14 +38,14 @@ func (am RestAccessManager) AccessAllowed(accessType AccessType, userId string, 
 
 	resp, err := http.DefaultClient.Get(u.String())
 
-	if (err != nil) {
+	if err != nil {
 		guble.Warn("RestAccessManager: %v", err)
 		return false
 	}
 	defer resp.Body.Close()
 	responseBody, err := ioutil.ReadAll(resp.Body)
 
-	if (err != nil || resp.StatusCode != 200) {
+	if err != nil || resp.StatusCode != 200 {
 		guble.Info("error getting permission", err)
 		guble.Debug("error getting permission", responseBody)
 		return false
