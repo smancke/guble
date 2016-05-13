@@ -15,7 +15,7 @@ import (
 	"github.com/smancke/guble/guble"
 )
 
-type Args struct {
+type arguments struct {
 	Exit     bool     `arg:"-x,help: Exit after sending the commands"`
 	Commands []string `arg:"positional,help: The commands to send after startup"`
 	Verbose  bool     `arg:"-v,help: Display verbose server communication"`
@@ -25,7 +25,7 @@ type Args struct {
 	LogDebug bool     `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
 }
 
-var args Args
+var args arguments
 
 // This is a minimal commandline client to connect through a websocket
 func main() {
@@ -58,8 +58,8 @@ func main() {
 	waitForTermination(func() {})
 }
 
-func loadArgs() Args {
-	args := Args{
+func loadArgs() arguments {
+	args := arguments{
 		Verbose: false,
 		URL:     "ws://localhost:8080/stream/",
 		User:    "guble-cli",
