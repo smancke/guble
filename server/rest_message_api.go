@@ -55,7 +55,7 @@ func (api *RestMessageApi) PostMessage(w http.ResponseWriter, r *http.Request, p
 		PublisherUserId:        q(r, `userId`),
 		PublisherApplicationId: xid.New().String(),
 		PublisherMessageId:     q(r, `messageId`),
-		HeaderJson:             headersToJson(r.Header),
+		HeaderJSON:             headersToJson(r.Header),
 	}
 
 	api.MessageSink.HandleMessage(msg)

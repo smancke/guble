@@ -30,7 +30,7 @@ type Message struct {
 	PublishingTime string
 
 	// The header line of the message (optional). If set, than this has to be a valid json object structure.
-	HeaderJson string
+	HeaderJSON string
 
 	// The message payload
 	Body []byte
@@ -53,12 +53,12 @@ func (msg *Message) Bytes() []byte {
 
 	msg.writeMetadataLine(buff)
 
-	if len(msg.HeaderJson) > 0 || len(msg.Body) > 0 {
+	if len(msg.HeaderJSON) > 0 || len(msg.Body) > 0 {
 		buff.WriteString("\n")
 	}
 
-	if len(msg.HeaderJson) > 0 {
-		buff.WriteString(msg.HeaderJson)
+	if len(msg.HeaderJSON) > 0 {
+		buff.WriteString(msg.HeaderJSON)
 	}
 
 	if len(msg.Body) > 0 {
@@ -186,7 +186,7 @@ func parseMessage(message []byte) (interface{}, error) {
 	}
 
 	if len(parts) >= 2 {
-		msg.HeaderJson = parts[1]
+		msg.HeaderJSON = parts[1]
 	}
 
 	if len(parts) == 3 {
