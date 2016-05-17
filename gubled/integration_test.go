@@ -5,7 +5,7 @@ import (
 	"github.com/smancke/guble/guble"
 	"github.com/smancke/guble/server"
 
-	assert "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"encoding/json"
@@ -38,7 +38,7 @@ func TestSimplePingPong(t *testing.T) {
 	}
 }
 
-func initServerAndClients(t *testing.T) (*server.Service, *client.Client, *client.Client, func()) {
+func initServerAndClients(t *testing.T) (*server.Service, client.Client, client.Client, func()) {
 	service := StartupService(Args{Listen: "localhost:0", KVBackend: "memory"})
 
 	time.Sleep(time.Millisecond * 100)
@@ -69,7 +69,7 @@ func initServerAndClients(t *testing.T) (*server.Service, *client.Client, *clien
 	}
 }
 
-func expectStatusMessage(t *testing.T, client *client.Client, name string, arg string) string {
+func expectStatusMessage(t *testing.T, client client.Client, name string, arg string) string {
 	select {
 	case notify := <-client.StatusMessages():
 		assert.Equal(t, name, notify.Name)

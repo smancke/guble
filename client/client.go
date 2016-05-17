@@ -24,6 +24,8 @@ func DefaultConnectionFactory(url string, origin string) (WSConnection, error) {
 	return conn, nil
 }
 
+type WSConnectionFactory func(url string, origin string) (WSConnection, error)
+
 type Client interface {
 	Start() error
 	Close()
@@ -39,7 +41,7 @@ type Client interface {
 	StatusMessages() chan *guble.NotificationMessage
 	Errors() chan *guble.NotificationMessage
 
-	SetWSConnectionFactory(connection func(url string, origin string) (WSConnection, error))
+	SetWSConnectionFactory(WSConnectionFactory)
 	IsConnected() bool
 }
 
@@ -78,7 +80,7 @@ func New(url, origin string, channelSize int, autoReconnect bool) Client {
 	}
 }
 
-func (c *client) SetWSConnectionFactory(connection func(url string, origin string) (WSConnection, error)) {
+func (c *client) SetWSConnectionFactory(connection WSConnectionFactory) {
 	c.wSConnectionFactory = connection
 }
 
