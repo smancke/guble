@@ -69,7 +69,7 @@ func loadArgs() Args {
 	return args
 }
 
-func readLoop(client *client.Client) {
+func readLoop(client client.Client) {
 	for {
 		select {
 		case incomingMessage := <-client.Messages():
@@ -87,7 +87,7 @@ func readLoop(client *client.Client) {
 	}
 }
 
-func writeLoop(client *client.Client) {
+func writeLoop(client client.Client) {
 	shouldStop := false
 	for !shouldStop {
 		func() {

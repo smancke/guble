@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
-
 )
 
 func Test_removeTrailingSlash(t *testing.T) {
@@ -20,4 +19,3 @@ func Test_removeTrailingSlash(t *testing.T) {
 		assert.Equal(t, c.expected, removeTrailingSlash(c.path), fmt.Sprintf("Failed at  case no=%d", i))
 	}
 }
-
