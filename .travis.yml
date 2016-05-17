@@ -4,14 +4,15 @@ go:
   - tip
 
 before_install:
-  - go get github.com/onsi/ginkgo/ginkgo
-  - go get github.com/axw/gocov/gocov
+  - go get github.com/wadey/gocovmerge
   - go get github.com/mattn/goveralls
+  # - go get github.com/axw/gocov/gocov
   - go get golang.org/x/tools/cmd/cover
-  - go get github.com/modocache/gover
+  # - go get github.com/modocache/gover
 script:
-  - ginkgo -r  -cover  -coverpkg=./... -trace
-  - gover ...
-  - goveralls -coverprofile=gover.coverprofile -service=travis-ci
+  - scripts/cov.sh
+  # - go test
+  # - ginkgo -r  -cover  -coverpkg=./... -trace
+  # - gover ...
+  - goveralls -coverprofile=full_cov.out -service=travis-ci
 
-  

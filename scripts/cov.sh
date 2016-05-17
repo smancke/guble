@@ -16,5 +16,5 @@ gocovmerge ./cov/*.out > full_cov.out
 rm -rf ./cov
 
 # If we have an arg, assume travis run and push to coveralls. Otherwise launch browser results
-go tool cover -html=full_cov.out
-rm -f full_cov.out
+# go tool cover -html=full_cov.out
+# rm -f full_cov.out
