@@ -46,8 +46,8 @@ func Benchmark_E2E_Fetch_HelloWorld_Messages(b *testing.B) {
 		select {
 		case msg := <-c.Messages():
 			a.Equal(fmt.Sprintf("Hello %v", i), msg.BodyAsString())
-		case error := <-c.Errors():
-			a.Fail(string(error.Bytes()))
+		case e := <-c.Errors():
+			a.Fail(string(e.Bytes()))
 			return
 		case <-time.After(time.Second):
 			a.Fail("timeout on message: " + strconv.Itoa(i))

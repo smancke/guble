@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// This scruct represents a message in the guble protocol, as the server sends to the client.
+// This struct represents a message in the guble protocol, as the server sends it to the client.
 type Message struct {
 
 	// The sequenceId of the message, which is given by the
@@ -92,7 +92,6 @@ const (
 	SUCCESS_SUBSCRIBED_TO = "subscribed-to"
 	SUCCESS_CANCELED      = "canceled"
 	ERROR_SUBSCRIBED_TO   = "error-subscribed-to"
-	ERROR_SEND            = "error-send"
 	ERROR_BAD_REQUEST     = "error-bad-request"
 	ERROR_INTERNAL_SERVER = "error-server-internal"
 )

@@ -24,7 +24,28 @@ func DefaultConnectionFactory(url string, origin string) (WSConnection, error) {
 	return conn, nil
 }
 
-type Client struct {
+type WSConnectionFactory func(url string, origin string) (WSConnection, error)
+
+type Client interface {
+	Start() error
+	Close()
+
+	Subscribe(path string) error
+	Unsubscribe(path string) error
+
+	Send(path string, body string, header string) error
+	SendBytes(path string, body []byte, header string) error
+
+	WriteRawMessage(message []byte) error
+	Messages() chan *guble.Message
+	StatusMessages() chan *guble.NotificationMessage
+	Errors() chan *guble.NotificationMessage
+
+	SetWSConnectionFactory(WSConnectionFactory)
+	IsConnected() bool
+}
+
+type client struct {
 	ws                  WSConnection
 	messages            chan *guble.Message
 	statusMessages      chan *guble.NotificationMessage
@@ -34,21 +55,21 @@ type Client struct {
 	shouldStopChan      chan bool
 	shouldStopFlag      bool
 	autoReconnect       bool
-	WSConnectionFactory func(url string, origin string) (WSConnection, error)
+	wSConnectionFactory func(url string, origin string) (WSConnection, error)
 	// flag, to indicate if the client is connected
-	Connected bool
+	connected bool
 }
 
 // shortcut for New() and Start()
-func Open(url, origin string, channelSize int, autoReconnect bool) (*Client, error) {
+func Open(url, origin string, channelSize int, autoReconnect bool) (Client, error) {
 	c := New(url, origin, channelSize, autoReconnect)
-	c.WSConnectionFactory = DefaultConnectionFactory
+	c.SetWSConnectionFactory(DefaultConnectionFactory)
 	return c, c.Start()
 }
 
 // Construct a new client, without starting the connection
-func New(url, origin string, channelSize int, autoReconnect bool) *Client {
-	return &Client{
+func New(url, origin string, channelSize int, autoReconnect bool) Client {
+	return &client{
 		messages:       make(chan *guble.Message, channelSize),
 		statusMessages: make(chan *guble.NotificationMessage, channelSize),
 		errors:         make(chan *guble.NotificationMessage, channelSize),
@@ -59,27 +80,35 @@ func New(url, origin string, channelSize int, autoReconnect bool) *Client {
 	}
 }
 
+func (c *client) SetWSConnectionFactory(connection WSConnectionFactory) {
+	c.wSConnectionFactory = connection
+}
+
+func (c *client) IsConnected() bool {
+	return c.connected
+}
+
 // Connect and start the read go routine.
 // If an error occurs on first connect, it will be returned.
 // Further connection errors will only be logged.
-func (c *Client) Start() error {
+func (c *client) Start() error {
 	var err error
-	c.ws, err = c.WSConnectionFactory(c.url, c.origin)
-	c.Connected = err == nil
+	c.ws, err = c.wSConnectionFactory(c.url, c.origin)
+	c.connected = err == nil
 
 	if c.autoReconnect {
 		go c.startWithReconnect()
 	} else {
-		if c.Connected {
+		if c.IsConnected() {
 			go c.readLoop()
 		}
 	}
 	return err
 }
 
-func (c *Client) startWithReconnect() {
+func (c *client) startWithReconnect() {
 	for {
-		if c.Connected {
+		if c.IsConnected() {
 			err := c.readLoop()
 			if err == nil {
 				return
@@ -92,22 +121,22 @@ func (c *Client) startWithReconnect() {
 		}
 
 		var err error
-		c.ws, err = c.WSConnectionFactory(c.url, c.origin)
+		c.ws, err = c.wSConnectionFactory(c.url, c.origin)
 		if err != nil {
-			c.Connected = false
+			c.connected = false
 			guble.Err("error on connect, retry in 50ms: %v", err)
 			time.Sleep(time.Millisecond * 50)
 		} else {
-			c.Connected = true
+			c.connected = true
 			guble.Err("connected again")
 		}
 	}
 }
 
-func (c *Client) readLoop() error {
+func (c *client) readLoop() error {
 	for {
 		if _, msg, err := c.ws.ReadMessage(); err != nil {
-			c.Connected = false
+			c.connected = false
 			if c.shouldStop() {
 				return nil
 			} else {
@@ -122,7 +151,7 @@ func (c *Client) readLoop() error {
 	}
 }
 
-func (c *Client) shouldStop() bool {
+func (c *client) shouldStop() bool {
 	if c.shouldStopFlag {
 		return true
 	}
@@ -135,7 +164,7 @@ func (c *Client) shouldStop() bool {
 	}
 }
 
-func (c *Client) handleIncommoingMessage(msg []byte) {
+func (c *client) handleIncommoingMessage(msg []byte) {
 	parsed, err := guble.ParseMessage(msg)
 	if err != nil {
 		guble.Err("parsing message failed %v", err)
@@ -161,7 +190,7 @@ func (c *Client) handleIncommoingMessage(msg []byte) {
 	}
 }
 
-func (c *Client) Subscribe(path string) error {
+func (c *client) Subscribe(path string) error {
 	cmd := &guble.Cmd{
 		Name: guble.CMD_RECEIVE,
 		Arg:  path,
@@ -170,7 +199,7 @@ func (c *Client) Subscribe(path string) error {
 	return err
 }
 
-func (c *Client) Unsubscribe(path string) error {
+func (c *client) Unsubscribe(path string) error {
 	cmd := &guble.Cmd{
 		Name: guble.CMD_CANCEL,
 		Arg:  path,
@@ -179,11 +208,11 @@ func (c *Client) Unsubscribe(path string) error {
 	return err
 }
 
-func (c *Client) Send(path string, body string, header string) error {
+func (c *client) Send(path string, body string, header string) error {
 	return c.SendBytes(path, []byte(body), header)
 }
 
-func (c *Client) SendBytes(path string, body []byte, header string) error {
+func (c *client) SendBytes(path string, body []byte, header string) error {
 	cmd := &guble.Cmd{
 		Name:       guble.CMD_SEND,
 		Arg:        path,
@@ -194,23 +223,23 @@ func (c *Client) SendBytes(path string, body []byte, header string) error {
 	return c.WriteRawMessage(cmd.Bytes())
 }
 
-func (c *Client) WriteRawMessage(message []byte) error {
+func (c *client) WriteRawMessage(message []byte) error {
 	return c.ws.WriteMessage(websocket.BinaryMessage, message)
 }
 
-func (c *Client) Messages() chan *guble.Message {
+func (c *client) Messages() chan *guble.Message {
 	return c.messages
 }
 
-func (c *Client) StatusMessages() chan *guble.NotificationMessage {
+func (c *client) StatusMessages() chan *guble.NotificationMessage {
 	return c.statusMessages
 }
 
-func (c *Client) Errors() chan *guble.NotificationMessage {
+func (c *client) Errors() chan *guble.NotificationMessage {
 	return c.errors
 }
 
-func (c *Client) Close() {
+func (c *client) Close() {
 	c.shouldStopChan <- true
 	c.ws.Close()
 }

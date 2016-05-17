@@ -1,7 +1,7 @@
 package gubled
 
 import (
-	assert "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"fmt"
@@ -19,7 +19,7 @@ type testgroup struct {
 	addr             string
 	done             chan bool
 	messagesToSend   int
-	client1, client2 *client.Client
+	client1, client2 client.Client
 	topic            string
 }
 
