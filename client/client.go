@@ -192,7 +192,7 @@ func (c *client) handleIncommoingMessage(msg []byte) {
 
 func (c *client) Subscribe(path string) error {
 	cmd := &guble.Cmd{
-		Name: guble.CMD_RECEIVE,
+		Name: guble.CmdReceive,
 		Arg:  path,
 	}
 	err := c.ws.WriteMessage(websocket.BinaryMessage, cmd.Bytes())
@@ -201,7 +201,7 @@ func (c *client) Subscribe(path string) error {
 
 func (c *client) Unsubscribe(path string) error {
 	cmd := &guble.Cmd{
-		Name: guble.CMD_CANCEL,
+		Name: guble.CmdCancel,
 		Arg:  path,
 	}
 	err := c.ws.WriteMessage(websocket.BinaryMessage, cmd.Bytes())
@@ -214,10 +214,10 @@ func (c *client) Send(path string, body string, header string) error {
 
 func (c *client) SendBytes(path string, body []byte, header string) error {
 	cmd := &guble.Cmd{
-		Name:       guble.CMD_SEND,
+		Name:       guble.CmdSend,
 		Arg:        path,
 		Body:       body,
-		HeaderJson: header,
+		HeaderJSON: header,
 	}
 
 	return c.WriteRawMessage(cmd.Bytes())

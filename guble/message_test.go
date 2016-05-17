@@ -29,7 +29,7 @@ func TestParsingANormalMessage(t *testing.T) {
 	assert.Equal("phone01", msg.PublisherApplicationId)
 	assert.Equal("id123", msg.PublisherMessageId)
 	assert.Equal("2015-01-01T12:00:00+01:00", msg.PublishingTime)
-	assert.Equal(`{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`, msg.HeaderJson)
+	assert.Equal(`{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`, msg.HeaderJSON)
 
 	assert.Equal("Hello World", string(msg.Body))
 }
@@ -43,7 +43,7 @@ func TestSerializeANormalMessage(t *testing.T) {
 		PublisherApplicationId: "phone01",
 		PublisherMessageId:     "id123",
 		PublishingTime:         "2015-01-01T12:00:00+01:00",
-		HeaderJson:             `{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`,
+		HeaderJSON:             `{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`,
 		Body:                   []byte("Hello World"),
 	}
 
@@ -90,7 +90,7 @@ func TestParsingAMinimalMessage(t *testing.T) {
 	assert.Equal("", msg.PublisherApplicationId)
 	assert.Equal("", msg.PublisherMessageId)
 	assert.Equal("2015-01-01T12:00:00+01:00", msg.PublishingTime)
-	assert.Equal("", msg.HeaderJson)
+	assert.Equal("", msg.HeaderJSON)
 
 	assert.Equal("", string(msg.Body))
 }

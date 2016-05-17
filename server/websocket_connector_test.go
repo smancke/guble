@@ -226,7 +226,7 @@ func (n messageMatcher) Matches(x interface{}) bool {
 	return n.path == string(x.(*guble.Message).Path) &&
 		n.message == string(x.(*guble.Message).Body) &&
 		(n.id == 0 || n.id == x.(*guble.Message).Id) &&
-		(n.header == "" || (n.header == x.(*guble.Message).HeaderJson))
+		(n.header == "" || (n.header == x.(*guble.Message).HeaderJSON))
 }
 
 func (n messageMatcher) String() string {

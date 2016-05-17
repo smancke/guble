@@ -85,16 +85,16 @@ func Test_HandleMessageNotAllowed(t *testing.T) {
 	router.SetAccessManager(AccessManager(tam))
 
 	// when i send a message to the route
-	e := router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage, PublisherUserId: r.UserId})
+	e := router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage, PublisherUserId: r.UserID})
 
 	// an error shall be returned
 	a.NotNil(e)
 
 	// and when permission is granted
-	tam.allow(r.UserId, r.Path)
+	tam.allow(r.UserID, r.Path)
 
 	// sending message
-	e = router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage, PublisherUserId: r.UserId})
+	e = router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage, PublisherUserId: r.UserID})
 
 	// shall give no error
 	a.Nil(e)
@@ -116,7 +116,7 @@ func TestReplacingOfRoutes(t *testing.T) {
 	// then: the router only contains the new route
 	a.Equal(1, len(router.routes))
 	a.Equal(1, len(router.routes["/blah"]))
-	a.Equal("newUserId", router.routes["/blah"][0].UserId)
+	a.Equal("newUserId", router.routes["/blah"][0].UserID)
 }
 
 func TestSimpleMessageSending(t *testing.T) {

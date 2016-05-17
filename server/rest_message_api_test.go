@@ -41,7 +41,7 @@ func TestPostMessage(t *testing.T) {
 	// then i expect
 	messageSink.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *guble.Message) {
 		a.Equal(testBytes, msg.Body)
-		a.Equal("{}", msg.HeaderJson)
+		a.Equal("{}", msg.HeaderJSON)
 		a.Equal("/my/topic", string(msg.Path))
 		a.True(len(msg.PublisherApplicationId) > 0)
 		a.Equal("42", msg.PublisherMessageId)
