@@ -10,7 +10,7 @@ before_install:
   - go get golang.org/x/tools/cmd/cover
   # - go get github.com/modocache/gover
 script:
-  - scripts/cov.sh
+  - scripts/generate_cov.sh
   # - go test
   # - ginkgo -r  -cover  -coverpkg=./... -trace
   # - gover ...
