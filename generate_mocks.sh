@@ -16,7 +16,7 @@ $GOPATH/bin/mockgen -self_package server -package server \
 
 $GOPATH/bin/mockgen  -self_package client -package client \
             github.com/smancke/guble/client \
-            WSConnection | sed -e 's/client "github.com\/smancke\/guble\/client"//' | sed -e 's/server\.//g' > $GOPATH/src/github.com/smancke/guble/client/mocks_client_gen_test.go_ \
+            WSConnection,Client | sed -e 's/client "github.com\/smancke\/guble\/client"//' | sed -e 's/server\.//g' > $GOPATH/src/github.com/smancke/guble/client/mocks_client_gen_test.go_ \
             && mv $GOPATH/src/github.com/smancke/guble/client/mocks_client_gen_test.go_ $GOPATH/src/github.com/smancke/guble/client/mocks_client_gen_test.go
 
 $GOPATH/bin/mockgen -package gcm \
