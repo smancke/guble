@@ -75,8 +75,8 @@ func expectStatusMessage(t *testing.T, client *client.Client, name string, arg s
 		assert.Equal(t, name, notify.Name)
 		assert.Equal(t, arg, notify.Arg)
 		return notify.Json
-	case <-time.After(time.Second * 1):
-		t.Logf("no notification of type %s after 1 second", name)
+	case <-time.After(time.Second * 2):
+		t.Logf("no notification of type %s after 2 second", name)
 		t.Fail()
 		return ""
 	}
