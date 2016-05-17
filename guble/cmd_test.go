@@ -17,17 +17,17 @@ func TestParsingASendCommand(t *testing.T) {
 	cmd, err := ParseCmd([]byte(aSendCommand))
 	assert.NoError(err)
 
-	assert.Equal(CMD_SEND, cmd.Name)
+	assert.Equal(CmdSend, cmd.Name)
 	assert.Equal("/foo", cmd.Arg)
-	assert.Equal(`{"meta": "data"}`, cmd.HeaderJson)
+	assert.Equal(`{"meta": "data"}`, cmd.HeaderJSON)
 	assert.Equal("Hello World", string(cmd.Body))
 }
 
 func TestSerializeASendCommand(t *testing.T) {
 	cmd := &Cmd{
-		Name:       CMD_SEND,
+		Name:       CmdSend,
 		Arg:        "/foo",
-		HeaderJson: `{"meta": "data"}`,
+		HeaderJSON: `{"meta": "data"}`,
 		Body:       []byte("Hello World"),
 	}
 
@@ -46,15 +46,15 @@ func TestParsingASubscribeCommand(t *testing.T) {
 	cmd, err := ParseCmd([]byte(aSubscribeCommand))
 	assert.NoError(err)
 
-	assert.Equal(CMD_RECEIVE, cmd.Name)
+	assert.Equal(CmdReceive, cmd.Name)
 	assert.Equal("/foo/bar", cmd.Arg)
-	assert.Equal("", cmd.HeaderJson)
+	assert.Equal("", cmd.HeaderJSON)
 	assert.Nil(cmd.Body)
 }
 
 func TestSerializeASubscribeCommand(t *testing.T) {
 	cmd := &Cmd{
-		Name: CMD_RECEIVE,
+		Name: CmdReceive,
 		Arg:  "/foo/bar",
 	}
 

@@ -284,7 +284,7 @@ func aMockedReceiver(arg string) (*Receiver, chan []byte, *MockPubSubSource, *Mo
 	messageStore := NewMockMessageStore(ctrl)
 	sendChannel := make(chan []byte)
 	cmd := &guble.Cmd{
-		Name: guble.CMD_RECEIVE,
+		Name: guble.CmdReceive,
 		Arg:  arg,
 	}
 	rec, err := NewReceiverFromCmd("any-appId", cmd, sendChannel, pubSubSource, messageStore, "userId")

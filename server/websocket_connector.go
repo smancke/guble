@@ -164,11 +164,11 @@ func (ws *WebSocket) receiveLoop() {
 			continue
 		}
 		switch cmd.Name {
-		case guble.CMD_SEND:
+		case guble.CmdSend:
 			ws.handleSendCmd(cmd)
-		case guble.CMD_RECEIVE:
+		case guble.CmdReceive:
 			ws.handleReceiveCmd(cmd)
-		case guble.CMD_CANCEL:
+		case guble.CmdCancel:
 			ws.handleCancelCmd(cmd)
 		default:
 			ws.sendError(guble.ERROR_BAD_REQUEST, "unknown command %v", cmd.Name)
@@ -228,7 +228,7 @@ func (ws *WebSocket) handleSendCmd(cmd *guble.Cmd) {
 		Path: guble.Path(args[0]),
 		PublisherApplicationId: ws.applicationId,
 		PublisherUserId:        ws.userId,
-		HeaderJson:             cmd.HeaderJson,
+		HeaderJSON:             cmd.HeaderJSON,
 		Body:                   cmd.Body,
 	}
 	if len(args) == 2 {

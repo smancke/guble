@@ -8,12 +8,12 @@ import (
 
 // Valid command names
 const (
-	CMD_SEND    = ">"
-	CMD_RECEIVE = "+"
-	CMD_CANCEL  = "-"
+	CmdSend    = ">"
+	CmdReceive = "+"
+	CmdCancel  = "-"
 )
 
-// Representation of a command, which the client sends to the server
+// Cmd isepresentation of a command, which the client sends to the server
 type Cmd struct {
 
 	// The name of the command
@@ -23,13 +23,13 @@ type Cmd struct {
 	Arg string
 
 	// The header line, if the command has one
-	HeaderJson string
+	HeaderJSON string
 
 	// The command payload, if the command has such
 	Body []byte
 }
 
-// Parses a Command
+// ParseCmd Parses a slice of bytes and return a *Cmd
 func ParseCmd(message []byte) (*Cmd, error) {
 	msg := &Cmd{}
 
@@ -47,7 +47,7 @@ func ParseCmd(message []byte) (*Cmd, error) {
 	}
 
 	if len(parts) > 1 {
-		msg.HeaderJson = parts[1]
+		msg.HeaderJSON = parts[1]
 	}
 
 	if len(parts) > 2 {
@@ -64,12 +64,12 @@ func (cmd *Cmd) Bytes() []byte {
 	buff.WriteString(" ")
 	buff.WriteString(cmd.Arg)
 
-	if len(cmd.HeaderJson) > 0 || len(cmd.Body) > 0 {
+	if len(cmd.HeaderJSON) > 0 || len(cmd.Body) > 0 {
 		buff.WriteString("\n")
 	}
 
-	if len(cmd.HeaderJson) > 0 {
-		buff.WriteString(cmd.HeaderJson)
+	if len(cmd.HeaderJSON) > 0 {
+		buff.WriteString(cmd.HeaderJSON)
 	}
 
 	if len(cmd.Body) > 0 {

@@ -29,8 +29,8 @@ func TestPostMessage(t *testing.T) {
 	routerMock := NewMockPubSubSource(ctrl)
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
 		a.Equal("/notifications", string(route.Path))
-		a.Equal("marvin", route.UserId)
-		a.Equal("gcmId123", route.ApplicationId)
+		a.Equal("marvin", route.UserID)
+		a.Equal("gcmId123", route.ApplicationID)
 	})
 
 	kvStore := store.NewMemoryKVStore()
@@ -71,7 +71,7 @@ func TestSaveAndLoadSubscriptions(t *testing.T) {
 	routerMock := NewMockPubSubSource(ctrl)
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
 		// delte the route from the map, if we got it in the test
-		delete(testRoutes, fmt.Sprintf("%v:%v:%v", route.UserId, route.Path, route.ApplicationId))
+		delete(testRoutes, fmt.Sprintf("%v:%v:%v", route.UserID, route.Path, route.ApplicationID))
 	}).AnyTimes()
 
 	kvStore := store.NewMemoryKVStore()

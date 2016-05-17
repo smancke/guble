@@ -66,7 +66,7 @@ func (gcmConnector *GCMConnector) Start() error {
 }
 
 func (gcmConnector *GCMConnector) sendMessageToGCM(msg server.MsgAndRoute) {
-	gcmId := msg.Route.ApplicationId
+	gcmId := msg.Route.ApplicationID
 
 	payload := gcmConnector.parseMessageToMap(msg.Message)
 
@@ -133,9 +133,9 @@ func (gcmConnector *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 }
 
 func (gcmConnector *GCMConnector) replaceSubscriptionWithCanonicalID(route *server.Route, newGcmId string) {
-	oldGcmId := route.ApplicationId
+	oldGcmId := route.ApplicationID
 	topic := string(route.Path)
-	userId := route.UserId
+	userId := route.UserID
 
 	guble.Info("replacing old gcmId %v with canonicalId %v", oldGcmId, newGcmId)
 	gcmConnector.removeSubscription(route, oldGcmId)
