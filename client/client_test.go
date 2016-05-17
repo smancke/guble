@@ -54,12 +54,12 @@ func TestConnectErrorWithoutReconnection(t *testing.T) {
 
 	// which raises an error on connect
 	callCounter := 0
-	c.WSConnectionFactory = func(url string, origin string) (WSConnection, error) {
+	c.SetWSConnectionFactory(func(url string, origin string) (WSConnection, error) {
 		a.Equal("url", url)
 		a.Equal("origin", origin)
 		callCounter++
 		return nil, fmt.Errorf("emulate connection error")
-	}
+	})
 
 	// when we start
 	err := c.Start()
@@ -80,7 +80,7 @@ func TestConnectErrorWithReconnection(t *testing.T) {
 	callCounter := 0
 	connMock := NewMockWSConnection(ctrl)
 	connMock.EXPECT().ReadMessage().Do(func() { time.Sleep(time.Second) })
-	c.WSConnectionFactory = func(url string, origin string) (WSConnection, error) {
+	c.SetWSConnectionFactory(func(url string, origin string) (WSConnection, error) {
 		a.Equal("url", url)
 		a.Equal("origin", origin)
 		if callCounter <= 2 {
@@ -88,20 +88,20 @@ func TestConnectErrorWithReconnection(t *testing.T) {
 			return nil, fmt.Errorf("emulate connection error")
 		}
 		return connMock, nil
-	}
+	})
 
 	// when we start
 	err := c.Start()
 
 	// then we get an error, first
 	a.Error(err)
-	a.False(c.Connected)
+	a.False(c.IsConnected())
 
 	// when we wait for two iterations and 10ms buffer time to connect
 	time.Sleep(time.Millisecond * 110)
 
 	// then we got connected
-	a.True(c.Connected)
+	a.True(c.IsConnected())
 	a.Equal(3, callCounter)
 }
 
@@ -123,21 +123,21 @@ func TestStopableClient(t *testing.T) {
 		close <- true
 	})
 
-	c.WSConnectionFactory = MockConnectionFactory(connMock)
+	c.SetWSConnectionFactory(MockConnectionFactory(connMock))
 
 	// when we start
 	err := c.Start()
 
 	// than we are connected
 	a.NoError(err)
-	a.True(c.Connected)
+	a.True(c.IsConnected())
 
 	// when we clode
 	c.Close()
 	time.Sleep(time.Millisecond * 1)
 
 	// than the client returns
-	a.False(c.Connected)
+	a.False(c.IsConnected())
 }
 
 func TestReceiveAMessage(t *testing.T) {
@@ -170,7 +170,7 @@ func TestReceiveAMessage(t *testing.T) {
 	call3.After(call2)
 	call2.After(call1)
 
-	c.WSConnectionFactory = MockConnectionFactory(connMock)
+	c.SetWSConnectionFactory(MockConnectionFactory(connMock))
 
 	connMock.EXPECT().Close().Do(func() {
 		close <- true
@@ -179,7 +179,7 @@ func TestReceiveAMessage(t *testing.T) {
 	// when we start
 	err := c.Start()
 	a.NoError(err)
-	a.True(c.Connected)
+	a.True(c.IsConnected())
 
 	// than we receive the expected message
 	select {
@@ -226,7 +226,7 @@ func TestSendAMessage(t *testing.T) {
 	// when expects a message
 	connMock := NewMockWSConnection(ctrl)
 	connMock.EXPECT().WriteMessage(websocket.BinaryMessage, []byte("> /foo\n{}\nTest"))
-	c.WSConnectionFactory = MockConnectionFactory(connMock)
+	c.SetWSConnectionFactory(MockConnectionFactory(connMock))
 
 	c.Start()
 	// then the expectation is meet by sending it
@@ -242,7 +242,7 @@ func TestSendSubscribeMessage(t *testing.T) {
 	// when expects a message
 	connMock := NewMockWSConnection(ctrl)
 	connMock.EXPECT().WriteMessage(websocket.BinaryMessage, []byte("+ /foo"))
-	c.WSConnectionFactory = MockConnectionFactory(connMock)
+	c.SetWSConnectionFactory(MockConnectionFactory(connMock))
 
 	c.Start()
 	c.Subscribe("/foo")
@@ -257,7 +257,7 @@ func TestSendUnSubscribeMessage(t *testing.T) {
 	// when expects a message
 	connMock := NewMockWSConnection(ctrl)
 	connMock.EXPECT().WriteMessage(websocket.BinaryMessage, []byte("- /foo"))
-	c.WSConnectionFactory = MockConnectionFactory(connMock)
+	c.SetWSConnectionFactory(MockConnectionFactory(connMock))
 
 	c.Start()
 	c.Unsubscribe("/foo")
