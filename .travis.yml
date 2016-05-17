@@ -15,4 +15,3 @@ script:
   # - ginkgo -r  -cover  -coverpkg=./... -trace
   # - gover ...
   - goveralls -coverprofile=full_cov.out -service=travis-ci
-
