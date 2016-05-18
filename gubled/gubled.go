@@ -120,8 +120,6 @@ func Main() {
 
 func StartupService(args Args) *server.Service {
 	router := server.NewPubSubRouter()
-	router.SetAccessManager(server.NewAllowAllAccessManager(true))
-	router.Go()
 	service := server.NewService(
 		args.Listen,
 		CreateKVStoreBackend(args),
