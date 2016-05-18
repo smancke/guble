@@ -5,7 +5,7 @@ package client
 
 import (
 	gomock "github.com/golang/mock/gomock"
-	
+
 	guble "github.com/smancke/guble/guble"
 )
 
