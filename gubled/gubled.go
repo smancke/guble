@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/alexflint/go-arg"
 	"github.com/caarlos0/env"
+	"github.com/smancke/guble/server/auth"
 	"os"
 	"os/signal"
 	"path"
@@ -120,7 +121,7 @@ func Main() {
 
 func StartupService(args Args) *server.Service {
 	router := server.NewPubSubRouter()
-	router.SetAccessManager(server.NewAllowAllAccessManager(true))
+	router.SetAccessManager(auth.NewAllowAllAccessManager(true))
 	router.Go()
 	service := server.NewService(
 		args.Listen,
@@ -128,7 +129,7 @@ func StartupService(args Args) *server.Service {
 		CreateMessageStoreBackend(args),
 		server.NewMessageEntry(router),
 		router,
-		server.NewAllowAllAccessManager(true))
+		auth.NewAllowAllAccessManager(true))
 
 	for _, module := range CreateModules(args) {
 		service.Register(module)
