@@ -2,7 +2,7 @@
 
 Guble is a simple user-facing messaging and data replication server written in Go.
 
-[![Release](https://img.shields.io/github/release/smancke/guble.svg)](https://github.com/smancke/guble/releases/latest) [![Docker](https://img.shields.io/docker/pulls/smancke/guble.svg)](https://hub.docker.com/r/smancke/guble/) [![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble) [![Coverage Status](https://coveralls.io/repos/smancke/guble/badge.svg?branch=master&service=github)](https://coveralls.io/github/smancke/guble?branch=master)
+[![Release](https://img.shields.io/github/release/smancke/guble.svg)](https://github.com/smancke/guble/releases/latest) [![Docker](https://img.shields.io/docker/pulls/smancke/guble.svg)](https://hub.docker.com/r/smancke/guble/) [![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble) [![Coverage Status](https://coveralls.io/repos/smancke/guble/badge.svg?branch=master&service=github)](https://coveralls.io/github/smancke/guble?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/smancke/guble)](https://goreportcard.com/report/github.com/smancke/guble)
 
 # Overview
 Guble is in an early state. It is already working well and is very useful, but the protocol, API and storage formats may
@@ -19,7 +19,7 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 ## Working Features (0.1)
 
 * Publishing and subscription of messages to topics and subtopics
-* Persistent message store with transparent live and offline fetching 
+* Persistent message store with transparent live and offline fetching
 * WebSocket and REST APIs for message publishing
 * Commandline client and Go client library
 * Google Cloud Messaging adapter: delivery of messages as GCM push notifications
@@ -363,7 +363,7 @@ This notification has the same meaning as the http 500 Internal Server Error.
 !error-server-internal this computing node has problems
 ```
 
-## Topics 
+## Topics
 
 Messages can be hierarchically routed by topics, so they are represented by a path, separated by `/`.
 There are two global topic namespaces: `/user` and `/group`.
