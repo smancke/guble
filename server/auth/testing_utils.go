@@ -8,7 +8,7 @@ import (
 type TestAccessManager struct {
 	access map[string]map[guble.Path]bool
 }
-
+//should be removed and test rewritten with proper mocking
 func NewTestAccessManager() *TestAccessManager {
 	return &TestAccessManager{
 		access: make(map[string]map[guble.Path]bool),
