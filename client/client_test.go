@@ -69,6 +69,24 @@ func TestConnectErrorWithoutReconnection(t *testing.T) {
 	a.Equal(1, callCounter)
 }
 
+func TestConnectErrorWithoutReconnectionUsingOpen(t *testing.T) {
+	defer initCtrl(t)()
+	a := assert.New(t)
+
+	c, err := Open("url", "origin", 1, false)
+
+	// which raises an error on connect
+	callCounter := 0
+	c.SetWSConnectionFactory(func(url string, origin string) (WSConnection, error) {
+		a.Equal("url", url)
+		a.Equal("origin", origin)
+		callCounter++
+		return nil, fmt.Errorf("emulate connection error")
+	})
+
+	a.Error(err)
+}
+
 func TestConnectErrorWithReconnection(t *testing.T) {
 	defer initCtrl(t)()
 	a := assert.New(t)

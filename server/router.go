@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/store"
 	"runtime"
 	"strings"
 	"time"
@@ -20,16 +21,27 @@ type PubSubRouter struct {
 	subscribeChan   chan SubscriptionRequest
 	unsubscribeChan chan SubscriptionRequest
 	stop            chan bool
-	accessManager   AccessManager
+
+	// external services
+	accessManager AccessManager
+	messageStore  store.MessageStore
+	kvStore       store.KVStore
 }
 
-func NewPubSubRouter() *PubSubRouter {
+func NewPubSubRouter(
+	accessManager AccessManager,
+	messageStore store.MessageStore,
+	kvStore store.KVStore) *PubSubRouter {
 	return &PubSubRouter{
 		routes:          make(map[guble.Path][]Route),
 		messageIn:       make(chan *guble.Message, 500),
 		subscribeChan:   make(chan SubscriptionRequest, 10),
 		unsubscribeChan: make(chan SubscriptionRequest, 10),
 		stop:            make(chan bool, 1),
+
+		accessManager: accessManager,
+		messageStore:  messageStore,
+		kvStore:       kvStore,
 	}
 }
 
@@ -69,8 +81,9 @@ func (router *PubSubRouter) Start() error {
 	return nil
 }
 
+// Stop stops the router by closing the stop channel
 func (router *PubSubRouter) Stop() error {
-	router.stop <- true
+	close(router.stop)
 	return nil
 }
 
@@ -204,4 +217,28 @@ func remove(slice []Route, route *Route) []Route {
 		return slice
 	}
 	return append(slice[:position], slice[position+1:]...)
+}
+
+// AccessManager returns the `accessManager` provided for the router
+func (p *PubSubRouter) AccessManager() (AccessManager, error) {
+	if p.accessManager == nil {
+		return nil, ErrServiceNotProvided
+	}
+	return p.accessManager, nil
+}
+
+// MessageStore returns the `messageStore` provided for the router
+func (p *PubSubRouter) MessageStore() (store.MessageStore, error) {
+	if p.messageStore == nil {
+		return nil, ErrServiceNotProvided
+	}
+	return p.messageStore, nil
+}
+
+// KVStore returns the `kvStore` provided for the router
+func (p *PubSubRouter) KVStore() (store.KVStore, error) {
+	if p.kvStore == nil {
+		return nil, ErrServiceNotProvided
+	}
+	return p.kvStore, nil
 }

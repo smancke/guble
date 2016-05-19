@@ -43,7 +43,7 @@ var ValidateStoragePath = func(args Args) error {
 	return nil
 }
 
-var CreateKVStoreBackend = func(args Args) store.KVStore {
+var CreateKVStore = func(args Args) store.KVStore {
 	switch args.KVBackend {
 	case "memory":
 		return store.NewMemoryKVStore()
@@ -58,7 +58,7 @@ var CreateKVStoreBackend = func(args Args) store.KVStore {
 	}
 }
 
-var CreateMessageStoreBackend = func(args Args) store.MessageStore {
+var CreateMessageStore = func(args Args) store.MessageStore {
 	switch args.MSBackend {
 	case "none", "":
 		return store.NewDummyMessageStore()
@@ -119,14 +119,21 @@ func Main() {
 }
 
 func StartupService(args Args) *server.Service {
-	router := server.NewPubSubRouter()
+	accessManager := server.NewAllowAllAccessManager(true)
+	messageStore := CreateMessageStore(args)
+	kvStore := CreateKVStore(args)
+
+	router := server.NewPubSubRouter(accessManager, messageStore, kvStore)
+	messageEntry := server.NewMessageEntry(router)
+
 	service := server.NewService(
 		args.Listen,
-		CreateKVStoreBackend(args),
-		CreateMessageStoreBackend(args),
-		server.NewMessageEntry(router),
+		kvStore,
+		messageStore,
+		messageEntry,
 		router,
-		server.NewAllowAllAccessManager(true))
+		accessManager,
+	)
 
 	for _, module := range CreateModules(args) {
 		service.Register(module)
