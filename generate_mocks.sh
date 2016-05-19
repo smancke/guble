@@ -26,4 +26,4 @@ $GOPATH/bin/mockgen -package gcm \
 
 $GOPATH/bin/mockgen  -self_package auth -package auth github.com/smancke/guble/server/auth AccessManager | sed -e 's/auth "github.com\/smancke\/guble\/server\/auth"//' | sed -e 's/auth\.//g'>$GOPATH/src/github.com/smancke/guble/server/auth/mocks_auth_gen_test.go_ && mv $GOPATH/src/github.com/smancke/guble/server/auth/mocks_auth_gen_test.go_ $GOPATH/src/github.com/smancke/guble/server/auth/mocks_auth_gen_test.go
 
-
+$GOPATH/bin/mockgen -self_package server -package server -destination $GOPATH/src/github.com/smancke/guble/server/mocks_auth_gen_test.go github.com/smancke/guble/server/auth AccessManager
