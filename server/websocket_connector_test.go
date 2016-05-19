@@ -157,7 +157,7 @@ func testWSHandler(
 }
 
 func runNewWebSocket(
-	wsconn *MockWSConn,
+	wsconn *MockWSConnection,
 	pubSubSource *MockPubSubSource,
 	messageSink *MockMessageSink,
 	messageStore store.MessageStore,
@@ -180,7 +180,11 @@ func runNewWebSocket(
 	return websocket
 }
 
-func createDefaultMocks(inputMessages []string) (*MockWSConn, *MockPubSubSource, *MockMessageSink, *MockMessageStore) {
+func createDefaultMocks(inputMessages []string) (
+	*MockWSConnection,
+	*MockPubSubSource,
+	*MockMessageSink,
+	*MockMessageStore) {
 	inputMessagesC := make(chan []byte, 10)
 	for _, msg := range inputMessages {
 		inputMessagesC <- []byte(msg)
@@ -190,7 +194,7 @@ func createDefaultMocks(inputMessages []string) (*MockWSConn, *MockPubSubSource,
 	messageSink := NewMockMessageSink(ctrl)
 	messageStore := NewMockMessageStore(ctrl)
 
-	wsconn := NewMockWSConn(ctrl)
+	wsconn := NewMockWSConnection(ctrl)
 	wsconn.EXPECT().Receive(gomock.Any()).Do(func(message *[]byte) error {
 		*message = <-inputMessagesC
 		return nil

@@ -1,6 +1,8 @@
 package gubled
 
 import (
+	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/store"
 	"github.com/stretchr/testify/assert"
 
 	"io/ioutil"
@@ -134,9 +136,14 @@ func TestArgDefaultValues(t *testing.T) {
 
 func TestGcmOnlyStartedIfEnabled(t *testing.T) {
 	a := assert.New(t)
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
 
-	a.True(containsGcmModule(CreateModules(Args{GcmEnable: true, GcmApiKey: "xyz"})))
-	a.False(containsGcmModule(CreateModules(Args{GcmEnable: false})))
+	routerMock := NewMockPubSubSource(mockCtrl)
+	routerMock.EXPECT().KVStore().Return(store.NewMemoryKVStore(), nil)
+
+	a.True(containsGcmModule(CreateModules(routerMock, Args{GcmEnable: true, GcmApiKey: "xyz"})))
+	a.False(containsGcmModule(CreateModules(routerMock, Args{GcmEnable: false})))
 }
 
 func containsGcmModule(modules []interface{}) bool {
@@ -149,6 +156,11 @@ func containsGcmModule(modules []interface{}) bool {
 }
 
 func TestPanicOnMissingGcmApiKey(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	routerMock := NewMockPubSubSource(mockCtrl)
+
 	defer func() {
 		if r := recover(); r == nil {
 			t.Log("expect panic, because the gcm api key was not supplied")
@@ -156,7 +168,7 @@ func TestPanicOnMissingGcmApiKey(t *testing.T) {
 		}
 	}()
 
-	CreateModules(Args{GcmEnable: true})
+	CreateModules(routerMock, Args{GcmEnable: true})
 }
 
 func TestCreateStoreBackendPanicInvalidBackend(t *testing.T) {
