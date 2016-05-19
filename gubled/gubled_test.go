@@ -25,12 +25,12 @@ func TestValidateStoragePath(t *testing.T) {
 func TestCreateKVStoreBackend(t *testing.T) {
 	a := assert.New(t)
 
-	memory := CreateKVStoreBackend(Args{KVBackend: "memory"})
+	memory := CreateKVStore(Args{KVBackend: "memory"})
 	a.Equal("*store.MemoryKVStore", reflect.TypeOf(memory).String())
 
 	dir, _ := ioutil.TempDir("", "guble_test")
 	defer os.RemoveAll(dir)
-	sqlite := CreateKVStoreBackend(Args{KVBackend: "file", StoragePath: dir})
+	sqlite := CreateKVStore(Args{KVBackend: "file", StoragePath: dir})
 	a.Equal("*store.SqliteKVStore", reflect.TypeOf(sqlite).String())
 }
 
@@ -168,7 +168,7 @@ func TestCreateStoreBackendPanicInvalidBackend(t *testing.T) {
 			p = recover()
 		}()
 
-		CreateKVStoreBackend(Args{KVBackend: "foo bar"})
+		CreateKVStore(Args{KVBackend: "foo bar"})
 	}()
 	a.NotNil(p)
 }
