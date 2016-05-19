@@ -137,7 +137,7 @@ func (ws *WebSocket) checkAccess(raw []byte) bool {
 	if raw[0] == byte('/') {
 		path := getPathFromRawMessage(raw)
 		guble.Debug("Received msg %v %v", ws.userId, path)
-		return len(path) == 0 || ws.accessManager.AccessAllowed(auth.READ, ws.userId, path)
+		return len(path) == 0 || ws.accessManager.IsAllowed(auth.READ, ws.userId, path)
 
 	}
 	return true

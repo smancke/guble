@@ -24,7 +24,7 @@ func (tam *TestAccessManager) Allow(userId string, path guble.Path) {
 	v[path] = true
 }
 
-func (tam *TestAccessManager) AccessAllowed(accessType AccessType, userId string, path guble.Path) bool {
+func (tam *TestAccessManager) IsAllowed(accessType AccessType, userId string, path guble.Path) bool {
 	fmt.Print("AccessAllowed: ", userId, path)
 	v, ok := tam.access[userId]
 	if ok {

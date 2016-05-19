@@ -91,7 +91,7 @@ func (router *PubSubRouter) Stop() error {
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *PubSubRouter) Subscribe(r *Route) (*Route, error) {
 	guble.Debug("subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
-	accessAllowed := router.accessManager.AccessAllowed(auth.READ, r.UserID, r.Path)
+	accessAllowed := router.accessManager.IsAllowed(auth.READ, r.UserID, r.Path)
 	if !accessAllowed {
 		return r, errors.New("not allowed")
 	}
@@ -142,7 +142,7 @@ func (router *PubSubRouter) unsubscribe(r *Route) {
 
 func (router *PubSubRouter) HandleMessage(message *guble.Message) error {
 	guble.Debug("Route.HandleMessage: %v %v", message.PublisherUserId, message.Path)
-	if !router.accessManager.AccessAllowed(auth.WRITE, message.PublisherUserId, message.Path) {
+	if !router.accessManager.IsAllowed(auth.WRITE, message.PublisherUserId, message.Path) {
 		return errors.New("User not allowed to post message to topic.")
 	}
 

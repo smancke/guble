@@ -5,7 +5,7 @@ package client
 
 import (
 	gomock "github.com/golang/mock/gomock"
-
+	
 	guble "github.com/smancke/guble/guble"
 )
 
@@ -141,7 +141,7 @@ func (_mr *_MockClientRecorder) SendBytes(arg0, arg1, arg2 interface{}) *gomock.
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SendBytes", arg0, arg1, arg2)
 }
 
-func (_m *MockClient) SetWSConnectionFactory(_param0 WSConnectionFactory) {
+func (_m *MockClient) SetWSConnectionFactory(_param0  WSConnectionFactory) {
 	_m.ctrl.Call(_m, "SetWSConnectionFactory", _param0)
 }
 
