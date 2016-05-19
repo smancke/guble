@@ -89,8 +89,8 @@ func Test_AnIncommingMessageIsNotAllowed(t *testing.T) {
 
 	wsconn, pubSubSource, messageSink, messageStore := createDefaultMocks([]string{})
 
-	tam := auth.NewTestAccessManager()
-
+	tam := NewMockAccessManager(ctrl)
+	tam.EXPECT().IsAllowed(auth.READ, "testuser", guble.Path("/foo")).Return(false)
 	handler := NewWebSocket(
 		testWSHandler(pubSubSource, messageSink, messageStore, auth.AccessManager(tam)),
 		wsconn,
@@ -106,7 +106,7 @@ func Test_AnIncommingMessageIsNotAllowed(t *testing.T) {
 	//nothing shall have been sent
 
 	//now allow
-	tam.Allow("testuser", guble.Path("/foo"))
+	tam.EXPECT().IsAllowed(auth.READ, "testuser", guble.Path("/foo")).Return(true)
 
 	wsconn.EXPECT().Send(aTestMessage.Bytes())
 
