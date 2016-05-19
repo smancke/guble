@@ -87,7 +87,7 @@ func Test_HandleMessageNotAllowed(t *testing.T) {
 	tam.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(false)
 
 	// using TestAccessManager
-	router.SetAccessManager(auth.AccessManager(tam))
+	router.SetAccessManager(tam)
 
 	// when i send a message to the route
 	e := router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage, PublisherUserId: r.UserID})

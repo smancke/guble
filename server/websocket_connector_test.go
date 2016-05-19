@@ -92,7 +92,7 @@ func Test_AnIncommingMessageIsNotAllowed(t *testing.T) {
 	tam := NewMockAccessManager(ctrl)
 	tam.EXPECT().IsAllowed(auth.READ, "testuser", guble.Path("/foo")).Return(false)
 	handler := NewWebSocket(
-		testWSHandler(pubSubSource, messageSink, messageStore, auth.AccessManager(tam)),
+		testWSHandler(pubSubSource, messageSink, messageStore, tam),
 		wsconn,
 		"testuser",
 	)
