@@ -119,7 +119,6 @@ func Main() {
 }
 
 func StartupService(args Args) *server.Service {
-
 	accessManager := server.NewAllowAllAccessManager(true)
 	messageStore := CreateMessageStore(args)
 	kvStore := CreateKVStore(args)
@@ -127,7 +126,6 @@ func StartupService(args Args) *server.Service {
 	router := server.NewPubSubRouter(accessManager, messageStore, kvStore)
 	messageEntry := server.NewMessageEntry(router)
 
-	router.Go()
 	service := server.NewService(
 		args.Listen,
 		kvStore,
