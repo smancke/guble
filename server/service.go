@@ -76,11 +76,6 @@ func (service *Service) Register(module interface{}) {
 
 	// do the injections ...
 
-	if m, ok := module.(SetKVStore); ok {
-		guble.Debug("inject KVStore to %v", name)
-		m.SetKVStore(service.kvStore)
-	}
-
 	if m, ok := module.(SetMessageStore); ok {
 		guble.Debug("inject MessageStore to %v", name)
 		m.SetMessageStore(service.messageStore)

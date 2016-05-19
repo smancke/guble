@@ -6,6 +6,7 @@ package gcm
 import (
 	gomock "github.com/golang/mock/gomock"
 	server "github.com/smancke/guble/server"
+	store "github.com/smancke/guble/store"
 )
 
 // Mock of PubSubSource interface
@@ -27,6 +28,17 @@ func NewMockPubSubSource(ctrl *gomock.Controller) *MockPubSubSource {
 
 func (_m *MockPubSubSource) EXPECT() *_MockPubSubSourceRecorder {
 	return _m.recorder
+}
+
+func (_m *MockPubSubSource) KVStore() (store.KVStore, error) {
+	ret := _m.ctrl.Call(_m, "KVStore")
+	ret0, _ := ret[0].(store.KVStore)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockPubSubSourceRecorder) KVStore() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "KVStore")
 }
 
 func (_m *MockPubSubSource) Subscribe(_param0 *server.Route) (*server.Route, error) {

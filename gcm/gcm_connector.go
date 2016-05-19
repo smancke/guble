@@ -28,9 +28,17 @@ type GCMConnector struct {
 	sender             *gcm.Sender
 }
 
-func NewGCMConnector(prefix string, gcmApiKey string) *GCMConnector {
+func NewGCMConnector(router server.PubSubSource, prefix string, gcmApiKey string) (*GCMConnector, error) {
 	mux := httprouter.New()
+
+	kvStore, err := router.KVStore()
+	if err != nil {
+		return nil, err
+	}
+
 	gcm := &GCMConnector{
+		router:            router,
+		kvStore:           kvStore,
 		mux:               mux,
 		prefix:            prefix,
 		channelFromRouter: make(chan server.MsgAndRoute, 1000),
@@ -39,8 +47,7 @@ func NewGCMConnector(prefix string, gcmApiKey string) *GCMConnector {
 	}
 
 	mux.POST(removeTrailingSlash(gcm.prefix)+"/:userid/:gcmid/subscribe/*topic", gcm.Subscribe)
-
-	return gcm
+	return gcm, nil
 }
 
 func (gcmConnector *GCMConnector) Start() error {
@@ -160,14 +167,6 @@ func (gcmConnector *GCMConnector) Stop() error {
 
 func (gcmConnector *GCMConnector) GetPrefix() string {
 	return gcmConnector.prefix
-}
-
-func (gcmConnector *GCMConnector) SetRouter(router server.PubSubSource) {
-	gcmConnector.router = router
-}
-
-func (gcmConnector *GCMConnector) SetKVStore(kvStore store.KVStore) {
-	gcmConnector.kvStore = kvStore
 }
 
 func (gcmConnector *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
