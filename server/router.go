@@ -9,11 +9,14 @@ import (
 	"time"
 )
 
+// Helper struct to pass `Route` to subscription channel and provide a
+// notification channel
 type subRequest struct {
 	route      *Route
 	doneNotify chan bool
 }
 
+// PubSubRouter is the core that handles messages passing them to subscribers
 type PubSubRouter struct {
 	// mapping the path to the route slice
 	routes          map[guble.Path][]Route
@@ -28,6 +31,7 @@ type PubSubRouter struct {
 	kvStore       store.KVStore
 }
 
+// NewPubSubRouter returns a pointer to PubSubRouter
 func NewPubSubRouter(
 	accessManager AccessManager,
 	messageStore store.MessageStore,
