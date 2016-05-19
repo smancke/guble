@@ -1,12 +1,12 @@
 #!/bin/bash -e
 
-export GOPATH=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../../.." && pwd )
+# export GOPATH=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../../.." && pwd )
 
 set -x
 
 $GOPATH/bin/mockgen  -self_package server -package server \
             github.com/smancke/guble/server \
-            PubSubSource,MessageSink,WSConn,Startable,Stopable,SetRouter,SetMessageEntry,Endpoint,SetMessageStore | sed -e 's/server "github.com\/smancke\/guble\/server"//' | sed -e 's/server\.//g' > $GOPATH/src/github.com/smancke/guble/server/mocks_server_gen_test.go_ \
+            PubSubSource,MessageSink,WSConnection,Startable,Stopable,SetRouter,SetMessageEntry,Endpoint,SetMessageStore | sed -e 's/server "github.com\/smancke\/guble\/server"//' | sed -e 's/server\.//g' > $GOPATH/src/github.com/smancke/guble/server/mocks_server_gen_test.go_ \
             && mv $GOPATH/src/github.com/smancke/guble/server/mocks_server_gen_test.go_ $GOPATH/src/github.com/smancke/guble/server/mocks_server_gen_test.go
 
 $GOPATH/bin/mockgen -self_package server -package server \
