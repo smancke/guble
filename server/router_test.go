@@ -51,12 +51,15 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 }
 
 func Test_SubscribeNotAllowed(t *testing.T) {
+	defer initCtrl(t)()
 	a := assert.New(t)
 
-	tam := auth.NewTestAccessManager()
+	tam := NewMockAccessManager(ctrl)
+	tam.EXPECT().IsAllowed(auth.READ, "user01", guble.Path("/blah")).Return(false)
 
-	router := NewPubSubRouter(auth.AccessManager(tam), nil, nil)
+	router := NewPubSubRouter(tam, nil, nil)
 	router.Start()
+
 
 	channel := make(chan MsgAndRoute, chanSize)
 	_, e := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
@@ -65,7 +68,7 @@ func Test_SubscribeNotAllowed(t *testing.T) {
 	a.NotNil(e)
 
 	// now add permissions
-	tam.Allow("user01", "/blah")
+	tam.EXPECT().IsAllowed(auth.READ, "user01", guble.Path("/blah")).Return(true)
 
 	// and user shall be allowed to subscribe
 	_, e = router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
@@ -75,15 +78,17 @@ func Test_SubscribeNotAllowed(t *testing.T) {
 }
 
 func Test_HandleMessageNotAllowed(t *testing.T) {
+	defer initCtrl(t)()
 	a := assert.New(t)
 
-	tam := auth.NewTestAccessManager()
+	tam := NewMockAccessManager(ctrl)
 
 	// Given a Multiplexer with route
 	router, r := aRouterRoute()
+	tam.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(false)
 
 	// using TestAccessManager
-	router.SetAccessManager(auth.AccessManager(tam))
+	router.SetAccessManager(tam)
 
 	// when i send a message to the route
 	e := router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage, PublisherUserId: r.UserID})
@@ -92,7 +97,7 @@ func Test_HandleMessageNotAllowed(t *testing.T) {
 	a.NotNil(e)
 
 	// and when permission is granted
-	tam.Allow(r.UserID, r.Path)
+	tam.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(true)
 
 	// sending message
 	e = router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage, PublisherUserId: r.UserID})
