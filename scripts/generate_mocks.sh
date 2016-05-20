@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash -xe
 
 if [ -z "$GOPATH" ]; then
       echo "Missing $GOPATH!";
@@ -18,15 +18,12 @@ function move_file {
 
 # replace in file if last operation was successful
 function replace {
-      FILE=$1
-      shift
-      if [ $? -eq 0 ]; then
-            while [ -n "$1" ]; do
-                  echo "Replacing: $1"
-                  sed -i "s/$1//g" $FILE
-                  shift
-            done
-      fi
+      FILE=$1; shift;
+      while [ -n "$1" ]; do
+            echo "Replacing: $1"
+            sed -i "s/$1//g" $FILE
+            shift
+      done
 }
 
 MOCKGEN=$GOPATH/bin/mockgen
