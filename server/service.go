@@ -5,6 +5,7 @@ import (
 	"github.com/smancke/guble/store"
 
 	"fmt"
+	"github.com/smancke/guble/server/auth"
 	"net/http"
 	"reflect"
 	"time"
@@ -19,14 +20,14 @@ type Service struct {
 	router        PubSubSource
 	stopListener  []Stopable
 	startListener []Startable
-	accessManager AccessManager
+	accessManager auth.AccessManager
 	// The time given to each Module on Stop()
 	StopGracePeriod time.Duration
 }
 
 // Registers the Main Router, where other modules can subscribe for messages
 
-func NewService(addr string, kvStore store.KVStore, messageStore store.MessageStore, messageSink MessageSink, router PubSubSource, accessManager AccessManager) *Service {
+func NewService(addr string, kvStore store.KVStore, messageStore store.MessageStore, messageSink MessageSink, router PubSubSource, accessManager auth.AccessManager) *Service {
 	service := &Service{
 		stopListener:    make([]Stopable, 0, 5),
 		kvStore:         kvStore,
