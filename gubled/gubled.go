@@ -72,21 +72,26 @@ var CreateMessageStore = func(args Args) store.MessageStore {
 }
 
 var CreateModules = func(router server.PubSubSource, args Args) []interface{} {
-	modules := []interface{}{
-		server.NewWSHandler("/stream/"),
-		server.NewRestMessageApi("/api/"),
+	modules := make([]interface{}, 0, 2)
+
+	if wsHandler, err := server.NewWSHandler(router, "/stream/"); err != nil {
+		guble.Err("Error loading WSHandler module: %s", err)
+	} else {
+		modules = append(modules, wsHandler)
 	}
+
+	modules = append(modules, server.NewRestMessageApi("/api/"))
 
 	if args.GcmEnable {
 		if args.GcmApiKey == "" {
 			panic("gcm api key has to be provided, if gcm is enabled")
 		}
+
 		guble.Info("google cloud messaging: enabled")
-		gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey)
-		if err == nil {
-			modules = append(modules, gcm)
-		} else {
+		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey); err != nil {
 			guble.Err("Error loading GCMConnector: ", err)
+		} else {
+			modules = append(modules, gcm)
 		}
 	} else {
 		guble.Info("google cloud messaging: disabled")

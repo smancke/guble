@@ -26,8 +26,16 @@ type WSHandler struct {
 	accessManager auth.AccessManager
 }
 
-func NewWSHandler(prefix string) *WSHandler {
-	return &WSHandler{prefix: prefix}
+func NewWSHandler(router PubSubSource, prefix string) (*WSHandler, error) {
+	accessManager, err := router.AccessManager()
+	if err != nil {
+		return nil, err
+	}
+	return &WSHandler{
+		Router:        router,
+		prefix:        prefix,
+		accessManager: accessManager,
+	}, nil
 }
 
 func (handle *WSHandler) GetPrefix() string {
