@@ -71,16 +71,19 @@ var CreateMessageStore = func(args Args) store.MessageStore {
 	}
 }
 
-var CreateModules = func(router server.PubSubSource, args Args) []interface{} {
+var CreateModules = func(
+	router server.PubSubSource,
+	messageEntry server.MessageSink,
+	args Args) []interface{} {
 	modules := make([]interface{}, 0, 2)
 
-	if wsHandler, err := server.NewWSHandler(router, "/stream/"); err != nil {
+	if wsHandler, err := server.NewWSHandler(router, messageEntry, "/stream/"); err != nil {
 		guble.Err("Error loading WSHandler module: %s", err)
 	} else {
 		modules = append(modules, wsHandler)
 	}
 
-	modules = append(modules, server.NewRestMessageApi("/api/"))
+	modules = append(modules, server.NewRestMessageApi(messageEntry, "/api/"))
 
 	if args.GcmEnable {
 		if args.GcmApiKey == "" {
@@ -147,7 +150,7 @@ func StartupService(args Args) *server.Service {
 		accessManager,
 	)
 
-	for _, module := range CreateModules(router, args) {
+	for _, module := range CreateModules(router, messageEntry, args) {
 		service.Register(module)
 	}
 

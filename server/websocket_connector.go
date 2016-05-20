@@ -19,14 +19,17 @@ var webSocketUpgrader = websocket.Upgrader{
 }
 
 type WSHandler struct {
-	Router        PubSubSource
-	MessageSink   MessageSink
+	Router PubSubSource
+	MessageSink
 	prefix        string
 	messageStore  store.MessageStore
 	accessManager auth.AccessManager
 }
 
-func NewWSHandler(router PubSubSource, prefix string) (*WSHandler, error) {
+func NewWSHandler(
+	router PubSubSource,
+	messageSink MessageSink,
+	prefix string) (*WSHandler, error) {
 	accessManager, err := router.AccessManager()
 	if err != nil {
 		return nil, err
@@ -39,6 +42,7 @@ func NewWSHandler(router PubSubSource, prefix string) (*WSHandler, error) {
 
 	return &WSHandler{
 		Router:        router,
+		MessageSink:   messageSink,
 		prefix:        prefix,
 		accessManager: accessManager,
 		messageStore:  messageStore,
@@ -47,10 +51,6 @@ func NewWSHandler(router PubSubSource, prefix string) (*WSHandler, error) {
 
 func (handle *WSHandler) GetPrefix() string {
 	return handle.prefix
-}
-
-func (handle *WSHandler) SetMessageEntry(messageSink MessageSink) {
-	handle.MessageSink = messageSink
 }
 
 func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

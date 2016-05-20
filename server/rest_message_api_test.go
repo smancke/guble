@@ -22,8 +22,7 @@ func TestPostMessage(t *testing.T) {
 
 	// given:  a rest api with a message sink
 	messageSink := NewMockMessageSink(ctrl)
-	api := NewRestMessageApi("/api")
-	api.SetMessageEntry(messageSink)
+	api := NewRestMessageApi(messageSink, "/api")
 
 	url, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")
 	// and a http context

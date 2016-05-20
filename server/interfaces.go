@@ -76,11 +76,6 @@ type Stopable interface {
 	Stop() error
 }
 
-// SetMessageEntry interface for modules which need a MessageEntry set
-type SetMessageEntry interface {
-	SetMessageEntry(messageSink MessageSink)
-}
-
 // Endpoint adds a HTTP handler for the `GetPrefix()` to the webserver
 type Endpoint interface {
 	http.Handler

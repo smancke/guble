@@ -53,7 +53,6 @@ func NewService(addr string, kvStore store.KVStore, messageStore store.MessageSt
 // does the expected tegistrations:
 //   Stopable: notify when the service stops
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
-//   SetMessageEntry: Provide the message entry
 //
 // If the module does not have a HandlerFunc, the prefix parameter is ignored
 func (service *Service) Register(module interface{}) {
@@ -72,13 +71,6 @@ func (service *Service) Register(module interface{}) {
 	if m, ok := module.(Stopable); ok {
 		guble.Info("register %v as StopListener", name)
 		service.AddStopListener(m)
-	}
-
-	// do the injections ...
-
-	if m, ok := module.(SetMessageEntry); ok {
-		guble.Debug("inject MessageEntry to %v", name)
-		m.SetMessageEntry(service.messageSink)
 	}
 }
 

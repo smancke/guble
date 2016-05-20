@@ -49,20 +49,6 @@ func TestStopingOfModulesTimeout(t *testing.T) {
 	guble.Err(err.Error())
 }
 
-func TestRegistrationOfSetter(t *testing.T) {
-	defer initCtrl(t)()
-
-	// given:
-	service, _, _, messageSink, _ := aMockedService()
-	setMessageEntryMock := NewMockSetMessageEntry(ctrl)
-
-	// then I expect
-	setMessageEntryMock.EXPECT().SetMessageEntry(messageSink)
-
-	// when I register the modules
-	service.Register(setMessageEntryMock)
-}
-
 func TestEndpointRegisterAndServing(t *testing.T) {
 	defer initCtrl(t)()
 

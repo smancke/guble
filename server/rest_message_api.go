@@ -15,14 +15,14 @@ import (
 const X_HEADER_PREFIX = "x-guble-"
 
 type RestMessageApi struct {
-	MessageSink MessageSink
-	mux         http.Handler
-	prefix      string
+	MessageSink
+	mux    http.Handler
+	prefix string
 }
 
-func NewRestMessageApi(prefix string) *RestMessageApi {
+func NewRestMessageApi(messageSink MessageSink, prefix string) *RestMessageApi {
 	mux := httprouter.New()
-	api := &RestMessageApi{mux: mux, prefix: prefix}
+	api := &RestMessageApi{messageSink, mux, prefix}
 
 	p := removeTrailingSlash(prefix)
 	mux.POST(p+"/message/*topic", api.PostMessage)
@@ -32,10 +32,6 @@ func NewRestMessageApi(prefix string) *RestMessageApi {
 
 func (api *RestMessageApi) GetPrefix() string {
 	return api.prefix
-}
-
-func (api *RestMessageApi) SetMessageEntry(messageSink MessageSink) {
-	api.MessageSink = messageSink
 }
 
 func (api *RestMessageApi) ServeHTTP(w http.ResponseWriter, r *http.Request) {
