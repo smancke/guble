@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
+	"github.com/smancke/guble/server/auth"
 	"strings"
 	"testing"
 	"time"
@@ -88,10 +89,10 @@ func Test_AnIncommingMessageIsNotAllowed(t *testing.T) {
 
 	wsconn, pubSubSource, messageSink, messageStore := createDefaultMocks([]string{})
 
-	tam := NewTestAccessManager()
+	tam := auth.NewTestAccessManager()
 
 	handler := NewWebSocket(
-		testWSHandler(pubSubSource, messageSink, messageStore, AccessManager(tam)),
+		testWSHandler(pubSubSource, messageSink, messageStore, auth.AccessManager(tam)),
 		wsconn,
 		"testuser",
 	)
@@ -105,7 +106,7 @@ func Test_AnIncommingMessageIsNotAllowed(t *testing.T) {
 	//nothing shall have been sent
 
 	//now allow
-	tam.allow("testuser", guble.Path("/foo"))
+	tam.Allow("testuser", guble.Path("/foo"))
 
 	wsconn.EXPECT().Send(aTestMessage.Bytes())
 
@@ -145,7 +146,7 @@ func testWSHandler(
 	pubSubSource *MockPubSubSource,
 	messageSink *MockMessageSink,
 	messageStore store.MessageStore,
-	accessManager AccessManager) *WSHandler {
+	accessManager auth.AccessManager) *WSHandler {
 
 	return &WSHandler{
 		Router:        pubSubSource,
@@ -161,10 +162,10 @@ func runNewWebSocket(
 	pubSubSource *MockPubSubSource,
 	messageSink *MockMessageSink,
 	messageStore store.MessageStore,
-	accessManager AccessManager) *WebSocket {
+	accessManager auth.AccessManager) *WebSocket {
 
 	if accessManager == nil {
-		accessManager = NewAllowAllAccessManager(true)
+		accessManager = auth.NewAllowAllAccessManager(true)
 	}
 	websocket := NewWebSocket(
 		testWSHandler(pubSubSource, messageSink, messageStore, accessManager),

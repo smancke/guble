@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
+	"github.com/smancke/guble/server/auth"
 	"net/http"
 	"testing"
 	"time"
@@ -97,7 +98,7 @@ func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockMessage
 	messageStore := store.NewDummyMessageStore()
 	messageSink := NewMockMessageSink(ctrl)
 	pubSubSource := NewMockPubSubSource(ctrl)
-	return NewService("localhost:0", kvStore, messageStore, messageSink, pubSubSource, NewAllowAllAccessManager(true)),
+	return NewService("localhost:0", kvStore, messageStore, messageSink, pubSubSource, auth.NewAllowAllAccessManager(true)),
 		kvStore,
 		messageStore,
 		messageSink,

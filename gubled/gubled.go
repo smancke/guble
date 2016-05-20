@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/alexflint/go-arg"
 	"github.com/caarlos0/env"
+	"github.com/smancke/guble/server/auth"
 	"os"
 	"os/signal"
 	"path"
@@ -119,7 +120,8 @@ func Main() {
 }
 
 func StartupService(args Args) *server.Service {
-	accessManager := server.NewAllowAllAccessManager(true)
+
+	accessManager := auth.NewAllowAllAccessManager(true)
 	messageStore := CreateMessageStore(args)
 	kvStore := CreateKVStore(args)
 

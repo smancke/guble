@@ -1,4 +1,4 @@
-package server
+package auth
 
 import (
 	"github.com/smancke/guble/guble"
