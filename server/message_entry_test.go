@@ -19,9 +19,8 @@ func Test_MessageEntry_MessagesIsStored_And_GetsCorrectParameters(t *testing.T) 
 	var storedMsg []byte
 	var routedMsg *guble.Message
 	routerMock := NewMockMessageSink(ctrl)
-	messageEntry := NewMessageEntry(routerMock)
 	messageStoreMock := NewMockMessageStore(ctrl)
-	messageEntry.SetMessageStore(messageStoreMock)
+	messageEntry := NewMessageEntry(routerMock, messageStoreMock)
 
 	messageStoreMock.EXPECT().StoreTx("topic1", gomock.Any()).
 		Do(func(topic string, callback func(msgId uint64) []byte) {

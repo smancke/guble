@@ -53,20 +53,17 @@ func TestRegistrationOfSetter(t *testing.T) {
 	defer initCtrl(t)()
 
 	// given:
-	service, _, messageStore, messageSink, router := aMockedService()
+	service, _, _, messageSink, router := aMockedService()
 	setRouterMock := NewMockSetRouter(ctrl)
 	setMessageEntryMock := NewMockSetMessageEntry(ctrl)
-	setMessageStore := NewMockSetMessageStore(ctrl)
 
 	// then I expect
 	setRouterMock.EXPECT().SetRouter(router)
 	setMessageEntryMock.EXPECT().SetMessageEntry(messageSink)
-	setMessageStore.EXPECT().SetMessageStore(messageStore)
 
 	// when I register the modules
 	service.Register(setRouterMock)
 	service.Register(setMessageEntryMock)
-	service.Register(setMessageStore)
 }
 
 func TestEndpointRegisterAndServing(t *testing.T) {

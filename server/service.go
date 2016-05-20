@@ -77,11 +77,6 @@ func (service *Service) Register(module interface{}) {
 
 	// do the injections ...
 
-	if m, ok := module.(SetMessageStore); ok {
-		guble.Debug("inject MessageStore to %v", name)
-		m.SetMessageStore(service.messageStore)
-	}
-
 	if m, ok := module.(SetRouter); ok {
 		guble.Debug("inject Router to %v", name)
 		m.SetRouter(service.router)

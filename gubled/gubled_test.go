@@ -141,8 +141,10 @@ func TestGcmOnlyStartedIfEnabled(t *testing.T) {
 
 	routerMock := NewMockPubSubSource(mockCtrl)
 	amMock := NewMockAccessManager(mockCtrl)
+	msMock := NewMockMessageStore(mockCtrl)
 	routerMock.EXPECT().KVStore().Return(store.NewMemoryKVStore(), nil)
 	routerMock.EXPECT().AccessManager().Return(amMock, nil).MaxTimes(2)
+	routerMock.EXPECT().MessageStore().Return(msMock, nil).MaxTimes(2)
 
 	a.True(containsGcmModule(CreateModules(routerMock, Args{GcmEnable: true, GcmApiKey: "xyz"})))
 	a.False(containsGcmModule(CreateModules(routerMock, Args{GcmEnable: false})))
@@ -163,7 +165,9 @@ func TestPanicOnMissingGcmApiKey(t *testing.T) {
 
 	routerMock := NewMockPubSubSource(mockCtrl)
 	amMock := NewMockAccessManager(mockCtrl)
+	msMock := NewMockMessageStore(mockCtrl)
 	routerMock.EXPECT().AccessManager().Return(amMock, nil)
+	routerMock.EXPECT().MessageStore().Return(msMock, nil)
 
 	defer func() {
 		if r := recover(); r == nil {

@@ -27,7 +27,7 @@ type PubSubRouter struct {
 	stop            chan bool
 
 	// external services
-	accessManager   auth.AccessManager
+	accessManager auth.AccessManager
 	messageStore  store.MessageStore
 	kvStore       store.KVStore
 }
@@ -225,25 +225,25 @@ func remove(slice []Route, route *Route) []Route {
 }
 
 // AccessManager returns the `accessManager` provided for the router
-func (p *PubSubRouter) AccessManager() (auth.AccessManager, error) {
-	if p.accessManager == nil {
+func (router *PubSubRouter) AccessManager() (auth.AccessManager, error) {
+	if router.accessManager == nil {
 		return nil, ErrServiceNotProvided
 	}
-	return p.accessManager, nil
+	return router.accessManager, nil
 }
 
 // MessageStore returns the `messageStore` provided for the router
-func (p *PubSubRouter) MessageStore() (store.MessageStore, error) {
-	if p.messageStore == nil {
+func (router *PubSubRouter) MessageStore() (store.MessageStore, error) {
+	if router.messageStore == nil {
 		return nil, ErrServiceNotProvided
 	}
-	return p.messageStore, nil
+	return router.messageStore, nil
 }
 
 // KVStore returns the `kvStore` provided for the router
-func (p *PubSubRouter) KVStore() (store.KVStore, error) {
-	if p.kvStore == nil {
+func (router *PubSubRouter) KVStore() (store.KVStore, error) {
+	if router.kvStore == nil {
 		return nil, ErrServiceNotProvided
 	}
-	return p.kvStore, nil
+	return router.kvStore, nil
 }

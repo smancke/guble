@@ -16,14 +16,11 @@ type MessageEntry struct {
 	messageStore store.MessageStore
 }
 
-func NewMessageEntry(router MessageSink) *MessageEntry {
+func NewMessageEntry(router MessageSink, messageStore store.MessageStore) *MessageEntry {
 	return &MessageEntry{
-		router: router,
+		router:       router,
+		messageStore: messageStore,
 	}
-}
-
-func (entry *MessageEntry) SetMessageStore(messageStore store.MessageStore) {
-	entry.messageStore = messageStore
 }
 
 // Take the message and forward it to the router.

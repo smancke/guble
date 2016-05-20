@@ -31,10 +31,17 @@ func NewWSHandler(router PubSubSource, prefix string) (*WSHandler, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	messageStore, err := router.MessageStore()
+	if err != nil {
+		return nil, err
+	}
+
 	return &WSHandler{
 		Router:        router,
 		prefix:        prefix,
 		accessManager: accessManager,
+		messageStore:  messageStore,
 	}, nil
 }
 

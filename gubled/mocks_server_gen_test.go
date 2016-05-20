@@ -53,6 +53,17 @@ func (_mr *_MockPubSubSourceRecorder) KVStore() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "KVStore")
 }
 
+func (_m *MockPubSubSource) MessageStore() (store.MessageStore, error) {
+	ret := _m.ctrl.Call(_m, "MessageStore")
+	ret0, _ := ret[0].(store.MessageStore)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockPubSubSourceRecorder) MessageStore() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "MessageStore")
+}
+
 func (_m *MockPubSubSource) Subscribe(_param0 *server.Route) (*server.Route, error) {
 	ret := _m.ctrl.Call(_m, "Subscribe", _param0)
 	ret0, _ := ret[0].(*server.Route)

@@ -47,6 +47,7 @@ func NewRoute(
 type PubSubSource interface {
 	KVStore() (store.KVStore, error)
 	AccessManager() (auth.AccessManager, error)
+	MessageStore() (store.MessageStore, error)
 
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
@@ -89,9 +90,4 @@ type SetMessageEntry interface {
 type Endpoint interface {
 	http.Handler
 	GetPrefix() string
-}
-
-// SetMessageStore for modules which need access to the message store
-type SetMessageStore interface {
-	SetMessageStore(messageStore store.MessageStore)
 }
