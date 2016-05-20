@@ -5,16 +5,28 @@ if [ -z "$GOPATH" ]; then
       exit 1
 fi
 
+
+# replace in file if last operation was successful
+function replace {
+      FILE=$1
+      shift
+      if [ $? -eq 0 ]; then
+            while [ -n "$1" ]; do
+                  echo "Replacing: $1"
+                  sed -i "s/$1//g" $FILE
+                  shift
+            done
+      fi
+}
+
 MOCKGEN=$GOPATH/bin/mockgen
 
 # Server mocks
 $MOCKGEN  -self_package server -package server \
+      -destination server/mocks_server_gen_test.go \
       github.com/smancke/guble/server \
-      PubSubSource,MessageSink,WSConnection,Startable,Stopable,SetRouter,SetMessageEntry,Endpoint,SetMessageStore \
-      | sed -e 's/server "github.com\/smancke\/guble\/server"//' \
-      | sed -e 's/server\.//g' \
-      > server/mocks_server_gen_test.go_
-mv server/mocks_server_gen_test.go_ server/mocks_server_gen_test.go
+      PubSubSource,MessageSink,WSConnection,Startable,Stopable,SetRouter,SetMessageEntry,Endpoint,SetMessageStore
+replace "server/mocks_server_gen_test.go" "server \"github.com\/smancke\/guble\/server\"" "server\."
 
 $MOCKGEN -self_package server -package server \
       -destination server/mocks_store_gen_test.go \
@@ -23,15 +35,13 @@ $MOCKGEN -self_package server -package server \
 
 # Client mocks
 $MOCKGEN  -self_package client -package client \
+      -destination client/mocks_client_gen_test.go \
       github.com/smancke/guble/client \
-      WSConnection,Client \
-      | sed -e 's/client "github.com\/smancke\/guble\/client"//' \
-      | sed -e 's/client\.//g' \
-      > client/mocks_client_gen_test.go_
-mv client/mocks_client_gen_test.go_ client/mocks_client_gen_test.go
+      WSConnection,Client
+replace "client/mocks_client_gen_test.go" "client \"github.com\/smancke\/guble\/client\"" "client\."
 
 
-# GCM Mocks
+# # GCM Mocks
 $MOCKGEN -package gcm \
       -destination gcm/mocks_server_gen_test.go \
       github.com/smancke/guble/server \
@@ -42,7 +52,7 @@ $MOCKGEN -self_package gcm -package gcm \
       github.com/smancke/guble/store \
       KVStore
 
-# Gubled mocks
+# # Gubled mocks
 $MOCKGEN -package gubled \
       -destination gubled/mocks_server_gen_test.go \
       github.com/smancke/guble/server \
