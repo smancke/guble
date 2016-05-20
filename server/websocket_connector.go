@@ -57,10 +57,6 @@ func (handle *WSHandler) SetRouter(router PubSubSource) {
 	handle.Router = router
 }
 
-func (entry *WSHandler) SetMessageStore(messageStore store.MessageStore) {
-	entry.messageStore = messageStore
-}
-
 func (entry *WSHandler) SetAccessManager(accessManager auth.AccessManager) {
 	entry.accessManager = accessManager
 }
