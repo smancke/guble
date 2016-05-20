@@ -15,12 +15,12 @@ import (
 const X_HEADER_PREFIX = "x-guble-"
 
 type RestMessageApi struct {
-	PubSubSource
+	Router
 	mux    http.Handler
 	prefix string
 }
 
-func NewRestMessageApi(router PubSubSource, prefix string) *RestMessageApi {
+func NewRestMessageApi(router Router, prefix string) *RestMessageApi {
 	mux := httprouter.New()
 	api := &RestMessageApi{router, mux, prefix}
 

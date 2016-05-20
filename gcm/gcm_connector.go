@@ -18,7 +18,7 @@ import (
 const GCM_REGISTRATIONS_SCHEMA = "gcm_registration"
 
 type GCMConnector struct {
-	router             server.PubSubSource
+	router             server.Router
 	kvStore            store.KVStore
 	mux                http.Handler
 	prefix             string
@@ -28,7 +28,7 @@ type GCMConnector struct {
 	sender             *gcm.Sender
 }
 
-func NewGCMConnector(router server.PubSubSource, prefix string, gcmApiKey string) (*GCMConnector, error) {
+func NewGCMConnector(router server.Router, prefix string, gcmApiKey string) (*GCMConnector, error) {
 	mux := httprouter.New()
 
 	kvStore, err := router.KVStore()

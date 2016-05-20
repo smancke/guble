@@ -72,7 +72,7 @@ var CreateMessageStore = func(args Args) store.MessageStore {
 }
 
 var CreateModules = func(
-	router server.PubSubSource,
+	router server.Router,
 	args Args) []interface{} {
 	modules := make([]interface{}, 0, 2)
 
@@ -137,7 +137,7 @@ func StartupService(args Args) *server.Service {
 	messageStore := CreateMessageStore(args)
 	kvStore := CreateKVStore(args)
 
-	router := server.NewPubSubRouter(accessManager, messageStore, kvStore)
+	router := server.NewRouter(accessManager, messageStore, kvStore)
 
 	service := server.NewService(args.Listen, router)
 

@@ -10,6 +10,17 @@ import (
 	"time"
 )
 
+// Router interface provides mechanism for PubSub messaging
+type Router interface {
+	KVStore() (store.KVStore, error)
+	AccessManager() (auth.AccessManager, error)
+	MessageStore() (store.MessageStore, error)
+
+	Subscribe(r *Route) (*Route, error)
+	Unsubscribe(r *Route)
+	HandleMessage(message *guble.Message) error
+}
+
 // Helper struct to pass `Route` to subscription channel and provide a
 // notification channel
 type subRequest struct {
@@ -17,8 +28,7 @@ type subRequest struct {
 	doneNotify chan bool
 }
 
-// PubSubRouter is the core that handles messages passing them to subscribers
-type PubSubRouter struct {
+type router struct {
 	// mapping the path to the route slice
 	routes          map[guble.Path][]Route
 	messageIn       chan *guble.Message
@@ -32,12 +42,12 @@ type PubSubRouter struct {
 	kvStore       store.KVStore
 }
 
-// NewPubSubRouter returns a pointer to PubSubRouter
-func NewPubSubRouter(
+// NewRouter returns a pointer to Router
+func NewRouter(
 	accessManager auth.AccessManager,
 	messageStore store.MessageStore,
-	kvStore store.KVStore) *PubSubRouter {
-	return &PubSubRouter{
+	kvStore store.KVStore) Router {
+	return &router{
 		routes:          make(map[guble.Path][]Route),
 		messageIn:       make(chan *guble.Message, 500),
 		subscribeChan:   make(chan subRequest, 10),
@@ -50,7 +60,7 @@ func NewPubSubRouter(
 	}
 }
 
-func (router *PubSubRouter) Start() error {
+func (router *router) Start() error {
 	if router.accessManager == nil {
 		panic("AccessManager not set. Cannot start.")
 	}
@@ -83,14 +93,14 @@ func (router *PubSubRouter) Start() error {
 }
 
 // Stop stops the router by closing the stop channel
-func (router *PubSubRouter) Stop() error {
+func (router *router) Stop() error {
 	close(router.stop)
 	return nil
 }
 
 // Add a route to the subscribers.
 // If there is already a route with same Application Id and Path, it will be replaced.
-func (router *PubSubRouter) Subscribe(r *Route) (*Route, error) {
+func (router *router) Subscribe(r *Route) (*Route, error) {
 	guble.Debug("subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
 	accessAllowed := router.accessManager.IsAllowed(auth.READ, r.UserID, r.Path)
 	if !accessAllowed {
@@ -105,7 +115,7 @@ func (router *PubSubRouter) Subscribe(r *Route) (*Route, error) {
 	return r, nil
 }
 
-func (router *PubSubRouter) subscribe(r *Route) {
+func (router *router) subscribe(r *Route) {
 	guble.Info("subscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
 
 	routeList, present := router.routes[r.Path]
@@ -120,7 +130,7 @@ func (router *PubSubRouter) subscribe(r *Route) {
 	router.routes[r.Path] = append(routeList, *r)
 }
 
-func (router *PubSubRouter) Unsubscribe(r *Route) {
+func (router *router) Unsubscribe(r *Route) {
 	req := subRequest{
 		route:      r,
 		doneNotify: make(chan bool),
@@ -129,7 +139,7 @@ func (router *PubSubRouter) Unsubscribe(r *Route) {
 	<-req.doneNotify
 }
 
-func (router *PubSubRouter) unsubscribe(r *Route) {
+func (router *router) unsubscribe(r *Route) {
 	guble.Info("unsubscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
 	routeList, present := router.routes[r.Path]
 	if !present {
@@ -141,7 +151,7 @@ func (router *PubSubRouter) unsubscribe(r *Route) {
 	}
 }
 
-func (router *PubSubRouter) HandleMessage(message *guble.Message) error {
+func (router *router) HandleMessage(message *guble.Message) error {
 	guble.Debug("Route.HandleMessage: %v %v", message.PublisherUserId, message.Path)
 	if !router.accessManager.IsAllowed(auth.WRITE, message.PublisherUserId, message.Path) {
 		return errors.New("User not allowed to post message to topic.")
@@ -152,7 +162,7 @@ func (router *PubSubRouter) HandleMessage(message *guble.Message) error {
 
 // Assign the new message id and store it and handle by passing the stored message
 // to the messageIn channel
-func (router *PubSubRouter) storeTxHandle(msg *guble.Message) error {
+func (router *router) storeTxHandle(msg *guble.Message) error {
 	txCallback := func(msgId uint64) []byte {
 		msg.Id = msgId
 		msg.PublishingTime = time.Now().Format(time.RFC3339)
@@ -173,7 +183,7 @@ func (router *PubSubRouter) storeTxHandle(msg *guble.Message) error {
 	return nil
 }
 
-func (router *PubSubRouter) handleMessage(message *guble.Message) {
+func (router *router) handleMessage(message *guble.Message) {
 	if guble.InfoEnabled() {
 		guble.Info("routing message: %v", message.MetadataLine())
 	}
@@ -187,7 +197,7 @@ func (router *PubSubRouter) handleMessage(message *guble.Message) {
 	}
 }
 
-func (router *PubSubRouter) deliverMessage(route Route, message *guble.Message) {
+func (router *router) deliverMessage(route Route, message *guble.Message) {
 	defer guble.PanicLogger()
 	select {
 	case route.C <- MsgAndRoute{Message: message, Route: &route}:
@@ -199,7 +209,7 @@ func (router *PubSubRouter) deliverMessage(route Route, message *guble.Message) 
 	}
 }
 
-func (router *PubSubRouter) closeAllRoutes() {
+func (router *router) closeAllRoutes() {
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
 			close(route.C)
@@ -239,7 +249,7 @@ func remove(slice []Route, route *Route) []Route {
 }
 
 // AccessManager returns the `accessManager` provided for the router
-func (router *PubSubRouter) AccessManager() (auth.AccessManager, error) {
+func (router *router) AccessManager() (auth.AccessManager, error) {
 	if router.accessManager == nil {
 		return nil, ErrServiceNotProvided
 	}
@@ -247,7 +257,7 @@ func (router *PubSubRouter) AccessManager() (auth.AccessManager, error) {
 }
 
 // MessageStore returns the `messageStore` provided for the router
-func (router *PubSubRouter) MessageStore() (store.MessageStore, error) {
+func (router *router) MessageStore() (store.MessageStore, error) {
 	if router.messageStore == nil {
 		return nil, ErrServiceNotProvided
 	}
@@ -255,7 +265,7 @@ func (router *PubSubRouter) MessageStore() (store.MessageStore, error) {
 }
 
 // KVStore returns the `kvStore` provided for the router
-func (router *PubSubRouter) KVStore() (store.KVStore, error) {
+func (router *router) KVStore() (store.KVStore, error) {
 	if router.kvStore == nil {
 		return nil, ErrServiceNotProvided
 	}

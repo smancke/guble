@@ -19,7 +19,7 @@ type Receiver struct {
 	cancelChannel       chan bool
 	sendChannel         chan []byte
 	applicationId       string
-	messageSouce        PubSubSource
+	messageSouce        Router
 	messageStore        store.MessageStore
 	path                guble.Path
 	doFetch             bool
@@ -38,7 +38,7 @@ func NewReceiverFromCmd(
 	applicationId string,
 	cmd *guble.Cmd,
 	sendChannel chan []byte,
-	messageSource PubSubSource,
+	messageSource Router,
 	messageStore store.MessageStore,
 	userId string) (*Receiver, error) {
 	var err error

@@ -19,7 +19,7 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 	accessManager := auth.NewAllowAllAccessManager(true)
 
 	// Given a Multiplexer
-	router := NewPubSubRouter(accessManager, nil, nil)
+	router := NewRouter(accessManager, nil, nil).(*router)
 	router.Start()
 
 	// when i add two routes in the same path
@@ -58,7 +58,7 @@ func Test_SubscribeNotAllowed(t *testing.T) {
 	tam := NewMockAccessManager(ctrl)
 	tam.EXPECT().IsAllowed(auth.READ, "user01", guble.Path("/blah")).Return(false)
 
-	router := NewPubSubRouter(tam, nil, nil)
+	router := NewRouter(tam, nil, nil).(*router)
 	router.Start()
 
 	channel := make(chan MsgAndRoute, chanSize)
@@ -120,7 +120,7 @@ func TestReplacingOfRoutes(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a router with a route
-	router := NewPubSubRouter(auth.NewAllowAllAccessManager(true), nil, nil)
+	router := NewRouter(auth.NewAllowAllAccessManager(true), nil, nil).(*router)
 	router.Start()
 
 	router.Subscribe(NewRoute("/blah", nil, "appid01", "user01"))
@@ -157,7 +157,7 @@ func TestRoutingWithSubTopics(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a Multiplexer with route
-	router := NewPubSubRouter(auth.NewAllowAllAccessManager(true), nil, nil)
+	router := NewRouter(auth.NewAllowAllAccessManager(true), nil, nil).(*router)
 	router.Start()
 
 	msMock := NewMockMessageStore(ctrl)
@@ -262,11 +262,11 @@ func Test_Router_storeInTxAndHandle(t *testing.T) {
 	var storedMsg []byte
 
 	messageStoreMock := NewMockMessageStore(ctrl)
-	router := NewPubSubRouter(
+	router := NewRouter(
 		auth.NewAllowAllAccessManager(true),
 		messageStoreMock,
 		nil,
-	)
+	).(*router)
 
 	messageStoreMock.EXPECT().StoreTx("topic1", gomock.Any()).
 		Do(func(topic string, callback func(msgId uint64) []byte) {
@@ -291,8 +291,8 @@ func Test_Router_storeInTxAndHandle(t *testing.T) {
 	a.Equal(routedMsg.Bytes(), storedMsg)
 }
 
-func aRouterRoute() (*PubSubRouter, *Route) {
-	router := NewPubSubRouter(auth.NewAllowAllAccessManager(true), nil, nil)
+func aRouterRoute() (*router, *Route) {
+	router := NewRouter(auth.NewAllowAllAccessManager(true), nil, nil).(*router)
 	router.Start()
 	route, _ := router.Subscribe(
 		NewRoute("/blah", make(chan MsgAndRoute, chanSize), "appid01", "user01"),

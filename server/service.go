@@ -9,10 +9,26 @@ import (
 	"time"
 )
 
-// This is the main class for simple startup of a server
+// Startable interface for modules which provide a start mechanism
+type Startable interface {
+	Start() error
+}
+
+// Stopable interface for modules which provide a stop mechanism
+type Stopable interface {
+	Stop() error
+}
+
+// Endpoint adds a HTTP handler for the `GetPrefix()` to the webserver
+type Endpoint interface {
+	http.Handler
+	GetPrefix() string
+}
+
+// Service is the main class for simple control of a server
 type Service struct {
 	webServer     *WebServer
-	router        PubSubSource
+	router        Router
 	stopListener  []Stopable
 	startListener []Startable
 	// The time given to each Module on Stop()
@@ -20,10 +36,9 @@ type Service struct {
 }
 
 // Registers the Main Router, where other modules can subscribe for messages
-
 func NewService(
 	addr string,
-	router PubSubSource) *Service {
+	router Router) *Service {
 	service := &Service{
 		stopListener:    make([]Stopable, 0, 5),
 		webServer:       NewWebServer(addr),

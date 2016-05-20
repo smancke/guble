@@ -19,14 +19,14 @@ var webSocketUpgrader = websocket.Upgrader{
 }
 
 type WSHandler struct {
-	Router        PubSubSource
+	Router        Router
 	prefix        string
 	messageStore  store.MessageStore
 	accessManager auth.AccessManager
 }
 
 func NewWSHandler(
-	router PubSubSource,
+	router Router,
 	prefix string) (*WSHandler, error) {
 	accessManager, err := router.AccessManager()
 	if err != nil {
@@ -59,6 +59,14 @@ func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer c.Close()
 
 	NewWebSocket(handle, &wsconn{c}, extractUserId(r.RequestURI)).Start()
+}
+
+// WSConnection is a wrapper interface for the needed functions of the websocket.Conn
+// It is introduced for testability of the WSHandler
+type WSConnection interface {
+	Close()
+	Send(bytes []byte) (err error)
+	Receive(bytes *[]byte) (err error)
 }
 
 // wsconnImpl is a Wrapper of the websocket.Conn
