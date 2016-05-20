@@ -50,10 +50,11 @@ func (router *PubSubRouter) SetAccessManager(accessManager auth.AccessManager) {
 	router.accessManager = accessManager
 }
 
-func (router *PubSubRouter) Go() *PubSubRouter {
+func (router *PubSubRouter) Start() error {
 	if router.accessManager == nil {
 		panic("AccessManager not set. Cannot start.")
 	}
+
 	go func() {
 		for {
 			func() {
@@ -78,7 +79,7 @@ func (router *PubSubRouter) Go() *PubSubRouter {
 		}
 	}()
 
-	return router
+	return nil
 }
 
 // Stop stops the router by closing the stop channel

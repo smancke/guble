@@ -128,7 +128,6 @@ func StartupService(args Args) *server.Service {
 	router := server.NewPubSubRouter(accessManager, messageStore, kvStore)
 	messageEntry := server.NewMessageEntry(router)
 
-	router.Go()
 	service := server.NewService(
 		args.Listen,
 		kvStore,

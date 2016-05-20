@@ -19,7 +19,7 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 
 	// Given a Multiplexer
 	router := NewPubSubRouter(accessManager, nil, nil)
-	router.Go()
+	router.Start()
 
 	// when i add two routes in the same path
 	channel := make(chan MsgAndRoute, chanSize)
@@ -55,10 +55,11 @@ func Test_SubscribeNotAllowed(t *testing.T) {
 	a := assert.New(t)
 
 	tam := NewMockAccessManager(ctrl)
-
 	tam.EXPECT().IsAllowed(auth.READ, "user01", guble.Path("/blah")).Return(false)
+
 	router := NewPubSubRouter(tam, nil, nil)
-	router.Go()
+	router.Start()
+
 
 	channel := make(chan MsgAndRoute, chanSize)
 	_, e := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
@@ -110,7 +111,7 @@ func TestReplacingOfRoutes(t *testing.T) {
 
 	// Given a router with a route
 	router := NewPubSubRouter(auth.NewAllowAllAccessManager(true), nil, nil)
-	router.Go()
+	router.Start()
 
 	router.Subscribe(NewRoute("/blah", nil, "appid01", "user01"))
 
@@ -141,7 +142,7 @@ func TestRoutingWithSubTopics(t *testing.T) {
 
 	// Given a Multiplexer with route
 	router := NewPubSubRouter(auth.NewAllowAllAccessManager(true), nil, nil)
-	router.Go()
+	router.Start()
 
 	channel := make(chan MsgAndRoute, chanSize)
 	r, _ := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
@@ -225,7 +226,7 @@ func TestRouteIsRemovedIfChannelIsFull(t *testing.T) {
 
 func aRouterRoute() (*PubSubRouter, *Route) {
 	router := NewPubSubRouter(auth.NewAllowAllAccessManager(true), nil, nil)
-	router.Go()
+	router.Start()
 	route, _ := router.Subscribe(NewRoute("/blah", make(chan MsgAndRoute, chanSize), "appid01", "user01"))
 	return router, route
 }
