@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
+	"github.com/smancke/guble/server/auth"
 	"strings"
 	"testing"
 	"time"
@@ -88,10 +89,10 @@ func Test_AnIncommingMessageIsNotAllowed(t *testing.T) {
 
 	wsconn, pubSubSource, messageSink, messageStore := createDefaultMocks([]string{})
 
-	tam := NewTestAccessManager()
-
+	tam := NewMockAccessManager(ctrl)
+	tam.EXPECT().IsAllowed(auth.READ, "testuser", guble.Path("/foo")).Return(false)
 	handler := NewWebSocket(
-		testWSHandler(pubSubSource, messageSink, messageStore, AccessManager(tam)),
+		testWSHandler(pubSubSource, messageSink, messageStore, tam),
 		wsconn,
 		"testuser",
 	)
@@ -105,7 +106,7 @@ func Test_AnIncommingMessageIsNotAllowed(t *testing.T) {
 	//nothing shall have been sent
 
 	//now allow
-	tam.allow("testuser", guble.Path("/foo"))
+	tam.EXPECT().IsAllowed(auth.READ, "testuser", guble.Path("/foo")).Return(true)
 
 	wsconn.EXPECT().Send(aTestMessage.Bytes())
 
@@ -145,7 +146,7 @@ func testWSHandler(
 	pubSubSource *MockPubSubSource,
 	messageSink *MockMessageSink,
 	messageStore store.MessageStore,
-	accessManager AccessManager) *WSHandler {
+	accessManager auth.AccessManager) *WSHandler {
 
 	return &WSHandler{
 		Router:        pubSubSource,
@@ -157,14 +158,14 @@ func testWSHandler(
 }
 
 func runNewWebSocket(
-	wsconn *MockWSConn,
+	wsconn *MockWSConnection,
 	pubSubSource *MockPubSubSource,
 	messageSink *MockMessageSink,
 	messageStore store.MessageStore,
-	accessManager AccessManager) *WebSocket {
+	accessManager auth.AccessManager) *WebSocket {
 
 	if accessManager == nil {
-		accessManager = NewAllowAllAccessManager(true)
+		accessManager = auth.NewAllowAllAccessManager(true)
 	}
 	websocket := NewWebSocket(
 		testWSHandler(pubSubSource, messageSink, messageStore, accessManager),
@@ -180,7 +181,7 @@ func runNewWebSocket(
 	return websocket
 }
 
-func createDefaultMocks(inputMessages []string) (*MockWSConn, *MockPubSubSource, *MockMessageSink, *MockMessageStore) {
+func createDefaultMocks(inputMessages []string) (*MockWSConnection, *MockPubSubSource, *MockMessageSink, *MockMessageStore) {
 	inputMessagesC := make(chan []byte, 10)
 	for _, msg := range inputMessages {
 		inputMessagesC <- []byte(msg)
@@ -190,7 +191,7 @@ func createDefaultMocks(inputMessages []string) (*MockWSConn, *MockPubSubSource,
 	messageSink := NewMockMessageSink(ctrl)
 	messageStore := NewMockMessageStore(ctrl)
 
-	wsconn := NewMockWSConn(ctrl)
+	wsconn := NewMockWSConnection(ctrl)
 	wsconn.EXPECT().Receive(gomock.Any()).Do(func(message *[]byte) error {
 		*message = <-inputMessagesC
 		return nil

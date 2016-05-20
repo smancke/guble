@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/store"
 	"runtime"
 	"strings"
@@ -23,13 +24,13 @@ type PubSubRouter struct {
 	stop            chan bool
 
 	// external services
-	accessManager AccessManager
+	accessManager   auth.AccessManager
 	messageStore  store.MessageStore
 	kvStore       store.KVStore
 }
 
 func NewPubSubRouter(
-	accessManager AccessManager,
+	accessManager auth.AccessManager,
 	messageStore store.MessageStore,
 	kvStore store.KVStore) *PubSubRouter {
 	return &PubSubRouter{
@@ -45,14 +46,15 @@ func NewPubSubRouter(
 	}
 }
 
-func (router *PubSubRouter) SetAccessManager(accessManager AccessManager) {
+func (router *PubSubRouter) SetAccessManager(accessManager auth.AccessManager) {
 	router.accessManager = accessManager
 }
 
-func (router *PubSubRouter) Go() *PubSubRouter {
+func (router *PubSubRouter) Start() error {
 	if router.accessManager == nil {
 		panic("AccessManager not set. Cannot start.")
 	}
+
 	go func() {
 		for {
 			func() {
@@ -77,7 +79,7 @@ func (router *PubSubRouter) Go() *PubSubRouter {
 		}
 	}()
 
-	return router
+	return nil
 }
 
 // Stop stops the router by closing the stop channel
@@ -90,7 +92,7 @@ func (router *PubSubRouter) Stop() error {
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *PubSubRouter) Subscribe(r *Route) (*Route, error) {
 	guble.Debug("subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
-	accessAllowed := router.accessManager.AccessAllowed(READ, r.UserID, r.Path)
+	accessAllowed := router.accessManager.IsAllowed(auth.READ, r.UserID, r.Path)
 	if !accessAllowed {
 		return r, errors.New("not allowed")
 	}
@@ -141,7 +143,7 @@ func (router *PubSubRouter) unsubscribe(r *Route) {
 
 func (router *PubSubRouter) HandleMessage(message *guble.Message) error {
 	guble.Debug("Route.HandleMessage: %v %v", message.PublisherUserId, message.Path)
-	if !router.accessManager.AccessAllowed(WRITE, message.PublisherUserId, message.Path) {
+	if !router.accessManager.IsAllowed(auth.WRITE, message.PublisherUserId, message.Path) {
 		return errors.New("User not allowed to post message to topic.")
 	}
 
@@ -219,7 +221,7 @@ func remove(slice []Route, route *Route) []Route {
 }
 
 // AccessManager returns the `accessManager` provided for the router
-func (p *PubSubRouter) AccessManager() (AccessManager, error) {
+func (p *PubSubRouter) AccessManager() (auth.AccessManager, error) {
 	if p.accessManager == nil {
 		return nil, ErrServiceNotProvided
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/rs/xid"
 
 	"fmt"
+	"github.com/smancke/guble/server/auth"
 	"net/http"
 	"strings"
 	"time"
@@ -22,7 +23,7 @@ type WSHandler struct {
 	MessageSink   MessageSink
 	prefix        string
 	messageStore  store.MessageStore
-	accessManager AccessManager
+	accessManager auth.AccessManager
 }
 
 func NewWSHandler(prefix string) *WSHandler {
@@ -45,7 +46,7 @@ func (entry *WSHandler) SetMessageStore(messageStore store.MessageStore) {
 	entry.messageStore = messageStore
 }
 
-func (entry *WSHandler) SetAccessManager(accessManager AccessManager) {
+func (entry *WSHandler) SetAccessManager(accessManager auth.AccessManager) {
 	entry.accessManager = accessManager
 }
 
@@ -136,7 +137,7 @@ func (ws *WebSocket) checkAccess(raw []byte) bool {
 	if raw[0] == byte('/') {
 		path := getPathFromRawMessage(raw)
 		guble.Debug("Received msg %v %v", ws.userId, path)
-		return len(path) == 0 || ws.accessManager.AccessAllowed(READ, ws.userId, path)
+		return len(path) == 0 || ws.accessManager.IsAllowed(auth.READ, ws.userId, path)
 
 	}
 	return true
