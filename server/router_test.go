@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/guble"
 	"github.com/smancke/guble/server/auth"
 	"github.com/stretchr/testify/assert"
@@ -60,7 +61,6 @@ func Test_SubscribeNotAllowed(t *testing.T) {
 	router := NewPubSubRouter(tam, nil, nil)
 	router.Start()
 
-
 	channel := make(chan MsgAndRoute, chanSize)
 	_, e := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
 
@@ -82,25 +82,35 @@ func Test_HandleMessageNotAllowed(t *testing.T) {
 	a := assert.New(t)
 
 	tam := NewMockAccessManager(ctrl)
+	msMock := NewMockMessageStore(ctrl)
 
 	// Given a Multiplexer with route
 	router, r := aRouterRoute()
+	router.accessManager = tam
+	router.messageStore = msMock
+
 	tam.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(false)
 
-	// using TestAccessManager
-	router.SetAccessManager(tam)
-
 	// when i send a message to the route
-	e := router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage, PublisherUserId: r.UserID})
+	e := router.HandleMessage(&guble.Message{
+		Path:            r.Path,
+		Body:            aTestByteMessage,
+		PublisherUserId: r.UserID,
+	})
 
 	// an error shall be returned
 	a.NotNil(e)
 
 	// and when permission is granted
 	tam.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(true)
+	msMock.EXPECT().StoreTx(r.Path.Partition(), gomock.Any()).Return(nil)
 
 	// sending message
-	e = router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage, PublisherUserId: r.UserID})
+	e = router.HandleMessage(&guble.Message{
+		Path:            r.Path,
+		Body:            aTestByteMessage,
+		PublisherUserId: r.UserID,
+	})
 
 	// shall give no error
 	a.Nil(e)
@@ -125,10 +135,15 @@ func TestReplacingOfRoutes(t *testing.T) {
 }
 
 func TestSimpleMessageSending(t *testing.T) {
+	defer initCtrl(t)()
 	a := assert.New(t)
 
 	// Given a Multiplexer with route
 	router, r := aRouterRoute()
+
+	msMock := NewMockMessageStore(ctrl)
+	router.messageStore = msMock
+	msMock.EXPECT().StoreTx(r.Path.Partition(), gomock.Any()).Return(nil)
 
 	// when i send a message to the route
 	router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage})
@@ -138,11 +153,18 @@ func TestSimpleMessageSending(t *testing.T) {
 }
 
 func TestRoutingWithSubTopics(t *testing.T) {
+	defer initCtrl(t)()
 	a := assert.New(t)
 
 	// Given a Multiplexer with route
 	router := NewPubSubRouter(auth.NewAllowAllAccessManager(true), nil, nil)
 	router.Start()
+
+	msMock := NewMockMessageStore(ctrl)
+	router.messageStore = msMock
+	// expect a message to `blah` partition first and `blahblub` second
+	msMock.EXPECT().StoreTx("blah", gomock.Any()).Return(nil)
+	msMock.EXPECT().StoreTx("blahblub", gomock.Any()).Return(nil)
 
 	channel := make(chan MsgAndRoute, chanSize)
 	r, _ := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
@@ -179,10 +201,16 @@ func TestMatchesTopic(t *testing.T) {
 }
 
 func TestRouteIsRemovedIfChannelIsFull(t *testing.T) {
+	defer initCtrl(t)()
 	a := assert.New(t)
 
 	// Given a Multiplexer with route
 	router, r := aRouterRoute()
+
+	msMock := NewMockMessageStore(ctrl)
+	router.messageStore = msMock
+	msMock.EXPECT().StoreTx(gomock.Any(), gomock.Any()).MaxTimes(chanSize + 1)
+
 	// where the channel is full of messages
 	for i := 0; i < chanSize; i++ {
 		router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage})
@@ -224,10 +252,51 @@ func TestRouteIsRemovedIfChannelIsFull(t *testing.T) {
 	}
 }
 
+func Test_Router_storeInTxAndHandle(t *testing.T) {
+	defer initCtrl(t)()
+	a := assert.New(t)
+
+	startTime := time.Now()
+
+	msg := &guble.Message{Path: guble.Path("/topic1")}
+	var storedMsg []byte
+
+	messageStoreMock := NewMockMessageStore(ctrl)
+	router := NewPubSubRouter(
+		auth.NewAllowAllAccessManager(true),
+		messageStoreMock,
+		nil,
+	)
+
+	messageStoreMock.EXPECT().StoreTx("topic1", gomock.Any()).
+		Do(func(topic string, callback func(msgId uint64) []byte) {
+			storedMsg = callback(uint64(42))
+		})
+
+	receive := make(chan *guble.Message)
+	go func() {
+		msg := <-router.messageIn
+
+		a.Equal(uint64(42), msg.Id)
+		t, e := time.Parse(time.RFC3339, msg.PublishingTime) // publishing time
+		a.NoError(e)
+		a.True(t.After(startTime.Add(-1 * time.Second)))
+		a.True(t.Before(time.Now().Add(time.Second)))
+
+		receive <- msg
+	}()
+	router.HandleMessage(msg)
+	routedMsg := <-receive
+
+	a.Equal(routedMsg.Bytes(), storedMsg)
+}
+
 func aRouterRoute() (*PubSubRouter, *Route) {
 	router := NewPubSubRouter(auth.NewAllowAllAccessManager(true), nil, nil)
 	router.Start()
-	route, _ := router.Subscribe(NewRoute("/blah", make(chan MsgAndRoute, chanSize), "appid01", "user01"))
+	route, _ := router.Subscribe(
+		NewRoute("/blah", make(chan MsgAndRoute, chanSize), "appid01", "user01"),
+	)
 	return router, route
 }
 

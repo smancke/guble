@@ -50,10 +50,6 @@ func NewPubSubRouter(
 	}
 }
 
-func (router *PubSubRouter) SetAccessManager(accessManager auth.AccessManager) {
-	router.accessManager = accessManager
-}
-
 func (router *PubSubRouter) Start() error {
 	if router.accessManager == nil {
 		panic("AccessManager not set. Cannot start.")
@@ -151,11 +147,29 @@ func (router *PubSubRouter) HandleMessage(message *guble.Message) error {
 		return errors.New("User not allowed to post message to topic.")
 	}
 
+	return router.storeTxHandle(message)
+}
+
+// Assign the new message id and store it and handle by passing the stored message
+// to the messageIn channel
+func (router *PubSubRouter) storeTxHandle(msg *guble.Message) error {
+	txCallback := func(msgId uint64) []byte {
+		msg.Id = msgId
+		msg.PublishingTime = time.Now().Format(time.RFC3339)
+		return msg.Bytes()
+	}
+
+	if err := router.messageStore.StoreTx(msg.Path.Partition(), txCallback); err != nil {
+		guble.Err("error storing message in partition %v: %v", msg.Path.Partition(), err)
+		return err
+	}
+
 	if float32(len(router.messageIn))/float32(cap(router.messageIn)) > 0.9 {
 		guble.Warn("router.messageIn channel very full: current=%v, max=%v\n", len(router.messageIn), cap(router.messageIn))
 		time.Sleep(time.Millisecond)
 	}
-	router.messageIn <- message
+
+	router.messageIn <- msg
 	return nil
 }
 

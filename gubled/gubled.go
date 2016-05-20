@@ -73,17 +73,16 @@ var CreateMessageStore = func(args Args) store.MessageStore {
 
 var CreateModules = func(
 	router server.PubSubSource,
-	messageEntry server.MessageSink,
 	args Args) []interface{} {
 	modules := make([]interface{}, 0, 2)
 
-	if wsHandler, err := server.NewWSHandler(router, messageEntry, "/stream/"); err != nil {
+	if wsHandler, err := server.NewWSHandler(router, "/stream/"); err != nil {
 		guble.Err("Error loading WSHandler module: %s", err)
 	} else {
 		modules = append(modules, wsHandler)
 	}
 
-	modules = append(modules, server.NewRestMessageApi(messageEntry, "/api/"))
+	modules = append(modules, server.NewRestMessageApi(router, "/api/"))
 
 	if args.GcmEnable {
 		if args.GcmApiKey == "" {
@@ -139,18 +138,10 @@ func StartupService(args Args) *server.Service {
 	kvStore := CreateKVStore(args)
 
 	router := server.NewPubSubRouter(accessManager, messageStore, kvStore)
-	messageEntry := server.NewMessageEntry(router, messageStore)
 
-	service := server.NewService(
-		args.Listen,
-		kvStore,
-		messageStore,
-		messageEntry,
-		router,
-		accessManager,
-	)
+	service := server.NewService(args.Listen, router)
 
-	for _, module := range CreateModules(router, messageEntry, args) {
+	for _, module := range CreateModules(router, args) {
 		service.Register(module)
 	}
 

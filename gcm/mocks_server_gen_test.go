@@ -5,6 +5,7 @@ package gcm
 
 import (
 	gomock "github.com/golang/mock/gomock"
+	guble "github.com/smancke/guble/guble"
 	server "github.com/smancke/guble/server"
 	auth "github.com/smancke/guble/server/auth"
 	store "github.com/smancke/guble/store"
@@ -40,6 +41,16 @@ func (_m *MockPubSubSource) AccessManager() (auth.AccessManager, error) {
 
 func (_mr *_MockPubSubSourceRecorder) AccessManager() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AccessManager")
+}
+
+func (_m *MockPubSubSource) HandleMessage(_param0 *guble.Message) error {
+	ret := _m.ctrl.Call(_m, "HandleMessage", _param0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockPubSubSourceRecorder) HandleMessage(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "HandleMessage", arg0)
 }
 
 func (_m *MockPubSubSource) KVStore() (store.KVStore, error) {

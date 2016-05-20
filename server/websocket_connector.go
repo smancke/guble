@@ -19,8 +19,7 @@ var webSocketUpgrader = websocket.Upgrader{
 }
 
 type WSHandler struct {
-	Router PubSubSource
-	MessageSink
+	Router        PubSubSource
 	prefix        string
 	messageStore  store.MessageStore
 	accessManager auth.AccessManager
@@ -28,7 +27,6 @@ type WSHandler struct {
 
 func NewWSHandler(
 	router PubSubSource,
-	messageSink MessageSink,
 	prefix string) (*WSHandler, error) {
 	accessManager, err := router.AccessManager()
 	if err != nil {
@@ -42,7 +40,6 @@ func NewWSHandler(
 
 	return &WSHandler{
 		Router:        router,
-		MessageSink:   messageSink,
 		prefix:        prefix,
 		accessManager: accessManager,
 		messageStore:  messageStore,
@@ -93,12 +90,12 @@ type WebSocket struct {
 	receivers     map[guble.Path]*Receiver
 }
 
-func NewWebSocket(handler *WSHandler, wsConn WSConnection, userId string) *WebSocket {
+func NewWebSocket(handler *WSHandler, wsConn WSConnection, userID string) *WebSocket {
 	return &WebSocket{
 		WSHandler:     handler,
 		WSConnection:  wsConn,
 		applicationId: xid.New().String(),
-		userId:        userId,
+		userId:        userID,
 		sendChannel:   make(chan []byte, 10),
 		receivers:     make(map[guble.Path]*Receiver),
 	}
@@ -239,7 +236,7 @@ func (ws *WebSocket) handleSendCmd(cmd *guble.Cmd) {
 		msg.PublisherMessageId = args[1]
 	}
 
-	ws.MessageSink.HandleMessage(msg)
+	ws.Router.HandleMessage(msg)
 
 	ws.sendOK(guble.SUCCESS_SEND, msg.PublisherMessageId)
 }

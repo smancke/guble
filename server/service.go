@@ -2,10 +2,8 @@ package server
 
 import (
 	"github.com/smancke/guble/guble"
-	"github.com/smancke/guble/store"
 
 	"fmt"
-	"github.com/smancke/guble/server/auth"
 	"net/http"
 	"reflect"
 	"time"
@@ -13,36 +11,26 @@ import (
 
 // This is the main class for simple startup of a server
 type Service struct {
-	kvStore       store.KVStore
-	messageStore  store.MessageStore
 	webServer     *WebServer
-	messageSink   MessageSink
 	router        PubSubSource
 	stopListener  []Stopable
 	startListener []Startable
-	accessManager auth.AccessManager
 	// The time given to each Module on Stop()
 	StopGracePeriod time.Duration
 }
 
 // Registers the Main Router, where other modules can subscribe for messages
 
-func NewService(addr string, kvStore store.KVStore, messageStore store.MessageStore, messageSink MessageSink, router PubSubSource, accessManager auth.AccessManager) *Service {
+func NewService(
+	addr string,
+	router PubSubSource) *Service {
 	service := &Service{
 		stopListener:    make([]Stopable, 0, 5),
-		kvStore:         kvStore,
-		messageStore:    messageStore,
 		webServer:       NewWebServer(addr),
-		messageSink:     messageSink,
 		router:          router,
-		accessManager:   accessManager,
 		StopGracePeriod: time.Second * 2,
 	}
-	service.Register(service.accessManager)
-	service.Register(service.kvStore)
-	service.Register(service.messageStore)
 	service.Register(service.webServer)
-	service.Register(service.messageSink)
 	service.Register(service.router)
 
 	return service

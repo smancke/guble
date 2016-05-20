@@ -16,10 +16,6 @@ type PubSubSource interface {
 
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
-}
-
-// MessageSink interface allows for sending/pushing messages
-type MessageSink interface {
 	HandleMessage(message *guble.Message) error
 }
 

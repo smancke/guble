@@ -143,14 +143,13 @@ func TestGcmOnlyStartedIfEnabled(t *testing.T) {
 
 	amMock := NewMockAccessManager(mockCtrl)
 	msMock := NewMockMessageStore(mockCtrl)
-	msinkMock := NewMockMessageSink(mockCtrl)
 
 	routerMock.EXPECT().KVStore().Return(store.NewMemoryKVStore(), nil)
 	routerMock.EXPECT().AccessManager().Return(amMock, nil).MaxTimes(2)
 	routerMock.EXPECT().MessageStore().Return(msMock, nil).MaxTimes(2)
 
-	a.True(containsGcmModule(CreateModules(routerMock, msinkMock, Args{GcmEnable: true, GcmApiKey: "xyz"})))
-	a.False(containsGcmModule(CreateModules(routerMock, msinkMock, Args{GcmEnable: false})))
+	a.True(containsGcmModule(CreateModules(routerMock, Args{GcmEnable: true, GcmApiKey: "xyz"})))
+	a.False(containsGcmModule(CreateModules(routerMock, Args{GcmEnable: false})))
 }
 
 func containsGcmModule(modules []interface{}) bool {
@@ -169,7 +168,6 @@ func TestPanicOnMissingGcmApiKey(t *testing.T) {
 	routerMock := NewMockPubSubSource(mockCtrl)
 	amMock := NewMockAccessManager(mockCtrl)
 	msMock := NewMockMessageStore(mockCtrl)
-	msinkMock := NewMockMessageSink(mockCtrl)
 
 	routerMock.EXPECT().AccessManager().Return(amMock, nil)
 	routerMock.EXPECT().MessageStore().Return(msMock, nil)
@@ -181,7 +179,7 @@ func TestPanicOnMissingGcmApiKey(t *testing.T) {
 		}
 	}()
 
-	CreateModules(routerMock, msinkMock, Args{GcmEnable: true})
+	CreateModules(routerMock, Args{GcmEnable: true})
 }
 
 func TestCreateStoreBackendPanicInvalidBackend(t *testing.T) {

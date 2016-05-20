@@ -25,7 +25,7 @@ MOCKGEN=$GOPATH/bin/mockgen
 $MOCKGEN  -self_package server -package server \
       -destination server/mocks_server_gen_test.go \
       github.com/smancke/guble/server \
-      PubSubSource,MessageSink,WSConnection,Startable,Stopable,Endpoint
+      PubSubSource,WSConnection,Startable,Stopable,Endpoint
 replace "server/mocks_server_gen_test.go" "server \"github.com\/smancke\/guble\/server\"" "server\."
 
 $MOCKGEN -self_package server -package server \
@@ -61,7 +61,7 @@ $MOCKGEN -self_package gcm -package gcm \
 $MOCKGEN -package gubled \
       -destination gubled/mocks_server_gen_test.go \
       github.com/smancke/guble/server \
-      PubSubSource,MessageSink
+      PubSubSource
 
 $MOCKGEN -self_package gubled -package gubled \
       -destination gubled/mocks_auth_gen_test.go \
