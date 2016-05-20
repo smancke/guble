@@ -53,14 +53,6 @@ func (handle *WSHandler) SetMessageEntry(messageSink MessageSink) {
 	handle.MessageSink = messageSink
 }
 
-func (handle *WSHandler) SetRouter(router PubSubSource) {
-	handle.Router = router
-}
-
-func (entry *WSHandler) SetAccessManager(accessManager auth.AccessManager) {
-	entry.accessManager = accessManager
-}
-
 func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := webSocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {

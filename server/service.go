@@ -48,12 +48,11 @@ func NewService(addr string, kvStore store.KVStore, messageStore store.MessageSt
 	return service
 }
 
-// Registers the supplied module on this service.
+// Register the supplied module on this service.
 // This method checks the module for the following interfaces and
 // does the expected tegistrations:
 //   Stopable: notify when the service stops
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
-//   SetRouter: Provide the router
 //   SetMessageEntry: Provide the message entry
 //
 // If the module does not have a HandlerFunc, the prefix parameter is ignored
@@ -76,11 +75,6 @@ func (service *Service) Register(module interface{}) {
 	}
 
 	// do the injections ...
-
-	if m, ok := module.(SetRouter); ok {
-		guble.Debug("inject Router to %v", name)
-		m.SetRouter(service.router)
-	}
 
 	if m, ok := module.(SetMessageEntry); ok {
 		guble.Debug("inject MessageEntry to %v", name)

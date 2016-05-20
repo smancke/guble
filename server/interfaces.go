@@ -76,11 +76,6 @@ type Stopable interface {
 	Stop() error
 }
 
-// SetRouter interface for modules which require a `Router`
-type SetRouter interface {
-	SetRouter(router PubSubSource)
-}
-
 // SetMessageEntry interface for modules which need a MessageEntry set
 type SetMessageEntry interface {
 	SetMessageEntry(messageSink MessageSink)
