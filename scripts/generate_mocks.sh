@@ -5,16 +5,6 @@ if [ -z "$GOPATH" ]; then
       exit 1
 fi
 
-# move file from source($1) to destination($2) if previous command exit was 0
-function move_file {
-      echo "Last exit error: $3"
-      if [ $? -eq 0 ]; then
-            mv $1 $2
-      else
-            rm $1
-            exit 1
-      fi
-}
 
 # replace in file if last operation was successful
 function replace {
@@ -51,7 +41,7 @@ $MOCKGEN  -self_package client -package client \
 replace "client/mocks_client_gen_test.go" "client \"github.com\/smancke\/guble\/client\"" "client\."
 
 
-# # GCM Mocks
+# GCM Mocks
 $MOCKGEN -package gcm \
       -destination gcm/mocks_server_gen_test.go \
       github.com/smancke/guble/server \
@@ -62,8 +52,22 @@ $MOCKGEN -self_package gcm -package gcm \
       github.com/smancke/guble/store \
       KVStore
 
-# # Gubled mocks
+# Gubled mocks
 $MOCKGEN -package gubled \
       -destination gubled/mocks_server_gen_test.go \
       github.com/smancke/guble/server \
       PubSubSource
+
+#
+$MOCKGEN -self_package auth -package auth \
+      -destination server/auth/mocks_auth_gen_test.go \
+      github.com/smancke/guble/server/auth \
+      AccessManager
+replace "server/auth/mocks_auth_gen_test.go" \
+      "auth \"github.com\/smancke\/guble\/server\/auth\"" \
+      "auth\."
+
+$MOCKGEN -self_package server -package server \
+      -destination server/mocks_auth_gen_test.go \
+      github.com/smancke/guble/server/auth \
+      AccessManager

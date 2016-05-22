@@ -27,16 +27,18 @@ func TestPostMessage(t *testing.T) {
 
 	// given:  a rest api with a message sink
 	routerMock := NewMockPubSubSource(ctrl)
+
+	kvStore := store.NewMemoryKVStore()
+	routerMock.EXPECT().KVStore().Return(kvStore, nil)
+
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
 		a.Equal("/notifications", string(route.Path))
 		a.Equal("marvin", route.UserID)
 		a.Equal("gcmId123", route.ApplicationID)
 	})
 
-	kvStore := store.NewMemoryKVStore()
-	gcm := NewGCMConnector("/gcm/", "testApi")
-	gcm.SetRouter(routerMock)
-	gcm.SetKVStore(kvStore)
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	a.Nil(err)
 
 	url, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe/notifications")
 	// and a http context
@@ -69,15 +71,17 @@ func TestSaveAndLoadSubscriptions(t *testing.T) {
 	}
 
 	routerMock := NewMockPubSubSource(ctrl)
+
+	kvStore := store.NewMemoryKVStore()
+	routerMock.EXPECT().KVStore().Return(kvStore, nil)
+
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
 		// delte the route from the map, if we got it in the test
 		delete(testRoutes, fmt.Sprintf("%v:%v:%v", route.UserID, route.Path, route.ApplicationID))
 	}).AnyTimes()
 
-	kvStore := store.NewMemoryKVStore()
-	gcm := NewGCMConnector("/gcm/", "testApi")
-	gcm.SetRouter(routerMock)
-	gcm.SetKVStore(kvStore)
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	a.Nil(err)
 
 	// when: we save the routes
 	for k, _ := range testRoutes {

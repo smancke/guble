@@ -45,6 +45,8 @@ func NewRoute(
 
 // PubSubSource interface provides mechanism for PubSub messaging
 type PubSubSource interface {
+	KVStore() (store.KVStore, error)
+
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
 }
@@ -86,12 +88,6 @@ type SetMessageEntry interface {
 type Endpoint interface {
 	http.Handler
 	GetPrefix() string
-}
-
-// SetKVStore for modules which need a Key Value store set,
-// for storing their data
-type SetKVStore interface {
-	SetKVStore(kvStore store.KVStore)
 }
 
 // SetMessageStore for modules which need access to the message store

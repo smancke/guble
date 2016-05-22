@@ -10,17 +10,20 @@ import (
 	"time"
 )
 
-type SubscriptionRequest struct {
+// Helper struct to pass `Route` to subscription channel and provide a
+// notification channel
+type subRequest struct {
 	route      *Route
 	doneNotify chan bool
 }
 
+// PubSubRouter is the core that handles messages passing them to subscribers
 type PubSubRouter struct {
 	// mapping the path to the route slice
 	routes          map[guble.Path][]Route
 	messageIn       chan *guble.Message
-	subscribeChan   chan SubscriptionRequest
-	unsubscribeChan chan SubscriptionRequest
+	subscribeChan   chan subRequest
+	unsubscribeChan chan subRequest
 	stop            chan bool
 
 	// external services
@@ -29,6 +32,7 @@ type PubSubRouter struct {
 	kvStore       store.KVStore
 }
 
+// NewPubSubRouter returns a pointer to PubSubRouter
 func NewPubSubRouter(
 	accessManager auth.AccessManager,
 	messageStore store.MessageStore,
@@ -36,8 +40,8 @@ func NewPubSubRouter(
 	return &PubSubRouter{
 		routes:          make(map[guble.Path][]Route),
 		messageIn:       make(chan *guble.Message, 500),
-		subscribeChan:   make(chan SubscriptionRequest, 10),
-		unsubscribeChan: make(chan SubscriptionRequest, 10),
+		subscribeChan:   make(chan subRequest, 10),
+		unsubscribeChan: make(chan subRequest, 10),
 		stop:            make(chan bool, 1),
 
 		accessManager: accessManager,
@@ -96,7 +100,7 @@ func (router *PubSubRouter) Subscribe(r *Route) (*Route, error) {
 	if !accessAllowed {
 		return r, errors.New("not allowed")
 	}
-	req := SubscriptionRequest{
+	req := subRequest{
 		route:      r,
 		doneNotify: make(chan bool),
 	}
@@ -121,7 +125,7 @@ func (router *PubSubRouter) subscribe(r *Route) {
 }
 
 func (router *PubSubRouter) Unsubscribe(r *Route) {
-	req := SubscriptionRequest{
+	req := subRequest{
 		route:      r,
 		doneNotify: make(chan bool),
 	}

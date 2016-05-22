@@ -181,7 +181,11 @@ func runNewWebSocket(
 	return websocket
 }
 
-func createDefaultMocks(inputMessages []string) (*MockWSConnection, *MockPubSubSource, *MockMessageSink, *MockMessageStore) {
+func createDefaultMocks(inputMessages []string) (
+	*MockWSConnection,
+	*MockPubSubSource,
+	*MockMessageSink,
+	*MockMessageStore) {
 	inputMessagesC := make(chan []byte, 10)
 	for _, msg := range inputMessages {
 		inputMessagesC <- []byte(msg)
