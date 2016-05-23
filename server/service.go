@@ -91,11 +91,6 @@ func (service *Service) Register(module interface{}) {
 		guble.Debug("inject MessageEntry to %v", name)
 		m.SetMessageEntry(service.messageSink)
 	}
-
-	if m, ok := module.(SetAccessManager); ok {
-		guble.Debug("inject AccessManager to %v", name)
-		m.SetAccessManager(service.accessManager)
-	}
 }
 
 func (service *Service) AddHandler(prefix string, handler http.Handler) {

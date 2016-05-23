@@ -46,6 +46,7 @@ func NewRoute(
 // PubSubSource interface provides mechanism for PubSub messaging
 type PubSubSource interface {
 	KVStore() (store.KVStore, error)
+	AccessManager() (auth.AccessManager, error)
 
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
@@ -93,9 +94,4 @@ type Endpoint interface {
 // SetMessageStore for modules which need access to the message store
 type SetMessageStore interface {
 	SetMessageStore(messageStore store.MessageStore)
-}
-
-// SetAccessManager for modules which need access to the access manager
-type SetAccessManager interface {
-	SetAccessManager(accessManager auth.AccessManager)
 }

@@ -6,6 +6,7 @@ package gcm
 import (
 	gomock "github.com/golang/mock/gomock"
 	server "github.com/smancke/guble/server"
+	auth "github.com/smancke/guble/server/auth"
 	store "github.com/smancke/guble/store"
 )
 
@@ -28,6 +29,17 @@ func NewMockPubSubSource(ctrl *gomock.Controller) *MockPubSubSource {
 
 func (_m *MockPubSubSource) EXPECT() *_MockPubSubSourceRecorder {
 	return _m.recorder
+}
+
+func (_m *MockPubSubSource) AccessManager() (auth.AccessManager, error) {
+	ret := _m.ctrl.Call(_m, "AccessManager")
+	ret0, _ := ret[0].(auth.AccessManager)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockPubSubSourceRecorder) AccessManager() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "AccessManager")
 }
 
 func (_m *MockPubSubSource) KVStore() (store.KVStore, error) {

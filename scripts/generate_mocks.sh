@@ -30,6 +30,11 @@ $MOCKGEN -self_package server -package server \
       github.com/smancke/guble/store \
       MessageStore
 
+$MOCKGEN -self_package server -package server \
+      -destination server/mocks_auth_gen_test.go \
+      github.com/smancke/guble/server/auth \
+      AccessManager
+
 # Client mocks
 $MOCKGEN  -self_package client -package client \
       -destination client/mocks_client_gen_test.go \
@@ -55,7 +60,12 @@ $MOCKGEN -package gubled \
       github.com/smancke/guble/server \
       PubSubSource
 
-#
+$MOCKGEN -self_package gubled -package gubled \
+      -destination gubled/mocks_auth_gen_test.go \
+      github.com/smancke/guble/server/auth \
+      AccessManager
+
+# Auth mocks
 $MOCKGEN -self_package auth -package auth \
       -destination server/auth/mocks_auth_gen_test.go \
       github.com/smancke/guble/server/auth \
@@ -63,8 +73,3 @@ $MOCKGEN -self_package auth -package auth \
 replace "server/auth/mocks_auth_gen_test.go" \
       "auth \"github.com\/smancke\/guble\/server\/auth\"" \
       "auth\."
-
-$MOCKGEN -self_package server -package server \
-      -destination server/mocks_auth_gen_test.go \
-      github.com/smancke/guble/server/auth \
-      AccessManager
