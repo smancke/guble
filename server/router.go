@@ -1,7 +1,6 @@
 package server
 
 import (
-	"errors"
 	"github.com/smancke/guble/guble"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/store"
@@ -104,7 +103,7 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 	guble.Debug("subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
 	accessAllowed := router.accessManager.IsAllowed(auth.READ, r.UserID, r.Path)
 	if !accessAllowed {
-		return r, errors.New("not allowed")
+		return r, &PermissionDeniedError{r.UserID, auth.READ, r.Path}
 	}
 	req := subRequest{
 		route:      r,
@@ -154,7 +153,7 @@ func (router *router) unsubscribe(r *Route) {
 func (router *router) HandleMessage(message *guble.Message) error {
 	guble.Debug("Route.HandleMessage: %v %v", message.PublisherUserId, message.Path)
 	if !router.accessManager.IsAllowed(auth.WRITE, message.PublisherUserId, message.Path) {
-		return errors.New("User not allowed to post message to topic.")
+		return &PermissionDeniedError{message.PublisherUserId, auth.WRITE, message.Path}
 	}
 
 	return router.storeTxHandle(message)
