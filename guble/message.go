@@ -26,8 +26,8 @@ type Message struct {
 	// An id given by the sender (optional)
 	PublisherMessageId string
 
-	// The time of publishing, as iso date string
-	PublishingTime string
+	// The time of publishing, as Unix Timestamp date
+	PublishingTime int64
 
 	// The header line of the message (optional). If set, than this has to be a valid json object structure.
 	HeaderJSON string
@@ -80,7 +80,7 @@ func (msg *Message) writeMetadataLine(buff *bytes.Buffer) {
 	buff.WriteString(",")
 	buff.WriteString(msg.PublisherMessageId)
 	buff.WriteString(",")
-	buff.WriteString(msg.PublishingTime)
+	buff.WriteString(strconv.FormatInt(msg.PublishingTime, 10))
 }
 
 // Valid constants for the NotificationMessage.Name
@@ -158,10 +158,11 @@ func ParseMessage(message []byte) (interface{}, error) {
 func parseMessage(message []byte) (interface{}, error) {
 	parts := strings.SplitN(string(message), "\n", 3)
 	if len(message) == 0 {
-		return nil, fmt.Errorf("empthy message")
+		return nil, fmt.Errorf("empty message")
 	}
 
 	meta := strings.Split(parts[0], ",")
+	fmt.Println(meta)
 	if len(meta) != 6 {
 		return nil, fmt.Errorf("message metadata has to have 6 fields, but was %v", parts[0])
 	}
@@ -175,13 +176,18 @@ func parseMessage(message []byte) (interface{}, error) {
 		return nil, fmt.Errorf("message metadata to have an integer id as second field, but was %v", meta[1])
 	}
 
+	publishingTime, err := strconv.ParseInt(meta[5], 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("message metadata to have an integer id as sixth field, but was %v", meta[5])
+	}
+
 	msg := &Message{
 		Id:                     id,
 		Path:                   Path(meta[0]),
 		PublisherUserId:        meta[2],
 		PublisherApplicationId: meta[3],
 		PublisherMessageId:     meta[4],
-		PublishingTime:         meta[5],
+		PublishingTime:         publishingTime,
 	}
 
 	if len(parts) >= 2 {

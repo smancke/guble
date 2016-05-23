@@ -19,7 +19,7 @@ type Receiver struct {
 	cancelChannel       chan bool
 	sendChannel         chan []byte
 	applicationId       string
-	messageSouce        PubSubSource
+	messageSource       PubSubSource
 	messageStore        store.MessageStore
 	path                guble.Path
 	doFetch             bool
@@ -45,7 +45,7 @@ func NewReceiverFromCmd(
 	rec := &Receiver{
 		applicationId:       applicationId,
 		sendChannel:         sendChannel,
-		messageSouce:        messageSource,
+		messageSource:       messageSource,
 		messageStore:        messageStore,
 		cancelChannel:       make(chan bool, 1),
 		enableNotifications: true,
@@ -135,7 +135,7 @@ func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) e
 
 func (rec *Receiver) subscribe() {
 	rec.route = NewRoute(string(rec.path), make(chan MsgAndRoute, 3), rec.applicationId, rec.userId)
-	_, err := rec.messageSouce.Subscribe(rec.route)
+	_, err := rec.messageSource.Subscribe(rec.route)
 	if err != nil {
 		rec.sendError(guble.ERROR_SUBSCRIBED_TO, string(rec.path), err.Error())
 	} else {
@@ -163,7 +163,7 @@ func (rec *Receiver) receiveFromSubscription() {
 			}
 		case <-rec.cancelChannel:
 			rec.shouldStop = true
-			rec.messageSouce.Unsubscribe(rec.route)
+			rec.messageSource.Unsubscribe(rec.route)
 			rec.route = nil
 			rec.sendOK(guble.SUCCESS_CANCELED, string(rec.path))
 			return
