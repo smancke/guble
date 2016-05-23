@@ -1,7 +1,6 @@
 package server
 
 import (
-	"errors"
 	"github.com/smancke/guble/guble"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/store"
@@ -27,7 +26,7 @@ type PubSubRouter struct {
 	stop            chan bool
 
 	// external services
-	accessManager   auth.AccessManager
+	accessManager auth.AccessManager
 	messageStore  store.MessageStore
 	kvStore       store.KVStore
 }
@@ -98,7 +97,7 @@ func (router *PubSubRouter) Subscribe(r *Route) (*Route, error) {
 	guble.Debug("subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
 	accessAllowed := router.accessManager.IsAllowed(auth.READ, r.UserID, r.Path)
 	if !accessAllowed {
-		return r, errors.New("not allowed")
+		return r, &PermissionDeniedError{r.UserID, auth.READ, r.Path}
 	}
 	req := subRequest{
 		route:      r,
@@ -148,7 +147,7 @@ func (router *PubSubRouter) unsubscribe(r *Route) {
 func (router *PubSubRouter) HandleMessage(message *guble.Message) error {
 	guble.Debug("Route.HandleMessage: %v %v", message.PublisherUserId, message.Path)
 	if !router.accessManager.IsAllowed(auth.WRITE, message.PublisherUserId, message.Path) {
-		return errors.New("User not allowed to post message to topic.")
+		return &PermissionDeniedError{message.PublisherUserId, auth.WRITE, message.Path}
 	}
 
 	if float32(len(router.messageIn))/float32(cap(router.messageIn)) > 0.9 {
