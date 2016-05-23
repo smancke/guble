@@ -25,9 +25,7 @@ type WSHandler struct {
 	accessManager auth.AccessManager
 }
 
-func NewWSHandler(
-	router Router,
-	prefix string) (*WSHandler, error) {
+func NewWSHandler(router Router, prefix string) (*WSHandler, error) {
 	accessManager, err := router.AccessManager()
 	if err != nil {
 		return nil, err

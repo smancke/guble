@@ -156,12 +156,12 @@ func (router *router) HandleMessage(message *guble.Message) error {
 		return &PermissionDeniedError{message.PublisherUserId, auth.WRITE, message.Path}
 	}
 
-	return router.storeTxHandle(message)
+	return router.storeMessage(message)
 }
 
 // Assign the new message id and store it and handle by passing the stored message
 // to the messageIn channel
-func (router *router) storeTxHandle(msg *guble.Message) error {
+func (router *router) storeMessage(msg *guble.Message) error {
 	txCallback := func(msgId uint64) []byte {
 		msg.Id = msgId
 		msg.PublishingTime = time.Now().Format(time.RFC3339)
