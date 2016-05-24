@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
-	"github.com/smancke/guble/server/auth"
 	"net/http"
 	"testing"
 	"time"
@@ -15,7 +14,7 @@ import (
 func TestStopingOfModules(t *testing.T) {
 	defer initCtrl(t)()
 	// given:
-	service, _, _, _, _ := aMockedService()
+	service, _, _, _ := aMockedService()
 
 	// whith a registered stopable
 	stopable := NewMockStopable(ctrl)
@@ -33,7 +32,7 @@ func TestStopingOfModulesTimeout(t *testing.T) {
 	defer initCtrl(t)()
 
 	// given:
-	service, _, _, _, _ := aMockedService()
+	service, _, _, _ := aMockedService()
 	service.StopGracePeriod = time.Millisecond * 5
 
 	// whith a registered stopable, which blocks to long on stop
@@ -49,31 +48,11 @@ func TestStopingOfModulesTimeout(t *testing.T) {
 	guble.Err(err.Error())
 }
 
-func TestRegistrationOfSetter(t *testing.T) {
-	defer initCtrl(t)()
-
-	// given:
-	service, _, messageStore, messageSink, router := aMockedService()
-	setRouterMock := NewMockSetRouter(ctrl)
-	setMessageEntryMock := NewMockSetMessageEntry(ctrl)
-	setMessageStore := NewMockSetMessageStore(ctrl)
-
-	// then I expect
-	setRouterMock.EXPECT().SetRouter(router)
-	setMessageEntryMock.EXPECT().SetMessageEntry(messageSink)
-	setMessageStore.EXPECT().SetMessageStore(messageStore)
-
-	// when I register the modules
-	service.Register(setRouterMock)
-	service.Register(setMessageEntryMock)
-	service.Register(setMessageStore)
-}
-
 func TestEndpointRegisterAndServing(t *testing.T) {
 	defer initCtrl(t)()
 
 	// given:
-	service, _, _, _, _ := aMockedService()
+	service, _, _, _ := aMockedService()
 
 	// when I register an endpoint at path /foo
 	service.Register(&TestEndpoint{})
@@ -90,16 +69,12 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 	assert.Equal(t, "bar", string(body))
 }
 
-func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockMessageSink, *MockPubSubSource) {
+func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockRouter) {
 	kvStore := store.NewMemoryKVStore()
 	messageStore := store.NewDummyMessageStore()
-	messageSink := NewMockMessageSink(ctrl)
-	pubSubSource := NewMockPubSubSource(ctrl)
-	return NewService("localhost:0", kvStore, messageStore, messageSink, pubSubSource, auth.NewAllowAllAccessManager(true)),
-		kvStore,
-		messageStore,
-		messageSink,
-		pubSubSource
+	routerMock := NewMockRouter(ctrl)
+	service := NewService("localhost:0", routerMock)
+	return service, kvStore, messageStore, routerMock
 
 }
 

@@ -71,22 +71,29 @@ var CreateMessageStore = func(args Args) store.MessageStore {
 	}
 }
 
-var CreateModules = func(router server.PubSubSource, args Args) []interface{} {
-	modules := []interface{}{
-		server.NewWSHandler("/stream/"),
-		server.NewRestMessageApi("/api/"),
+var CreateModules = func(
+	router server.Router,
+	args Args) []interface{} {
+	modules := make([]interface{}, 0, 2)
+
+	if wsHandler, err := server.NewWSHandler(router, "/stream/"); err != nil {
+		guble.Err("Error loading WSHandler module: %s", err)
+	} else {
+		modules = append(modules, wsHandler)
 	}
+
+	modules = append(modules, server.NewRestMessageApi(router, "/api/"))
 
 	if args.GcmEnable {
 		if args.GcmApiKey == "" {
 			panic("gcm api key has to be provided, if gcm is enabled")
 		}
+
 		guble.Info("google cloud messaging: enabled")
-		gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey)
-		if err == nil {
-			modules = append(modules, gcm)
-		} else {
+		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey); err != nil {
 			guble.Err("Error loading GCMConnector: ", err)
+		} else {
+			modules = append(modules, gcm)
 		}
 	} else {
 		guble.Info("google cloud messaging: disabled")
@@ -126,22 +133,13 @@ func Main() {
 }
 
 func StartupService(args Args) *server.Service {
-
 	accessManager := auth.NewAllowAllAccessManager(true)
 	messageStore := CreateMessageStore(args)
 	kvStore := CreateKVStore(args)
 
-	router := server.NewPubSubRouter(accessManager, messageStore, kvStore)
-	messageEntry := server.NewMessageEntry(router)
+	router := server.NewRouter(accessManager, messageStore, kvStore)
 
-	service := server.NewService(
-		args.Listen,
-		kvStore,
-		messageStore,
-		messageEntry,
-		router,
-		accessManager,
-	)
+	service := server.NewService(args.Listen, router)
 
 	for _, module := range CreateModules(router, args) {
 		service.Register(module)

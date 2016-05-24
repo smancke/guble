@@ -21,9 +21,8 @@ func TestPostMessage(t *testing.T) {
 	a := assert.New(t)
 
 	// given:  a rest api with a message sink
-	messageSink := NewMockMessageSink(ctrl)
-	api := NewRestMessageApi("/api")
-	api.SetMessageEntry(messageSink)
+	routerMock := NewMockRouter(ctrl)
+	api := NewRestMessageApi(routerMock, "/api")
 
 	url, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")
 	// and a http context
@@ -39,7 +38,7 @@ func TestPostMessage(t *testing.T) {
 	}
 
 	// then i expect
-	messageSink.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *guble.Message) {
+	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *guble.Message) {
 		a.Equal(testBytes, msg.Body)
 		a.Equal("{}", msg.HeaderJSON)
 		a.Equal("/my/topic", string(msg.Path))
