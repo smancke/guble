@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/store"
 
 	"github.com/gorilla/websocket"
@@ -51,7 +51,7 @@ func (handle *WSHandler) GetPrefix() string {
 func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := webSocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		guble.Warn("error on upgrading %v", err.Error())
+		protocol.Warn("error on upgrading %v", err.Error())
 		return
 	}
 	defer c.Close()
@@ -93,7 +93,7 @@ type WebSocket struct {
 	applicationId string
 	userId        string
 	sendChannel   chan []byte
-	receivers     map[guble.Path]*Receiver
+	receivers     map[protocol.Path]*Receiver
 }
 
 func NewWebSocket(handler *WSHandler, wsConn WSConnection, userID string) *WebSocket {
@@ -103,7 +103,7 @@ func NewWebSocket(handler *WSHandler, wsConn WSConnection, userID string) *WebSo
 		applicationId: xid.New().String(),
 		userId:        userID,
 		sendChannel:   make(chan []byte, 10),
-		receivers:     make(map[guble.Path]*Receiver),
+		receivers:     make(map[protocol.Path]*Receiver),
 	}
 }
 
@@ -120,16 +120,16 @@ func (ws *WebSocket) sendLoop() {
 		case raw := <-ws.sendChannel:
 
 			if ws.checkAccess(raw) {
-				if guble.DebugEnabled() {
+				if protocol.DebugEnabled() {
 					if len(raw) < 80 {
-						guble.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v", ws.userId, ws.applicationId, len(raw), string(raw))
+						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v", ws.userId, ws.applicationId, len(raw), string(raw))
 					} else {
-						guble.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v...", ws.userId, ws.applicationId, len(raw), string(raw[0:79]))
+						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v...", ws.userId, ws.applicationId, len(raw), string(raw[0:79]))
 					}
 				}
 
 				if err := ws.Send(raw); err != nil {
-					guble.Info("applicationId=%v closed the connection", ws.applicationId)
+					protocol.Info("applicationId=%v closed the connection", ws.applicationId)
 					ws.cleanAndClose()
 					break
 				}
@@ -139,19 +139,19 @@ func (ws *WebSocket) sendLoop() {
 }
 
 func (ws *WebSocket) checkAccess(raw []byte) bool {
-	guble.Debug("raw message: %v", string(raw))
+	protocol.Debug("raw message: %v", string(raw))
 	if raw[0] == byte('/') {
 		path := getPathFromRawMessage(raw)
-		guble.Debug("Received msg %v %v", ws.userId, path)
+		protocol.Debug("Received msg %v %v", ws.userId, path)
 		return len(path) == 0 || ws.accessManager.IsAllowed(auth.READ, ws.userId, path)
 
 	}
 	return true
 }
 
-func getPathFromRawMessage(raw []byte) guble.Path {
+func getPathFromRawMessage(raw []byte) protocol.Path {
 	i := strings.Index(string(raw), ",")
-	return guble.Path(raw[:i])
+	return protocol.Path(raw[:i])
 }
 
 func (ws *WebSocket) receiveLoop() {
@@ -159,40 +159,40 @@ func (ws *WebSocket) receiveLoop() {
 	for {
 		err := ws.Receive(&message)
 		if err != nil {
-			guble.Info("applicationId=%v closed the connection", ws.applicationId)
+			protocol.Info("applicationId=%v closed the connection", ws.applicationId)
 			ws.cleanAndClose()
 			break
 		}
 
-		//guble.Debug("websocket_connector, raw message received: %v", string(message))
-		cmd, err := guble.ParseCmd(message)
+		//protocol.Debug("websocket_connector, raw message received: %v", string(message))
+		cmd, err := protocol.ParseCmd(message)
 		if err != nil {
-			ws.sendError(guble.ERROR_BAD_REQUEST, "error parsing command. %v", err.Error())
+			ws.sendError(protocol.ERROR_BAD_REQUEST, "error parsing command. %v", err.Error())
 			continue
 		}
 		switch cmd.Name {
-		case guble.CmdSend:
+		case protocol.CmdSend:
 			ws.handleSendCmd(cmd)
-		case guble.CmdReceive:
+		case protocol.CmdReceive:
 			ws.handleReceiveCmd(cmd)
-		case guble.CmdCancel:
+		case protocol.CmdCancel:
 			ws.handleCancelCmd(cmd)
 		default:
-			ws.sendError(guble.ERROR_BAD_REQUEST, "unknown command %v", cmd.Name)
+			ws.sendError(protocol.ERROR_BAD_REQUEST, "unknown command %v", cmd.Name)
 		}
 	}
 }
 
 func (ws *WebSocket) sendConnectionMessage() {
-	n := &guble.NotificationMessage{
-		Name: guble.SUCCESS_CONNECTED,
+	n := &protocol.NotificationMessage{
+		Name: protocol.SUCCESS_CONNECTED,
 		Arg:  "You are connected to the server.",
 		Json: fmt.Sprintf(`{"ApplicationId": "%s", "UserId": "%s", "Time": "%s"}`, ws.applicationId, ws.userId, time.Now().Format(time.RFC3339)),
 	}
 	ws.sendChannel <- n.Bytes()
 }
 
-func (ws *WebSocket) handleReceiveCmd(cmd *guble.Cmd) {
+func (ws *WebSocket) handleReceiveCmd(cmd *protocol.Cmd) {
 	rec, err := NewReceiverFromCmd(
 		ws.applicationId,
 		cmd,
@@ -202,20 +202,20 @@ func (ws *WebSocket) handleReceiveCmd(cmd *guble.Cmd) {
 		ws.userId,
 	)
 	if err != nil {
-		guble.Info("client error in handleReceiveCmd: %v", err.Error())
-		ws.sendError(guble.ERROR_BAD_REQUEST, err.Error())
+		protocol.Info("client error in handleReceiveCmd: %v", err.Error())
+		ws.sendError(protocol.ERROR_BAD_REQUEST, err.Error())
 		return
 	}
 	ws.receivers[rec.path] = rec
 	rec.Start()
 }
 
-func (ws *WebSocket) handleCancelCmd(cmd *guble.Cmd) {
+func (ws *WebSocket) handleCancelCmd(cmd *protocol.Cmd) {
 	if len(cmd.Arg) == 0 {
-		ws.sendError(guble.ERROR_BAD_REQUEST, "- command requires a path argument, but non given")
+		ws.sendError(protocol.ERROR_BAD_REQUEST, "- command requires a path argument, but non given")
 		return
 	}
-	path := guble.Path(cmd.Arg)
+	path := protocol.Path(cmd.Arg)
 	rec, exist := ws.receivers[path]
 	if exist {
 		rec.Stop()
@@ -223,16 +223,16 @@ func (ws *WebSocket) handleCancelCmd(cmd *guble.Cmd) {
 	}
 }
 
-func (ws *WebSocket) handleSendCmd(cmd *guble.Cmd) {
-	guble.Debug("sending %v", string(cmd.Bytes()))
+func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
+	protocol.Debug("sending %v", string(cmd.Bytes()))
 	if len(cmd.Arg) == 0 {
-		ws.sendError(guble.ERROR_BAD_REQUEST, "send command requires a path argument, but non given")
+		ws.sendError(protocol.ERROR_BAD_REQUEST, "send command requires a path argument, but non given")
 		return
 	}
 
 	args := strings.SplitN(cmd.Arg, " ", 2)
-	msg := &guble.Message{
-		Path: guble.Path(args[0]),
+	msg := &protocol.Message{
+		Path: protocol.Path(args[0]),
 		PublisherApplicationId: ws.applicationId,
 		PublisherUserId:        ws.userId,
 		HeaderJSON:             cmd.HeaderJSON,
@@ -244,11 +244,11 @@ func (ws *WebSocket) handleSendCmd(cmd *guble.Cmd) {
 
 	ws.Router.HandleMessage(msg)
 
-	ws.sendOK(guble.SUCCESS_SEND, msg.PublisherMessageId)
+	ws.sendOK(protocol.SUCCESS_SEND, msg.PublisherMessageId)
 }
 
 func (ws *WebSocket) cleanAndClose() {
-	guble.Info("closing applicationId=%v", ws.applicationId)
+	protocol.Info("closing applicationId=%v", ws.applicationId)
 
 	for path, rec := range ws.receivers {
 		rec.Stop()
@@ -259,7 +259,7 @@ func (ws *WebSocket) cleanAndClose() {
 }
 
 func (ws *WebSocket) sendError(name string, argPattern string, params ...interface{}) {
-	n := &guble.NotificationMessage{
+	n := &protocol.NotificationMessage{
 		Name:    name,
 		Arg:     fmt.Sprintf(argPattern, params...),
 		IsError: true,
@@ -268,7 +268,7 @@ func (ws *WebSocket) sendError(name string, argPattern string, params ...interfa
 }
 
 func (ws *WebSocket) sendOK(name string, argPattern string, params ...interface{}) {
-	n := &guble.NotificationMessage{
+	n := &protocol.NotificationMessage{
 		Name:    name,
 		Arg:     fmt.Sprintf(argPattern, params...),
 		IsError: false,

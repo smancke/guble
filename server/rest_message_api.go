@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/xid"
@@ -45,8 +45,8 @@ func (api *RestMessageApi) PostMessage(w http.ResponseWriter, r *http.Request, p
 		return
 	}
 
-	msg := &guble.Message{
-		Path:                   guble.Path(params.ByName(`topic`)),
+	msg := &protocol.Message{
+		Path:                   protocol.Path(params.ByName(`topic`)),
 		Body:                   body,
 		PublisherUserId:        q(r, `userId`),
 		PublisherApplicationId: xid.New().String(),

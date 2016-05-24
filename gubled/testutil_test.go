@@ -1,7 +1,7 @@
 package gubled
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 
 	"github.com/golang/mock/gomock"
 	"testing"
@@ -13,7 +13,7 @@ var testBytes = []byte("test")
 func init() {
 	// disable error output while testing
 	// because also negative tests are tested
-	guble.LogLevel = guble.LEVEL_ERR
+	protocol.LogLevel = protocol.LEVEL_ERR
 }
 
 func initCtrl(t *testing.T) func() {
@@ -22,7 +22,7 @@ func initCtrl(t *testing.T) func() {
 }
 
 func enableDebugForMethod() func() {
-	reset := guble.LogLevel
-	guble.LogLevel = guble.LEVEL_DEBUG
-	return func() { guble.LogLevel = reset }
+	reset := protocol.LogLevel
+	protocol.LogLevel = protocol.LEVEL_DEBUG
+	return func() { protocol.LogLevel = reset }
 }

@@ -5,8 +5,8 @@ package client
 
 import (
 	gomock "github.com/golang/mock/gomock"
-	
-	guble "github.com/smancke/guble/guble"
+
+	protocol "github.com/smancke/guble/protocol"
 )
 
 // Mock of WSConnection interface
@@ -91,9 +91,9 @@ func (_mr *_MockClientRecorder) Close() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Close")
 }
 
-func (_m *MockClient) Errors() chan *guble.NotificationMessage {
+func (_m *MockClient) Errors() chan *protocol.NotificationMessage {
 	ret := _m.ctrl.Call(_m, "Errors")
-	ret0, _ := ret[0].(chan *guble.NotificationMessage)
+	ret0, _ := ret[0].(chan *protocol.NotificationMessage)
 	return ret0
 }
 
@@ -111,9 +111,9 @@ func (_mr *_MockClientRecorder) IsConnected() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsConnected")
 }
 
-func (_m *MockClient) Messages() chan *guble.Message {
+func (_m *MockClient) Messages() chan *protocol.Message {
 	ret := _m.ctrl.Call(_m, "Messages")
-	ret0, _ := ret[0].(chan *guble.Message)
+	ret0, _ := ret[0].(chan *protocol.Message)
 	return ret0
 }
 
@@ -159,9 +159,9 @@ func (_mr *_MockClientRecorder) Start() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Start")
 }
 
-func (_m *MockClient) StatusMessages() chan *guble.NotificationMessage {
+func (_m *MockClient) StatusMessages() chan *protocol.NotificationMessage {
 	ret := _m.ctrl.Call(_m, "StatusMessages")
-	ret0, _ := ret[0].(chan *guble.NotificationMessage)
+	ret0, _ := ret[0].(chan *protocol.NotificationMessage)
 	return ret0
 }
 

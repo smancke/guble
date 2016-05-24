@@ -1,7 +1,7 @@
 package client
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 
 	"fmt"
 	"github.com/golang/mock/gomock"
@@ -25,7 +25,7 @@ var ctrl *gomock.Controller
 func init() {
 	// disable error output while testing
 	// because also negative tests are tested
-	guble.LogLevel = guble.LEVEL_ERR + 1
+	protocol.LogLevel = protocol.LEVEL_ERR + 1
 }
 
 func initCtrl(t *testing.T) func() {
@@ -34,9 +34,9 @@ func initCtrl(t *testing.T) func() {
 }
 
 func enableDebugForMethod() func() {
-	reset := guble.LogLevel
-	guble.LogLevel = guble.LEVEL_DEBUG
-	return func() { guble.LogLevel = reset }
+	reset := protocol.LogLevel
+	protocol.LogLevel = protocol.LEVEL_DEBUG
+	return func() { protocol.LogLevel = reset }
 }
 
 func MockConnectionFactory(connectionMock *MockWSConnection) func(string, string) (WSConnection, error) {

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/store"
 
 	"github.com/golang/mock/gomock"
@@ -79,9 +79,9 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 
 	// subscribe
 	subscribe := routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *Route) {
-		a.Equal(r.Path, guble.Path("/foo"))
-		r.C <- MsgAndRoute{Message: &guble.Message{Id: uint64(4), Body: []byte("router-a"), PublishingTime: 1405544146}, Route: r}
-		r.C <- MsgAndRoute{Message: &guble.Message{Id: uint64(5), Body: []byte("router-b"), PublishingTime: 1405544146}, Route: r}
+		a.Equal(r.Path, protocol.Path("/foo"))
+		r.C <- MsgAndRoute{Message: &protocol.Message{Id: uint64(4), Body: []byte("router-a"), PublishingTime: 1405544146}, Route: r}
+		r.C <- MsgAndRoute{Message: &protocol.Message{Id: uint64(5), Body: []byte("router-b"), PublishingTime: 1405544146}, Route: r}
 		close(r.C) // emulate router close
 	})
 	subscribe.After(messageId2)
@@ -119,20 +119,20 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	}()
 
 	expectMessages(a, msgChannel,
-		"#"+guble.SUCCESS_FETCH_START+" /foo 2",
+		"#"+protocol.SUCCESS_FETCH_START+" /foo 2",
 		"fetch_first1-a",
 		"fetch_first1-b",
-		"#"+guble.SUCCESS_FETCH_END+" /foo",
-		"#"+guble.SUCCESS_FETCH_START+" /foo 1",
+		"#"+protocol.SUCCESS_FETCH_END+" /foo",
+		"#"+protocol.SUCCESS_FETCH_START+" /foo 1",
 		"fetch_first2-a",
-		"#"+guble.SUCCESS_FETCH_END+" /foo",
-		"#"+guble.SUCCESS_SUBSCRIBED_TO+" /foo",
+		"#"+protocol.SUCCESS_FETCH_END+" /foo",
+		"#"+protocol.SUCCESS_SUBSCRIBED_TO+" /foo",
 		",4,,,,1405544146\n\nrouter-a",
 		",5,,,,1405544146\n\nrouter-b",
-		"#"+guble.SUCCESS_FETCH_START+" /foo 1",
+		"#"+protocol.SUCCESS_FETCH_START+" /foo 1",
 		"fetch_after-a",
-		"#"+guble.SUCCESS_FETCH_END+" /foo",
-		"#"+guble.SUCCESS_SUBSCRIBED_TO+" /foo",
+		"#"+protocol.SUCCESS_FETCH_END+" /foo",
+		"#"+protocol.SUCCESS_SUBSCRIBED_TO+" /foo",
 	)
 
 	time.Sleep(time.Millisecond)
@@ -140,7 +140,7 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	rec.Stop()
 
 	expectMessages(a, msgChannel,
-		"#"+guble.SUCCESS_CANCELED+" /foo",
+		"#"+protocol.SUCCESS_CANCELED+" /foo",
 	)
 
 	expectDone(a, subscriptionLoopDone)
@@ -173,9 +173,9 @@ func Test_Receiver_Fetch_Returns_Correct_Messages(t *testing.T) {
 	}()
 	expectDone(a, done)
 
-	expectMessages(a, msgChannel, "#"+guble.SUCCESS_FETCH_START+" /foo 2")
+	expectMessages(a, msgChannel, "#"+protocol.SUCCESS_FETCH_START+" /foo 2")
 	expectMessages(a, msgChannel, messages...)
-	expectMessages(a, msgChannel, "#"+guble.SUCCESS_FETCH_END+" /foo")
+	expectMessages(a, msgChannel, "#"+protocol.SUCCESS_FETCH_END+" /foo")
 
 	expectDone(a, fetchHasTerminated)
 	ctrl.Finish()
@@ -283,8 +283,8 @@ func aMockedReceiver(arg string) (*Receiver, chan []byte, *MockRouter, *MockMess
 	routerMock := NewMockRouter(ctrl)
 	messageStore := NewMockMessageStore(ctrl)
 	sendChannel := make(chan []byte)
-	cmd := &guble.Cmd{
-		Name: guble.CmdReceive,
+	cmd := &protocol.Cmd{
+		Name: protocol.CmdReceive,
 		Arg:  arg,
 	}
 	rec, err := NewReceiverFromCmd("any-appId", cmd, sendChannel, routerMock, messageStore, "userId")

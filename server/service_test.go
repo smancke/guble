@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/store"
 	"github.com/stretchr/testify/assert"
 
@@ -45,7 +45,7 @@ func TestStopingOfModulesTimeout(t *testing.T) {
 	// then the Stop returns with an error
 	err := service.Stop()
 	assert.Error(t, err)
-	guble.Err(err.Error())
+	protocol.Err(err.Error())
 }
 
 func TestEndpointRegisterAndServing(t *testing.T) {

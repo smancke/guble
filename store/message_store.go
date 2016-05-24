@@ -1,7 +1,7 @@
 package store
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 
 	"os"
 	"path"
@@ -38,7 +38,7 @@ func (fms *FileMessageStore) Stop() error {
 	for key, partition := range fms.partitions {
 		if err := partition.Close(); err != nil {
 			returnError = err
-			guble.Err("error on closing message store partition %q: %v", key, err)
+			protocol.Err("error on closing message store partition %q: %v", key, err)
 		}
 		delete(fms.partitions, key)
 	}

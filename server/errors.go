@@ -3,7 +3,7 @@ package server
 import (
 	"errors"
 	"fmt"
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 )
 
@@ -19,7 +19,7 @@ type PermissionDeniedError struct {
 	// accessType  requested(READ/WRITE)
 	acccesType auth.AccessType
 	// requested topic
-	path guble.Path
+	path protocol.Path
 }
 
 func (e *PermissionDeniedError) Error() string {

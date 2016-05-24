@@ -5,7 +5,7 @@ package gubled
 
 import (
 	gomock "github.com/golang/mock/gomock"
-	guble "github.com/smancke/guble/guble"
+	protocol "github.com/smancke/guble/protocol"
 	auth "github.com/smancke/guble/server/auth"
 )
 
@@ -30,7 +30,7 @@ func (_m *MockAccessManager) EXPECT() *_MockAccessManagerRecorder {
 	return _m.recorder
 }
 
-func (_m *MockAccessManager) IsAllowed(_param0 auth.AccessType, _param1 string, _param2 guble.Path) bool {
+func (_m *MockAccessManager) IsAllowed(_param0 auth.AccessType, _param1 string, _param2 protocol.Path) bool {
 	ret := _m.ctrl.Call(_m, "IsAllowed", _param0, _param1, _param2)
 	ret0, _ := ret[0].(bool)
 	return ret0

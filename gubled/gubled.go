@@ -2,7 +2,7 @@ package gubled
 
 import (
 	"github.com/smancke/guble/gcm"
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 
@@ -32,9 +32,9 @@ var ValidateStoragePath = func(args Args) error {
 		testfile := path.Join(args.StoragePath, "write-test-file")
 		f, err := os.Create(testfile)
 		if err != nil {
-			guble.ErrWithoutTrace("Storage path not present/writeable %q: %v", args.StoragePath, err)
+			protocol.ErrWithoutTrace("Storage path not present/writeable %q: %v", args.StoragePath, err)
 			if args.StoragePath == "/var/lib/guble" {
-				guble.ErrWithoutTrace("Use --storage-path=<path> to override the default location, or create the directy with RW rights.")
+				protocol.ErrWithoutTrace("Use --storage-path=<path> to override the default location, or create the directy with RW rights.")
 			}
 			return err
 		}
@@ -64,7 +64,7 @@ var CreateMessageStore = func(args Args) store.MessageStore {
 	case "none", "":
 		return store.NewDummyMessageStore()
 	case "file":
-		guble.Info("using FileMessageStore in directory: %q", args.StoragePath)
+		protocol.Info("using FileMessageStore in directory: %q", args.StoragePath)
 		return store.NewFileMessageStore(args.StoragePath)
 	default:
 		panic(fmt.Errorf("unknown message store backend: %q", args.MSBackend))
@@ -77,7 +77,7 @@ var CreateModules = func(
 	modules := make([]interface{}, 0, 2)
 
 	if wsHandler, err := server.NewWSHandler(router, "/stream/"); err != nil {
-		guble.Err("Error loading WSHandler module: %s", err)
+		protocol.Err("Error loading WSHandler module: %s", err)
 	} else {
 		modules = append(modules, wsHandler)
 	}
@@ -89,14 +89,14 @@ var CreateModules = func(
 			panic("gcm api key has to be provided, if gcm is enabled")
 		}
 
-		guble.Info("google cloud messaging: enabled")
+		protocol.Info("google cloud messaging: enabled")
 		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey); err != nil {
-			guble.Err("Error loading GCMConnector: ", err)
+			protocol.Err("Error loading GCMConnector: ", err)
 		} else {
 			modules = append(modules, gcm)
 		}
 	} else {
-		guble.Info("google cloud messaging: disabled")
+		protocol.Info("google cloud messaging: disabled")
 	}
 
 	return modules
@@ -105,17 +105,17 @@ var CreateModules = func(
 func Main() {
 	defer func() {
 		if p := recover(); p != nil {
-			guble.Err("%v", p)
+			protocol.Err("%v", p)
 			os.Exit(1)
 		}
 	}()
 
 	args := loadArgs()
 	if args.LogInfo {
-		guble.LogLevel = guble.LEVEL_INFO
+		protocol.LogLevel = protocol.LEVEL_INFO
 	}
 	if args.LogDebug {
-		guble.LogLevel = guble.LEVEL_DEBUG
+		protocol.LogLevel = protocol.LEVEL_DEBUG
 	}
 
 	if err := ValidateStoragePath(args); err != nil {
@@ -127,7 +127,7 @@ func Main() {
 	waitForTermination(func() {
 		err := service.Stop()
 		if err != nil {
-			guble.Err("Service: ", err)
+			protocol.Err("Service: ", err)
 		}
 	})
 }
@@ -146,9 +146,9 @@ func StartupService(args Args) *server.Service {
 	}
 
 	if err := service.Start(); err != nil {
-		guble.Err(err.Error())
+		protocol.Err(err.Error())
 		if err := service.Stop(); err != nil {
-			guble.Err(err.Error())
+			protocol.Err(err.Error())
 		}
 		os.Exit(1)
 	}
@@ -172,8 +172,8 @@ func loadArgs() Args {
 func waitForTermination(callback func()) {
 	sigc := make(chan os.Signal)
 	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
-	guble.Info("Got singal '%v' .. exit greacefully now", <-sigc)
+	protocol.Info("Got singal '%v' .. exit greacefully now", <-sigc)
 	callback()
-	guble.Info("exit now")
+	protocol.Info("exit now")
 	os.Exit(0)
 }

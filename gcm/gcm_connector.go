@@ -1,7 +1,7 @@
 package gcm
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 
@@ -78,10 +78,10 @@ func (gcmConnector *GCMConnector) sendMessageToGCM(msg server.MsgAndRoute) {
 	payload := gcmConnector.parseMessageToMap(msg.Message)
 
 	var messageToGcm = gcm.NewMessage(payload, gcmId)
-	guble.Info("sending message to %v ...", gcmId)
+	protocol.Info("sending message to %v ...", gcmId)
 	result, err := gcmConnector.sender.Send(messageToGcm, 5)
 	if err != nil {
-		guble.Err("error sending message to cgmid=%v: %v", gcmId, err.Error())
+		protocol.Err("error sending message to cgmid=%v: %v", gcmId, err.Error())
 		return
 	}
 
@@ -89,7 +89,7 @@ func (gcmConnector *GCMConnector) sendMessageToGCM(msg server.MsgAndRoute) {
 	if errorJson != "" {
 		gcmConnector.handleJsonError(errorJson, gcmId, msg.Route)
 	} else {
-		guble.Debug("delivered message to gcm cgmid=%v: %v", gcmId, errorJson)
+		protocol.Debug("delivered message to gcm cgmid=%v: %v", gcmId, errorJson)
 	}
 
 	//we only send to one receiver, so we know that we can replace the old id with the first registration id (=canonical id)
@@ -98,21 +98,21 @@ func (gcmConnector *GCMConnector) sendMessageToGCM(msg server.MsgAndRoute) {
 	}
 }
 
-func (gcmConnector *GCMConnector) parseMessageToMap(msg *guble.Message) map[string]interface{} {
+func (gcmConnector *GCMConnector) parseMessageToMap(msg *protocol.Message) map[string]interface{} {
 	payload := map[string]interface{}{}
 	if msg.Body[0] == '{' {
 		json.Unmarshal(msg.Body, &payload)
 	} else {
 		payload["message"] = msg.BodyAsString()
 	}
-	guble.Debug("parsed message is: %v", payload)
+	protocol.Debug("parsed message is: %v", payload)
 	return payload
 }
 
 func (gcmConnector *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 	topic := msg.Message.Path
 	payload := gcmConnector.parseMessageToMap(msg.Message)
-	guble.Info("broadcasting message with topic %v ...", string(topic))
+	protocol.Info("broadcasting message with topic %v ...", string(topic))
 
 	subscriptions := gcmConnector.kvStore.Iterate(GCM_REGISTRATIONS_SCHEMA, "")
 	count := 0
@@ -120,7 +120,7 @@ func (gcmConnector *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 		select {
 		case entry, ok := <-subscriptions:
 			if !ok {
-				guble.Info("send message to %v receivers", count)
+				protocol.Info("send message to %v receivers", count)
 				return
 			}
 			gcmId := entry[0]
@@ -129,9 +129,9 @@ func (gcmConnector *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 			go func() {
 				//TODO error handling of response!
 				_, err := gcmConnector.sender.Send(broadcastMessage, 3)
-				guble.Debug("sent broadcast message to gcmId=%v", gcmId)
+				protocol.Debug("sent broadcast message to gcmId=%v", gcmId)
 				if err != nil {
-					guble.Err("error sending broadcast message to cgmid=%v: %v", gcmId, err.Error())
+					protocol.Err("error sending broadcast message to cgmid=%v: %v", gcmId, err.Error())
 				}
 			}()
 			count++
@@ -144,19 +144,19 @@ func (gcmConnector *GCMConnector) replaceSubscriptionWithCanonicalID(route *serv
 	topic := string(route.Path)
 	userId := route.UserID
 
-	guble.Info("replacing old gcmId %v with canonicalId %v", oldGcmId, newGcmId)
+	protocol.Info("replacing old gcmId %v with canonicalId %v", oldGcmId, newGcmId)
 	gcmConnector.removeSubscription(route, oldGcmId)
 	gcmConnector.subscribe(topic, userId, newGcmId)
 }
 
 func (gcmConnector *GCMConnector) handleJsonError(jsonError string, gcmId string, route *server.Route) {
 	if jsonError == "NotRegistered" {
-		guble.Debug("remove not registered cgm registration cgmid=%v", gcmId)
+		protocol.Debug("remove not registered cgm registration cgmid=%v", gcmId)
 		gcmConnector.removeSubscription(route, gcmId)
 	} else if jsonError == "InvalidRegistration" {
-		guble.Err("the cgmid=%v is not registered. %v", gcmId, jsonError)
+		protocol.Err("the cgmid=%v is not registered. %v", gcmId, jsonError)
 	} else {
-		guble.Err("unexpected error while sending to cgm cgmid=%v: %v", gcmId, jsonError)
+		protocol.Err("unexpected error while sending to cgm cgmid=%v: %v", gcmId, jsonError)
 	}
 }
 
@@ -184,7 +184,7 @@ func (gcmConnector *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Reque
 }
 
 func (gcmConnector *GCMConnector) subscribe(topic string, userid string, gcmid string) {
-	guble.Info("gcm connector registration to userid=%q, gcmid=%q: %q", userid, gcmid, topic)
+	protocol.Info("gcm connector registration to userid=%q, gcmid=%q: %q", userid, gcmid, topic)
 
 	route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmid, userid)
 
@@ -208,7 +208,7 @@ func (gcmConnector *GCMConnector) loadSubscriptions() {
 		select {
 		case entry, ok := <-subscriptions:
 			if !ok {
-				guble.Info("renewed %v gcm subscriptions", count)
+				protocol.Info("renewed %v gcm subscriptions", count)
 				return
 			}
 			gcmId := entry[0]
@@ -216,7 +216,7 @@ func (gcmConnector *GCMConnector) loadSubscriptions() {
 			userid := splitedValue[0]
 			topic := splitedValue[1]
 
-			guble.Debug("renew gcm subscription: user=%v, topic=%v, gcmid=%v", userid, topic, gcmId)
+			protocol.Debug("renew gcm subscription: user=%v, topic=%v, gcmid=%v", userid, topic, gcmId)
 			route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmId, userid)
 			gcmConnector.router.Subscribe(route)
 			count++
