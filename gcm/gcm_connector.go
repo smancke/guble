@@ -20,7 +20,7 @@ const GCM_REGISTRATIONS_SCHEMA = "gcm_registration"
 type GCMConnector struct {
 	router             server.PubSubSource
 	kvStore            store.KVStore
-	mux                http.Handler
+	//mux                http.Handler
 	prefix             string
 	channelFromRouter  chan server.MsgAndRoute
 	closeRouteByRouter chan server.Route
@@ -29,7 +29,7 @@ type GCMConnector struct {
 }
 
 func NewGCMConnector(router server.PubSubSource, prefix string, gcmApiKey string) (*GCMConnector, error) {
-	mux := httprouter.New()
+	//mux := httprouter.New()
 
 	kvStore, err := router.KVStore()
 	if err != nil {
@@ -39,32 +39,32 @@ func NewGCMConnector(router server.PubSubSource, prefix string, gcmApiKey string
 	gcm := &GCMConnector{
 		router:            router,
 		kvStore:           kvStore,
-		mux:               mux,
+		//mux:               mux,
 		prefix:            prefix,
 		channelFromRouter: make(chan server.MsgAndRoute, 1000),
 		stopChan:          make(chan bool, 1),
 		sender:            &gcm.Sender{ApiKey: gcmApiKey},
 	}
 
-	mux.POST(removeTrailingSlash(gcm.prefix)+"/:userid/:gcmid/subscribe/*topic", gcm.Subscribe)
+	//mux.POST(removeTrailingSlash(gcm.prefix)+"/:userid/:gcmid/subscribe/*topic", gcm.Subscribe)
 	return gcm, nil
 }
 
-func (gcmConnector *GCMConnector) Start() error {
-	broadcastRoute := server.NewRoute(removeTrailingSlash(gcmConnector.prefix)+"/broadcast", gcmConnector.channelFromRouter, "gcm_connector", "gcm_connector")
-	gcmConnector.router.Subscribe(broadcastRoute)
+func (gcm *GCMConnector) Start() error {
+	broadcastRoute := server.NewRoute(removeTrailingSlash(gcm.prefix)+"/broadcast", gcm.channelFromRouter, "gcm_connector", "gcm_connector")
+	gcm.router.Subscribe(broadcastRoute)
 	go func() {
-		gcmConnector.loadSubscriptions()
+		gcm.loadSubscriptions()
 
 		for {
 			select {
-			case msg := <-gcmConnector.channelFromRouter:
-				if string(msg.Message.Path) == removeTrailingSlash(gcmConnector.prefix)+"/broadcast" {
-					go gcmConnector.broadcastMessage(msg)
+			case msg := <-gcm.channelFromRouter:
+				if string(msg.Message.Path) == removeTrailingSlash(gcm.prefix)+"/broadcast" {
+					go gcm.broadcastMessage(msg)
 				} else {
-					go gcmConnector.sendMessageToGCM(msg)
+					go gcm.sendMessageToGCM(msg)
 				}
-			case <-gcmConnector.stopChan:
+			case <-gcm.stopChan:
 				return
 			}
 		}
@@ -169,19 +169,41 @@ func (gcmConnector *GCMConnector) GetPrefix() string {
 	return gcmConnector.prefix
 }
 
+//func (gcmConnector *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+//	gcmConnector.mux.ServeHTTP(w, r)
+//}
+
 func (gcmConnector *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	gcmConnector.mux.ServeHTTP(w, r)
-}
+	if r.Method != http.MethodPost {
+		guble.Err("Only HTTP POST METHOD SUPPORTED but received type=" + r.Method)
+		http.Error(w, "Permission Denied", 405)
+		return
+	}
 
-func (gcmConnector *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	topic := params.ByName(`topic`)
-	userid := params.ByName("userid")
-	gcmid := params.ByName(`gcmid`)
-
-	gcmConnector.subscribe(topic, userid, gcmid)
+	// /gcm/:userid/:gcmid/subscribe/*topic
+	userID, gcmID, topic, err := gcmConnector.parseParams(r)
+	if err != nil {
+		http.Error(w, "Permission Denied", 405)
+		return
+	}
+	gcmConnector.subscribe(topic, userID, gcmID)
 
 	fmt.Fprintf(w, "registered: %v\n", topic)
 }
+
+func (gcm *GCMConnector) parseParams(r *http.Request) (userID, gcmID, topic  string, err error) {
+	return "userID", "gcmId", "topic"
+}
+
+//func (gcmConnector *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+//	topic := params.ByName(`topic`)
+//	userid := params.ByName("userid")
+//	gcmid := params.ByName(`gcmid`)
+//
+//	gcmConnector.subscribe(topic, userid, gcmid)
+//
+//	fmt.Fprintf(w, "registered: %v\n", topic)
+//}
 
 func (gcmConnector *GCMConnector) subscribe(topic string, userid string, gcmid string) {
 	guble.Info("gcm connector registration to userid=%q, gcmid=%q: %q", userid, gcmid, topic)
@@ -225,7 +247,7 @@ func (gcmConnector *GCMConnector) loadSubscriptions() {
 }
 
 func removeTrailingSlash(path string) string {
-	if len(path) > 0 && path[len(path)-1] == '/' {
+	if len(path) > 1 && path[len(path)-1] == '/' {
 		return path[:len(path)-1]
 	}
 	return path

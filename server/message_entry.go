@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// The message entry is responsible for handling of all incomming messages
+// The message entry is responsible for handling of all incoming messages
 // It takes a raw message, calculates the message id and decides how to handle
 // the message within the service.
 // Ass all the chainable message handler, it supports the MessageSink interface.
