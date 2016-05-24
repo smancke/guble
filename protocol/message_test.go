@@ -28,12 +28,12 @@ func TestParsingANormalMessage(t *testing.T) {
 	assert.IsType(&Message{}, msgI)
 	msg := msgI.(*Message)
 
-	assert.Equal(uint64(42), msg.Id)
+	assert.Equal(uint64(42), msg.ID)
 	assert.Equal(Path("/foo/bar"), msg.Path)
-	assert.Equal("user01", msg.PublisherUserId)
-	assert.Equal("phone01", msg.PublisherApplicationId)
-	assert.Equal("id123", msg.PublisherMessageId)
-	assert.Equal(unixTime.Unix(), msg.PublishingTime)
+	assert.Equal("user01", msg.UserID)
+	assert.Equal("phone01", msg.ApplicationID)
+	assert.Equal("id123", msg.MessageID)
+	assert.Equal(unixTime.Unix(), msg.Time)
 	assert.Equal(`{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`, msg.HeaderJSON)
 	assert.Equal("Hello World", string(msg.Body))
 }
@@ -41,14 +41,14 @@ func TestParsingANormalMessage(t *testing.T) {
 func TestSerializeANormalMessage(t *testing.T) {
 	// given: a message
 	msg := &Message{
-		Id:                     uint64(42),
-		Path:                   Path("/foo/bar"),
-		PublisherUserId:        "user01",
-		PublisherApplicationId: "phone01",
-		PublisherMessageId:     "id123",
-		PublishingTime:         unixTime.Unix(),
-		HeaderJSON:             `{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`,
-		Body:                   []byte("Hello World"),
+		ID:            uint64(42),
+		Path:          Path("/foo/bar"),
+		UserID:        "user01",
+		ApplicationID: "phone01",
+		MessageID:     "id123",
+		Time:          unixTime.Unix(),
+		HeaderJSON:    `{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`,
+		Body:          []byte("Hello World"),
 	}
 
 	// then: the serialisation is as expected
@@ -56,14 +56,14 @@ func TestSerializeANormalMessage(t *testing.T) {
 	assert.Equal(t, "Hello World", msg.BodyAsString())
 
 	// and: the first line is as expected
-	assert.Equal(t, strings.SplitN(aNormalMessage, "\n", 2)[0], msg.MetadataLine())
+	assert.Equal(t, strings.SplitN(aNormalMessage, "\n", 2)[0], msg.Metadata())
 }
 
 func TestSerializeAMinimalMessage(t *testing.T) {
 	msg := &Message{
-		Id:             uint64(42),
-		Path:           Path("/"),
-		PublishingTime: unixTime.Unix(),
+		ID:   uint64(42),
+		Path: Path("/"),
+		Time: unixTime.Unix(),
 	}
 
 	assert.Equal(t, aMinimalMessage, string(msg.Bytes()))
@@ -71,10 +71,10 @@ func TestSerializeAMinimalMessage(t *testing.T) {
 
 func TestSerializeAMinimalMessageWithBody(t *testing.T) {
 	msg := &Message{
-		Id:             uint64(42),
-		Path:           Path("/"),
-		PublishingTime: unixTime.Unix(),
-		Body:           []byte("Hello World"),
+		ID:   uint64(42),
+		Path: Path("/"),
+		Time: unixTime.Unix(),
+		Body: []byte("Hello World"),
 	}
 
 	assert.Equal(t, aMinimalMessage+"\n\nHello World", string(msg.Bytes()))
@@ -88,12 +88,12 @@ func TestParsingAMinimalMessage(t *testing.T) {
 	assert.IsType(&Message{}, msgI)
 	msg := msgI.(*Message)
 
-	assert.Equal(uint64(42), msg.Id)
+	assert.Equal(uint64(42), msg.ID)
 	assert.Equal(Path("/"), msg.Path)
-	assert.Equal("", msg.PublisherUserId)
-	assert.Equal("", msg.PublisherApplicationId)
-	assert.Equal("", msg.PublisherMessageId)
-	assert.Equal(unixTime.Unix(), msg.PublishingTime)
+	assert.Equal("", msg.UserID)
+	assert.Equal("", msg.ApplicationID)
+	assert.Equal("", msg.MessageID)
+	assert.Equal(unixTime.Unix(), msg.Time)
 	assert.Equal("", msg.HeaderJSON)
 
 	assert.Equal("", string(msg.Body))

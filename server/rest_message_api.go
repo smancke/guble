@@ -46,12 +46,12 @@ func (api *RestMessageApi) PostMessage(w http.ResponseWriter, r *http.Request, p
 	}
 
 	msg := &protocol.Message{
-		Path:                   protocol.Path(params.ByName(`topic`)),
-		Body:                   body,
-		PublisherUserId:        q(r, `userId`),
-		PublisherApplicationId: xid.New().String(),
-		PublisherMessageId:     q(r, `messageId`),
-		HeaderJSON:             headersToJson(r.Header),
+		Path:          protocol.Path(params.ByName(`topic`)),
+		Body:          body,
+		UserID:        q(r, `userId`),
+		ApplicationID: xid.New().String(),
+		MessageID:     q(r, `messageId`),
+		HeaderJSON:    headersToJson(r.Header),
 	}
 
 	api.HandleMessage(msg)

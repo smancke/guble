@@ -76,7 +76,7 @@ func readLoop(client client.Client) {
 			if args.Verbose {
 				fmt.Println(string(incomingMessage.Bytes()))
 			} else {
-				fmt.Printf("%v: %v\n", incomingMessage.PublisherUserId, incomingMessage.BodyAsString())
+				fmt.Printf("%v: %v\n", incomingMessage.UserID, incomingMessage.BodyAsString())
 			}
 		case e := <-client.Errors():
 			fmt.Println("ERROR: " + string(e.Bytes()))

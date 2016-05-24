@@ -151,9 +151,9 @@ func (router *router) unsubscribe(r *Route) {
 }
 
 func (router *router) HandleMessage(message *protocol.Message) error {
-	protocol.Debug("Route.HandleMessage: %v %v", message.PublisherUserId, message.Path)
-	if !router.accessManager.IsAllowed(auth.WRITE, message.PublisherUserId, message.Path) {
-		return &PermissionDeniedError{message.PublisherUserId, auth.WRITE, message.Path}
+	protocol.Debug("Route.HandleMessage: %v %v", message.UserID, message.Path)
+	if !router.accessManager.IsAllowed(auth.WRITE, message.UserID, message.Path) {
+		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
 	}
 
 	return router.storeMessage(message)
@@ -163,8 +163,8 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 // to the messageIn channel
 func (router *router) storeMessage(msg *protocol.Message) error {
 	txCallback := func(msgId uint64) []byte {
-		msg.Id = msgId
-		msg.PublishingTime = time.Now().Unix()
+		msg.ID = msgId
+		msg.Time = time.Now().Unix()
 		return msg.Bytes()
 	}
 
@@ -184,7 +184,7 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 
 func (router *router) handleMessage(message *protocol.Message) {
 	if protocol.InfoEnabled() {
-		protocol.Info("routing message: %v", message.MetadataLine())
+		protocol.Info("routing message: %v", message.Metadata())
 	}
 
 	for currentRoutePath, currentRouteList := range router.routes {

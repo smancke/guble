@@ -42,9 +42,9 @@ func TestPostMessage(t *testing.T) {
 		a.Equal(testBytes, msg.Body)
 		a.Equal("{}", msg.HeaderJSON)
 		a.Equal("/my/topic", string(msg.Path))
-		a.True(len(msg.PublisherApplicationId) > 0)
-		a.Equal("42", msg.PublisherMessageId)
-		a.Equal("marvin", msg.PublisherUserId)
+		a.True(len(msg.ApplicationID) > 0)
+		a.Equal("42", msg.MessageID)
+		a.Equal("marvin", msg.UserID)
 	})
 
 	// when: I POST a message

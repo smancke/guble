@@ -153,13 +153,13 @@ func (rec *Receiver) receiveFromSubscription() {
 			}
 
 			if protocol.DebugEnabled() {
-				protocol.Debug("Deliver message to applicationId=%v: %v", rec.applicationId, msgAndRoute.Message.MetadataLine())
+				protocol.Debug("Deliver message to applicationId=%v: %v", rec.applicationId, msgAndRoute.Message.Metadata())
 			}
-			if msgAndRoute.Message.Id > rec.lastSendId {
-				rec.lastSendId = msgAndRoute.Message.Id
+			if msgAndRoute.Message.ID > rec.lastSendId {
+				rec.lastSendId = msgAndRoute.Message.ID
 				rec.sendChannel <- msgAndRoute.Message.Bytes()
 			} else {
-				protocol.Debug("Dropping message %v, because it was already sent to client", msgAndRoute.Message.Id)
+				protocol.Debug("Dropping message %v, because it was already sent to client", msgAndRoute.Message.ID)
 			}
 		case <-rec.cancelChannel:
 			rec.shouldStop = true

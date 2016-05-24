@@ -232,19 +232,19 @@ func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
 
 	args := strings.SplitN(cmd.Arg, " ", 2)
 	msg := &protocol.Message{
-		Path: protocol.Path(args[0]),
-		PublisherApplicationId: ws.applicationId,
-		PublisherUserId:        ws.userId,
-		HeaderJSON:             cmd.HeaderJSON,
-		Body:                   cmd.Body,
+		Path:          protocol.Path(args[0]),
+		ApplicationID: ws.applicationId,
+		UserID:        ws.userId,
+		HeaderJSON:    cmd.HeaderJSON,
+		Body:          cmd.Body,
 	}
 	if len(args) == 2 {
-		msg.PublisherMessageId = args[1]
+		msg.MessageID = args[1]
 	}
 
 	ws.Router.HandleMessage(msg)
 
-	ws.sendOK(protocol.SUCCESS_SEND, msg.PublisherMessageId)
+	ws.sendOK(protocol.SUCCESS_SEND, msg.MessageID)
 }
 
 func (ws *WebSocket) cleanAndClose() {

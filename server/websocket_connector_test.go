@@ -15,7 +15,7 @@ import (
 )
 
 var aTestMessage = &protocol.Message{
-	Id:   uint64(42),
+	ID:   uint64(42),
 	Path: "/foo",
 	Body: []byte("Test"),
 }
@@ -51,7 +51,7 @@ func Test_SendMessageWithPublisherMessageId(t *testing.T) {
 
 	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *protocol.Message) {
 		assert.Equal(t, protocol.Path("/path"), msg.Path)
-		assert.Equal(t, "42", msg.PublisherMessageId)
+		assert.Equal(t, "42", msg.MessageID)
 	})
 
 	wsconn.EXPECT().Send([]byte("#send 42"))
@@ -225,7 +225,7 @@ type messageMatcher struct {
 func (n messageMatcher) Matches(x interface{}) bool {
 	return n.path == string(x.(*protocol.Message).Path) &&
 		n.message == string(x.(*protocol.Message).Body) &&
-		(n.id == 0 || n.id == x.(*protocol.Message).Id) &&
+		(n.id == 0 || n.id == x.(*protocol.Message).ID) &&
 		(n.header == "" || (n.header == x.(*protocol.Message).HeaderJSON))
 }
 
