@@ -19,35 +19,33 @@ var webSocketUpgrader = websocket.Upgrader{
 }
 
 type WSHandler struct {
-	Router        PubSubSource
-	MessageSink   MessageSink
+	Router        Router
 	prefix        string
 	messageStore  store.MessageStore
 	accessManager auth.AccessManager
 }
 
-func NewWSHandler(prefix string) *WSHandler {
-	return &WSHandler{prefix: prefix}
+func NewWSHandler(router Router, prefix string) (*WSHandler, error) {
+	accessManager, err := router.AccessManager()
+	if err != nil {
+		return nil, err
+	}
+
+	messageStore, err := router.MessageStore()
+	if err != nil {
+		return nil, err
+	}
+
+	return &WSHandler{
+		Router:        router,
+		prefix:        prefix,
+		accessManager: accessManager,
+		messageStore:  messageStore,
+	}, nil
 }
 
 func (handle *WSHandler) GetPrefix() string {
 	return handle.prefix
-}
-
-func (handle *WSHandler) SetMessageEntry(messageSink MessageSink) {
-	handle.MessageSink = messageSink
-}
-
-func (handle *WSHandler) SetRouter(router PubSubSource) {
-	handle.Router = router
-}
-
-func (entry *WSHandler) SetMessageStore(messageStore store.MessageStore) {
-	entry.messageStore = messageStore
-}
-
-func (entry *WSHandler) SetAccessManager(accessManager auth.AccessManager) {
-	entry.accessManager = accessManager
 }
 
 func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -59,6 +57,14 @@ func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer c.Close()
 
 	NewWebSocket(handle, &wsconn{c}, extractUserId(r.RequestURI)).Start()
+}
+
+// WSConnection is a wrapper interface for the needed functions of the websocket.Conn
+// It is introduced for testability of the WSHandler
+type WSConnection interface {
+	Close()
+	Send(bytes []byte) (err error)
+	Receive(bytes *[]byte) (err error)
 }
 
 // wsconnImpl is a Wrapper of the websocket.Conn
@@ -90,12 +96,12 @@ type WebSocket struct {
 	receivers     map[guble.Path]*Receiver
 }
 
-func NewWebSocket(handler *WSHandler, wsConn WSConnection, userId string) *WebSocket {
+func NewWebSocket(handler *WSHandler, wsConn WSConnection, userID string) *WebSocket {
 	return &WebSocket{
 		WSHandler:     handler,
 		WSConnection:  wsConn,
 		applicationId: xid.New().String(),
-		userId:        userId,
+		userId:        userID,
 		sendChannel:   make(chan []byte, 10),
 		receivers:     make(map[guble.Path]*Receiver),
 	}
@@ -236,7 +242,7 @@ func (ws *WebSocket) handleSendCmd(cmd *guble.Cmd) {
 		msg.PublisherMessageId = args[1]
 	}
 
-	ws.MessageSink.HandleMessage(msg)
+	ws.Router.HandleMessage(msg)
 
 	ws.sendOK(guble.SUCCESS_SEND, msg.PublisherMessageId)
 }
