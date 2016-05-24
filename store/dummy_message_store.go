@@ -10,11 +10,11 @@ import (
 
 const TOPIC_SCHEMA = "topic_sequence"
 
-// This is a minimal implementation of the MessageStore interface.
+// DummyMessageStore is a minimal implementation of the MessageStore interface.
 // Everything it does is storing the message ids in the key value store to
 // ensure a monotonic incremented id.
-// It is intended for testing and demo purpose, as well as dummy for services without persistance.
-// TODO: implement a simple logik to preserve the last n messages
+// It is intended for testing and demo purpose, as well as dummy for services without persistence.
+// TODO: implement a simple logic to preserve the last N messages
 type DummyMessageStore struct {
 	topicSequences     map[string]uint64
 	topicSequencesLock sync.RWMutex
@@ -22,7 +22,7 @@ type DummyMessageStore struct {
 	isSyncStarted      bool
 	// used to send the stop request to the syc goroutine
 	stopC chan bool
-	// answer fromt he syc goroutine, when it is stopped
+	// answer from the syc goroutine, when it is stopped
 	stoppedC       chan bool
 	idSyncDuration time.Duration
 }

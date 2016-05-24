@@ -5,7 +5,7 @@ import (
 	"errors"
 )
 
-// helper for collecting multiple errors
+// ErrorList is a helper struct for collecting multiple errors.
 type ErrorList struct {
 	errors            []error
 	descriptionPrefix string
@@ -19,13 +19,13 @@ func NewErrorList(descriptionPrefix string) *ErrorList {
 
 }
 
-// Add an error.
+// Add adds an error.
 func (l *ErrorList) Add(err error) {
 	l.errors = append(l.errors, err)
 }
 
-// returns an error containing the information of all errors in the list,
-// of nil if the list is empthy
+// ErrorOrNil returns an error containing the information of all errors in the list,
+// of nil if the list is empty.
 func (l *ErrorList) ErrorOrNil() error {
 	if len(l.errors) == 0 {
 		return nil

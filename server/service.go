@@ -35,7 +35,7 @@ type Service struct {
 	StopGracePeriod time.Duration
 }
 
-// Registers the Main Router, where other modules can subscribe for messages
+// NewService registers the Main Router, where other modules can subscribe for messages
 func NewService(
 	addr string,
 	router Router) *Service {
@@ -53,7 +53,7 @@ func NewService(
 
 // Register the supplied module on this service.
 // This method checks the module for the following interfaces and
-// does the expected tegistrations:
+// does the expected registrations:
 //   Stopable: notify when the service stops
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
 //

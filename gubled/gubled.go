@@ -34,7 +34,7 @@ var ValidateStoragePath = func(args Args) error {
 		if err != nil {
 			protocol.ErrWithoutTrace("Storage path not present/writeable %q: %v", args.StoragePath, err)
 			if args.StoragePath == "/var/lib/guble" {
-				protocol.ErrWithoutTrace("Use --storage-path=<path> to override the default location, or create the directy with RW rights.")
+				protocol.ErrWithoutTrace("Use --storage-path=<path> to override the default location, or create the directory with RW rights.")
 			}
 			return err
 		}
@@ -172,7 +172,7 @@ func loadArgs() Args {
 func waitForTermination(callback func()) {
 	sigc := make(chan os.Signal)
 	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
-	protocol.Info("Got singal '%v' .. exit greacefully now", <-sigc)
+	protocol.Info("Got signal '%v' .. exiting gracefully now", <-sigc)
 	callback()
 	protocol.Info("exit now")
 	os.Exit(0)

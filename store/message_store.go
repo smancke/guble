@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-// Tis is an implementation of the MessageStore interface based on files
+// FileMessageStore is an implementation of the MessageStore interface based on files
 type FileMessageStore struct {
 	partitions map[string]*MessagePartition
 	basedir    string
@@ -55,7 +55,7 @@ func (fms *FileMessageStore) StoreTx(partition string,
 	return p.StoreTx(partition, callback)
 }
 
-// store a message within a partition
+// Store stores a message within a partition
 func (fms *FileMessageStore) Store(partition string, msgId uint64, msg []byte) error {
 	p, err := fms.partitionStore(partition)
 	if err != nil {
@@ -64,7 +64,7 @@ func (fms *FileMessageStore) Store(partition string, msgId uint64, msg []byte) e
 	return p.Store(msgId, msg)
 }
 
-// asynchronous fetch a set of messages defined by the fetch request
+// Fetch asynchronously fetches a set of messages defined by the fetch request
 func (fms *FileMessageStore) Fetch(req FetchRequest) {
 	p, err := fms.partitionStore(req.Partition)
 	if err != nil {

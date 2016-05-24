@@ -13,7 +13,7 @@ const (
 	CmdCancel  = "-"
 )
 
-// Cmd isepresentation of a command, which the client sends to the server
+// Cmd is a representation of a command, which the client sends to the server
 type Cmd struct {
 
 	// The name of the command
@@ -29,7 +29,7 @@ type Cmd struct {
 	Body []byte
 }
 
-// ParseCmd Parses a slice of bytes and return a *Cmd
+// ParseCmd parses a slice of bytes and return a *Cmd
 func ParseCmd(message []byte) (*Cmd, error) {
 	msg := &Cmd{}
 
@@ -57,7 +57,7 @@ func ParseCmd(message []byte) (*Cmd, error) {
 	return msg, nil
 }
 
-// Serialize the the command into a byte slice
+// Bytes serializes the the command into a byte slice
 func (cmd *Cmd) Bytes() []byte {
 	buff := &bytes.Buffer{}
 	buff.WriteString(cmd.Name)

@@ -86,7 +86,7 @@ func (conn *wsconn) Receive(bytes *[]byte) (err error) {
 	return err
 }
 
-// Represents a websocket
+// WebSocket struct represents a websocket
 type WebSocket struct {
 	*WSHandler
 	WSConnection
