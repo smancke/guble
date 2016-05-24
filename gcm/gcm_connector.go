@@ -5,14 +5,13 @@ import (
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 
-	"github.com/julienschmidt/httprouter"
-
 	"github.com/alexjlockwood/gcm"
 
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
+	"errors"
 )
 
 const GCM_REGISTRATIONS_SCHEMA = "gcm_registration"
@@ -181,7 +180,7 @@ func (gcmConnector *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	}
 
 	// /gcm/:userid/:gcmid/subscribe/*topic
-	userID, gcmID, topic, err := gcmConnector.parseParams(r)
+	userID, gcmID, topic, err := gcmConnector.parseParams(r.URL.Path)
 	if err != nil {
 		http.Error(w, "Permission Denied", 405)
 		return
@@ -191,8 +190,31 @@ func (gcmConnector *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	fmt.Fprintf(w, "registered: %v\n", topic)
 }
 
-func (gcm *GCMConnector) parseParams(r *http.Request) (userID, gcmID, topic  string, err error) {
-	return "userID", "gcmId", "topic"
+func (gcm *GCMConnector) parseParams(currentUrlPath string ) (userID, gcmID, topic  string, err error) {
+	if strings.HasPrefix(currentUrlPath ,"/gcm/") !=  true {
+		return userID,gcmID,topic,errors.New("Gcm request is not starting with /gcm")
+	}
+	if strings.HasPrefix(currentUrlPath, "/gcm/") != true {
+		return userID,gcmID,topic,errors.New("Gcm request is not starting with /gcm")
+	}
+	sl := strings.SplitAfterN(currentUrlPath, "/gcm/", 2)
+	fmt.Println(sl)
+	if len(sl) != 2 {
+		return userID,gcmID,topic,errors.New("Gcm request is not starting with /gcm/")
+	}
+	sll := strings.SplitN(sl[1],"/", 4)
+	if len(sll) != 4 {
+		return userID,gcmID,topic,errors.New("Gcm request has wrong number of params")
+	}
+	//[marvin gcmId123 subscribe notifications]
+
+	if sll[2] != "subscribe" {
+		return userID,gcmID,topic,errors.New("Gcm request third param is not subscribe")
+	}
+	userID = sll[0]
+	gcmID = sll[1]
+	topic = sll[3]
+	return userID,gcmID,topic,nil
 }
 
 //func (gcmConnector *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Request, params httprouter.Params) {

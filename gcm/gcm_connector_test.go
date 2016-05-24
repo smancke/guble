@@ -6,7 +6,7 @@ import (
 	"github.com/smancke/guble/store"
 
 	"github.com/golang/mock/gomock"
-	"github.com/julienschmidt/httprouter"
+//	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
@@ -45,14 +45,14 @@ func TestPostMessage(t *testing.T) {
 	req := &http.Request{URL: url}
 	w := httptest.NewRecorder()
 
-	params := httprouter.Params{
-		httprouter.Param{Key: "userid", Value: "marvin"},
-		httprouter.Param{Key: "gcmid", Value: "gcmId123"},
-		httprouter.Param{Key: "topic", Value: "/notifications"},
-	}
+	//params := httprouter.Params{
+	//	httprouter.Param{Key: "userid", Value: "marvin"},
+	//	httprouter.Param{Key: "gcmid", Value: "gcmId123"},
+	//	httprouter.Param{Key: "topic", Value: "/notifications"},
+	//}
 
 	// when: I POST a message
-	gcm.Subscribe(w, req, params)
+	gcm.ServeHTTP(w, req)
 
 	// the the result
 	a.Equal("registered: /notifications\n", string(w.Body.Bytes()))
