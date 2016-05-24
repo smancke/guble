@@ -278,17 +278,17 @@ func Test_Receiver_Fetch_Sends_error_on_failure_in_MaxMessageId(t *testing.T) {
 	expectMessages(a, msgChannel, "!error-server-internal expected test error")
 }
 
-//rec, sendChannel, pubSubSource, messageStore, err := aMockedReceiver("+")
-func aMockedReceiver(arg string) (*Receiver, chan []byte, *MockPubSubSource, *MockMessageStore, error) {
-	pubSubSource := NewMockPubSubSource(ctrl)
+//rec, sendChannel, router, messageStore, err := aMockedReceiver("+")
+func aMockedReceiver(arg string) (*Receiver, chan []byte, *MockRouter, *MockMessageStore, error) {
+	routerMock := NewMockRouter(ctrl)
 	messageStore := NewMockMessageStore(ctrl)
 	sendChannel := make(chan []byte)
 	cmd := &guble.Cmd{
 		Name: guble.CmdReceive,
 		Arg:  arg,
 	}
-	rec, err := NewReceiverFromCmd("any-appId", cmd, sendChannel, pubSubSource, messageStore, "userId")
-	return rec, sendChannel, pubSubSource, messageStore, err
+	rec, err := NewReceiverFromCmd("any-appId", cmd, sendChannel, routerMock, messageStore, "userId")
+	return rec, sendChannel, routerMock, messageStore, err
 }
 
 func expectMessages(a *assert.Assertions, msgChannel chan []byte, message ...string) {

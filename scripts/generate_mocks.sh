@@ -22,13 +22,18 @@ MOCKGEN=$GOPATH/bin/mockgen
 $MOCKGEN  -self_package server -package server \
       -destination server/mocks_server_gen_test.go \
       github.com/smancke/guble/server \
-      PubSubSource,MessageSink,WSConnection,Startable,Stopable,SetRouter,SetMessageEntry,Endpoint,SetMessageStore
+      Router,WSConnection,Startable,Stopable,Endpoint
 replace "server/mocks_server_gen_test.go" "server \"github.com\/smancke\/guble\/server\"" "server\."
 
 $MOCKGEN -self_package server -package server \
       -destination server/mocks_store_gen_test.go \
       github.com/smancke/guble/store \
       MessageStore
+
+$MOCKGEN -self_package server -package server \
+      -destination server/mocks_auth_gen_test.go \
+      github.com/smancke/guble/server/auth \
+      AccessManager
 
 # Client mocks
 $MOCKGEN  -self_package client -package client \
@@ -42,7 +47,7 @@ replace "client/mocks_client_gen_test.go" "client \"github.com\/smancke\/guble\/
 $MOCKGEN -package gcm \
       -destination gcm/mocks_server_gen_test.go \
       github.com/smancke/guble/server \
-      PubSubSource
+      Router
 
 $MOCKGEN -self_package gcm -package gcm \
       -destination gcm/mocks_store_gen_test.go \
@@ -53,9 +58,20 @@ $MOCKGEN -self_package gcm -package gcm \
 $MOCKGEN -package gubled \
       -destination gubled/mocks_server_gen_test.go \
       github.com/smancke/guble/server \
-      PubSubSource
+      Router
 
-#
+$MOCKGEN -self_package gubled -package gubled \
+      -destination gubled/mocks_auth_gen_test.go \
+      github.com/smancke/guble/server/auth \
+      AccessManager
+
+$MOCKGEN -self_package gubled -package gubled \
+      -destination gubled/mocks_store_gen_test.go \
+      github.com/smancke/guble/store \
+      MessageStore
+
+
+# Auth mocks
 $MOCKGEN -self_package auth -package auth \
       -destination server/auth/mocks_auth_gen_test.go \
       github.com/smancke/guble/server/auth \
@@ -63,8 +79,3 @@ $MOCKGEN -self_package auth -package auth \
 replace "server/auth/mocks_auth_gen_test.go" \
       "auth \"github.com\/smancke\/guble\/server\/auth\"" \
       "auth\."
-
-$MOCKGEN -self_package server -package server \
-      -destination server/mocks_auth_gen_test.go \
-      github.com/smancke/guble/server/auth \
-      AccessManager
