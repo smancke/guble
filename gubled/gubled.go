@@ -34,7 +34,7 @@ var ValidateStoragePath = func(args Args) error {
 		if err != nil {
 			guble.ErrWithoutTrace("Storage path not present/writeable %q: %v", args.StoragePath, err)
 			if args.StoragePath == "/var/lib/guble" {
-				guble.ErrWithoutTrace("Use --storage-path=<path> to override the default location, or create the directy with RW rights.")
+				guble.ErrWithoutTrace("Use --storage-path=<path> to override the default location, or create the directory with RW rights.")
 			}
 			return err
 		}
