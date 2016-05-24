@@ -148,18 +148,18 @@ func (rec *Receiver) receiveFromSubscription() {
 		select {
 		case msgAndRoute, ok := <-rec.route.C:
 			if !ok {
-				guble.Debug("messageSouce closed the channel returning from subscription", rec.applicationId)
+				guble.Debug("Router closed the channel returning from subscription", rec.applicationId)
 				return
 			}
 
 			if guble.DebugEnabled() {
-				guble.Debug("deliver message to applicationId=%v: %v", rec.applicationId, msgAndRoute.Message.MetadataLine())
+				guble.Debug("Deliver message to applicationId=%v: %v", rec.applicationId, msgAndRoute.Message.MetadataLine())
 			}
 			if msgAndRoute.Message.Id > rec.lastSendId {
 				rec.lastSendId = msgAndRoute.Message.Id
 				rec.sendChannel <- msgAndRoute.Message.Bytes()
 			} else {
-				guble.Debug("dropping message %v, because it was already sent to client", msgAndRoute.Message.Id)
+				guble.Debug("Dropping message %v, because it was already sent to client", msgAndRoute.Message.Id)
 			}
 		case <-rec.cancelChannel:
 			rec.shouldStop = true
