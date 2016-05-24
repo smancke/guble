@@ -80,8 +80,8 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	// subscribe
 	subscribe := routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *Route) {
 		a.Equal(r.Path, guble.Path("/foo"))
-		r.C <- MsgAndRoute{Message: &guble.Message{Id: uint64(4), Body: []byte("router-a")}, Route: r}
-		r.C <- MsgAndRoute{Message: &guble.Message{Id: uint64(5), Body: []byte("router-b")}, Route: r}
+		r.C <- MsgAndRoute{Message: &guble.Message{Id: uint64(4), Body: []byte("router-a"), PublishingTime: 1405544146}, Route: r}
+		r.C <- MsgAndRoute{Message: &guble.Message{Id: uint64(5), Body: []byte("router-b"), PublishingTime: 1405544146}, Route: r}
 		close(r.C) // emulate router close
 	})
 	subscribe.After(messageId2)
@@ -127,8 +127,8 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 		"fetch_first2-a",
 		"#"+guble.SUCCESS_FETCH_END+" /foo",
 		"#"+guble.SUCCESS_SUBSCRIBED_TO+" /foo",
-		",4,,,,\n\nrouter-a",
-		",5,,,,\n\nrouter-b",
+		",4,,,,1405544146\n\nrouter-a",
+		",5,,,,1405544146\n\nrouter-b",
 		"#"+guble.SUCCESS_FETCH_START+" /foo 1",
 		"fetch_after-a",
 		"#"+guble.SUCCESS_FETCH_END+" /foo",

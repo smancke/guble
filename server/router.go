@@ -164,7 +164,7 @@ func (router *router) HandleMessage(message *guble.Message) error {
 func (router *router) storeMessage(msg *guble.Message) error {
 	txCallback := func(msgId uint64) []byte {
 		msg.Id = msgId
-		msg.PublishingTime = time.Now().Format(time.RFC3339)
+		msg.PublishingTime = time.Now().Unix()
 		return msg.Bytes()
 	}
 
