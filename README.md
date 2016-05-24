@@ -188,7 +188,7 @@ curl -X POST -H "x-Guble-Key: Value" --data Hello 'http://127.0.0.1:8080/api/mes
 ```
 Results in:
 ```
-16,/foo,marvin,VoAdxGO3DBEn8vv8,42,2015-12-27T18:20:04+01:00
+16,/foo,marvin,VoAdxGO3DBEn8vv8,42,1451236804
 {"Key":"Value"}
 Hello
 ```
@@ -199,17 +199,17 @@ The communication with the guble server is done by ordinary WebSockets, using a 
 ### Message Format
 All payload messages sent from the server to the client are using the following format:
 ```
-<path:string>,<sequenceId:int64>,<publisherUserId:string>,<publisherApplicationId:string>,<publisherMessageId:string>,<messagePublishingTime:iso-date>\n
+<path:string>,<sequenceId:int64>,<publisherUserId:string>,<publisherApplicationId:string>,<publisherMessageId:string>,<messagePublishingTime:unix-timestamp>\n
 [<application headers json>]\n
 <body>
 
 example 1:
-/foo/bar,42,user01,phone1,id123,2015-01-01T12:00:00+01:00
+/foo/bar,42,user01,phone1,id123,1420110000
 {"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}
 Hello World
 
 example 2:
-/foo/bar,42,user01,54sdcj8sd7,id123,2015-01-01T12:00:00+01:00
+/foo/bar,42,user01,54sdcj8sd7,id123,1420110000
 
 anyByteData
 ```
@@ -293,13 +293,13 @@ Status messages reporting an error start with `!`. Status messages are in the fo
 #### Connection Message
 ```
 #ok-connected You are connected to the server.\n
-{"ApplicationId": "the app id", "UserId": "the user id", "Time": "the server time as iso date"}
+{"ApplicationId": "the app id", "UserId": "the user id", "Time": "the server time as unix timestamp "}
 ```
 
 Example:
 ```
 #connected You are connected to the server.
-{"ApplicationId": "phone1", "UserId": "user01", "Time": "2015-01-01T12:00:00+01:00"}
+{"ApplicationId": "phone1", "UserId": "user01", "Time": "1420110000"}
 ```
 
 #### Send Success Notification
@@ -307,7 +307,7 @@ This notification confirms, that the messaging system has successfully received 
 
 ```
 #send <publisherMessageId>
-{"sequenceId": "sequence id", "path": "/foo", "publisherMessageId": "publishers message id", "messagePublishingTime": "iso-date"}
+{"sequenceId": "sequence id", "path": "/foo", "publisherMessageId": "publishers message id", "messagePublishingTime": "unix-timestamp"}
 ```
 
 #### Receive Success Notification
@@ -348,7 +348,7 @@ A cancel operation is confirmed by the following notification:
 This message indicates, that the message could not be delivered.
 ```
 !error-send <publisherMessageId> <error text>
-{"sequenceId": "sequence id", "path": "/foo", "publisherMessageId": "publishers message id", "messagePublishingTime": "iso-date"}
+{"sequenceId": "sequence id", "path": "/foo", "publisherMessageId": "publishers message id", "messagePublishingTime": "unix-timestamp"}
 ```
 
 #### Bad Request

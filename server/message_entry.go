@@ -30,7 +30,7 @@ func (entry *MessageEntry) SetMessageStore(messageStore store.MessageStore) {
 func (entry *MessageEntry) HandleMessage(msg *guble.Message) error {
 	txCallback := func(msgId uint64) []byte {
 		msg.Id = msgId
-		msg.PublishingTime = time.Now().Format(time.RFC3339)
+		msg.PublishingTime = time.Now().Unix()
 		return msg.Bytes()
 	}
 

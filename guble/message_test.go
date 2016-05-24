@@ -1,19 +1,24 @@
 package guble
 
 import (
-	assert "github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"time"
 )
 
-var aNormalMessage = `/foo/bar,42,user01,phone01,id123,2015-01-01T12:00:00+01:00
+var aNormalMessage = `/foo/bar,42,user01,phone01,id123,1420110000
 {"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}
 Hello World`
 
-var aMinimalMessage = "/,42,,,,2015-01-01T12:00:00+01:00"
+var aMinimalMessage = "/,42,,,,1420110000"
 
 var aConnectedNotification = `#connected You are connected to the server.
-{"ApplicationId": "phone1", "UserId": "user01", "Time": "2015-01-01T12:00:00+01:00"}`
+{"ApplicationId": "phone1", "UserId": "user01", "Time": "1420110000"}`
+
+// 2015-01-01T12:00:00+01:00 is equal to  1420110000
+var unixTime, _ = time.Parse(time.RFC3339, "2015-01-01T12:00:00+01:00")
 
 func TestParsingANormalMessage(t *testing.T) {
 	assert := assert.New(t)
@@ -28,9 +33,8 @@ func TestParsingANormalMessage(t *testing.T) {
 	assert.Equal("user01", msg.PublisherUserId)
 	assert.Equal("phone01", msg.PublisherApplicationId)
 	assert.Equal("id123", msg.PublisherMessageId)
-	assert.Equal("2015-01-01T12:00:00+01:00", msg.PublishingTime)
+	assert.Equal(unixTime.Unix(), msg.PublishingTime)
 	assert.Equal(`{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`, msg.HeaderJSON)
-
 	assert.Equal("Hello World", string(msg.Body))
 }
 
@@ -42,7 +46,7 @@ func TestSerializeANormalMessage(t *testing.T) {
 		PublisherUserId:        "user01",
 		PublisherApplicationId: "phone01",
 		PublisherMessageId:     "id123",
-		PublishingTime:         "2015-01-01T12:00:00+01:00",
+		PublishingTime:         unixTime.Unix(),
 		HeaderJSON:             `{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`,
 		Body:                   []byte("Hello World"),
 	}
@@ -59,7 +63,7 @@ func TestSerializeAMinimalMessage(t *testing.T) {
 	msg := &Message{
 		Id:             uint64(42),
 		Path:           Path("/"),
-		PublishingTime: "2015-01-01T12:00:00+01:00",
+		PublishingTime: unixTime.Unix(),
 	}
 
 	assert.Equal(t, aMinimalMessage, string(msg.Bytes()))
@@ -69,7 +73,7 @@ func TestSerializeAMinimalMessageWithBody(t *testing.T) {
 	msg := &Message{
 		Id:             uint64(42),
 		Path:           Path("/"),
-		PublishingTime: "2015-01-01T12:00:00+01:00",
+		PublishingTime: unixTime.Unix(),
 		Body:           []byte("Hello World"),
 	}
 
@@ -89,7 +93,7 @@ func TestParsingAMinimalMessage(t *testing.T) {
 	assert.Equal("", msg.PublisherUserId)
 	assert.Equal("", msg.PublisherApplicationId)
 	assert.Equal("", msg.PublisherMessageId)
-	assert.Equal("2015-01-01T12:00:00+01:00", msg.PublishingTime)
+	assert.Equal(unixTime.Unix(), msg.PublishingTime)
 	assert.Equal("", msg.HeaderJSON)
 
 	assert.Equal("", string(msg.Body))
@@ -107,11 +111,11 @@ func TestErrorsOnParsingMessages(t *testing.T) {
 	assert.Error(err)
 
 	// id not an integer
-	_, err = ParseMessage([]byte("xy42,/foo/bar,user01,phone1,id123,2015-01-01T12:00:00+01:00\n"))
+	_, err = ParseMessage([]byte("xy42,/foo/bar,user01,phone1,id123,1420110000\n"))
 	assert.Error(err)
 
-	// path is empthy
-	_, err = ParseMessage([]byte("42,,user01,phone1,id123,2015-01-01T12:00:00+01:00\n"))
+	// path is empty
+	_, err = ParseMessage([]byte("42,,user01,phone1,id123,1420110000\n"))
 	assert.Error(err)
 
 	// Error Message without Name
@@ -129,7 +133,7 @@ func TestParsingNotificationMessage(t *testing.T) {
 
 	assert.Equal(SUCCESS_CONNECTED, msg.Name)
 	assert.Equal("You are connected to the server.", msg.Arg)
-	assert.Equal(`{"ApplicationId": "phone1", "UserId": "user01", "Time": "2015-01-01T12:00:00+01:00"}`, msg.Json)
+	assert.Equal(`{"ApplicationId": "phone1", "UserId": "user01", "Time": "1420110000"}`, msg.Json)
 	assert.Equal(false, msg.IsError)
 }
 
@@ -137,7 +141,7 @@ func TestSerializeANotificationMessage(t *testing.T) {
 	msg := &NotificationMessage{
 		Name:    SUCCESS_CONNECTED,
 		Arg:     "You are connected to the server.",
-		Json:    `{"ApplicationId": "phone1", "UserId": "user01", "Time": "2015-01-01T12:00:00+01:00"}`,
+		Json:    `{"ApplicationId": "phone1", "UserId": "user01", "Time": "1420110000"}`,
 		IsError: false,
 	}
 

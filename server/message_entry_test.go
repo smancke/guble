@@ -31,8 +31,7 @@ func Test_MessageEntry_MessagesIsStored_And_GetsCorrectParameters(t *testing.T) 
 	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *guble.Message) {
 		routedMsg = msg
 		a.Equal(uint64(42), msg.Id)
-		t, e := time.Parse(time.RFC3339, msg.PublishingTime) // publishing time
-		a.NoError(e)
+		t := time.Unix(msg.PublishingTime, 0) // publishing time
 		a.True(t.After(startTime.Add(-1 * time.Second)))
 		a.True(t.Before(time.Now().Add(time.Second)))
 	})
