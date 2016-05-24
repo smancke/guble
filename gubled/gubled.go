@@ -172,7 +172,7 @@ func loadArgs() Args {
 func waitForTermination(callback func()) {
 	sigc := make(chan os.Signal)
 	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
-	guble.Info("Got singal '%v' .. exit greacefully now", <-sigc)
+	guble.Info("Got signal '%v' .. exiting gracefully now", <-sigc)
 	callback()
 	guble.Info("exit now")
 	os.Exit(0)
