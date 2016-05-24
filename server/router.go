@@ -91,7 +91,7 @@ func (router *PubSubRouter) Stop() error {
 	return nil
 }
 
-// Add a route to the subscribers.
+// Subscribe adds a route to the subscribers.
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *PubSubRouter) Subscribe(r *Route) (*Route, error) {
 	guble.Debug("subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)

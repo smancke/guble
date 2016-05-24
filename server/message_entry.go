@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-// The message entry is responsible for handling of all incomming messages
+// MessageEntry is responsible for handling of all incoming messages
 // It takes a raw message, calculates the message id and decides how to handle
 // the message within the service.
-// Ass all the chainable message handler, it supports the MessageSink interface.
+// As all the chainable message handler, it supports the MessageSink interface.
 type MessageEntry struct {
 	router       MessageSink
 	messageStore store.MessageStore
@@ -26,7 +26,7 @@ func (entry *MessageEntry) SetMessageStore(messageStore store.MessageStore) {
 	entry.messageStore = messageStore
 }
 
-// Take the message and forward it to the router.
+// HandleMessage takes the message and forwards it to the router.
 func (entry *MessageEntry) HandleMessage(msg *guble.Message) error {
 	txCallback := func(msgId uint64) []byte {
 		msg.Id = msgId

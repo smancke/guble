@@ -13,8 +13,8 @@ import (
 
 var errUnreadMsgsAvailable = errors.New("unread messages available")
 
-// A receiver is a helper class, for managing a combined pull push on a topic.
-// It is used for implementation of the + (receive) command in the gubble protocol.
+// Receiver is a helper class, for managing a combined pull push on a topic.
+// It is used for implementation of the + (receive) command in the guble protocol.
 type Receiver struct {
 	cancelChannel       chan bool
 	sendChannel         chan []byte
@@ -33,7 +33,7 @@ type Receiver struct {
 	userId              string
 }
 
-// Parses the info in the command
+// NewReceiverFromCmd parses the info in the command
 func NewReceiverFromCmd(
 	applicationId string,
 	cmd *guble.Cmd,
@@ -76,7 +76,7 @@ func NewReceiverFromCmd(
 	return rec, nil
 }
 
-// start the receiver loop
+// Start starts the receiver loop
 func (rec *Receiver) Start() error {
 	rec.shouldStop = false
 	if rec.doFetch && !rec.doSubscription {
@@ -235,7 +235,7 @@ func (rec *Receiver) fetch() error {
 	}
 }
 
-// stop/cancel the receiver
+// Stop stops/cancels the receiver
 func (rec *Receiver) Stop() error {
 	rec.cancelChannel <- true
 	return nil

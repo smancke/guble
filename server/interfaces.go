@@ -8,19 +8,18 @@ import (
 	"net/http"
 )
 
-// MsgAndRoute is a wrapper that provides the message and the route togheter.
-// Useful for sending both information over a channel
+// MsgAndRoute is a wrapper that provides the message and the route together.
+// It is useful for sending both over a channel.
 type MsgAndRoute struct {
 	Message *guble.Message
 	Route   *Route
 }
 
-// Route represents a
 type Route struct {
 	Path          guble.Path
 	C             chan MsgAndRoute
 	UserID        string // UserId that subscribed or pushes messages to the router
-	ApplicationID string // ApplicationId that
+	ApplicationID string
 }
 
 func (r Route) equals(other Route) bool {

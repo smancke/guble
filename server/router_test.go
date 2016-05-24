@@ -60,7 +60,6 @@ func Test_SubscribeNotAllowed(t *testing.T) {
 	router := NewPubSubRouter(tam, nil, nil)
 	router.Start()
 
-
 	channel := make(chan MsgAndRoute, chanSize)
 	_, e := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
 

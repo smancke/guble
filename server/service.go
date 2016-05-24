@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// This is the main class for simple startup of a server
+// Service is the main class for simple startup of a server
 type Service struct {
 	kvStore       store.KVStore
 	messageStore  store.MessageStore
@@ -25,8 +25,7 @@ type Service struct {
 	StopGracePeriod time.Duration
 }
 
-// Registers the Main Router, where other modules can subscribe for messages
-
+// NewService registers the Main Router, where other modules can subscribe for messages
 func NewService(addr string, kvStore store.KVStore, messageStore store.MessageStore, messageSink MessageSink, router PubSubSource, accessManager auth.AccessManager) *Service {
 	service := &Service{
 		stopListener:    make([]Stopable, 0, 5),
@@ -48,9 +47,9 @@ func NewService(addr string, kvStore store.KVStore, messageStore store.MessageSt
 	return service
 }
 
-// Registers the supplied module on this service.
+// Register registers the supplied module on this service.
 // This method checks the module for the following interfaces and
-// does the expected tegistrations:
+// does the expected registrations:
 //   Stopable: notify when the service stops
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
 //   SetRouter: Provide the router
