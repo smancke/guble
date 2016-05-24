@@ -69,12 +69,12 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 	assert.Equal(t, "bar", string(body))
 }
 
-func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockPubSubSource) {
+func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockRouter) {
 	kvStore := store.NewMemoryKVStore()
 	messageStore := store.NewDummyMessageStore()
-	pubSubSource := NewMockPubSubSource(ctrl)
-	service := NewService("localhost:0", pubSubSource)
-	return service, kvStore, messageStore, pubSubSource
+	routerMock := NewMockRouter(ctrl)
+	service := NewService("localhost:0", routerMock)
+	return service, kvStore, messageStore, routerMock
 
 }
 

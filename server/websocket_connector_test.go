@@ -25,18 +25,18 @@ func Test_WebSocket_SubscribeAndUnsubscribe(t *testing.T) {
 	a := assert.New(t)
 
 	messages := []string{"+ /foo", "+ /bar", "- /foo"}
-	wsconn, pubSubSource, messageStore := createDefaultMocks(messages)
+	wsconn, routerMock, messageStore := createDefaultMocks(messages)
 
-	pubSubSource.EXPECT().Subscribe(routeMatcher{"/foo"}).Return(nil, nil)
+	routerMock.EXPECT().Subscribe(routeMatcher{"/foo"}).Return(nil, nil)
 	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /foo"))
 
-	pubSubSource.EXPECT().Subscribe(routeMatcher{"/bar"}).Return(nil, nil)
+	routerMock.EXPECT().Subscribe(routeMatcher{"/bar"}).Return(nil, nil)
 	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /bar"))
 
-	pubSubSource.EXPECT().Unsubscribe(routeMatcher{"/foo"})
+	routerMock.EXPECT().Unsubscribe(routeMatcher{"/foo"})
 	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_CANCELED + " /foo"))
 
-	websocket := runNewWebSocket(wsconn, pubSubSource, messageStore, nil)
+	websocket := runNewWebSocket(wsconn, routerMock, messageStore, nil)
 
 	a.Equal(1, len(websocket.receivers))
 	a.Equal(guble.Path("/bar"), websocket.receivers[guble.Path("/bar")].path)
@@ -47,38 +47,38 @@ func Test_SendMessageWithPublisherMessageId(t *testing.T) {
 
 	// given: a send command with PublisherMessageId
 	commands := []string{"> /path 42"}
-	wsconn, pubSubSource, messageStore := createDefaultMocks(commands)
+	wsconn, routerMock, messageStore := createDefaultMocks(commands)
 
-	pubSubSource.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *guble.Message) {
+	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *guble.Message) {
 		assert.Equal(t, guble.Path("/path"), msg.Path)
 		assert.Equal(t, "42", msg.PublisherMessageId)
 	})
 
 	wsconn.EXPECT().Send([]byte("#send 42"))
 
-	runNewWebSocket(wsconn, pubSubSource, messageStore, nil)
+	runNewWebSocket(wsconn, routerMock, messageStore, nil)
 }
 
 func Test_SendMessage(t *testing.T) {
 	defer initCtrl(t)()
 
 	commands := []string{"> /path\n{\"key\": \"value\"}\nHello, this is a test"}
-	wsconn, pubSubSource, messageStore := createDefaultMocks(commands)
+	wsconn, routerMock, messageStore := createDefaultMocks(commands)
 
-	pubSubSource.EXPECT().HandleMessage(messageMatcher{path: "/path", message: "Hello, this is a test", header: `{"key": "value"}`})
+	routerMock.EXPECT().HandleMessage(messageMatcher{path: "/path", message: "Hello, this is a test", header: `{"key": "value"}`})
 	wsconn.EXPECT().Send([]byte("#send"))
 
-	runNewWebSocket(wsconn, pubSubSource, messageStore, nil)
+	runNewWebSocket(wsconn, routerMock, messageStore, nil)
 }
 
 func Test_AnIncommingMessageIsDelivered(t *testing.T) {
 	defer initCtrl(t)()
 
-	wsconn, pubSubSource, messageStore := createDefaultMocks([]string{})
+	wsconn, routerMock, messageStore := createDefaultMocks([]string{})
 
 	wsconn.EXPECT().Send(aTestMessage.Bytes())
 
-	handler := runNewWebSocket(wsconn, pubSubSource, messageStore, nil)
+	handler := runNewWebSocket(wsconn, routerMock, messageStore, nil)
 
 	handler.sendChannel <- aTestMessage.Bytes()
 	time.Sleep(time.Millisecond * 2)
@@ -87,12 +87,12 @@ func Test_AnIncommingMessageIsDelivered(t *testing.T) {
 func Test_AnIncommingMessageIsNotAllowed(t *testing.T) {
 	defer initCtrl(t)()
 
-	wsconn, pubSubSource, messageStore := createDefaultMocks([]string{})
+	wsconn, routerMock, messageStore := createDefaultMocks([]string{})
 
 	tam := NewMockAccessManager(ctrl)
 	tam.EXPECT().IsAllowed(auth.READ, "testuser", guble.Path("/foo")).Return(false)
 	handler := NewWebSocket(
-		testWSHandler(pubSubSource, messageStore, tam),
+		testWSHandler(routerMock, messageStore, tam),
 		wsconn,
 		"testuser",
 	)
@@ -121,7 +121,7 @@ func Test_BadCommands(t *testing.T) {
 	defer initCtrl(t)()
 
 	badRequests := []string{"XXXX", "", ">", ">/foo", "+", "-", "send /foo"}
-	wsconn, pubSubSource, messageStore := createDefaultMocks(badRequests)
+	wsconn, routerMock, messageStore := createDefaultMocks(badRequests)
 
 	counter := 0
 
@@ -137,18 +137,18 @@ func Test_BadCommands(t *testing.T) {
 		return nil
 	}).AnyTimes()
 
-	runNewWebSocket(wsconn, pubSubSource, messageStore, nil)
+	runNewWebSocket(wsconn, routerMock, messageStore, nil)
 
 	assert.Equal(t, len(badRequests), counter, "expected number of bad requests does not match")
 }
 
 func testWSHandler(
-	pubSubSource *MockPubSubSource,
+	routerMock *MockRouter,
 	messageStore store.MessageStore,
 	accessManager auth.AccessManager) *WSHandler {
 
 	return &WSHandler{
-		Router:        pubSubSource,
+		Router:        routerMock,
 		prefix:        "/prefix",
 		messageStore:  messageStore,
 		accessManager: accessManager,
@@ -157,7 +157,7 @@ func testWSHandler(
 
 func runNewWebSocket(
 	wsconn *MockWSConnection,
-	pubSubSource *MockPubSubSource,
+	routerMock *MockRouter,
 	messageStore store.MessageStore,
 	accessManager auth.AccessManager) *WebSocket {
 
@@ -165,7 +165,7 @@ func runNewWebSocket(
 		accessManager = auth.NewAllowAllAccessManager(true)
 	}
 	websocket := NewWebSocket(
-		testWSHandler(pubSubSource, messageStore, accessManager),
+		testWSHandler(routerMock, messageStore, accessManager),
 		wsconn,
 		"testuser",
 	)
@@ -180,14 +180,14 @@ func runNewWebSocket(
 
 func createDefaultMocks(inputMessages []string) (
 	*MockWSConnection,
-	*MockPubSubSource,
+	*MockRouter,
 	*MockMessageStore) {
 	inputMessagesC := make(chan []byte, 10)
 	for _, msg := range inputMessages {
 		inputMessagesC <- []byte(msg)
 	}
 
-	pubSubSource := NewMockPubSubSource(ctrl)
+	routerMock := NewMockRouter(ctrl)
 	messageStore := NewMockMessageStore(ctrl)
 
 	wsconn := NewMockWSConnection(ctrl)
@@ -198,7 +198,7 @@ func createDefaultMocks(inputMessages []string) (
 
 	wsconn.EXPECT().Send(connectedNotificationMatcher{})
 
-	return wsconn, pubSubSource, messageStore
+	return wsconn, routerMock, messageStore
 }
 
 // --- routeMatcher ---------

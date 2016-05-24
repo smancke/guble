@@ -21,7 +21,7 @@ func TestPostMessage(t *testing.T) {
 	a := assert.New(t)
 
 	// given:  a rest api with a message sink
-	routerMock := NewMockPubSubSource(ctrl)
+	routerMock := NewMockRouter(ctrl)
 	api := NewRestMessageApi(routerMock, "/api")
 
 	url, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")

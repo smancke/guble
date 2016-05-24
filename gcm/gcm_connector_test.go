@@ -26,7 +26,7 @@ func TestPostMessage(t *testing.T) {
 	a := assert.New(t)
 
 	// given:  a rest api with a message sink
-	routerMock := NewMockPubSubSource(ctrl)
+	routerMock := NewMockRouter(ctrl)
 
 	kvStore := store.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
@@ -70,7 +70,7 @@ func TestSaveAndLoadSubscriptions(t *testing.T) {
 		"athur:/erde:42":   true,
 	}
 
-	routerMock := NewMockPubSubSource(ctrl)
+	routerMock := NewMockRouter(ctrl)
 
 	kvStore := store.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
