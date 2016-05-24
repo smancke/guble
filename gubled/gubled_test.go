@@ -1,7 +1,6 @@
 package gubled
 
 import (
-	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/store"
 	"github.com/stretchr/testify/assert"
 
@@ -135,18 +134,12 @@ func TestArgDefaultValues(t *testing.T) {
 }
 
 func TestGcmOnlyStartedIfEnabled(t *testing.T) {
+	defer initCtrl(t)()
+
 	a := assert.New(t)
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
 
-	routerMock := NewMockPubSubSource(mockCtrl)
-
-	amMock := NewMockAccessManager(mockCtrl)
-	msMock := NewMockMessageStore(mockCtrl)
-
+	routerMock, _, _ := initRouterMock()
 	routerMock.EXPECT().KVStore().Return(store.NewMemoryKVStore(), nil)
-	routerMock.EXPECT().AccessManager().Return(amMock, nil).MaxTimes(2)
-	routerMock.EXPECT().MessageStore().Return(msMock, nil).MaxTimes(2)
 
 	a.True(containsGcmModule(CreateModules(routerMock, Args{GcmEnable: true, GcmApiKey: "xyz"})))
 	a.False(containsGcmModule(CreateModules(routerMock, Args{GcmEnable: false})))
@@ -162,15 +155,7 @@ func containsGcmModule(modules []interface{}) bool {
 }
 
 func TestPanicOnMissingGcmApiKey(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-
-	routerMock := NewMockPubSubSource(mockCtrl)
-	amMock := NewMockAccessManager(mockCtrl)
-	msMock := NewMockMessageStore(mockCtrl)
-
-	routerMock.EXPECT().AccessManager().Return(amMock, nil)
-	routerMock.EXPECT().MessageStore().Return(msMock, nil)
+	defer initCtrl(t)()
 
 	defer func() {
 		if r := recover(); r == nil {
@@ -178,6 +163,8 @@ func TestPanicOnMissingGcmApiKey(t *testing.T) {
 			t.Fail()
 		}
 	}()
+
+	routerMock, _, _ := initRouterMock()
 
 	CreateModules(routerMock, Args{GcmEnable: true})
 }
@@ -194,4 +181,15 @@ func TestCreateStoreBackendPanicInvalidBackend(t *testing.T) {
 		CreateKVStore(Args{KVBackend: "foo bar"})
 	}()
 	a.NotNil(p)
+}
+
+func initRouterMock() (*MockRouter, *MockAccessManager, *MockMessageStore) {
+	routerMock := NewMockRouter(ctrl)
+	amMock := NewMockAccessManager(ctrl)
+	msMock := NewMockMessageStore(ctrl)
+
+	routerMock.EXPECT().AccessManager().Return(amMock, nil).AnyTimes()
+	routerMock.EXPECT().MessageStore().Return(msMock, nil).AnyTimes()
+
+	return routerMock, amMock, msMock
 }
