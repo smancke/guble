@@ -160,6 +160,9 @@ func (p *MessagePartition) createNextAppendFiles(msgId uint64) error {
 	p.appendFirstId = firstMessageIdForFile
 	p.appendLastId = firstMessageIdForFile + MESSAGES_PER_FILE - 1
 	stat, err := file.Stat()
+	if err != nil {
+		return err
+	}
 	p.appendFileWritePosition = uint64(stat.Size())
 
 	return nil
@@ -243,7 +246,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 	return nil
 }
 
-// fetch a set of messages
+// Fetch fetches a set of messages
 func (p *MessagePartition) Fetch(req FetchRequest) {
 	go func() {
 		fetchList, err := p.calculateFetchList(req)
@@ -332,9 +335,8 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 		if err != nil {
 			if err.Error() == "EOF" {
 				return result, nil // we reached the end of the index
-			} else {
-				return nil, err
 			}
+			return nil, err
 		}
 
 		if msgOffset != uint64(0) { // only append, if the message exists
