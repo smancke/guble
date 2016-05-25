@@ -23,19 +23,19 @@ func TestSimplePingPong(t *testing.T) {
 	expectStatusMessage(t, client2, protocol.SUCCESS_SEND, "42")
 	// time.Sleep(time.Millisecond * 10)
 
-	// select {
-	// case msg := <-client1.Messages():
-	// 	assert.Equal(t, "Hello", msg.BodyAsString())
-	// 	assert.Equal(t, "user2", msg.UserID)
-	// 	assert.Equal(t, `{"key": "value"}`, msg.HeaderJSON)
-	// 	assert.Equal(t, uint64(1), msg.ID)
-	// case msg := <-client1.Errors():
-	// 	t.Logf("received error: %v", msg)
-	// 	t.FailNow()
-	// case <-time.After(time.Millisecond * 100):
-	// 	t.Log("no message received")
-	// 	t.FailNow()
-	// }
+	select {
+	case msg := <-client1.Messages():
+		assert.Equal(t, "Hello", msg.BodyAsString())
+		assert.Equal(t, "user2", msg.UserID)
+		assert.Equal(t, `{"key": "value"}`, msg.HeaderJSON)
+		assert.Equal(t, uint64(1), msg.ID)
+	case msg := <-client1.Errors():
+		t.Logf("received error: %v", msg)
+		t.FailNow()
+	case <-time.After(time.Millisecond * 100):
+		t.Log("no message received")
+		t.FailNow()
+	}
 }
 
 func initServerAndClients(t *testing.T) (*server.Service, client.Client, client.Client, func()) {
