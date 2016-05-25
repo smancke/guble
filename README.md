@@ -65,16 +65,16 @@ This is the current (and fast changing) roadmap and todo list:
 ## Roadmap Release 0.2
 This release contains a lot of small changes and the JavaScript API.
 
-* Stable JavaScript client: https://github.com/smancke/guble-js
 * Authentication and access management
-* Add Consul as KV Backend strategy
 * Clean shutdown
 * Improve logging (Maybe use of https://github.com/Sirupsen/logrus)
 * Rename package "guble" to "protocol" or "gublep"
-* Change time from ISO 8601 to unix timestamp
+* ~~Change time from ISO 8601 to unix timestamp~~
 * Remove `userId` from route
 
 ## Roadmap Release 0.3
+* Stable JavaScript client: https://github.com/smancke/guble-js
+* Add Consul as KV Backend strategy
 * Storing the sequence Id of topics in kv store, if we turn of persistance
 * Replication across multiple servers
 * Cleanup, documentation, and test coverage of the GCM connector

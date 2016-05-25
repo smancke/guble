@@ -7,9 +7,9 @@ import (
 	"net/url"
 )
 
-
 // AccessType permission required by the user
 type AccessType int
+
 const (
 	// READ permission
 	READ AccessType = iota
