@@ -45,12 +45,6 @@ func TestPostMessage(t *testing.T) {
 	req := &http.Request{URL: url, Method: "POST"}
 	w := httptest.NewRecorder()
 
-	//params := httprouter.Params{
-	//	httprouter.Param{Key: "userid", Value: "marvin"},
-	//	httprouter.Param{Key: "gcmid", Value: "gcmId123"},
-	//	httprouter.Param{Key: "topic", Value: "/notifications"},
-	//}
-
 	// when: I POST a message
 	gcm.ServeHTTP(w, req)
 
@@ -76,7 +70,7 @@ func TestSaveAndLoadSubscriptions(t *testing.T) {
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
 
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
-		// delte the route from the map, if we got it in the test
+		// delete the route from the map, if we got it in the test
 		delete(testRoutes, fmt.Sprintf("%v:%v:%v", route.UserID, route.Path, route.ApplicationID))
 	}).AnyTimes()
 
