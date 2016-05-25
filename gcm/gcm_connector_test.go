@@ -1,12 +1,10 @@
 package gcm
 
 import (
+	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
-
-	"github.com/golang/mock/gomock"
-//	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
@@ -98,6 +96,75 @@ func TestSaveAndLoadSubscriptions(t *testing.T) {
 func TestRemoveTailingSlash(t *testing.T) {
 	assert.Equal(t, "/foo", removeTrailingSlash("/foo/"))
 	assert.Equal(t, "/foo", removeTrailingSlash("/foo"))
+}
+
+func TestParseParams(t *testing.T) {
+	defer initCtrl(t)()
+
+	assert := assert.New(t)
+	routerMock := NewMockRouter(ctrl)
+	kvStore := store.NewMemoryKVStore()
+	routerMock.EXPECT().KVStore().Return(kvStore, nil)
+
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	assert.Nil(err)
+
+	testCases := []struct {
+		urlPath, userId, gcmID, topic, err string
+	}{
+		{"/gcm/marvin/gcmId123/subscribe/notifications", "marvin", "gcmId123", "/notifications", ""},
+		{"/gcm2/marvin/gcmId123/subscribe/notifications", "", "", "", "Gcm request is not starting with gcm prefix"},
+		{"/gcm/marvin/gcmId123/subscrib2e/notifications", "", "", "", "Gcm request third param is not subscribe"},
+		{"/gcm/marvin/gcmId123subscribenotifications", "", "", "", "Gcm request has wrong number of params"},
+		{"/gcm/marvin/gcmId123/subscribe/notifications/alert/", "marvin", "gcmId123", "/notifications/alert", ""},
+	}
+
+	for i, c := range testCases {
+		userID, gcmID, topic, err := gcm.parseParams(c.urlPath)
+
+		//if error message is present check only the error
+		if c.err != "" {
+			assert.NotNil(err)
+			assert.EqualError(err, c.err, fmt.Sprintf("Failed on testcase no=%d", i))
+		} else {
+			assert.Equal(userID, c.userId, fmt.Sprintf("Failed on testcase no=%d", i))
+			assert.Equal(gcmID, c.gcmID, fmt.Sprintf("Failed on testcase no=%d", i))
+			assert.Equal(topic, c.topic, fmt.Sprintf("Failed on testcase no=%d", i))
+			assert.Nil(err, fmt.Sprintf("Failed on testcase no=%d", i))
+		}
+
+	}
+
+}
+
+func TestGetPrefix(t *testing.T) {
+	defer initCtrl(t)()
+
+	assert := assert.New(t)
+	routerMock := NewMockRouter(ctrl)
+	kvStore := store.NewMemoryKVStore()
+	routerMock.EXPECT().KVStore().Return(kvStore, nil)
+
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	assert.Nil(err)
+	assert.Equal(gcm.GetPrefix(), "/gcm/")
+}
+
+func TestStop(t *testing.T) {
+	defer initCtrl(t)()
+
+	assert := assert.New(t)
+	routerMock := NewMockRouter(ctrl)
+	kvStore := store.NewMemoryKVStore()
+	routerMock.EXPECT().KVStore().Return(kvStore, nil)
+
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	assert.Nil(err)
+
+	err = gcm.Stop()
+	assert.Nil(err)
+	assert.Equal(len(gcm.stopChan), 1, "StopChan")
+
 }
 
 func initCtrl(t *testing.T) func() {

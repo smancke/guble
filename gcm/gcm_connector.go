@@ -1,8 +1,8 @@
 package gcm
 
 import (
-	"github.com/smancke/guble/protocol"
 	"github.com/alexjlockwood/gcm"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 
@@ -16,8 +16,8 @@ import (
 const GCM_REGISTRATIONS_SCHEMA = "gcm_registration"
 
 type GCMConnector struct {
-	router  server.Router
-	kvStore store.KVStore
+	router             server.Router
+	kvStore            store.KVStore
 	prefix             string
 	channelFromRouter  chan server.MsgAndRoute
 	closeRouteByRouter chan server.Route
@@ -33,8 +33,8 @@ func NewGCMConnector(router server.Router, prefix string, gcmApiKey string) (*GC
 	}
 
 	gcm := &GCMConnector{
-		router:  router,
-		kvStore: kvStore,
+		router:            router,
+		kvStore:           kvStore,
 		prefix:            prefix,
 		channelFromRouter: make(chan server.MsgAndRoute, 1000),
 		stopChan:          make(chan bool, 1),
@@ -163,10 +163,6 @@ func (gcmConnector *GCMConnector) GetPrefix() string {
 	return gcmConnector.prefix
 }
 
-//func (gcmConnector *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-//	gcmConnector.mux.ServeHTTP(w, r)
-//}
-
 func (gcmConnector *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		protocol.Err("Only HTTP POST METHOD SUPPORTED but received type=" + r.Method)
@@ -191,22 +187,22 @@ func (gcm *GCMConnector) parseParams(path string) (userID, gcmID, topic string, 
 	currentUrlPath := removeTrailingSlash(path)
 
 	if strings.HasPrefix(currentUrlPath, gcm.prefix) != true {
-		return userID, gcmID, topic, errors.New("Gcm request is not starting with gcm prefix")
+		err = errors.New("Gcm request is not starting with gcm prefix")
+		return
 	}
 	pathAfterPrefix := strings.TrimPrefix(currentUrlPath, gcm.prefix)
-	if pathAfterPrefix == currentUrlPath {
-		return userID, gcmID, topic, errors.New("Gcm request is not starting with gcm prefix")
-	}
 
 	splitedParams := strings.SplitN(pathAfterPrefix, "/", 3)
 	if len(splitedParams) != 3 {
-		return userID, gcmID, topic, errors.New("Gcm request has wrong number of params")
+		err = errors.New("Gcm request has wrong number of params")
+		return
 	}
 	userID = splitedParams[0]
 	gcmID = splitedParams[1]
 
 	if strings.HasPrefix(splitedParams[2], subscribePrefixPath+"/") != true {
-		return userID, gcmID, topic, errors.New("Gcm request third param is not subscribe")
+		err = errors.New("Gcm request third param is not subscribe")
+		return
 	}
 	topic = strings.TrimPrefix(splitedParams[2], subscribePrefixPath)
 	return userID, gcmID, topic, nil
