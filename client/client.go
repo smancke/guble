@@ -60,14 +60,14 @@ type client struct {
 	connected bool
 }
 
-// shortcut for New() and Start()
+// Open is a shortcut for New() and Start()
 func Open(url, origin string, channelSize int, autoReconnect bool) (Client, error) {
 	c := New(url, origin, channelSize, autoReconnect)
 	c.SetWSConnectionFactory(DefaultConnectionFactory)
 	return c, c.Start()
 }
 
-// Construct a new client, without starting the connection
+// New creates a new client, without starting the connection
 func New(url, origin string, channelSize int, autoReconnect bool) Client {
 	return &client{
 		messages:       make(chan *protocol.Message, channelSize),
