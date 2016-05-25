@@ -8,5 +8,5 @@ before_install:
   - go get github.com/mattn/goveralls
   - go get golang.org/x/tools/cmd/cover
 script:
-  - go test ./...
-  # - goveralls -coverprofile=full_cov.out -service=travis-ci
+  - scripts/generate_coverage.sh
+  - goveralls -coverprofile=full_cov.out -service=travis-ci
