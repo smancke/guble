@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash -e
 # Require installation of: `github.com/wadey/gocovmerge`
 
 cd $GOPATH/src/github.com/smancke/guble
@@ -6,13 +6,14 @@ cd $GOPATH/src/github.com/smancke/guble
 rm -rf ./cov
 mkdir cov
 
-go test -v -covermode=atomic -coverprofile=./cov/client.out ./client
-go test -v -covermode=atomic -coverprofile=./cov/gcm.out ./gcm
-go test -v -covermode=atomic -coverprofile=./cov/guble-cli.out ./guble-cli
-go test -v -covermode=atomic -coverprofile=./cov/gubled.out ./gubled
-go test -v -covermode=atomic -coverprofile=./cov/protocol.out ./protocol
-go test -v -covermode=atomic -coverprofile=./cov/server.out ./server
-go test -v -covermode=atomic -coverprofile=./cov/store.out ./store
+i=0
+for dir in $(find . -maxdepth 10 -not -path './.git*' -not -path '*/_test.go' -type d);
+do
+if ls $dir/*.go &> /dev/null; then
+    go test -v -covermode=atomic -coverprofile=./cov/$i.out ./$dir
+    i=$((i+1))
+fi
+done
 
 gocovmerge ./cov/*.out > full_cov.out
 rm -rf ./cov
