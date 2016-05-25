@@ -42,7 +42,7 @@ func TestPostMessage(t *testing.T) {
 
 	url, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe/notifications")
 	// and a http context
-	req := &http.Request{URL: url}
+	req := &http.Request{URL: url, Method: "POST"}
 	w := httptest.NewRecorder()
 
 	//params := httprouter.Params{
