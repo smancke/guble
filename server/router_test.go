@@ -3,7 +3,7 @@ package server
 import (
 	"fmt"
 	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -33,22 +33,22 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 	// then
 
 	// the routes are stored
-	a.Equal(2, len(router.routes[guble.Path("/blah")]))
-	a.True(routeBlah1.equals(router.routes[guble.Path("/blah")][0]))
-	a.True(routeBlah2.equals(router.routes[guble.Path("/blah")][1]))
+	a.Equal(2, len(router.routes[protocol.Path("/blah")]))
+	a.True(routeBlah1.equals(router.routes[protocol.Path("/blah")][0]))
+	a.True(routeBlah2.equals(router.routes[protocol.Path("/blah")][1]))
 
-	a.Equal(1, len(router.routes[guble.Path("/foo")]))
-	a.True(routeFoo.equals(router.routes[guble.Path("/foo")][0]))
+	a.Equal(1, len(router.routes[protocol.Path("/foo")]))
+	a.True(routeFoo.equals(router.routes[protocol.Path("/foo")][0]))
 
 	// WHEN i remove routes
 	router.Unsubscribe(routeBlah1)
 	router.Unsubscribe(routeFoo)
 
 	// then they are gone
-	a.Equal(1, len(router.routes[guble.Path("/blah")]))
-	a.True(routeBlah2.equals(router.routes[guble.Path("/blah")][0]))
+	a.Equal(1, len(router.routes[protocol.Path("/blah")]))
+	a.True(routeBlah2.equals(router.routes[protocol.Path("/blah")][0]))
 
-	a.Nil(router.routes[guble.Path("/foo")])
+	a.Nil(router.routes[protocol.Path("/foo")])
 }
 
 func Test_SubscribeNotAllowed(t *testing.T) {
@@ -56,7 +56,7 @@ func Test_SubscribeNotAllowed(t *testing.T) {
 	a := assert.New(t)
 
 	tam := NewMockAccessManager(ctrl)
-	tam.EXPECT().IsAllowed(auth.READ, "user01", guble.Path("/blah")).Return(false)
+	tam.EXPECT().IsAllowed(auth.READ, "user01", protocol.Path("/blah")).Return(false)
 
 	router := NewRouter(tam, nil, nil).(*router)
 	router.Start()
@@ -68,7 +68,7 @@ func Test_SubscribeNotAllowed(t *testing.T) {
 	a.NotNil(e)
 
 	// now add permissions
-	tam.EXPECT().IsAllowed(auth.READ, "user01", guble.Path("/blah")).Return(true)
+	tam.EXPECT().IsAllowed(auth.READ, "user01", protocol.Path("/blah")).Return(true)
 
 	// and user shall be allowed to subscribe
 	_, e = router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
@@ -92,10 +92,10 @@ func Test_HandleMessageNotAllowed(t *testing.T) {
 	tam.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(false)
 
 	// when i send a message to the route
-	e := router.HandleMessage(&guble.Message{
-		Path:            r.Path,
-		Body:            aTestByteMessage,
-		PublisherUserId: r.UserID,
+	e := router.HandleMessage(&protocol.Message{
+		Path:   r.Path,
+		Body:   aTestByteMessage,
+		UserID: r.UserID,
 	})
 
 	// an error shall be returned
@@ -106,10 +106,10 @@ func Test_HandleMessageNotAllowed(t *testing.T) {
 	msMock.EXPECT().StoreTx(r.Path.Partition(), gomock.Any()).Return(nil)
 
 	// sending message
-	e = router.HandleMessage(&guble.Message{
-		Path:            r.Path,
-		Body:            aTestByteMessage,
-		PublisherUserId: r.UserID,
+	e = router.HandleMessage(&protocol.Message{
+		Path:   r.Path,
+		Body:   aTestByteMessage,
+		UserID: r.UserID,
 	})
 
 	// shall give no error
@@ -146,7 +146,7 @@ func TestSimpleMessageSending(t *testing.T) {
 	msMock.EXPECT().StoreTx(r.Path.Partition(), gomock.Any()).Return(nil)
 
 	// when i send a message to the route
-	router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage})
+	router.HandleMessage(&protocol.Message{Path: r.Path, Body: aTestByteMessage})
 
 	// then I can receive it a short time later
 	assertChannelContainsMessage(a, r.C, aTestByteMessage)
@@ -170,13 +170,13 @@ func TestRoutingWithSubTopics(t *testing.T) {
 	r, _ := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
 
 	// when i send a message to a subroute
-	router.HandleMessage(&guble.Message{Path: "/blah/blub", Body: aTestByteMessage})
+	router.HandleMessage(&protocol.Message{Path: "/blah/blub", Body: aTestByteMessage})
 
 	// then I can receive the message
 	assertChannelContainsMessage(a, r.C, aTestByteMessage)
 
 	// but, when i send a message to a resource, which is just a substring
-	router.HandleMessage(&guble.Message{Path: "/blahblub", Body: aTestByteMessage})
+	router.HandleMessage(&protocol.Message{Path: "/blahblub", Body: aTestByteMessage})
 
 	// then the message gets not delivered
 	a.Equal(0, len(r.C))
@@ -184,8 +184,8 @@ func TestRoutingWithSubTopics(t *testing.T) {
 
 func TestMatchesTopic(t *testing.T) {
 	for _, test := range []struct {
-		messagePath guble.Path
-		routePath   guble.Path
+		messagePath protocol.Path
+		routePath   protocol.Path
 		matches     bool
 	}{
 		{"/foo", "/foo", true},
@@ -213,13 +213,13 @@ func TestRouteIsRemovedIfChannelIsFull(t *testing.T) {
 
 	// where the channel is full of messages
 	for i := 0; i < chanSize; i++ {
-		router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage})
+		router.HandleMessage(&protocol.Message{Path: r.Path, Body: aTestByteMessage})
 	}
 
 	// when I send one more message
 	done := make(chan bool, 1)
 	go func() {
-		router.HandleMessage(&guble.Message{Path: r.Path, Body: aTestByteMessage})
+		router.HandleMessage(&protocol.Message{Path: r.Path, Body: aTestByteMessage})
 		done <- true
 	}()
 
@@ -258,7 +258,7 @@ func Test_Router_storeInTxAndHandle(t *testing.T) {
 
 	startTime := time.Now()
 
-	msg := &guble.Message{Path: guble.Path("/topic1")}
+	msg := &protocol.Message{Path: protocol.Path("/topic1")}
 	var storedMsg []byte
 
 	messageStoreMock := NewMockMessageStore(ctrl)
@@ -273,12 +273,12 @@ func Test_Router_storeInTxAndHandle(t *testing.T) {
 			storedMsg = callback(uint64(42))
 		})
 
-	receive := make(chan *guble.Message)
+	receive := make(chan *protocol.Message)
 	go func() {
 		msg := <-router.messageIn
 
-		a.Equal(uint64(42), msg.Id)
-		t := time.Unix(msg.PublishingTime, 0) // publishing time
+		a.Equal(uint64(42), msg.ID)
+		t := time.Unix(msg.Time, 0) // publishing time
 		a.True(t.After(startTime.Add(-1 * time.Second)))
 		a.True(t.Before(time.Now().Add(time.Second)))
 

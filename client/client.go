@@ -2,7 +2,7 @@ package client
 
 import (
 	"github.com/gorilla/websocket"
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 	"net/http"
 	"time"
 )
@@ -14,13 +14,13 @@ type WSConnection interface {
 }
 
 func DefaultConnectionFactory(url string, origin string) (WSConnection, error) {
-	guble.Info("connecting to %v", url)
+	protocol.Info("connecting to %v", url)
 	header := http.Header{"Origin": []string{origin}}
 	conn, _, err := websocket.DefaultDialer.Dial(url, header)
 	if err != nil {
 		return nil, err
 	}
-	guble.Info("connected to %v", url)
+	protocol.Info("connected to %v", url)
 	return conn, nil
 }
 
@@ -37,9 +37,9 @@ type Client interface {
 	SendBytes(path string, body []byte, header string) error
 
 	WriteRawMessage(message []byte) error
-	Messages() chan *guble.Message
-	StatusMessages() chan *guble.NotificationMessage
-	Errors() chan *guble.NotificationMessage
+	Messages() chan *protocol.Message
+	StatusMessages() chan *protocol.NotificationMessage
+	Errors() chan *protocol.NotificationMessage
 
 	SetWSConnectionFactory(WSConnectionFactory)
 	IsConnected() bool
@@ -47,9 +47,9 @@ type Client interface {
 
 type client struct {
 	ws                  WSConnection
-	messages            chan *guble.Message
-	statusMessages      chan *guble.NotificationMessage
-	errors              chan *guble.NotificationMessage
+	messages            chan *protocol.Message
+	statusMessages      chan *protocol.NotificationMessage
+	errors              chan *protocol.NotificationMessage
 	url                 string
 	origin              string
 	shouldStopChan      chan bool
@@ -70,9 +70,9 @@ func Open(url, origin string, channelSize int, autoReconnect bool) (Client, erro
 // Construct a new client, without starting the connection
 func New(url, origin string, channelSize int, autoReconnect bool) Client {
 	return &client{
-		messages:       make(chan *guble.Message, channelSize),
-		statusMessages: make(chan *guble.NotificationMessage, channelSize),
-		errors:         make(chan *guble.NotificationMessage, channelSize),
+		messages:       make(chan *protocol.Message, channelSize),
+		statusMessages: make(chan *protocol.NotificationMessage, channelSize),
+		errors:         make(chan *protocol.NotificationMessage, channelSize),
 		url:            url,
 		origin:         origin,
 		shouldStopChan: make(chan bool, 1),
@@ -124,11 +124,11 @@ func (c *client) startWithReconnect() {
 		c.ws, err = c.wSConnectionFactory(c.url, c.origin)
 		if err != nil {
 			c.connected = false
-			guble.Err("error on connect, retry in 50ms: %v", err)
+			protocol.Err("error on connect, retry in 50ms: %v", err)
 			time.Sleep(time.Millisecond * 50)
 		} else {
 			c.connected = true
-			guble.Err("connected again")
+			protocol.Err("connected again")
 		}
 	}
 }
@@ -140,12 +140,12 @@ func (c *client) readLoop() error {
 			if c.shouldStop() {
 				return nil
 			} else {
-				guble.Err("read error: %v", err.Error())
+				protocol.Err("read error: %v", err.Error())
 				c.errors <- clientErrorMessage(err.Error())
 				return err
 			}
 		} else {
-			guble.Debug("raw> %s", msg)
+			protocol.Debug("raw> %s", msg)
 			c.handleIncommoingMessage(msg)
 		}
 	}
@@ -165,17 +165,17 @@ func (c *client) shouldStop() bool {
 }
 
 func (c *client) handleIncommoingMessage(msg []byte) {
-	parsed, err := guble.ParseMessage(msg)
+	parsed, err := protocol.ParseMessage(msg)
 	if err != nil {
-		guble.Err("parsing message failed %v", err)
+		protocol.Err("parsing message failed %v", err)
 		c.errors <- clientErrorMessage(err.Error())
 		return
 	}
 
 	switch message := parsed.(type) {
-	case *guble.Message:
+	case *protocol.Message:
 		c.messages <- message
-	case *guble.NotificationMessage:
+	case *protocol.NotificationMessage:
 		if message.IsError {
 			select {
 			case c.errors <- message:
@@ -191,8 +191,8 @@ func (c *client) handleIncommoingMessage(msg []byte) {
 }
 
 func (c *client) Subscribe(path string) error {
-	cmd := &guble.Cmd{
-		Name: guble.CmdReceive,
+	cmd := &protocol.Cmd{
+		Name: protocol.CmdReceive,
 		Arg:  path,
 	}
 	err := c.ws.WriteMessage(websocket.BinaryMessage, cmd.Bytes())
@@ -200,8 +200,8 @@ func (c *client) Subscribe(path string) error {
 }
 
 func (c *client) Unsubscribe(path string) error {
-	cmd := &guble.Cmd{
-		Name: guble.CmdCancel,
+	cmd := &protocol.Cmd{
+		Name: protocol.CmdCancel,
 		Arg:  path,
 	}
 	err := c.ws.WriteMessage(websocket.BinaryMessage, cmd.Bytes())
@@ -213,8 +213,8 @@ func (c *client) Send(path string, body string, header string) error {
 }
 
 func (c *client) SendBytes(path string, body []byte, header string) error {
-	cmd := &guble.Cmd{
-		Name:       guble.CmdSend,
+	cmd := &protocol.Cmd{
+		Name:       protocol.CmdSend,
 		Arg:        path,
 		Body:       body,
 		HeaderJSON: header,
@@ -227,15 +227,15 @@ func (c *client) WriteRawMessage(message []byte) error {
 	return c.ws.WriteMessage(websocket.BinaryMessage, message)
 }
 
-func (c *client) Messages() chan *guble.Message {
+func (c *client) Messages() chan *protocol.Message {
 	return c.messages
 }
 
-func (c *client) StatusMessages() chan *guble.NotificationMessage {
+func (c *client) StatusMessages() chan *protocol.NotificationMessage {
 	return c.statusMessages
 }
 
-func (c *client) Errors() chan *guble.NotificationMessage {
+func (c *client) Errors() chan *protocol.NotificationMessage {
 	return c.errors
 }
 
@@ -244,8 +244,8 @@ func (c *client) Close() {
 	c.ws.Close()
 }
 
-func clientErrorMessage(message string) *guble.NotificationMessage {
-	return &guble.NotificationMessage{
+func clientErrorMessage(message string) *protocol.NotificationMessage {
+	return &protocol.NotificationMessage{
 		IsError: true,
 		Name:    "clientError",
 		Arg:     message,

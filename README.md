@@ -68,7 +68,7 @@ This release contains a lot of small changes and the JavaScript API.
 * Authentication and access management
 * Clean shutdown
 * Improve logging (Maybe use of https://github.com/Sirupsen/logrus)
-* Rename package "guble" to "protocol" or "gublep"
+* ~~Rename package "guble" to "protocol" or "gublep"~~
 * ~~Change time from ISO 8601 to unix timestamp~~
 * Remove `userId` from route
 

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/store"
 
 	"github.com/golang/mock/gomock"
@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-var aTestMessage = &guble.Message{
-	Id:   uint64(42),
+var aTestMessage = &protocol.Message{
+	ID:   uint64(42),
 	Path: "/foo",
 	Body: []byte("Test"),
 }
@@ -28,18 +28,18 @@ func Test_WebSocket_SubscribeAndUnsubscribe(t *testing.T) {
 	wsconn, routerMock, messageStore := createDefaultMocks(messages)
 
 	routerMock.EXPECT().Subscribe(routeMatcher{"/foo"}).Return(nil, nil)
-	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /foo"))
+	wsconn.EXPECT().Send([]byte("#" + protocol.SUCCESS_SUBSCRIBED_TO + " /foo"))
 
 	routerMock.EXPECT().Subscribe(routeMatcher{"/bar"}).Return(nil, nil)
-	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_SUBSCRIBED_TO + " /bar"))
+	wsconn.EXPECT().Send([]byte("#" + protocol.SUCCESS_SUBSCRIBED_TO + " /bar"))
 
 	routerMock.EXPECT().Unsubscribe(routeMatcher{"/foo"})
-	wsconn.EXPECT().Send([]byte("#" + guble.SUCCESS_CANCELED + " /foo"))
+	wsconn.EXPECT().Send([]byte("#" + protocol.SUCCESS_CANCELED + " /foo"))
 
 	websocket := runNewWebSocket(wsconn, routerMock, messageStore, nil)
 
 	a.Equal(1, len(websocket.receivers))
-	a.Equal(guble.Path("/bar"), websocket.receivers[guble.Path("/bar")].path)
+	a.Equal(protocol.Path("/bar"), websocket.receivers[protocol.Path("/bar")].path)
 }
 
 func Test_SendMessageWithPublisherMessageId(t *testing.T) {
@@ -49,9 +49,9 @@ func Test_SendMessageWithPublisherMessageId(t *testing.T) {
 	commands := []string{"> /path 42"}
 	wsconn, routerMock, messageStore := createDefaultMocks(commands)
 
-	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *guble.Message) {
-		assert.Equal(t, guble.Path("/path"), msg.Path)
-		assert.Equal(t, "42", msg.PublisherMessageId)
+	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *protocol.Message) {
+		assert.Equal(t, protocol.Path("/path"), msg.Path)
+		assert.Equal(t, "42", msg.MessageID)
 	})
 
 	wsconn.EXPECT().Send([]byte("#send 42"))
@@ -90,7 +90,7 @@ func Test_AnIncommingMessageIsNotAllowed(t *testing.T) {
 	wsconn, routerMock, messageStore := createDefaultMocks([]string{})
 
 	tam := NewMockAccessManager(ctrl)
-	tam.EXPECT().IsAllowed(auth.READ, "testuser", guble.Path("/foo")).Return(false)
+	tam.EXPECT().IsAllowed(auth.READ, "testuser", protocol.Path("/foo")).Return(false)
 	handler := NewWebSocket(
 		testWSHandler(routerMock, messageStore, tam),
 		wsconn,
@@ -106,7 +106,7 @@ func Test_AnIncommingMessageIsNotAllowed(t *testing.T) {
 	//nothing shall have been sent
 
 	//now allow
-	tam.EXPECT().IsAllowed(auth.READ, "testuser", guble.Path("/foo")).Return(true)
+	tam.EXPECT().IsAllowed(auth.READ, "testuser", protocol.Path("/foo")).Return(true)
 
 	wsconn.EXPECT().Send(aTestMessage.Bytes())
 
@@ -223,10 +223,10 @@ type messageMatcher struct {
 }
 
 func (n messageMatcher) Matches(x interface{}) bool {
-	return n.path == string(x.(*guble.Message).Path) &&
-		n.message == string(x.(*guble.Message).Body) &&
-		(n.id == 0 || n.id == x.(*guble.Message).Id) &&
-		(n.header == "" || (n.header == x.(*guble.Message).HeaderJSON))
+	return n.path == string(x.(*protocol.Message).Path) &&
+		n.message == string(x.(*protocol.Message).Body) &&
+		(n.id == 0 || n.id == x.(*protocol.Message).ID) &&
+		(n.header == "" || (n.header == x.(*protocol.Message).HeaderJSON))
 }
 
 func (n messageMatcher) String() string {

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/store"
 
 	"errors"
@@ -21,7 +21,7 @@ type Receiver struct {
 	applicationId       string
 	router              Router
 	messageStore        store.MessageStore
-	path                guble.Path
+	path                protocol.Path
 	doFetch             bool
 	doSubscription      bool
 	startId             int64
@@ -36,7 +36,7 @@ type Receiver struct {
 // NewReceiverFromCmd parses the info in the command
 func NewReceiverFromCmd(
 	applicationId string,
-	cmd *guble.Cmd,
+	cmd *protocol.Cmd,
 	sendChannel chan []byte,
 	router Router,
 	messageStore store.MessageStore,
@@ -55,7 +55,7 @@ func NewReceiverFromCmd(
 		return nil, fmt.Errorf("command requires at least a path argument, but non given")
 	}
 	args := strings.SplitN(cmd.Arg, " ", 3)
-	rec.path = guble.Path(args[0])
+	rec.path = protocol.Path(args[0])
 
 	if len(args) > 1 {
 		rec.doFetch = true
@@ -92,8 +92,8 @@ func (rec *Receiver) subscriptionLoop() {
 		if rec.doFetch {
 
 			if err := rec.fetch(); err != nil {
-				guble.Err("error while fetching: %v, %+v", err.Error(), rec)
-				rec.sendError(guble.ERROR_INTERNAL_SERVER, err.Error())
+				protocol.Err("error while fetching: %v, %+v", err.Error(), rec)
+				rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
 				return
 			}
 
@@ -103,8 +103,8 @@ func (rec *Receiver) subscriptionLoop() {
 					rec.startId = int64(rec.lastSendId + 1)
 					continue // fetch again
 				} else {
-					guble.Err("error while subscribeIfNoUnreadMessagesAvailable: %v, %+v", err.Error(), rec)
-					rec.sendError(guble.ERROR_INTERNAL_SERVER, err.Error())
+					protocol.Err("error while subscribeIfNoUnreadMessagesAvailable: %v, %+v", err.Error(), rec)
+					rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
 					return
 				}
 			}
@@ -137,9 +137,9 @@ func (rec *Receiver) subscribe() {
 	rec.route = NewRoute(string(rec.path), make(chan MsgAndRoute, 3), rec.applicationId, rec.userId)
 	_, err := rec.router.Subscribe(rec.route)
 	if err != nil {
-		rec.sendError(guble.ERROR_SUBSCRIBED_TO, string(rec.path), err.Error())
+		rec.sendError(protocol.ERROR_SUBSCRIBED_TO, string(rec.path), err.Error())
 	} else {
-		rec.sendOK(guble.SUCCESS_SUBSCRIBED_TO, string(rec.path))
+		rec.sendOK(protocol.SUCCESS_SUBSCRIBED_TO, string(rec.path))
 	}
 }
 
@@ -148,24 +148,24 @@ func (rec *Receiver) receiveFromSubscription() {
 		select {
 		case msgAndRoute, ok := <-rec.route.C:
 			if !ok {
-				guble.Debug("Router closed the channel returning from subscription", rec.applicationId)
+				protocol.Debug("Router closed the channel returning from subscription", rec.applicationId)
 				return
 			}
 
-			if guble.DebugEnabled() {
-				guble.Debug("Deliver message to applicationId=%v: %v", rec.applicationId, msgAndRoute.Message.MetadataLine())
+			if protocol.DebugEnabled() {
+				protocol.Debug("Deliver message to applicationId=%v: %v", rec.applicationId, msgAndRoute.Message.Metadata())
 			}
-			if msgAndRoute.Message.Id > rec.lastSendId {
-				rec.lastSendId = msgAndRoute.Message.Id
+			if msgAndRoute.Message.ID > rec.lastSendId {
+				rec.lastSendId = msgAndRoute.Message.ID
 				rec.sendChannel <- msgAndRoute.Message.Bytes()
 			} else {
-				guble.Debug("Dropping message %v, because it was already sent to client", msgAndRoute.Message.Id)
+				protocol.Debug("Dropping message %v, because it was already sent to client", msgAndRoute.Message.ID)
 			}
 		case <-rec.cancelChannel:
 			rec.shouldStop = true
 			rec.router.Unsubscribe(rec.route)
 			rec.route = nil
-			rec.sendOK(guble.SUCCESS_CANCELED, string(rec.path))
+			rec.sendOK(protocol.SUCCESS_CANCELED, string(rec.path))
 			return
 		}
 
@@ -175,8 +175,8 @@ func (rec *Receiver) receiveFromSubscription() {
 func (rec *Receiver) fetchOnlyLoop() {
 	err := rec.fetch()
 	if err != nil {
-		guble.Err("error while fetching: %v, %+v", err.Error(), rec)
-		rec.sendError(guble.ERROR_INTERNAL_SERVER, err.Error())
+		protocol.Err("error while fetching: %v, %+v", err.Error(), rec)
+		rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
 	}
 }
 
@@ -215,20 +215,20 @@ func (rec *Receiver) fetch() error {
 	for {
 		select {
 		case numberOfResults := <-fetch.StartCallback:
-			rec.sendOK(guble.SUCCESS_FETCH_START, fmt.Sprintf("%v %v", rec.path, numberOfResults))
+			rec.sendOK(protocol.SUCCESS_FETCH_START, fmt.Sprintf("%v %v", rec.path, numberOfResults))
 		case msgAndId, open := <-fetch.MessageC:
 			if !open {
-				rec.sendOK(guble.SUCCESS_FETCH_END, string(rec.path))
+				rec.sendOK(protocol.SUCCESS_FETCH_END, string(rec.path))
 				return nil
 			}
-			guble.Debug("replay send %v, %v", msgAndId.Id, string(msgAndId.Message))
+			protocol.Debug("replay send %v, %v", msgAndId.Id, string(msgAndId.Message))
 			rec.lastSendId = msgAndId.Id
 			rec.sendChannel <- msgAndId.Message
 		case err := <-fetch.ErrorCallback:
 			return err
 		case <-rec.cancelChannel:
 			rec.shouldStop = true
-			rec.sendOK(guble.SUCCESS_CANCELED, string(rec.path))
+			rec.sendOK(protocol.SUCCESS_CANCELED, string(rec.path))
 			// TODO implement cancellation in message store
 			return nil
 		}
@@ -242,7 +242,7 @@ func (rec *Receiver) Stop() error {
 }
 
 func (rec *Receiver) sendError(name string, argPattern string, params ...interface{}) {
-	n := &guble.NotificationMessage{
+	n := &protocol.NotificationMessage{
 		Name:    name,
 		Arg:     fmt.Sprintf(argPattern, params...),
 		IsError: true,
@@ -252,7 +252,7 @@ func (rec *Receiver) sendError(name string, argPattern string, params ...interfa
 
 func (rec *Receiver) sendOK(name string, argPattern string, params ...interface{}) {
 	if rec.enableNotifications {
-		n := &guble.NotificationMessage{
+		n := &protocol.NotificationMessage{
 			Name:    name,
 			Arg:     fmt.Sprintf(argPattern, params...),
 			IsError: false,

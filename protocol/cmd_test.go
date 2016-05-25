@@ -1,4 +1,4 @@
-package guble
+package protocol
 
 import (
 	assert "github.com/stretchr/testify/assert"

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 
 	"fmt"
 	"net/http"
@@ -62,17 +62,17 @@ func (service *Service) Register(module interface{}) {
 	name := reflect.TypeOf(module).String()
 
 	if m, ok := module.(Startable); ok {
-		guble.Info("register %v as StartListener", name)
+		protocol.Info("register %v as StartListener", name)
 		service.AddStartListener(m)
 	}
 
 	if m, ok := module.(Endpoint); ok {
-		guble.Info("register %v as Endpoint to %v", name, m.GetPrefix())
+		protocol.Info("register %v as Endpoint to %v", name, m.GetPrefix())
 		service.AddHandler(m.GetPrefix(), m)
 	}
 
 	if m, ok := module.(Stopable); ok {
-		guble.Info("register %v as StopListener", name)
+		protocol.Info("register %v as StopListener", name)
 		service.AddStopListener(m)
 	}
 }
@@ -82,14 +82,14 @@ func (service *Service) AddHandler(prefix string, handler http.Handler) {
 }
 
 func (service *Service) Start() error {
-	el := guble.NewErrorList("Errors occured while startup the service: ")
+	el := protocol.NewErrorList("Errors occured while startup the service: ")
 
 	for _, startable := range service.startListener {
 		name := reflect.TypeOf(startable).String()
 
-		guble.Debug("starting module %v", name)
+		protocol.Debug("starting module %v", name)
 		if err := startable.Start(); err != nil {
-			guble.Err("error on startup module %v", name)
+			protocol.Err("error on startup module %v", name)
 			el.Add(err)
 		}
 	}
@@ -110,7 +110,7 @@ func (service *Service) Stop() error {
 		name := reflect.TypeOf(stopable).String()
 		stoppedChan := make(chan bool)
 		errorChan := make(chan error)
-		guble.Info("stopping %v ...", name)
+		protocol.Info("stopping %v ...", name)
 		go func() {
 			err := stopable.Stop()
 			if err != nil {
@@ -121,13 +121,13 @@ func (service *Service) Stop() error {
 		}()
 		select {
 		case err := <-errorChan:
-			guble.Err("error while stopping %v: %v", name, err.Error)
+			protocol.Err("error while stopping %v: %v", name, err.Error)
 			errors[name] = err
 		case <-stoppedChan:
-			guble.Info("stopped %v", name)
+			protocol.Info("stopped %v", name)
 		case <-time.After(service.StopGracePeriod):
 			errors[name] = fmt.Errorf("error while stopping %v: not returned after %v seconds", name, service.StopGracePeriod)
-			guble.Err(errors[name].Error())
+			protocol.Err(errors[name].Error())
 		}
 	}
 	if len(errors) > 0 {

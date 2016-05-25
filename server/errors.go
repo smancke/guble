@@ -3,7 +3,7 @@ package server
 import (
 	"errors"
 	"fmt"
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 )
 
@@ -14,12 +14,15 @@ var (
 
 // PermissionDeniedError is returned when AccessManager denies a user request for a topic
 type PermissionDeniedError struct {
+
 	// userId of request
-	userID     string
+	userID string
+
 	// accessType  requested(READ/WRITE)
 	accessType auth.AccessType
+
 	// requested topic
-	path       guble.Path
+	path protocol.Path
 }
 
 func (e *PermissionDeniedError) Error() string {

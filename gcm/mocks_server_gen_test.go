@@ -5,7 +5,7 @@ package gcm
 
 import (
 	gomock "github.com/golang/mock/gomock"
-	guble "github.com/smancke/guble/guble"
+	protocol "github.com/smancke/guble/protocol"
 	server "github.com/smancke/guble/server"
 	auth "github.com/smancke/guble/server/auth"
 	store "github.com/smancke/guble/store"
@@ -43,7 +43,7 @@ func (_mr *_MockRouterRecorder) AccessManager() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AccessManager")
 }
 
-func (_m *MockRouter) HandleMessage(_param0 *guble.Message) error {
+func (_m *MockRouter) HandleMessage(_param0 *protocol.Message) error {
 	ret := _m.ctrl.Call(_m, "HandleMessage", _param0)
 	ret0, _ := ret[0].(error)
 	return ret0

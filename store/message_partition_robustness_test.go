@@ -1,7 +1,7 @@
 package store
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 
 	"github.com/stretchr/testify/assert"
 
@@ -63,7 +63,7 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 		msgC := make(chan MessageAndId)
 		errorC := make(chan error)
 
-		guble.Debug("[%v] start fetching at: %v", name, lastReadMessage+1)
+		protocol.Debug("[%v] start fetching at: %v", name, lastReadMessage+1)
 		store.Fetch(FetchRequest{
 			Partition:     "myMessages",
 			StartId:       uint64(lastReadMessage + 1),
@@ -80,7 +80,7 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 			select {
 			case msgAndId, open := <-msgC:
 				if !open {
-					guble.Debug("[%v] stop fetching at %v", name, lastReadMessage)
+					protocol.Debug("[%v] stop fetching at %v", name, lastReadMessage)
 					break fetch
 				}
 				a.Equal(lastReadMessage+1, int(msgAndId.Id))
@@ -93,6 +93,6 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 		}
 
 	}
-	guble.Debug("[%v] ready, got %v", name, lastReadMessage)
+	protocol.Debug("[%v] ready, got %v", name, lastReadMessage)
 	done <- true
 }
