@@ -22,7 +22,7 @@ func TestPostMessage(t *testing.T) {
 
 	// given:  a rest api with a message sink
 	routerMock := NewMockRouter(ctrl)
-	api := NewRestMessageApi(routerMock, "/api")
+	api := NewRestMessageAPI(routerMock, "/api")
 
 	url, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")
 	// and a http context
@@ -56,10 +56,10 @@ func TestHeadersToJson(t *testing.T) {
 	a := assert.New(t)
 
 	// empty header
-	a.Equal(`{}`, headersToJson(http.Header{}))
+	a.Equal(`{}`, headersToJSON(http.Header{}))
 
 	// simple head
-	jsonString := headersToJson(http.Header{
+	jsonString := headersToJSON(http.Header{
 		X_HEADER_PREFIX + "a": []string{"b"},
 		"foo": []string{"b"},
 		X_HEADER_PREFIX + "x": []string{"y"},

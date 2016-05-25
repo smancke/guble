@@ -82,7 +82,7 @@ var CreateModules = func(
 		modules = append(modules, wsHandler)
 	}
 
-	modules = append(modules, server.NewRestMessageApi(router, "/api/"))
+	modules = append(modules, server.NewRestMessageAPI(router, "/api/"))
 
 	if args.GcmEnable {
 		if args.GcmApiKey == "" {

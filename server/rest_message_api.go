@@ -14,15 +14,15 @@ import (
 
 const X_HEADER_PREFIX = "x-guble-"
 
-type RestMessageApi struct {
+type RestMessageAPI struct {
 	Router
 	mux    http.Handler
 	prefix string
 }
 
-func NewRestMessageApi(router Router, prefix string) *RestMessageApi {
+func NewRestMessageAPI(router Router, prefix string) *RestMessageAPI {
 	mux := httprouter.New()
-	api := &RestMessageApi{router, mux, prefix}
+	api := &RestMessageAPI{router, mux, prefix}
 
 	p := removeTrailingSlash(prefix)
 	mux.POST(p+"/message/*topic", api.PostMessage)
@@ -30,15 +30,15 @@ func NewRestMessageApi(router Router, prefix string) *RestMessageApi {
 	return api
 }
 
-func (api *RestMessageApi) GetPrefix() string {
+func (api *RestMessageAPI) GetPrefix() string {
 	return api.prefix
 }
 
-func (api *RestMessageApi) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	api.mux.ServeHTTP(w, r)
 }
 
-func (api *RestMessageApi) PostMessage(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (api *RestMessageAPI) PostMessage(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, `Can not read body`, http.StatusBadRequest)
@@ -51,7 +51,7 @@ func (api *RestMessageApi) PostMessage(w http.ResponseWriter, r *http.Request, p
 		UserID:        q(r, `userId`),
 		ApplicationID: xid.New().String(),
 		MessageID:     q(r, `messageId`),
-		HeaderJSON:    headersToJson(r.Header),
+		HeaderJSON:    headersToJSON(r.Header),
 	}
 
 	api.HandleMessage(msg)
@@ -66,7 +66,7 @@ func q(r *http.Request, name string) string {
 	return ""
 }
 
-func headersToJson(header http.Header) string {
+func headersToJSON(header http.Header) string {
 	buff := &bytes.Buffer{}
 	buff.WriteString("{")
 
