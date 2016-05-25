@@ -82,7 +82,7 @@ func Test_DummyMessageStore_SyncIdsOnStop(t *testing.T) {
 	store.setId("partition", uint64(42))
 
 	// then it is not synced after some wait
-	time.Sleep(time.Millisecond * 4)
+	time.Sleep(time.Millisecond * 2)
 	_, exist, _ := kvStore.Get(TOPIC_SCHEMA, "partition")
 	a.False(exist)
 
