@@ -191,12 +191,9 @@ func (gcmConnector *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Reque
 }
 
 func (gcm *GCMConnector) parseParams(currentUrlPath string ) (userID, gcmID, topic  string, err error) {
-	if strings.HasPrefix(currentUrlPath ,"/gcm/") !=  true {
-		return userID,gcmID,topic,errors.New("Gcm request is not starting with /gcm")
-	}
 	if strings.HasPrefix(currentUrlPath, "/gcm/") != true {
 		return userID,gcmID,topic,errors.New("Gcm request is not starting with /gcm")
-	}
+	}                                                                     //prefix is not gcm
 	sl := strings.SplitAfterN(currentUrlPath, "/gcm/", 2)
 	fmt.Println(sl)
 	if len(sl) != 2 {
@@ -213,7 +210,7 @@ func (gcm *GCMConnector) parseParams(currentUrlPath string ) (userID, gcmID, top
 	}
 	userID = sll[0]
 	gcmID = sll[1]
-	topic = sll[3]
+	topic = "/"+sll[3]
 	return userID,gcmID,topic,nil
 }
 
