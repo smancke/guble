@@ -4,7 +4,6 @@ import (
 	"github.com/smancke/guble/guble"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
-
 	"github.com/alexjlockwood/gcm"
 
 	"encoding/json"
@@ -179,7 +178,6 @@ func (gcmConnector *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// /gcm/:userid/:gcmid/subscribe/*topic
 	userID, gcmID, topic, err := gcmConnector.parseParams(r.URL.Path)
 	if err != nil {
 		http.Error(w, "Permission Denied", 405)
@@ -190,39 +188,33 @@ func (gcmConnector *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	fmt.Fprintf(w, "registered: %v\n", topic)
 }
 
-func (gcm *GCMConnector) parseParams(currentUrlPath string ) (userID, gcmID, topic  string, err error) {
-	if strings.HasPrefix(currentUrlPath, "/gcm/") != true {
-		return userID,gcmID,topic,errors.New("Gcm request is not starting with /gcm")
-	}                                                                     //prefix is not gcm
-	sl := strings.SplitAfterN(currentUrlPath, "/gcm/", 2)
-	fmt.Println(sl)
-	if len(sl) != 2 {
-		return userID,gcmID,topic,errors.New("Gcm request is not starting with /gcm/")
+// parseParams will parse the HTTP URL with format /gcm/:userid/:gcmid/subscribe/*topic
+// returning error if the request is not in the corect format   or else the parsed Params
+func (gcm *GCMConnector) parseParams(path string ) (userID, gcmID, topic  string, err error) {
+	subscribePrefixPath := "subscribe"
+	currentUrlPath := removeTrailingSlash(path)
+
+	if strings.HasPrefix(currentUrlPath, gcm.prefix) != true {
+		return userID,gcmID,topic,errors.New("Gcm request is not starting with gcm prefix")
 	}
-	sll := strings.SplitN(sl[1],"/", 4)
-	if len(sll) != 4 {
+	pathAfterPrefix := strings.TrimPrefix(currentUrlPath, gcm.prefix)
+	if pathAfterPrefix ==  currentUrlPath {
+		return userID,gcmID,topic,errors.New("Gcm request is not starting with gcm prefix")
+	}
+
+	splitedParams := strings.SplitN(pathAfterPrefix,"/", 3)
+	if len(splitedParams) != 3 {
 		return userID,gcmID,topic,errors.New("Gcm request has wrong number of params")
 	}
-	//[marvin gcmId123 subscribe notifications]
+	userID = splitedParams[0]
+	gcmID = splitedParams[1]
 
-	if sll[2] != "subscribe" {
+	if strings.HasPrefix(splitedParams[2], subscribePrefixPath+"/") != true {
 		return userID,gcmID,topic,errors.New("Gcm request third param is not subscribe")
 	}
-	userID = sll[0]
-	gcmID = sll[1]
-	topic = "/"+sll[3]
+	topic = strings.TrimPrefix(splitedParams[2], subscribePrefixPath)
 	return userID,gcmID,topic,nil
 }
-
-//func (gcmConnector *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-//	topic := params.ByName(`topic`)
-//	userid := params.ByName("userid")
-//	gcmid := params.ByName(`gcmid`)
-//
-//	gcmConnector.subscribe(topic, userid, gcmid)
-//
-//	fmt.Fprintf(w, "registered: %v\n", topic)
-//}
 
 func (gcmConnector *GCMConnector) subscribe(topic string, userid string, gcmid string) {
 	guble.Info("gcm connector registration to userid=%q, gcmid=%q: %q", userid, gcmid, topic)
