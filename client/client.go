@@ -135,19 +135,19 @@ func (c *client) startWithReconnect() {
 
 func (c *client) readLoop() error {
 	for {
-		if _, msg, err := c.ws.ReadMessage(); err != nil {
+		_, msg, err := c.ws.ReadMessage()
+		if err != nil {
 			c.connected = false
 			if c.shouldStop() {
 				return nil
-			} else {
-				protocol.Err("read error: %v", err.Error())
-				c.errors <- clientErrorMessage(err.Error())
-				return err
 			}
-		} else {
-			protocol.Debug("raw> %s", msg)
-			c.handleIncommoingMessage(msg)
+
+			protocol.Err("read error: %v", err.Error())
+			c.errors <- clientErrorMessage(err.Error())
+			return err
 		}
+		protocol.Debug("raw> %s", msg)
+		c.handleIncommoingMessage(msg)
 	}
 }
 

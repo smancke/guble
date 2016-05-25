@@ -26,9 +26,9 @@ func TestSimplePingPong(t *testing.T) {
 	select {
 	case msg := <-client1.Messages():
 		assert.Equal(t, "Hallo", msg.BodyAsString())
-		assert.Equal(t, "user2", msg.PublisherUserId)
-		assert.Equal(t, `{"key": "value"}`, msg.HeaderJson)
-		assert.Equal(t, uint64(1), msg.Id)
+		assert.Equal(t, "user2", msg.UserID)
+		assert.Equal(t, `{"key": "value"}`, msg.HeaderJSON)
+		assert.Equal(t, uint64(1), msg.ID)
 	case msg := <-client1.Errors():
 		t.Logf("received error: %v", msg)
 		t.FailNow()
@@ -76,7 +76,7 @@ func expectStatusMessage(t *testing.T, client client.Client, name string, arg st
 		assert.Equal(t, arg, notify.Arg)
 		return notify.Json
 	case <-time.After(time.Second * 2):
-		t.Logf("no notification of type %s after 2 second", name)
+		t.Logf("no notification of type %s after 1 second", name)
 		t.Fail()
 		return ""
 	}
