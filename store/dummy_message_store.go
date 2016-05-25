@@ -1,7 +1,6 @@
 package store
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"sync"
@@ -38,9 +37,6 @@ func NewDummyMessageStore(kvStore KVStore) *DummyMessageStore {
 }
 
 func (fms *DummyMessageStore) Start() error {
-	if fms.kvStore == nil {
-		return errors.New("DummyMessageStore needs KVStore to be se set on Start()")
-	}
 	go fms.startSequenceSync()
 	fms.isSyncStarted = true
 
