@@ -17,15 +17,15 @@ func TestSimplePingPong(t *testing.T) {
 	defer tearDown()
 
 	client1.Subscribe("/foo")
-	//expectStatusMessage(t, client1, protocol.SUCCESS_SUBSCRIBED_TO, "/foo")
+	expectStatusMessage(t, client1, protocol.SUCCESS_SUBSCRIBED_TO, "/foo")
 
 	time.Sleep(time.Millisecond * 10)
-	client2.Send("/foo 42", "Hallo", `{"key": "value"}`)
+	client2.Send("/foo 42", "Hello", `{"key": "value"}`)
 	expectStatusMessage(t, client2, protocol.SUCCESS_SEND, "42")
 
 	select {
 	case msg := <-client1.Messages():
-		assert.Equal(t, "Hallo", msg.BodyAsString())
+		assert.Equal(t, "Hello", msg.BodyAsString())
 		assert.Equal(t, "user2", msg.UserID)
 		assert.Equal(t, `{"key": "value"}`, msg.HeaderJSON)
 		assert.Equal(t, uint64(1), msg.ID)
@@ -75,8 +75,8 @@ func expectStatusMessage(t *testing.T, client client.Client, name string, arg st
 		assert.Equal(t, name, notify.Name)
 		assert.Equal(t, arg, notify.Arg)
 		return notify.Json
-	case <-time.After(time.Second * 2):
-		t.Logf("no notification of type %s after 1 second", name)
+	case <-time.After(time.Second * 10):
+		t.Logf("no notification of type %s after 2 second", name)
 		t.Fail()
 		return ""
 	}
