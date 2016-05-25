@@ -1,4 +1,4 @@
-package server
+package rest
 
 import (
 	"github.com/smancke/guble/protocol"
