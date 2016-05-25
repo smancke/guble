@@ -19,9 +19,9 @@ func TestSimplePingPong(t *testing.T) {
 	client1.Subscribe("/foo")
 	expectStatusMessage(t, client1, protocol.SUCCESS_SUBSCRIBED_TO, "/foo")
 
+	time.Sleep(time.Millisecond * 10)
 	client2.Send("/foo 42", "Hello", `{"key": "value"}`)
 	expectStatusMessage(t, client2, protocol.SUCCESS_SEND, "42")
-	// time.Sleep(time.Millisecond * 10)
 
 	select {
 	case msg := <-client1.Messages():
