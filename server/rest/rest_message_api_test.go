@@ -73,4 +73,33 @@ func TestHeadersToJson(t *testing.T) {
 func TestRemoveTailingSlash(t *testing.T) {
 	assert.Equal(t, "/foo", removeTrailingSlash("/foo/"))
 	assert.Equal(t, "/foo", removeTrailingSlash("/foo"))
+	assert.Equal(t, "/", removeTrailingSlash("/"))
+}
+
+func TestExtractTopic(t *testing.T) {
+	a := assert.New(t)
+
+	api := NewRestMessageAPI(nil, "/api")
+
+	cases := []struct {
+		path, topic string
+		err         error
+	}{
+		{"/api/message/my/topic", "/my/topic", nil},
+		{"/api/message/", "", errNotFound},
+		{"/api/message", "", errNotFound},
+		{"/api/invalid/request", "", errNotFound},
+	}
+
+	for _, c := range cases {
+		topic, err := api.extractTopic(c.path)
+		m := "Assertion failed for path: " + c.path
+
+		if c.err == nil {
+			a.Equal(c.topic, topic, m)
+		} else {
+			a.NotNil(err, m)
+			a.Equal(c.err, err, m)
+		}
+	}
 }

@@ -66,7 +66,12 @@ func (api *RestMessageAPI) extractTopic(path string) (string, error) {
 	}
 
 	// Remove "`api.prefix` + /message" and we remain with the topic
-	return strings.TrimPrefix(path, p), nil
+	topic := strings.TrimPrefix(path, p)
+	if topic == "/" || topic == "" {
+		return "", errNotFound
+	}
+
+	return topic, nil
 }
 
 // returns a query parameter
