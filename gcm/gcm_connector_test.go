@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
+	"github.com/alexjlockwood/gcm"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -17,6 +18,32 @@ import (
 )
 
 var ctrl *gomock.Controller
+
+func createDummyHttpServerEndoint(ch chan int) *gcm.Sender {
+	calledBefore := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// notify that somebody reached this http server
+		calledBefore++
+		ch <- calledBefore
+
+		w.WriteHeader(200)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintln(w, `[{"email":"bob@example.com","status":"sent","reject_reason":"hard-bounce","_id":"1"}]`)
+	}))
+	defer server.Close()
+
+	// Make a transport that reroutes all traffic to the example server
+	transport := &http.Transport{
+		Proxy: func(req *http.Request) (*url.URL, error) {
+			return url.Parse(server.URL)
+		},
+	}
+	httpClient := &http.Client{Transport: transport}
+	return &gcm.Sender{ApiKey: "124", Http: httpClient}
+	// Make a http.Client with the transport
+
+}
 
 func TestPostMessage(t *testing.T) {
 	defer initCtrl(t)()
@@ -98,7 +125,7 @@ func TestRemoveTailingSlash(t *testing.T) {
 	assert.Equal(t, "/foo", removeTrailingSlash("/foo"))
 }
 
-func TestParseParams(t *testing.T) {
+func TestGCMConnector_parseParams(t *testing.T) {
 	defer initCtrl(t)()
 
 	assert := assert.New(t)
@@ -137,7 +164,7 @@ func TestParseParams(t *testing.T) {
 
 }
 
-func TestGetPrefix(t *testing.T) {
+func TestGCMConnector_GetPrefix(t *testing.T) {
 	defer initCtrl(t)()
 
 	assert := assert.New(t)
@@ -150,7 +177,7 @@ func TestGetPrefix(t *testing.T) {
 	assert.Equal(gcm.GetPrefix(), "/gcm/")
 }
 
-func TestStop(t *testing.T) {
+func TestGCMConnector_Stop(t *testing.T) {
 	defer initCtrl(t)()
 
 	assert := assert.New(t)
@@ -167,13 +194,69 @@ func TestStop(t *testing.T) {
 
 }
 
+func TestGcmConnector_Start(t *testing.T) {
+	defer initCtrl(t)()
+	//enableDebugForMethod()
+
+	assert := assert.New(t)
+	routerMock := NewMockRouter(ctrl)
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
+		assert.Equal("/gcm/broadcast", string(route.Path))
+		assert.Equal("gcm_connector", route.UserID)
+		assert.Equal("gcm_connector", route.ApplicationID)
+	})
+
+	kvStore := store.NewMemoryKVStore()
+	routerMock.EXPECT().KVStore().Return(kvStore, nil)
+
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	assert.Nil(err)
+
+	err = gcm.Start()
+	assert.Nil(err)
+
+	// create a channel for this see if somebody reached the dummy http server
+	notificationChannel := make(chan int, 1)
+
+	//create a different http server as and endpoint and pass it to gcm.
+	testSender := createDummyHttpServerEndoint(notificationChannel)
+	gcm.sender = testSender
+
+	//put a broadcast message with no recipients and expect to be dropped by
+	broadcastMsgWithNoRecipients := server.MsgAndRoute{Message: &protocol.Message{ID: uint64(4), Body: []byte("{id:id}"), Time: 1405544146, Path: "/gcm/broadcast"}}
+	gcm.channelFromRouter <- broadcastMsgWithNoRecipients
+	time.Sleep(time.Millisecond * 1000)
+
+	isServerCalled := false
+	select {
+	case recv := <-notificationChannel:
+		assert.Fail(fmt.Sprintf("Received %d", recv))
+		isServerCalled = true
+	case <-time.After(2 * time.Second):
+		isServerCalled = false
+	}
+	assert.Equal(isServerCalled, false)
+
+	msgWithNoRecipients := server.MsgAndRoute{Message: &protocol.Message{ID: uint64(4), Body: []byte("{id:id}"), Time: 1405544146, Path: "/gcm/marvin/gcm124/subscribe/stuff"}, Route: &server.Route{ApplicationID: "id"}}
+	gcm.channelFromRouter <- msgWithNoRecipients
+	time.Sleep(time.Millisecond * 1000)
+
+	err = gcm.Stop()
+	assert.Nil(err)
+
+}
+
 func initCtrl(t *testing.T) func() {
 	ctrl = gomock.NewController(t)
-	return func() { ctrl.Finish() }
+	return func() {
+		ctrl.Finish()
+	}
 }
 
 func enableDebugForMethod() func() {
 	reset := protocol.LogLevel
 	protocol.LogLevel = protocol.LEVEL_DEBUG
-	return func() { protocol.LogLevel = reset }
+	return func() {
+		protocol.LogLevel = reset
+	}
 }
