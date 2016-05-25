@@ -40,7 +40,7 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 	a.Equal(1, len(router.routes[protocol.Path("/foo")]))
 	a.True(routeFoo.equals(router.routes[protocol.Path("/foo")][0]))
 
-	// WHEN i remove routes
+	// when i remove routes
 	router.Unsubscribe(routeBlah1)
 	router.Unsubscribe(routeFoo)
 

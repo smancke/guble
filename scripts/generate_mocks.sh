@@ -22,7 +22,7 @@ MOCKGEN=$GOPATH/bin/mockgen
 $MOCKGEN  -self_package server -package server \
       -destination server/mocks_server_gen_test.go \
       github.com/smancke/guble/server \
-      Router,WSConnection,Startable,Stopable,Endpoint
+      Router,WSConnection,Module
 replace "server/mocks_server_gen_test.go" "server \"github.com\/smancke\/guble\/server\"" "server\."
 
 $MOCKGEN -self_package server -package server \

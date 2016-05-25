@@ -15,7 +15,7 @@ import (
 const X_HEADER_PREFIX = "x-guble-"
 
 type RestMessageApi struct {
-	Router
+	router Router
 	mux    http.Handler
 	prefix string
 }
@@ -54,7 +54,7 @@ func (api *RestMessageApi) PostMessage(w http.ResponseWriter, r *http.Request, p
 		HeaderJSON:    headersToJson(r.Header),
 	}
 
-	api.HandleMessage(msg)
+	api.router.HandleMessage(msg)
 }
 
 // returns a query parameter

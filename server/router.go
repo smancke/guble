@@ -11,6 +11,7 @@ import (
 
 // Router interface provides mechanism for PubSub messaging
 type Router interface {
+	Module
 	KVStore() (store.KVStore, error)
 	AccessManager() (auth.AccessManager, error)
 	MessageStore() (store.MessageStore, error)
@@ -88,6 +89,10 @@ func (router *router) Start() error {
 		}
 	}()
 
+	return nil
+}
+
+func (router *router) Check() error {
 	return nil
 }
 

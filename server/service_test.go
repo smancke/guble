@@ -11,20 +11,22 @@ import (
 	"time"
 )
 
-func TestStopingOfModules(t *testing.T) {
+func TestStartingAndStopingOfModules(t *testing.T) {
 	defer initCtrl(t)()
 	// given:
-	service, _, _, _ := aMockedService()
+	service, _, _, routerMock := aMockedService()
 
 	// with a registered Stopable
-	stopable := NewMockStopable(ctrl)
-	service.Register(stopable)
+	module := NewMockModule(ctrl)
+	service.Register(module)
+
+	module.EXPECT().Start()
+	module.EXPECT().Stop()
+
+	routerMock.EXPECT().Start()
+	routerMock.EXPECT().Stop()
 
 	service.Start()
-
-	// when i stop the service,
-	// the stopable is called
-	stopable.EXPECT().Stop()
 	service.Stop()
 }
 
@@ -32,13 +34,15 @@ func TestStopingOfModulesTimeout(t *testing.T) {
 	defer initCtrl(t)()
 
 	// given:
-	service, _, _, _ := aMockedService()
+	service, _, _, routerMock := aMockedService()
 	service.StopGracePeriod = time.Millisecond * 5
 
-	// with a registered stopable, which blocks to long on stop
-	stopable := NewMockStopable(ctrl)
-	service.Register(stopable)
-	stopable.EXPECT().Stop().Do(func() {
+	// with a registered stopable, which blocks too long on stop
+	module := NewMockModule(ctrl)
+	service.Register(module)
+
+	routerMock.EXPECT().Stop()
+	module.EXPECT().Stop().Do(func() {
 		time.Sleep(time.Millisecond * 10)
 	})
 
@@ -52,7 +56,9 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 	defer initCtrl(t)()
 
 	// given:
-	service, _, _, _ := aMockedService()
+	service, _, _, routerMock := aMockedService()
+	routerMock.EXPECT().Start()
+	routerMock.EXPECT().Stop()
 
 	// when I register an endpoint at path /foo
 	service.Register(&TestEndpoint{})
@@ -61,7 +67,7 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// then I can call the handler
-	url := fmt.Sprintf("http://%s/foo", service.GetWebServer().GetAddr())
+	url := fmt.Sprintf("http://%s/foo", service.WebServer().GetAddr())
 	result, err := http.Get(url)
 	assert.NoError(t, err)
 	body := make([]byte, 3)
@@ -75,7 +81,6 @@ func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockRouter)
 	routerMock := NewMockRouter(ctrl)
 	service := NewService("localhost:0", routerMock)
 	return service, kvStore, messageStore, routerMock
-
 }
 
 type TestEndpoint struct {

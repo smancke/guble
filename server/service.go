@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/smancke/guble/protocol"
+	"github.com/docker/distribution/health"
 
 	"fmt"
 	"net/http"
@@ -19,6 +20,13 @@ type Stopable interface {
 	Stop() error
 }
 
+// Module is an interface aggregating basic interfaces.
+type Module interface {
+	Startable
+	Stopable
+	health.Checker
+}
+
 // Endpoint adds a HTTP handler for the `GetPrefix()` to the webserver
 type Endpoint interface {
 	http.Handler
@@ -27,20 +35,17 @@ type Endpoint interface {
 
 // Service is the main class for simple control of a server
 type Service struct {
-	webServer     *WebServer
-	router        Router
-	stopListener  []Stopable
-	startListener []Startable
+	webServer *WebServer
+	router    Router
+	modules   []Module
 	// The time given to each Module on Stop()
 	StopGracePeriod time.Duration
 }
 
 // NewService registers the Main Router, where other modules can subscribe for messages
-func NewService(
-	addr string,
-	router Router) *Service {
+func NewService(addr string, router Router) *Service {
 	service := &Service{
-		stopListener:    make([]Stopable, 0, 5),
+		modules:         make([]Module, 0, 5),
 		webServer:       NewWebServer(addr),
 		router:          router,
 		StopGracePeriod: time.Second * 2,
@@ -48,65 +53,50 @@ func NewService(
 	service.Register(service.webServer)
 	service.Register(service.router)
 
+	service.webServer.Handle("/health", http.HandlerFunc(health.StatusHandler))
+
 	return service
 }
 
 // Register the supplied module on this service.
-// This method checks the module for the following interfaces and
-// does the expected registrations:
-//   Stopable: notify when the service stops
-//   Endpoint: Register the handler function of the Endpoint in the http service at prefix
-//
-// If the module does not have a HandlerFunc, the prefix parameter is ignored
-func (service *Service) Register(module interface{}) {
-	name := reflect.TypeOf(module).String()
+// This method checks the module for the following interfaces and does the expected registrations:
+//   Module: if appropriate, add it to the slice of Modules
+//   Endpoint: if appropriate, register the handler function of the Endpoint in the http service at prefix
+func (service *Service) Register(i interface{}) {
+	name := reflect.TypeOf(i).String()
 
-	if m, ok := module.(Startable); ok {
-		protocol.Info("register %v as StartListener", name)
-		service.AddStartListener(m)
+	if m, ok := i.(Module); ok {
+		protocol.Info("register module %v", name)
+		service.modules = append(service.modules, m)
 	}
 
-	if m, ok := module.(Endpoint); ok {
-		protocol.Info("register %v as Endpoint to %v", name, m.GetPrefix())
-		service.AddHandler(m.GetPrefix(), m)
+	if e, ok := i.(Endpoint); ok {
+		protocol.Info("register %v as Endpoint to %v", name, e.GetPrefix())
+		service.webServer.Handle(e.GetPrefix(), e)
 	}
-
-	if m, ok := module.(Stopable); ok {
-		protocol.Info("register %v as StopListener", name)
-		service.AddStopListener(m)
-	}
-}
-
-func (service *Service) AddHandler(prefix string, handler http.Handler) {
-	service.webServer.mux.Handle(prefix, handler)
 }
 
 func (service *Service) Start() error {
-	el := protocol.NewErrorList("Errors occured while startup the service: ")
-
-	for _, startable := range service.startListener {
-		name := reflect.TypeOf(startable).String()
+	el := protocol.NewErrorList("Errors occured while starting the service: ")
+	for _, module := range service.modules {
+		name := reflect.TypeOf(module).String()
 
 		protocol.Debug("starting module %v", name)
-		if err := startable.Start(); err != nil {
-			protocol.Err("error on startup module %v", name)
+		if err := module.Start(); err != nil {
+			protocol.Err("error on starting module %v", name)
 			el.Add(err)
 		}
+
+		protocol.Debug("registering health-check for module %v", name)
+		//TODO parameterize / configure frequency and threshold
+		health.RegisterPeriodicThresholdFunc(name, time.Second*60, 1, health.CheckFunc(module.Check))
 	}
 	return el.ErrorOrNil()
 }
 
-func (service *Service) AddStopListener(stopable Stopable) {
-	service.stopListener = append(service.stopListener, stopable)
-}
-
-func (service *Service) AddStartListener(startable Startable) {
-	service.startListener = append(service.startListener, startable)
-}
-
 func (service *Service) Stop() error {
 	errors := make(map[string]error)
-	for _, stopable := range service.stopListener {
+	for _, stopable := range service.modules {
 		name := reflect.TypeOf(stopable).String()
 		stoppedChan := make(chan bool)
 		errorChan := make(chan error)
@@ -136,6 +126,6 @@ func (service *Service) Stop() error {
 	return nil
 }
 
-func (service *Service) GetWebServer() *WebServer {
+func (service *Service) WebServer() *WebServer {
 	return service.webServer
 }
