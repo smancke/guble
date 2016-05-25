@@ -1,5 +1,4 @@
-#!/bin/bash -e
-# Run from directory above via ./scripts/cov.sh
+#!/bin/bash -ex
 # Require installation of: `github.com/wadey/gocovmerge`
 
 cd $GOPATH/src/github.com/smancke/guble
