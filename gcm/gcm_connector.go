@@ -1,23 +1,23 @@
 package gcm
 
 import (
+	"github.com/alexjlockwood/gcm"
 	"github.com/smancke/guble/guble"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
-	"github.com/alexjlockwood/gcm"
 
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
-	"errors"
 )
 
 const GCM_REGISTRATIONS_SCHEMA = "gcm_registration"
 
 type GCMConnector struct {
-	router             server.Router
-	kvStore            store.KVStore
+	router  server.Router
+	kvStore store.KVStore
 	//mux                http.Handler
 	prefix             string
 	channelFromRouter  chan server.MsgAndRoute
@@ -27,7 +27,6 @@ type GCMConnector struct {
 }
 
 func NewGCMConnector(router server.Router, prefix string, gcmApiKey string) (*GCMConnector, error) {
-	//mux := httprouter.New()
 
 	kvStore, err := router.KVStore()
 	if err != nil {
@@ -35,8 +34,8 @@ func NewGCMConnector(router server.Router, prefix string, gcmApiKey string) (*GC
 	}
 
 	gcm := &GCMConnector{
-		router:            router,
-		kvStore:           kvStore,
+		router:  router,
+		kvStore: kvStore,
 		//mux:               mux,
 		prefix:            prefix,
 		channelFromRouter: make(chan server.MsgAndRoute, 1000),
@@ -44,7 +43,6 @@ func NewGCMConnector(router server.Router, prefix string, gcmApiKey string) (*GC
 		sender:            &gcm.Sender{ApiKey: gcmApiKey},
 	}
 
-	//mux.POST(removeTrailingSlash(gcm.prefix)+"/:userid/:gcmid/subscribe/*topic", gcm.Subscribe)
 	return gcm, nil
 }
 
@@ -190,30 +188,30 @@ func (gcmConnector *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Reque
 
 // parseParams will parse the HTTP URL with format /gcm/:userid/:gcmid/subscribe/*topic
 // returning error if the request is not in the corect format   or else the parsed Params
-func (gcm *GCMConnector) parseParams(path string ) (userID, gcmID, topic  string, err error) {
+func (gcm *GCMConnector) parseParams(path string) (userID, gcmID, topic string, err error) {
 	subscribePrefixPath := "subscribe"
 	currentUrlPath := removeTrailingSlash(path)
 
 	if strings.HasPrefix(currentUrlPath, gcm.prefix) != true {
-		return userID,gcmID,topic,errors.New("Gcm request is not starting with gcm prefix")
+		return userID, gcmID, topic, errors.New("Gcm request is not starting with gcm prefix")
 	}
 	pathAfterPrefix := strings.TrimPrefix(currentUrlPath, gcm.prefix)
-	if pathAfterPrefix ==  currentUrlPath {
-		return userID,gcmID,topic,errors.New("Gcm request is not starting with gcm prefix")
+	if pathAfterPrefix == currentUrlPath {
+		return userID, gcmID, topic, errors.New("Gcm request is not starting with gcm prefix")
 	}
 
-	splitedParams := strings.SplitN(pathAfterPrefix,"/", 3)
+	splitedParams := strings.SplitN(pathAfterPrefix, "/", 3)
 	if len(splitedParams) != 3 {
-		return userID,gcmID,topic,errors.New("Gcm request has wrong number of params")
+		return userID, gcmID, topic, errors.New("Gcm request has wrong number of params")
 	}
 	userID = splitedParams[0]
 	gcmID = splitedParams[1]
 
 	if strings.HasPrefix(splitedParams[2], subscribePrefixPath+"/") != true {
-		return userID,gcmID,topic,errors.New("Gcm request third param is not subscribe")
+		return userID, gcmID, topic, errors.New("Gcm request third param is not subscribe")
 	}
 	topic = strings.TrimPrefix(splitedParams[2], subscribePrefixPath)
-	return userID,gcmID,topic,nil
+	return userID, gcmID, topic, nil
 }
 
 func (gcmConnector *GCMConnector) subscribe(topic string, userid string, gcmid string) {
