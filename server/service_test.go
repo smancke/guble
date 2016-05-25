@@ -71,7 +71,7 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 
 func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockRouter) {
 	kvStore := store.NewMemoryKVStore()
-	messageStore := store.NewDummyMessageStore()
+	messageStore := store.NewDummyMessageStore(kvStore)
 	routerMock := NewMockRouter(ctrl)
 	service := NewService("localhost:0", routerMock)
 	return service, kvStore, messageStore, routerMock

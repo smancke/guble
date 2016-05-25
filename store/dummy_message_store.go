@@ -27,17 +27,14 @@ type DummyMessageStore struct {
 	idSyncDuration time.Duration
 }
 
-func NewDummyMessageStore() *DummyMessageStore {
+func NewDummyMessageStore(kvStore KVStore) *DummyMessageStore {
 	return &DummyMessageStore{
 		topicSequences: make(map[string]uint64),
+		kvStore:        kvStore,
 		idSyncDuration: time.Millisecond * 100,
 		stopC:          make(chan bool, 1),
 		stoppedC:       make(chan bool, 1),
 	}
-}
-
-func (fms *DummyMessageStore) SetKVStore(kvStore KVStore) {
-	fms.kvStore = kvStore
 }
 
 func (fms *DummyMessageStore) Start() error {

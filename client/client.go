@@ -60,14 +60,14 @@ type client struct {
 	connected bool
 }
 
-// shortcut for New() and Start()
+// Open is a shortcut for New() and Start()
 func Open(url, origin string, channelSize int, autoReconnect bool) (Client, error) {
 	c := New(url, origin, channelSize, autoReconnect)
 	c.SetWSConnectionFactory(DefaultConnectionFactory)
 	return c, c.Start()
 }
 
-// Construct a new client, without starting the connection
+// New creates a new client, without starting the connection
 func New(url, origin string, channelSize int, autoReconnect bool) Client {
 	return &client{
 		messages:       make(chan *protocol.Message, channelSize),
@@ -135,19 +135,19 @@ func (c *client) startWithReconnect() {
 
 func (c *client) readLoop() error {
 	for {
-		if _, msg, err := c.ws.ReadMessage(); err != nil {
+		_, msg, err := c.ws.ReadMessage()
+		if err != nil {
 			c.connected = false
 			if c.shouldStop() {
 				return nil
-			} else {
-				protocol.Err("read error: %v", err.Error())
-				c.errors <- clientErrorMessage(err.Error())
-				return err
 			}
-		} else {
-			protocol.Debug("raw> %s", msg)
-			c.handleIncommoingMessage(msg)
+
+			protocol.Err("read error: %v", err.Error())
+			c.errors <- clientErrorMessage(err.Error())
+			return err
 		}
+		protocol.Debug("raw> %s", msg)
+		c.handleIncommoingMessage(msg)
 	}
 }
 
