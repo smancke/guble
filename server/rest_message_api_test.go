@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 
 	"github.com/golang/mock/gomock"
 	"github.com/julienschmidt/httprouter"
@@ -38,13 +38,13 @@ func TestPostMessage(t *testing.T) {
 	}
 
 	// then i expect
-	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *guble.Message) {
+	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *protocol.Message) {
 		a.Equal(testBytes, msg.Body)
 		a.Equal("{}", msg.HeaderJSON)
 		a.Equal("/my/topic", string(msg.Path))
-		a.True(len(msg.PublisherApplicationId) > 0)
-		a.Equal("42", msg.PublisherMessageId)
-		a.Equal("marvin", msg.PublisherUserId)
+		a.True(len(msg.ApplicationID) > 0)
+		a.Equal("42", msg.MessageID)
+		a.Equal("marvin", msg.UserID)
 	})
 
 	// when: I POST a message

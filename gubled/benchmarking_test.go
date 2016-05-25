@@ -6,7 +6,7 @@ import (
 
 	"fmt"
 	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 	"io/ioutil"
 	"log"
 	"os"
@@ -112,11 +112,11 @@ func (test *testgroup) Init() {
 		panic(err)
 	}
 
-	test.expectStatusMessage(guble.SUCCESS_CONNECTED, "You are connected to the server.")
+	test.expectStatusMessage(protocol.SUCCESS_CONNECTED, "You are connected to the server.")
 
 	test.client1.Subscribe(test.topic)
 	time.Sleep(time.Millisecond * 1)
-	//test.expectStatusMessage(guble.SUCCESS_SUBSCRIBED_TO, test.topic)
+	//test.expectStatusMessage(protocol.SUCCESS_SUBSCRIBED_TO, test.topic)
 }
 
 func (test *testgroup) expectStatusMessage(name string, arg string) {

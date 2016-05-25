@@ -1,7 +1,7 @@
 package gcm
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 
@@ -106,7 +106,7 @@ func initCtrl(t *testing.T) func() {
 }
 
 func enableDebugForMethod() func() {
-	reset := guble.LogLevel
-	guble.LogLevel = guble.LEVEL_DEBUG
-	return func() { guble.LogLevel = reset }
+	reset := protocol.LogLevel
+	protocol.LogLevel = protocol.LEVEL_DEBUG
+	return func() { protocol.LogLevel = reset }
 }

@@ -2,7 +2,7 @@ package gubled
 
 import (
 	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 
 	"github.com/stretchr/testify/assert"
@@ -17,11 +17,11 @@ import (
 // 	defer tearDown()
 
 // 	client1.Subscribe("/foo")
-// 	//expectStatusMessage(t, client1, guble.SUCCESS_SUBSCRIBED_TO, "/foo")
+// 	//expectStatusMessage(t, client1, protocol.SUCCESS_SUBSCRIBED_TO, "/foo")
 
 // 	time.Sleep(time.Millisecond * 10)
 // 	client2.Send("/foo 42", "Hallo", `{"key": "value"}`)
-// 	expectStatusMessage(t, client2, guble.SUCCESS_SEND, "42")
+// 	expectStatusMessage(t, client2, protocol.SUCCESS_SEND, "42")
 
 // 	select {
 // 	case msg := <-client1.Messages():
@@ -48,13 +48,13 @@ func initServerAndClients(t *testing.T) (*server.Service, client.Client, client.
 	assert.NoError(t, err)
 
 	checkConnectedNotificationJson(t, "user1",
-		expectStatusMessage(t, client1, guble.SUCCESS_CONNECTED, "You are connected to the server."),
+		expectStatusMessage(t, client1, protocol.SUCCESS_CONNECTED, "You are connected to the server."),
 	)
 
 	client2, err := client.Open("ws://"+service.GetWebServer().GetAddr()+"/stream/user/user2", "http://localhost", 1, false)
 	assert.NoError(t, err)
 	checkConnectedNotificationJson(t, "user2",
-		expectStatusMessage(t, client2, guble.SUCCESS_CONNECTED, "You are connected to the server."),
+		expectStatusMessage(t, client2, protocol.SUCCESS_CONNECTED, "You are connected to the server."),
 	)
 
 	return service, client1, client2, func() {

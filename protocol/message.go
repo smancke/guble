@@ -1,4 +1,4 @@
-package guble
+package protocol
 
 import (
 	"bytes"
@@ -12,22 +12,22 @@ type Message struct {
 
 	// The sequenceId of the message, which is given by the
 	// server an is strictly monotonically increasing at least within a root topic.
-	Id uint64
+	ID uint64
 
 	// The topic path
 	Path Path
 
 	// The user id of the message sender
-	PublisherUserId string
+	UserID string
 
 	// The id of the sending application
-	PublisherApplicationId string
+	ApplicationID string
 
 	// An id given by the sender (optional)
-	PublisherMessageId string
+	MessageID string
 
 	// The time of publishing, as Unix Timestamp date
-	PublishingTime int64
+	Time int64
 
 	// The header line of the message (optional). If set, than this has to be a valid json object structure.
 	HeaderJSON string
@@ -37,9 +37,9 @@ type Message struct {
 }
 
 // returns the first line of a serialized message, without the newline
-func (msg *Message) MetadataLine() string {
+func (msg *Message) Metadata() string {
 	buff := &bytes.Buffer{}
-	msg.writeMetadataLine(buff)
+	msg.writeMetadata(buff)
 	return string(buff.Bytes())
 }
 
@@ -51,7 +51,7 @@ func (msg *Message) BodyAsString() string {
 func (msg *Message) Bytes() []byte {
 	buff := &bytes.Buffer{}
 
-	msg.writeMetadataLine(buff)
+	msg.writeMetadata(buff)
 
 	if len(msg.HeaderJSON) > 0 || len(msg.Body) > 0 {
 		buff.WriteString("\n")
@@ -69,18 +69,18 @@ func (msg *Message) Bytes() []byte {
 	return buff.Bytes()
 }
 
-func (msg *Message) writeMetadataLine(buff *bytes.Buffer) {
+func (msg *Message) writeMetadata(buff *bytes.Buffer) {
 	buff.WriteString(string(msg.Path))
 	buff.WriteString(",")
-	buff.WriteString(strconv.FormatUint(msg.Id, 10))
+	buff.WriteString(strconv.FormatUint(msg.ID, 10))
 	buff.WriteString(",")
-	buff.WriteString(msg.PublisherUserId)
+	buff.WriteString(msg.UserID)
 	buff.WriteString(",")
-	buff.WriteString(msg.PublisherApplicationId)
+	buff.WriteString(msg.ApplicationID)
 	buff.WriteString(",")
-	buff.WriteString(msg.PublisherMessageId)
+	buff.WriteString(msg.MessageID)
 	buff.WriteString(",")
-	buff.WriteString(strconv.FormatInt(msg.PublishingTime, 10))
+	buff.WriteString(strconv.FormatInt(msg.Time, 10))
 }
 
 // Valid constants for the NotificationMessage.Name
@@ -182,12 +182,12 @@ func parseMessage(message []byte) (interface{}, error) {
 	}
 
 	msg := &Message{
-		Id:                     id,
-		Path:                   Path(meta[0]),
-		PublisherUserId:        meta[2],
-		PublisherApplicationId: meta[3],
-		PublisherMessageId:     meta[4],
-		PublishingTime:         publishingTime,
+		ID:            id,
+		Path:          Path(meta[0]),
+		UserID:        meta[2],
+		ApplicationID: meta[3],
+		MessageID:     meta[4],
+		Time:          publishingTime,
 	}
 
 	if len(parts) >= 2 {

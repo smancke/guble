@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/store"
 	"runtime"
@@ -17,7 +17,7 @@ type Router interface {
 
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
-	HandleMessage(message *guble.Message) error
+	HandleMessage(message *protocol.Message) error
 }
 
 // Helper struct to pass `Route` to subscription channel and provide a
@@ -29,8 +29,8 @@ type subRequest struct {
 
 type router struct {
 	// mapping the path to the route slice
-	routes          map[guble.Path][]Route
-	messageIn       chan *guble.Message
+	routes          map[protocol.Path][]Route
+	messageIn       chan *protocol.Message
 	subscribeChan   chan subRequest
 	unsubscribeChan chan subRequest
 	stop            chan bool
@@ -47,8 +47,8 @@ func NewRouter(
 	messageStore store.MessageStore,
 	kvStore store.KVStore) Router {
 	return &router{
-		routes:          make(map[guble.Path][]Route),
-		messageIn:       make(chan *guble.Message, 500),
+		routes:          make(map[protocol.Path][]Route),
+		messageIn:       make(chan *protocol.Message, 500),
 		subscribeChan:   make(chan subRequest, 10),
 		unsubscribeChan: make(chan subRequest, 10),
 		stop:            make(chan bool, 1),
@@ -67,7 +67,7 @@ func (router *router) Start() error {
 	go func() {
 		for {
 			func() {
-				defer guble.PanicLogger()
+				defer protocol.PanicLogger()
 
 				select {
 				case message := <-router.messageIn:
@@ -81,7 +81,7 @@ func (router *router) Start() error {
 					unsubscriber.doneNotify <- true
 				case <-router.stop:
 					router.closeAllRoutes()
-					guble.Debug("stopping message router")
+					protocol.Debug("stopping message router")
 					break
 				}
 			}()
@@ -100,7 +100,7 @@ func (router *router) Stop() error {
 // Subscribe adds a route to the subscribers.
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Subscribe(r *Route) (*Route, error) {
-	guble.Debug("subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
+	protocol.Debug("subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
 	accessAllowed := router.accessManager.IsAllowed(auth.READ, r.UserID, r.Path)
 	if !accessAllowed {
 		return r, &PermissionDeniedError{r.UserID, auth.READ, r.Path}
@@ -115,7 +115,7 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 }
 
 func (router *router) subscribe(r *Route) {
-	guble.Info("subscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
+	protocol.Info("subscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
 
 	routeList, present := router.routes[r.Path]
 	if !present {
@@ -139,7 +139,7 @@ func (router *router) Unsubscribe(r *Route) {
 }
 
 func (router *router) unsubscribe(r *Route) {
-	guble.Info("unsubscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
+	protocol.Info("unsubscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
 	routeList, present := router.routes[r.Path]
 	if !present {
 		return
@@ -150,10 +150,10 @@ func (router *router) unsubscribe(r *Route) {
 	}
 }
 
-func (router *router) HandleMessage(message *guble.Message) error {
-	guble.Debug("Route.HandleMessage: %v %v", message.PublisherUserId, message.Path)
-	if !router.accessManager.IsAllowed(auth.WRITE, message.PublisherUserId, message.Path) {
-		return &PermissionDeniedError{message.PublisherUserId, auth.WRITE, message.Path}
+func (router *router) HandleMessage(message *protocol.Message) error {
+	protocol.Debug("Route.HandleMessage: %v %v", message.UserID, message.Path)
+	if !router.accessManager.IsAllowed(auth.WRITE, message.UserID, message.Path) {
+		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
 	}
 
 	return router.storeMessage(message)
@@ -161,20 +161,20 @@ func (router *router) HandleMessage(message *guble.Message) error {
 
 // Assign the new message id and store it and handle by passing the stored message
 // to the messageIn channel
-func (router *router) storeMessage(msg *guble.Message) error {
+func (router *router) storeMessage(msg *protocol.Message) error {
 	txCallback := func(msgId uint64) []byte {
-		msg.Id = msgId
-		msg.PublishingTime = time.Now().Unix()
+		msg.ID = msgId
+		msg.Time = time.Now().Unix()
 		return msg.Bytes()
 	}
 
 	if err := router.messageStore.StoreTx(msg.Path.Partition(), txCallback); err != nil {
-		guble.Err("error storing message in partition %v: %v", msg.Path.Partition(), err)
+		protocol.Err("error storing message in partition %v: %v", msg.Path.Partition(), err)
 		return err
 	}
 
 	if float32(len(router.messageIn))/float32(cap(router.messageIn)) > 0.9 {
-		guble.Warn("router.messageIn channel very full: current=%v, max=%v\n", len(router.messageIn), cap(router.messageIn))
+		protocol.Warn("router.messageIn channel very full: current=%v, max=%v\n", len(router.messageIn), cap(router.messageIn))
 		time.Sleep(time.Millisecond)
 	}
 
@@ -182,9 +182,9 @@ func (router *router) storeMessage(msg *guble.Message) error {
 	return nil
 }
 
-func (router *router) handleMessage(message *guble.Message) {
-	if guble.InfoEnabled() {
-		guble.Info("routing message: %v", message.MetadataLine())
+func (router *router) handleMessage(message *protocol.Message) {
+	if protocol.InfoEnabled() {
+		protocol.Info("routing message: %v", message.Metadata())
 	}
 
 	for currentRoutePath, currentRouteList := range router.routes {
@@ -196,13 +196,13 @@ func (router *router) handleMessage(message *guble.Message) {
 	}
 }
 
-func (router *router) deliverMessage(route Route, message *guble.Message) {
-	defer guble.PanicLogger()
+func (router *router) deliverMessage(route Route, message *protocol.Message) {
+	defer protocol.PanicLogger()
 	select {
 	case route.C <- MsgAndRoute{Message: message, Route: &route}:
 	// fine, we could send the message
 	default:
-		guble.Info("queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)
+		protocol.Info("queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)
 		close(route.C)
 		router.unsubscribe(&route)
 	}
@@ -224,7 +224,7 @@ func copyOf(message []byte) []byte {
 }
 
 // Test wether the supplied routePath matches the message topic
-func matchesTopic(messagePath, routePath guble.Path) bool {
+func matchesTopic(messagePath, routePath protocol.Path) bool {
 	messagePathLen := len(string(messagePath))
 	routePathLen := len(string(routePath))
 	return strings.HasPrefix(string(messagePath), string(routePath)) &&

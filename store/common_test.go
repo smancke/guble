@@ -1,7 +1,7 @@
 package store
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 
 	"github.com/stretchr/testify/assert"
 
@@ -157,9 +157,9 @@ func assertGetNoExist(a *assert.Assertions, s KVStore, schema string, key string
 }
 
 func enableDebugForMethod() func() {
-	reset := guble.LogLevel
-	guble.LogLevel = guble.LEVEL_DEBUG
-	return func() { guble.LogLevel = reset }
+	reset := protocol.LogLevel
+	protocol.LogLevel = protocol.LEVEL_DEBUG
+	return func() { protocol.LogLevel = reset }
 }
 
 func randString(n int) string {

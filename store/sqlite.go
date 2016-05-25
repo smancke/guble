@@ -1,7 +1,7 @@
 package store
 
 import (
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
@@ -74,7 +74,7 @@ func (kvStore *SqliteKVStore) Iterate(schema string, keyPrefix string) (entries 
 			Rows()
 
 		if err != nil {
-			guble.Err("error fetching keys from db %v", err)
+			protocol.Err("error fetching keys from db %v", err)
 		} else {
 			defer rows.Close()
 			for rows.Next() {
@@ -97,7 +97,7 @@ func (kvStore *SqliteKVStore) IterateKeys(schema string, keyPrefix string) chan 
 			Rows()
 
 		if err != nil {
-			guble.Err("error fetching keys from db %v", err)
+			protocol.Err("error fetching keys from db %v", err)
 		} else {
 			defer rows.Close()
 			for rows.Next() {
@@ -120,21 +120,21 @@ func (kvStore *SqliteKVStore) Delete(schema, key string) error {
 func (kvStore *SqliteKVStore) Open() error {
 	directoryPath := filepath.Dir(kvStore.filename)
 	if err := ensureWriteableDirectory(directoryPath); err != nil {
-		guble.Err("error db directory not writeable %q: %q", kvStore.filename, err)
+		protocol.Err("error db directory not writeable %q: %q", kvStore.filename, err)
 		return err
 	}
 
-	guble.Info("opening sqldb %v", kvStore.filename)
+	protocol.Info("opening sqldb %v", kvStore.filename)
 	gormdb, err := gorm.Open("sqlite3", kvStore.filename)
 	if err != nil {
-		guble.Err("error opening sqlite3 db %q: %q", kvStore.filename, err)
+		protocol.Err("error opening sqlite3 db %q: %q", kvStore.filename, err)
 		return err
 	}
 
 	if err := gormdb.DB().Ping(); err != nil {
-		guble.Err("error pinging database %q: %q", kvStore.filename, err.Error())
+		protocol.Err("error pinging database %q: %q", kvStore.filename, err.Error())
 	} else {
-		guble.Debug("can ping database %q", kvStore.filename)
+		protocol.Debug("can ping database %q", kvStore.filename)
 	}
 
 	//gormdb.LogMode(true)
@@ -143,16 +143,16 @@ func (kvStore *SqliteKVStore) Open() error {
 	gormdb.SingularTable(true)
 
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
-		guble.Err("error in schema migration: %q", err)
+		protocol.Err("error in schema migration: %q", err)
 		return err
 	} else {
-		guble.Debug("ensured db schema")
+		protocol.Debug("ensured db schema")
 	}
 
 	if !kvStore.syncOnWrite {
-		guble.Info("setting db: PRAGMA synchronous = OFF")
+		protocol.Info("setting db: PRAGMA synchronous = OFF")
 		if err := gormdb.Exec("PRAGMA synchronous = OFF").Error; err != nil {
-			guble.Err("error setting PRAGMA synchronous = OFF: %v", err)
+			protocol.Err("error setting PRAGMA synchronous = OFF: %v", err)
 			return err
 		}
 	}

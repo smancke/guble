@@ -12,7 +12,7 @@ import (
 	"github.com/alexflint/go-arg"
 
 	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/guble"
+	"github.com/smancke/guble/protocol"
 )
 
 type arguments struct {
@@ -29,14 +29,14 @@ var args arguments
 
 // This is a minimal commandline client to connect through a websocket
 func main() {
-	guble.LogLevel = guble.LEVEL_ERR
+	protocol.LogLevel = protocol.LEVEL_ERR
 
 	args = loadArgs()
 	if args.LogInfo {
-		guble.LogLevel = guble.LEVEL_INFO
+		protocol.LogLevel = protocol.LEVEL_INFO
 	}
 	if args.LogDebug {
-		guble.LogLevel = guble.LEVEL_DEBUG
+		protocol.LogLevel = protocol.LEVEL_DEBUG
 	}
 
 	origin := "http://localhost/"
@@ -76,7 +76,7 @@ func readLoop(client client.Client) {
 			if args.Verbose {
 				fmt.Println(string(incomingMessage.Bytes()))
 			} else {
-				fmt.Printf("%v: %v\n", incomingMessage.PublisherUserId, incomingMessage.BodyAsString())
+				fmt.Printf("%v: %v\n", incomingMessage.UserID, incomingMessage.BodyAsString())
 			}
 		case e := <-client.Errors():
 			fmt.Println("ERROR: " + string(e.Bytes()))
@@ -91,7 +91,7 @@ func writeLoop(client client.Client) {
 	shouldStop := false
 	for !shouldStop {
 		func() {
-			defer guble.PanicLogger()
+			defer protocol.PanicLogger()
 			reader := bufio.NewReader(os.Stdin)
 			text, _ := reader.ReadString('\n')
 			if strings.TrimSpace(text) == "" {
@@ -117,7 +117,7 @@ func writeLoop(client client.Client) {
 			}
 			if err := client.WriteRawMessage([]byte(text)); err != nil {
 				shouldStop = true
-				guble.Err(err.Error())
+				protocol.Err(err.Error())
 			}
 		}()
 	}

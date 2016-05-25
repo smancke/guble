@@ -1,4 +1,4 @@
-package guble
+package protocol
 
 import (
 	"bytes"
@@ -34,7 +34,7 @@ func Test_log_functions(t *testing.T) {
 	w.Reset()
 	Err("err")
 	a.Contains(w.String(), "ERROR")
-	a.Contains(w.String(), "guble.Test_log_functions")
+	a.Contains(w.String(), "protocol.Test_log_functions")
 	a.Contains(w.String(), "err")
 
 	w.Reset()
@@ -62,7 +62,7 @@ func Test_log_functions_only_error_enabled(t *testing.T) {
 
 	Err("err")
 	a.Contains(w.String(), "ERROR")
-	a.Contains(w.String(), "guble.Test_log_functions")
+	a.Contains(w.String(), "protocol.Test_log_functions")
 	a.Contains(w.String(), "err")
 }
 
