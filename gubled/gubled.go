@@ -63,7 +63,7 @@ var CreateKVStore = func(args Args) store.KVStore {
 var CreateMessageStore = func(args Args) store.MessageStore {
 	switch args.MSBackend {
 	case "none", "":
-		return store.NewDummyMessageStore()
+		return store.NewDummyMessageStore(store.NewMemoryKVStore())
 	case "file":
 		protocol.Info("using FileMessageStore in directory: %q", args.StoragePath)
 		return store.NewFileMessageStore(args.StoragePath)
