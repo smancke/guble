@@ -19,10 +19,10 @@ import (
 
 var ctrl *gomock.Controller
 
-func createDummyHttpServerEndoint(ch chan int) *gcm.Sender {
+func createDummyHttpServerEndoint(ch chan int) (*gcm.Sender, func()) {
 	calledBefore := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		protocol.Debug("Served something")
 		// notify that somebody reached this http server
 		calledBefore++
 		ch <- calledBefore
@@ -31,8 +31,6 @@ func createDummyHttpServerEndoint(ch chan int) *gcm.Sender {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, `[{"email":"bob@example.com","status":"sent","reject_reason":"hard-bounce","_id":"1"}]`)
 	}))
-	defer server.Close()
-
 	// Make a transport that reroutes all traffic to the example server
 	transport := &http.Transport{
 		Proxy: func(req *http.Request) (*url.URL, error) {
@@ -40,9 +38,23 @@ func createDummyHttpServerEndoint(ch chan int) *gcm.Sender {
 		},
 	}
 	httpClient := &http.Client{Transport: transport}
-	return &gcm.Sender{ApiKey: "124", Http: httpClient}
+	return &gcm.Sender{ApiKey: "124", Http: httpClient}, func() {
+		server.Close()
+	}
 	// Make a http.Client with the transport
 
+}
+
+func checkHttpResponseReceivedWithTimeout(ch chan int) bool {
+	isServerCalled := false
+	select {
+	case recv := <-ch:
+		protocol.Debug(fmt.Sprintf("Received %d", recv))
+		isServerCalled = true
+	case <-time.After(2 * time.Second):
+		isServerCalled = false
+	}
+	return isServerCalled
 }
 
 func TestPostMessage(t *testing.T) {
@@ -194,7 +206,7 @@ func TestGCMConnector_Stop(t *testing.T) {
 
 }
 
-func TestGcmConnector_Start(t *testing.T) {
+func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	defer initCtrl(t)()
 	//enableDebugForMethod()
 
@@ -215,35 +227,32 @@ func TestGcmConnector_Start(t *testing.T) {
 	err = gcm.Start()
 	assert.Nil(err)
 
-	// create a channel for this see if somebody reached the dummy http server
+	// create a channel for signaling if somebody reached the dummy http server
 	notificationChannel := make(chan int, 1)
 
 	//create a different http server as and endpoint and pass it to gcm.
-	testSender := createDummyHttpServerEndoint(notificationChannel)
+	testSender, closer := createDummyHttpServerEndoint(notificationChannel)
 	gcm.sender = testSender
 
-	//put a broadcast message with no recipients and expect to be dropped by
+	defer closer()
+
+	// put a broadcast message with no recipients and expect to be dropped by
 	broadcastMsgWithNoRecipients := server.MsgAndRoute{Message: &protocol.Message{ID: uint64(4), Body: []byte("{id:id}"), Time: 1405544146, Path: "/gcm/broadcast"}}
 	gcm.channelFromRouter <- broadcastMsgWithNoRecipients
 	time.Sleep(time.Millisecond * 1000)
+	// expect that the HTTP Dummy Server to not handle any requests
+	assert.Equal(checkHttpResponseReceivedWithTimeout(notificationChannel), false)
 
-	isServerCalled := false
-	select {
-	case recv := <-notificationChannel:
-		assert.Fail(fmt.Sprintf("Received %d", recv))
-		isServerCalled = true
-	case <-time.After(2 * time.Second):
-		isServerCalled = false
-	}
-	assert.Equal(isServerCalled, false)
-
+	// put a dummy gcm message with minimum information
 	msgWithNoRecipients := server.MsgAndRoute{Message: &protocol.Message{ID: uint64(4), Body: []byte("{id:id}"), Time: 1405544146, Path: "/gcm/marvin/gcm124/subscribe/stuff"}, Route: &server.Route{ApplicationID: "id"}}
 	gcm.channelFromRouter <- msgWithNoRecipients
 	time.Sleep(time.Millisecond * 1000)
+	// expect that the Http Server to give us a malformed message
+	assert.Equal(checkHttpResponseReceivedWithTimeout(notificationChannel), true)
 
+	// Stop the GcmConnector
 	err = gcm.Stop()
 	assert.Nil(err)
-
 }
 
 func initCtrl(t *testing.T) func() {
