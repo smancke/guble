@@ -4,7 +4,6 @@ import (
 	"github.com/smancke/guble/protocol"
 
 	"github.com/golang/mock/gomock"
-	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 
 	"bytes"
@@ -16,7 +15,7 @@ import (
 	"testing"
 )
 
-func TestPostMessage(t *testing.T) {
+func TestServerHTTP(t *testing.T) {
 	defer initCtrl(t)()
 	a := assert.New(t)
 
@@ -33,10 +32,6 @@ func TestPostMessage(t *testing.T) {
 	}
 	w := &httptest.ResponseRecorder{}
 
-	params := httprouter.Params{
-		httprouter.Param{Key: "topic", Value: "/my/topic"},
-	}
-
 	// then i expect
 	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *protocol.Message) {
 		a.Equal(testBytes, msg.Body)
@@ -48,7 +43,7 @@ func TestPostMessage(t *testing.T) {
 	})
 
 	// when: I POST a message
-	api.PostMessage(w, req, params)
+	api.ServeHTTP(w, req)
 
 }
 

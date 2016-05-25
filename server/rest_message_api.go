@@ -1,9 +1,9 @@
 package server
 
 import (
+	"errors"
 	"github.com/smancke/guble/protocol"
 
-	"github.com/julienschmidt/httprouter"
 	"github.com/rs/xid"
 
 	"bytes"
@@ -14,20 +14,15 @@ import (
 
 const X_HEADER_PREFIX = "x-guble-"
 
+var errNotFound = errors.New("Not Found.")
+
 type RestMessageAPI struct {
-	Router
-	mux    http.Handler
+	router Router
 	prefix string
 }
 
 func NewRestMessageAPI(router Router, prefix string) *RestMessageAPI {
-	mux := httprouter.New()
-	api := &RestMessageAPI{router, mux, prefix}
-
-	p := removeTrailingSlash(prefix)
-	mux.POST(p+"/message/*topic", api.PostMessage)
-
-	return api
+	return &RestMessageAPI{router, prefix}
 }
 
 func (api *RestMessageAPI) GetPrefix() string {
@@ -35,18 +30,24 @@ func (api *RestMessageAPI) GetPrefix() string {
 }
 
 func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	api.mux.ServeHTTP(w, r)
-}
-
-func (api *RestMessageAPI) PostMessage(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, `Can not read body`, http.StatusBadRequest)
 		return
 	}
 
+	topic, err := api.extractTopic(r.URL.Path)
+	if err != nil {
+		if err == errNotFound {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "Server error.", http.StatusInternalServerError)
+		return
+	}
+
 	msg := &protocol.Message{
-		Path:          protocol.Path(params.ByName(`topic`)),
+		Path:          protocol.Path(topic),
 		Body:          body,
 		UserID:        q(r, `userId`),
 		ApplicationID: xid.New().String(),
@@ -54,7 +55,17 @@ func (api *RestMessageAPI) PostMessage(w http.ResponseWriter, r *http.Request, p
 		HeaderJSON:    headersToJSON(r.Header),
 	}
 
-	api.HandleMessage(msg)
+	api.router.HandleMessage(msg)
+}
+
+func (api *RestMessageAPI) extractTopic(path string) (string, error) {
+	p := removeTrailingSlash(api.prefix) + "/message"
+	if !strings.HasPrefix(path, p) {
+		return "", errNotFound
+	}
+
+	// Remove "`api.prefix` + /message" and we remain with the topic
+	return strings.TrimPrefix(path, p), nil
 }
 
 // returns a query parameter
@@ -90,7 +101,7 @@ func headersToJSON(header http.Header) string {
 }
 
 func removeTrailingSlash(path string) string {
-	if len(path) > 0 && path[len(path)-1] == '/' {
+	if len(path) > 1 && path[len(path)-1] == '/' {
 		return path[:len(path)-1]
 	}
 	return path
