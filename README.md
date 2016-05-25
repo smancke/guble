@@ -19,7 +19,7 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 ## Working Features (0.1)
 
 * Publishing and subscription of messages to topics and subtopics
-* Persistent message store with transparent live and offline fetching 
+* Persistent message store with transparent live and offline fetching
 * WebSocket and REST APIs for message publishing
 * Commandline client and Go client library
 * Google Cloud Messaging adapter: delivery of messages as GCM push notifications
@@ -65,16 +65,16 @@ This is the current (and fast changing) roadmap and todo list:
 ## Roadmap Release 0.2
 This release contains a lot of small changes and the JavaScript API.
 
-* Stable JavaScript client: https://github.com/smancke/guble-js
 * Authentication and access management
-* Add Consul as KV Backend strategy
 * Clean shutdown
 * Improve logging (Maybe use of https://github.com/Sirupsen/logrus)
 * Rename package "guble" to "protocol" or "gublep"
-* Change time from ISO 8601 to unix timestamp
+* ~~Change time from ISO 8601 to unix timestamp~~
 * Remove `userId` from route
 
 ## Roadmap Release 0.3
+* Stable JavaScript client: https://github.com/smancke/guble-js
+* Add Consul as KV Backend strategy
 * Storing the sequence Id of topics in kv store, if we turn of persistance
 * Replication across multiple servers
 * Cleanup, documentation, and test coverage of the GCM connector
@@ -363,7 +363,7 @@ This notification has the same meaning as the http 500 Internal Server Error.
 !error-server-internal this computing node has problems
 ```
 
-## Topics 
+## Topics
 
 Messages can be hierarchically routed by topics, so they are represented by a path, separated by `/`.
 There are two global topic namespaces: `/user` and `/group`.
