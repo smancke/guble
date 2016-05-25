@@ -57,11 +57,11 @@ func Test_DummyMessageStore_SyncIds(t *testing.T) {
 	store.Start()
 	defer store.Stop()
 
-	// when: we set an id and wait for 2ms
+	// when: we set an id and wait for 4ms
 	store.setId("partition", uint64(42))
-	time.Sleep(time.Millisecond * 2)
+	time.Sleep(time.Millisecond * 4)
 
-	// the the value is synced to the kv store
+	// the value is synced to the kv store
 	value, exist, _ := kvStore.Get(TOPIC_SCHEMA, "partition")
 	a.True(exist)
 	a.Equal([]byte(strconv.FormatUint(uint64(42), 10)), value)
@@ -82,7 +82,7 @@ func Test_DummyMessageStore_SyncIdsOnStop(t *testing.T) {
 	store.setId("partition", uint64(42))
 
 	// then it is not synced after some wait
-	time.Sleep(time.Millisecond * 2)
+	time.Sleep(time.Millisecond * 4)
 	_, exist, _ := kvStore.Get(TOPIC_SCHEMA, "partition")
 	a.False(exist)
 
