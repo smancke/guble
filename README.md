@@ -70,7 +70,7 @@ This release contains a lot of small changes and the JavaScript API.
 * Add Consul as KV Backend strategy
 * Clean shutdown
 * Improve logging (Maybe use of https://github.com/Sirupsen/logrus)
-* Rename package "guble" to "protocol" or "gublep"
+* ~~Rename package "guble" to "protocol" or "gublep"~~
 * Change time from ISO 8601 to unix timestamp
 * Remove `userId` from route
 
