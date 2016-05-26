@@ -93,7 +93,7 @@ func TestHeadersToJSON(t *testing.T) {
 	a.Equal("y", header["x"])
 }
 
-func TestRemoveTailingSlash(t *testing.T) {
+func TestRemoveTrailingSlash(t *testing.T) {
 	assert.Equal(t, "/foo", removeTrailingSlash("/foo/"))
 	assert.Equal(t, "/foo", removeTrailingSlash("/foo"))
 	assert.Equal(t, "/", removeTrailingSlash("/"))
