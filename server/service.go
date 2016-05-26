@@ -65,12 +65,12 @@ func (s *Service) Register(module interface{}) {
 	name := reflect.TypeOf(module).String()
 
 	if startable, ok := module.(Startable); ok {
-		protocol.Info("register %v as StartListener", name)
+		protocol.Info("register %v as Startable", name)
 		s.startables = append(s.startables, startable)
 	}
 
 	if stopable, ok := module.(Stopable); ok {
-		protocol.Info("register %v as StopListener", name)
+		protocol.Info("register %v as Stopable", name)
 		s.stopables = append(s.stopables, stopable)
 	}
 
@@ -81,8 +81,9 @@ func (s *Service) Register(module interface{}) {
 	}
 
 	if endpoint, ok := module.(Endpoint); ok {
-		protocol.Info("register %v as Endpoint to %v", name, endpoint.GetPrefix())
-		s.webServer.Handle(endpoint.GetPrefix(), endpoint)
+		prefix := endpoint.GetPrefix()
+		protocol.Info("register %v as Endpoint to %v", name, prefix)
+		s.webServer.Handle(prefix, endpoint)
 	}
 }
 
