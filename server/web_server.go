@@ -49,6 +49,10 @@ func (ws *WebServer) Stop() error {
 	return nil
 }
 
+func (ws *WebServer) Handle(prefix string, handler http.Handler) {
+	ws.mux.Handle(prefix, handler)
+}
+
 func (ws *WebServer) GetAddr() string {
 	if ws.ln == nil {
 		return "::unknown::"

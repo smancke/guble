@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"reflect"
 	"time"
+	"github.com/docker/distribution/health"
 )
 
 // Startable interface for modules which provide a start mechanism
@@ -31,6 +32,7 @@ type Service struct {
 	router     Router
 	stopables  []Stopable
 	startables []Startable
+	healthCheckers []health.Checker
 	// The time given to each Module on Stop()
 	StopGracePeriod time.Duration
 }
@@ -47,6 +49,8 @@ func NewService(
 	}
 	service.Register(service.webServer)
 	service.Register(service.router)
+
+	service.webServer.Handle("/health", http.HandlerFunc(health.StatusHandler))
 
 	return service
 }
@@ -129,10 +133,6 @@ func (service *Service) AddStopListener(stopable Stopable) {
 
 func (service *Service) AddStartListener(startable Startable) {
 	service.startables = append(service.startables, startable)
-}
-
-func (service *Service) AddHandler(prefix string, handler http.Handler) {
-	service.webServer.mux.Handle(prefix, handler)
 }
 
 func (service *Service) GetWebServer() *WebServer {
