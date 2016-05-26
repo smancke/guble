@@ -7,10 +7,12 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"github.com/docker/distribution/health"
 )
 
 // Router interface provides mechanism for PubSub messaging
 type Router interface {
+	health.Checker
 	KVStore() (store.KVStore, error)
 	AccessManager() (auth.AccessManager, error)
 	MessageStore() (store.MessageStore, error)
@@ -94,6 +96,10 @@ func (router *router) Start() error {
 // Stop stops the router by closing the stop channel
 func (router *router) Stop() error {
 	close(router.stop)
+	return nil
+}
+
+func (outer *router) Check() error {
 	return nil
 }
 
