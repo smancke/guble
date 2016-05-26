@@ -24,6 +24,7 @@ func TestServerHTTP(t *testing.T) {
 	api := NewRestMessageAPI(routerMock, "/api")
 
 	url, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")
+
 	// and a http context
 	req := &http.Request{
 		Method: http.MethodPost,
@@ -46,6 +47,27 @@ func TestServerHTTP(t *testing.T) {
 	// when: I POST a message
 	api.ServeHTTP(w, req)
 
+}
+
+// Server should return an 405 Method Not Allowed in case method request is not POST
+func TestServeHTTP_GetError(t *testing.T) {
+	a := assert.New(t)
+	api := NewRestMessageAPI(nil, "/api")
+
+	url, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")
+	// and a http context
+	req := &http.Request{
+		Method: http.MethodGet,
+		URL:    url,
+		Body:   ioutil.NopCloser(bytes.NewReader(testBytes)),
+		Header: http.Header{},
+	}
+	w := &httptest.ResponseRecorder{}
+
+	// when: I POST a message
+	api.ServeHTTP(w, req)
+
+	a.Equal(http.StatusMethodNotAllowed, w.Code)
 }
 
 func TestHeadersToJSON(t *testing.T) {

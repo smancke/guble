@@ -31,6 +31,11 @@ func (api *RestMessageAPI) GetPrefix() string {
 }
 
 func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, `Can not read body`, http.StatusBadRequest)
