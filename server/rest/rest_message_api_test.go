@@ -1,10 +1,9 @@
-package server
+package rest
 
 import (
 	"github.com/smancke/guble/protocol"
 
 	"github.com/golang/mock/gomock"
-	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 
 	"bytes"
@@ -16,13 +15,13 @@ import (
 	"testing"
 )
 
-func TestPostMessage(t *testing.T) {
+func TestServerHTTP(t *testing.T) {
 	defer initCtrl(t)()
 	a := assert.New(t)
 
 	// given:  a rest api with a message sink
 	routerMock := NewMockRouter(ctrl)
-	api := NewRestMessageApi(routerMock, "/api")
+	api := NewRestMessageAPI(routerMock, "/api")
 
 	url, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")
 	// and a http context
@@ -32,10 +31,6 @@ func TestPostMessage(t *testing.T) {
 		Header: http.Header{},
 	}
 	w := &httptest.ResponseRecorder{}
-
-	params := httprouter.Params{
-		httprouter.Param{Key: "topic", Value: "/my/topic"},
-	}
 
 	// then i expect
 	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *protocol.Message) {
@@ -48,7 +43,7 @@ func TestPostMessage(t *testing.T) {
 	})
 
 	// when: I POST a message
-	api.PostMessage(w, req, params)
+	api.ServeHTTP(w, req)
 
 }
 
@@ -56,10 +51,10 @@ func TestHeadersToJson(t *testing.T) {
 	a := assert.New(t)
 
 	// empty header
-	a.Equal(`{}`, headersToJson(http.Header{}))
+	a.Equal(`{}`, headersToJSON(http.Header{}))
 
 	// simple head
-	jsonString := headersToJson(http.Header{
+	jsonString := headersToJSON(http.Header{
 		X_HEADER_PREFIX + "a": []string{"b"},
 		"foo": []string{"b"},
 		X_HEADER_PREFIX + "x": []string{"y"},
@@ -78,4 +73,33 @@ func TestHeadersToJson(t *testing.T) {
 func TestRemoveTailingSlash(t *testing.T) {
 	assert.Equal(t, "/foo", removeTrailingSlash("/foo/"))
 	assert.Equal(t, "/foo", removeTrailingSlash("/foo"))
+	assert.Equal(t, "/", removeTrailingSlash("/"))
+}
+
+func TestExtractTopic(t *testing.T) {
+	a := assert.New(t)
+
+	api := NewRestMessageAPI(nil, "/api")
+
+	cases := []struct {
+		path, topic string
+		err         error
+	}{
+		{"/api/message/my/topic", "/my/topic", nil},
+		{"/api/message/", "", errNotFound},
+		{"/api/message", "", errNotFound},
+		{"/api/invalid/request", "", errNotFound},
+	}
+
+	for _, c := range cases {
+		topic, err := api.extractTopic(c.path)
+		m := "Assertion failed for path: " + c.path
+
+		if c.err == nil {
+			a.Equal(c.topic, topic, m)
+		} else {
+			a.NotNil(err, m)
+			a.Equal(c.err, err, m)
+		}
+	}
 }

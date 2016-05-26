@@ -104,3 +104,8 @@ $MOCKGEN -self_package websocket -package websocket \
       github.com/smancke/guble/server/auth \
       AccessManager
 
+# Server/Rest Mocks
+$MOCKGEN -package rest \
+      -destination server/rest/mocks_server_gen_test.go \
+      github.com/smancke/guble/server \
+      Router

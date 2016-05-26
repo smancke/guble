@@ -1,9 +1,10 @@
-package server
+package rest
 
 import (
+	"errors"
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server"
 
-	"github.com/julienschmidt/httprouter"
 	"github.com/rs/xid"
 
 	"bytes"
@@ -14,47 +15,63 @@ import (
 
 const X_HEADER_PREFIX = "x-guble-"
 
-type RestMessageApi struct {
-	Router
-	mux    http.Handler
+var errNotFound = errors.New("Not Found.")
+
+type RestMessageAPI struct {
+	router server.Router
 	prefix string
 }
 
-func NewRestMessageApi(router Router, prefix string) *RestMessageApi {
-	mux := httprouter.New()
-	api := &RestMessageApi{router, mux, prefix}
-
-	p := removeTrailingSlash(prefix)
-	mux.POST(p+"/message/*topic", api.PostMessage)
-
-	return api
+func NewRestMessageAPI(router server.Router, prefix string) *RestMessageAPI {
+	return &RestMessageAPI{router, prefix}
 }
 
-func (api *RestMessageApi) GetPrefix() string {
+func (api *RestMessageAPI) GetPrefix() string {
 	return api.prefix
 }
 
-func (api *RestMessageApi) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	api.mux.ServeHTTP(w, r)
-}
-
-func (api *RestMessageApi) PostMessage(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, `Can not read body`, http.StatusBadRequest)
 		return
 	}
 
+	topic, err := api.extractTopic(r.URL.Path)
+	if err != nil {
+		if err == errNotFound {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "Server error.", http.StatusInternalServerError)
+		return
+	}
+
 	msg := &protocol.Message{
-		Path:          protocol.Path(params.ByName(`topic`)),
+		Path:          protocol.Path(topic),
 		Body:          body,
 		UserID:        q(r, `userId`),
 		ApplicationID: xid.New().String(),
 		MessageID:     q(r, `messageId`),
-		HeaderJSON:    headersToJson(r.Header),
+		HeaderJSON:    headersToJSON(r.Header),
 	}
 
-	api.HandleMessage(msg)
+	api.router.HandleMessage(msg)
+}
+
+func (api *RestMessageAPI) extractTopic(path string) (string, error) {
+	p := removeTrailingSlash(api.prefix) + "/message"
+	if !strings.HasPrefix(path, p) {
+		return "", errNotFound
+	}
+
+	// Remove "`api.prefix` + /message" and we remain with the topic
+	topic := strings.TrimPrefix(path, p)
+	if topic == "/" || topic == "" {
+		return "", errNotFound
+	}
+
+	return topic, nil
 }
 
 // returns a query parameter
@@ -66,7 +83,7 @@ func q(r *http.Request, name string) string {
 	return ""
 }
 
-func headersToJson(header http.Header) string {
+func headersToJSON(header http.Header) string {
 	buff := &bytes.Buffer{}
 	buff.WriteString("{")
 
@@ -90,7 +107,7 @@ func headersToJson(header http.Header) string {
 }
 
 func removeTrailingSlash(path string) string {
-	if len(path) > 0 && path[len(path)-1] == '/' {
+	if len(path) > 1 && path[len(path)-1] == '/' {
 		return path[:len(path)-1]
 	}
 	return path
