@@ -32,7 +32,6 @@ type Service struct {
 	router     Router
 	stopables  []Stopable
 	startables []Startable
-	healthCheckers []health.Checker
 	// The time given to each Module on Stop()
 	StopGracePeriod time.Duration
 }
@@ -58,8 +57,9 @@ func NewService(
 // Register the supplied module on this service.
 // This method checks the module for the following interfaces and
 // does the expected registrations:
-//   Startable:
+//   Startable,
 //   Stopable: notify when the service stops
+//   health.Checker:
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
 func (service *Service) Register(module interface{}) {
 	name := reflect.TypeOf(module).String()
@@ -76,7 +76,8 @@ func (service *Service) Register(module interface{}) {
 
 	if checker, ok := module.(health.Checker); ok {
 		protocol.Info("register %v as HealthChecker", name)
-		service.AddHealthChecker(checker)
+		//TODO parameterize / configure frequency and threshold
+		health.RegisterPeriodicThresholdFunc(name, time.Second*60, 1, health.CheckFunc(checker.Check))
 	}
 
 	if endpoint, ok := module.(Endpoint); ok {
@@ -138,10 +139,6 @@ func (service *Service) AddStopable(stopable Stopable) {
 
 func (service *Service) AddStartable(startable Startable) {
 	service.startables = append(service.startables, startable)
-}
-
-func (service *Service) AddHealthChecker(healthChecker health.Checker) {
-	service.healthCheckers = append(service.healthCheckers, healthChecker)
 }
 
 func (service *Service) GetWebServer() *WebServer {
