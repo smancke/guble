@@ -43,6 +43,16 @@ func (_mr *_MockRouterRecorder) AccessManager() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AccessManager")
 }
 
+func (_m *MockRouter) Check() error {
+	ret := _m.ctrl.Call(_m, "Check")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockRouterRecorder) Check() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Check")
+}
+
 func (_m *MockRouter) HandleMessage(_param0 *protocol.Message) error {
 	ret := _m.ctrl.Call(_m, "HandleMessage", _param0)
 	ret0, _ := ret[0].(error)
