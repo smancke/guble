@@ -48,20 +48,20 @@ func TestThroughput(t *testing.T) {
 	messagesPerGroup := 100
 	log.Printf("init the %v testgroups", testgroupCount)
 	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
-	for i, _ := range testgroups {
+	for i := range testgroups {
 		testgroups[i] = newTestgroup(t, i, service.WebServer().GetAddr(), messagesPerGroup)
 	}
 
 	// init test
 	log.Print("init the testgroups")
-	for i, _ := range testgroups {
+	for i := range testgroups {
 		testgroups[i].Init()
 	}
 
 	defer func() {
 		// cleanup tests
 		log.Print("cleanup the testgroups")
-		for i, _ := range testgroups {
+		for i := range testgroups {
 			testgroups[i].Clean()
 		}
 	}()
@@ -69,7 +69,7 @@ func TestThroughput(t *testing.T) {
 	// start test
 	log.Print("start the testgroups")
 	start := time.Now()
-	for i, _ := range testgroups {
+	for i := range testgroups {
 		go testgroups[i].Start()
 	}
 
