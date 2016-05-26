@@ -26,6 +26,7 @@ func TestServerHTTP(t *testing.T) {
 	url, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")
 	// and a http context
 	req := &http.Request{
+		Method: http.MethodPost,
 		URL:    url,
 		Body:   ioutil.NopCloser(bytes.NewReader(testBytes)),
 		Header: http.Header{},
@@ -47,7 +48,7 @@ func TestServerHTTP(t *testing.T) {
 
 }
 
-func TestHeadersToJson(t *testing.T) {
+func TestHeadersToJSON(t *testing.T) {
 	a := assert.New(t)
 
 	// empty header
