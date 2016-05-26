@@ -5,6 +5,7 @@ import (
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 
+	"github.com/docker/distribution/health"
 	"github.com/stretchr/testify/assert"
 	"testing"
 
@@ -13,6 +14,9 @@ import (
 )
 
 func TestSimplePingPong(t *testing.T) {
+	// reset existing health-checks
+	health.DefaultRegistry = health.NewRegistry()
+
 	_, client1, client2, tearDown := initServerAndClients(t)
 	defer tearDown()
 

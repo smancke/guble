@@ -9,10 +9,15 @@ import (
 	"net/http"
 	"testing"
 	"time"
+	"github.com/docker/distribution/health"
 )
 
 func TestStopingOfModules(t *testing.T) {
 	defer initCtrl(t)()
+
+	// reset existing health-checks
+	health.DefaultRegistry = health.NewRegistry()
+
 	// given:
 	service, _, _, _ := aMockedService()
 
@@ -30,6 +35,9 @@ func TestStopingOfModules(t *testing.T) {
 
 func TestStopingOfModulesTimeout(t *testing.T) {
 	defer initCtrl(t)()
+
+	// reset existing health-checks
+	health.DefaultRegistry = health.NewRegistry()
 
 	// given:
 	service, _, _, _ := aMockedService()
@@ -50,6 +58,9 @@ func TestStopingOfModulesTimeout(t *testing.T) {
 
 func TestEndpointRegisterAndServing(t *testing.T) {
 	defer initCtrl(t)()
+
+	// reset existing health-checks
+	health.DefaultRegistry = health.NewRegistry()
 
 	// given:
 	service, _, _, _ := aMockedService()
