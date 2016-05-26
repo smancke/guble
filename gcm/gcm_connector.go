@@ -143,6 +143,7 @@ func (conn *GCMConnector) replaceSubscriptionWithCanonicalID(route *server.Route
 	userID := route.UserID
 
 	protocol.Info("replacing old gcmId %v with canonicalId %v", oldGcmID, newGcmID)
+
 	conn.removeSubscription(route, oldGcmID)
 	conn.subscribe(topic, userID, newGcmID)
 }
@@ -172,7 +173,7 @@ func (conn *GCMConnector) GetPrefix() string {
 func (conn *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		protocol.Err("Only HTTP POST METHOD SUPPORTED but received type=[%s]", r.Method)
-		http.Error(w, "Permission Denied", 405)
+		http.Error(w, "Permission Denied", http.StatusMethodNotAllowed)
 		return
 	}
 
