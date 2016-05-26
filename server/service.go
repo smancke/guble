@@ -135,6 +135,6 @@ func (s *Service) Stop() error {
 	return nil
 }
 
-func (s *Service) GetWebServer() *WebServer {
+func (s *Service) WebServer() *WebServer {
 	return s.webServer
 }

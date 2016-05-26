@@ -49,7 +49,7 @@ func TestThroughput(t *testing.T) {
 	log.Printf("init the %v testgroups", testgroupCount)
 	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
 	for i, _ := range testgroups {
-		testgroups[i] = newTestgroup(t, i, service.GetWebServer().GetAddr(), messagesPerGroup)
+		testgroups[i] = newTestgroup(t, i, service.WebServer().GetAddr(), messagesPerGroup)
 	}
 
 	// init test

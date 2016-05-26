@@ -72,7 +72,7 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// then I can call the handler
-	url := fmt.Sprintf("http://%s/foo", service.GetWebServer().GetAddr())
+	url := fmt.Sprintf("http://%s/foo", service.WebServer().GetAddr())
 	result, err := http.Get(url)
 	assert.NoError(t, err)
 	body := make([]byte, 3)

@@ -47,14 +47,14 @@ func initServerAndClients(t *testing.T) (*server.Service, client.Client, client.
 	time.Sleep(time.Millisecond * 100)
 
 	var err error
-	client1, err := client.Open("ws://"+service.GetWebServer().GetAddr()+"/stream/user/user1", "http://localhost", 1, false)
+	client1, err := client.Open("ws://"+service.WebServer().GetAddr()+"/stream/user/user1", "http://localhost", 1, false)
 	assert.NoError(t, err)
 
 	checkConnectedNotificationJSON(t, "user1",
 		expectStatusMessage(t, client1, protocol.SUCCESS_CONNECTED, "You are connected to the server."),
 	)
 
-	client2, err := client.Open("ws://"+service.GetWebServer().GetAddr()+"/stream/user/user2", "http://localhost", 1, false)
+	client2, err := client.Open("ws://"+service.WebServer().GetAddr()+"/stream/user/user2", "http://localhost", 1, false)
 	assert.NoError(t, err)
 	checkConnectedNotificationJSON(t, "user2",
 		expectStatusMessage(t, client2, protocol.SUCCESS_CONNECTED, "You are connected to the server."),
