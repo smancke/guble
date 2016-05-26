@@ -4,6 +4,7 @@ import (
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/rest"
 	"github.com/smancke/guble/store"
 
 	"fmt"
@@ -71,9 +72,7 @@ var CreateMessageStore = func(args Args) store.MessageStore {
 	}
 }
 
-var CreateModules = func(
-	router server.Router,
-	args Args) []interface{} {
+var CreateModules = func(router server.Router, args Args) []interface{} {
 	modules := make([]interface{}, 0, 2)
 
 	if wsHandler, err := server.NewWSHandler(router, "/stream/"); err != nil {
@@ -82,7 +81,7 @@ var CreateModules = func(
 		modules = append(modules, wsHandler)
 	}
 
-	modules = append(modules, server.NewRestMessageApi(router, "/api/"))
+	modules = append(modules, rest.NewRestMessageAPI(router, "/api/"))
 
 	if args.GcmEnable {
 		if args.GcmApiKey == "" {
