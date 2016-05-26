@@ -1,10 +1,9 @@
 package client
 
 import (
-	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/testutil"
 
 	"fmt"
-	"github.com/golang/mock/gomock"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"strings"
@@ -20,25 +19,6 @@ var aSendNotification = "#send"
 
 var anErrorNotification = "!error-send"
 
-var ctrl *gomock.Controller
-
-func init() {
-	// disable error output while testing
-	// because also negative tests are tested
-	protocol.LogLevel = protocol.LEVEL_ERR + 1
-}
-
-func initCtrl(t *testing.T) func() {
-	ctrl = gomock.NewController(t)
-	return func() { ctrl.Finish() }
-}
-
-func enableDebugForMethod() func() {
-	reset := protocol.LogLevel
-	protocol.LogLevel = protocol.LEVEL_DEBUG
-	return func() { protocol.LogLevel = reset }
-}
-
 func MockConnectionFactory(connectionMock *MockWSConnection) func(string, string) (WSConnection, error) {
 	return func(url string, origin string) (WSConnection, error) {
 		return connectionMock, nil
@@ -46,7 +26,6 @@ func MockConnectionFactory(connectionMock *MockWSConnection) func(string, string
 }
 
 func TestConnectErrorWithoutReconnection(t *testing.T) {
-	defer initCtrl(t)()
 	a := assert.New(t)
 
 	// given a client
@@ -70,7 +49,6 @@ func TestConnectErrorWithoutReconnection(t *testing.T) {
 }
 
 func TestConnectErrorWithoutReconnectionUsingOpen(t *testing.T) {
-	defer initCtrl(t)()
 	a := assert.New(t)
 
 	c, err := Open("url", "origin", 1, false)
@@ -88,7 +66,8 @@ func TestConnectErrorWithoutReconnectionUsingOpen(t *testing.T) {
 }
 
 func TestConnectErrorWithReconnection(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 	a := assert.New(t)
 
 	// given a client
@@ -124,7 +103,8 @@ func TestConnectErrorWithReconnection(t *testing.T) {
 }
 
 func TestStopableClient(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 	a := assert.New(t)
 
 	// given a client
@@ -159,7 +139,8 @@ func TestStopableClient(t *testing.T) {
 }
 
 func TestReceiveAMessage(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 	a := assert.New(t)
 
 	// given a client
@@ -235,7 +216,8 @@ func TestReceiveAMessage(t *testing.T) {
 }
 
 func TestSendAMessage(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 	//	a := assert.New(t)
 
 	// given a client
@@ -252,7 +234,8 @@ func TestSendAMessage(t *testing.T) {
 }
 
 func TestSendSubscribeMessage(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	// given a client
 	c := New("url", "origin", 1, true)
@@ -267,7 +250,8 @@ func TestSendSubscribeMessage(t *testing.T) {
 }
 
 func TestSendUnSubscribeMessage(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	// given a client
 	c := New("url", "origin", 1, true)

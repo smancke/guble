@@ -2,6 +2,7 @@ package rest
 
 import (
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -15,8 +16,12 @@ import (
 	"testing"
 )
 
+var testBytes = []byte("test")
+
 func TestServerHTTP(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
 	a := assert.New(t)
 
 	// given:  a rest api with a message sink

@@ -64,15 +64,6 @@ func (ws *WebServer) GetAddr() string {
 	return ws.ln.Addr().String()
 }
 
-// parsed the userid out of an uri
-func extractUserId(requestUri string) string {
-	uriParts := strings.SplitN(requestUri, "/user/", 2)
-	if len(uriParts) != 2 {
-		return ""
-	}
-	return uriParts[1]
-}
-
 // copied from golang: net/http/server.go
 // tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
 // connections. It's used by ListenAndServe and ListenAndServeTLS so
