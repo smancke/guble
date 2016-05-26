@@ -49,7 +49,7 @@ func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 
-	NewWebSocket(handle, &wsconn{c}, extractUserId(r.RequestURI)).Start()
+	NewWebSocket(handle, &wsconn{c}, extractUserID(r.RequestURI)).Start()
 }
 
 // WSConnection is a wrapper interface for the needed functions of the websocket.Conn
@@ -268,9 +268,12 @@ func (ws *WebSocket) sendOK(name string, argPattern string, params ...interface{
 	ws.sendChannel <- n.Bytes()
 }
 
-// parsed the userid out of an uri
-func extractUserId(requestUri string) string {
-	uriParts := strings.SplitN(requestUri, "/user/", 2)
+// Extracts the userID out of an URI or empty string if format not met
+// Example:
+// 		http://example.com/user/user01/ -> user01
+// 		http://example.com/user/ -> ""
+func extractUserID(uri string) string {
+	uriParts := strings.SplitN(uri, "/user/", 2)
 	if len(uriParts) != 2 {
 		return ""
 	}

@@ -144,9 +144,9 @@ func Test_BadCommands(t *testing.T) {
 }
 
 func TestExtractUserId(t *testing.T) {
-	assert.Equal(t, "marvin", extractUserId("/foo/user/marvin"))
-	assert.Equal(t, "marvin", extractUserId("/user/marvin"))
-	assert.Equal(t, "", extractUserId("/"))
+	assert.Equal(t, "marvin", extractUserID("/foo/user/marvin"))
+	assert.Equal(t, "marvin", extractUserID("/user/marvin"))
+	assert.Equal(t, "", extractUserID("/"))
 }
 
 func testWSHandler(
