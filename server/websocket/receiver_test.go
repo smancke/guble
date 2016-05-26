@@ -1,8 +1,10 @@
-package server
+package websocket
 
 import (
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +16,9 @@ import (
 )
 
 func Test_Receiver_error_handling_on_create(t *testing.T) {
-	defer initCtrl(t)()
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
 	a := assert.New(t)
 
 	badArgs := []string{"", "20", "foo 20 20", "/foo 20 20 20", "/foo a", "/foo 20 b"}
@@ -26,7 +30,9 @@ func Test_Receiver_error_handling_on_create(t *testing.T) {
 }
 
 func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
-	defer initCtrl(t)()
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
 	a := assert.New(t)
 
 	rec, msgChannel, routerMock, messageStore, err := aMockedReceiver("/foo 0")
@@ -78,10 +84,10 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	messageId2.After(fetch_first2)
 
 	// subscribe
-	subscribe := routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *Route) {
+	subscribe := routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *server.Route) {
 		a.Equal(r.Path, protocol.Path("/foo"))
-		r.C <- MsgAndRoute{Message: &protocol.Message{ID: uint64(4), Body: []byte("router-a"), Time: 1405544146}, Route: r}
-		r.C <- MsgAndRoute{Message: &protocol.Message{ID: uint64(5), Body: []byte("router-b"), Time: 1405544146}, Route: r}
+		r.C <- server.MsgAndRoute{Message: &protocol.Message{ID: uint64(4), Body: []byte("router-a"), Time: 1405544146}, Route: r}
+		r.C <- server.MsgAndRoute{Message: &protocol.Message{ID: uint64(5), Body: []byte("router-b"), Time: 1405544146}, Route: r}
 		close(r.C) // emulate router close
 	})
 	subscribe.After(messageId2)
@@ -143,11 +149,13 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 		"#"+protocol.SUCCESS_CANCELED+" /foo",
 	)
 
-	expectDone(a, subscriptionLoopDone)
+	testutil.ExpectDone(a, subscriptionLoopDone)
 }
 
 func Test_Receiver_Fetch_Returns_Correct_Messages(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
 	a := assert.New(t)
 
 	rec, msgChannel, _, messageStore, err := aMockedReceiver("/foo 0 2")
@@ -171,13 +179,13 @@ func Test_Receiver_Fetch_Returns_Correct_Messages(t *testing.T) {
 		rec.fetchOnlyLoop()
 		fetchHasTerminated <- true
 	}()
-	expectDone(a, done)
+	testutil.ExpectDone(a, done)
 
 	expectMessages(a, msgChannel, "#"+protocol.SUCCESS_FETCH_START+" /foo 2")
 	expectMessages(a, msgChannel, messages...)
 	expectMessages(a, msgChannel, "#"+protocol.SUCCESS_FETCH_END+" /foo")
 
-	expectDone(a, fetchHasTerminated)
+	testutil.ExpectDone(a, fetchHasTerminated)
 	ctrl.Finish()
 }
 
@@ -213,7 +221,7 @@ func Test_Receiver_Fetch_Produces_Correct_Fetch_Requests(t *testing.T) {
 	}
 
 	for _, test := range testcases {
-		ctrl = gomock.NewController(t)
+		ctrl := gomock.NewController(t)
 
 		rec, _, _, messageStore, err := aMockedReceiver(test.arg)
 		a.NoError(err, test.desc)
@@ -233,7 +241,7 @@ func Test_Receiver_Fetch_Produces_Correct_Fetch_Requests(t *testing.T) {
 		})
 
 		go rec.fetchOnlyLoop()
-		expectDone(a, done)
+		testutil.ExpectDone(a, done)
 		ctrl.Finish()
 		rec.Stop()
 	}
@@ -246,7 +254,7 @@ func Test_Receiver_Fetch_Sends_error_on_failure(t *testing.T) {
 		"/foo 0 2", // fetch only
 		"/foo 0",   // fetch and subscribe
 	} {
-		ctrl = gomock.NewController(t)
+		ctrl := gomock.NewController(t)
 
 		rec, msgChannel, _, messageStore, err := aMockedReceiver(arg)
 		a.NoError(err)
@@ -264,7 +272,9 @@ func Test_Receiver_Fetch_Sends_error_on_failure(t *testing.T) {
 }
 
 func Test_Receiver_Fetch_Sends_error_on_failure_in_MaxMessageId(t *testing.T) {
-	defer initCtrl(t)()
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
 	a := assert.New(t)
 
 	rec, msgChannel, _, messageStore, err := aMockedReceiver("/foo -2 2")
@@ -280,14 +290,15 @@ func Test_Receiver_Fetch_Sends_error_on_failure_in_MaxMessageId(t *testing.T) {
 
 //rec, sendChannel, router, messageStore, err := aMockedReceiver("+")
 func aMockedReceiver(arg string) (*Receiver, chan []byte, *MockRouter, *MockMessageStore, error) {
-	routerMock := NewMockRouter(ctrl)
-	messageStore := NewMockMessageStore(ctrl)
+	routerMock := NewMockRouter(testutil.MockCtrl)
+	messageStore := NewMockMessageStore(testutil.MockCtrl)
+	routerMock.EXPECT().MessageStore().Return(messageStore, nil).AnyTimes()
 	sendChannel := make(chan []byte)
 	cmd := &protocol.Cmd{
 		Name: protocol.CmdReceive,
 		Arg:  arg,
 	}
-	rec, err := NewReceiverFromCmd("any-appId", cmd, sendChannel, routerMock, messageStore, "userId")
+	rec, err := NewReceiverFromCmd("any-appId", cmd, sendChannel, routerMock, "userId")
 	return rec, sendChannel, routerMock, messageStore, err
 }
 

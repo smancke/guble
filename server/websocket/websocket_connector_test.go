@@ -1,8 +1,10 @@
-package server
+package websocket
 
 import (
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +23,9 @@ var aTestMessage = &protocol.Message{
 }
 
 func Test_WebSocket_SubscribeAndUnsubscribe(t *testing.T) {
-	defer initCtrl(t)()
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
 	a := assert.New(t)
 
 	messages := []string{"+ /foo", "+ /bar", "- /foo"}
@@ -43,7 +47,8 @@ func Test_WebSocket_SubscribeAndUnsubscribe(t *testing.T) {
 }
 
 func Test_SendMessageWithPublisherMessageId(t *testing.T) {
-	defer initCtrl(t)()
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	// given: a send command with PublisherMessageId
 	commands := []string{"> /path 42"}
@@ -60,7 +65,8 @@ func Test_SendMessageWithPublisherMessageId(t *testing.T) {
 }
 
 func Test_SendMessage(t *testing.T) {
-	defer initCtrl(t)()
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	commands := []string{"> /path\n{\"key\": \"value\"}\nHello, this is a test"}
 	wsconn, routerMock, messageStore := createDefaultMocks(commands)
@@ -72,7 +78,8 @@ func Test_SendMessage(t *testing.T) {
 }
 
 func Test_AnIncommingMessageIsDelivered(t *testing.T) {
-	defer initCtrl(t)()
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	wsconn, routerMock, messageStore := createDefaultMocks([]string{})
 
@@ -85,14 +92,15 @@ func Test_AnIncommingMessageIsDelivered(t *testing.T) {
 }
 
 func Test_AnIncommingMessageIsNotAllowed(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
-	wsconn, routerMock, messageStore := createDefaultMocks([]string{})
+	wsconn, routerMock, _ := createDefaultMocks([]string{})
 
 	tam := NewMockAccessManager(ctrl)
 	tam.EXPECT().IsAllowed(auth.READ, "testuser", protocol.Path("/foo")).Return(false)
 	handler := NewWebSocket(
-		testWSHandler(routerMock, messageStore, tam),
+		testWSHandler(routerMock, tam),
 		wsconn,
 		"testuser",
 	)
@@ -118,7 +126,8 @@ func Test_AnIncommingMessageIsNotAllowed(t *testing.T) {
 }
 
 func Test_BadCommands(t *testing.T) {
-	defer initCtrl(t)()
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	badRequests := []string{"XXXX", "", ">", ">/foo", "+", "-", "send /foo"}
 	wsconn, routerMock, messageStore := createDefaultMocks(badRequests)
@@ -142,15 +151,19 @@ func Test_BadCommands(t *testing.T) {
 	assert.Equal(t, len(badRequests), counter, "expected number of bad requests does not match")
 }
 
+func TestExtractUserId(t *testing.T) {
+	assert.Equal(t, "marvin", extractUserID("/foo/user/marvin"))
+	assert.Equal(t, "marvin", extractUserID("/user/marvin"))
+	assert.Equal(t, "", extractUserID("/"))
+}
+
 func testWSHandler(
 	routerMock *MockRouter,
-	messageStore store.MessageStore,
 	accessManager auth.AccessManager) *WSHandler {
 
 	return &WSHandler{
 		Router:        routerMock,
 		prefix:        "/prefix",
-		messageStore:  messageStore,
 		accessManager: accessManager,
 	}
 }
@@ -165,7 +178,7 @@ func runNewWebSocket(
 		accessManager = auth.NewAllowAllAccessManager(true)
 	}
 	websocket := NewWebSocket(
-		testWSHandler(routerMock, messageStore, accessManager),
+		testWSHandler(routerMock, accessManager),
 		wsconn,
 		"testuser",
 	)
@@ -187,10 +200,11 @@ func createDefaultMocks(inputMessages []string) (
 		inputMessagesC <- []byte(msg)
 	}
 
-	routerMock := NewMockRouter(ctrl)
-	messageStore := NewMockMessageStore(ctrl)
+	routerMock := NewMockRouter(testutil.MockCtrl)
+	messageStore := NewMockMessageStore(testutil.MockCtrl)
+	routerMock.EXPECT().MessageStore().Return(messageStore, nil).AnyTimes()
 
-	wsconn := NewMockWSConnection(ctrl)
+	wsconn := NewMockWSConnection(testutil.MockCtrl)
 	wsconn.EXPECT().Receive(gomock.Any()).Do(func(message *[]byte) error {
 		*message = <-inputMessagesC
 		return nil
@@ -207,7 +221,7 @@ type routeMatcher struct {
 }
 
 func (n routeMatcher) Matches(x interface{}) bool {
-	return n.path == string(x.(*Route).Path)
+	return n.path == string(x.(*server.Route).Path)
 }
 
 func (n routeMatcher) String() string {

@@ -42,9 +42,3 @@ func TestStartAndStopWebServer(t *testing.T) {
 	_, err = c2.Post("http://"+addr, "text/plain", bytes.NewBufferString("hello"))
 	assert.Error(t, err)
 }
-
-func TestExtractUserId(t *testing.T) {
-	assert.Equal(t, "marvin", extractUserId("/foo/user/marvin"))
-	assert.Equal(t, "marvin", extractUserId("/user/marvin"))
-	assert.Equal(t, "", extractUserId("/"))
-}

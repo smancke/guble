@@ -1,14 +1,15 @@
 package gcm
 
 import (
+	"github.com/alexjlockwood/gcm"
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
-	"github.com/alexjlockwood/gcm"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -18,7 +19,6 @@ import (
 	"time"
 )
 
-var ctrl *gomock.Controller
 var correctGcmResponseMessageJSON = `
 {
    "multicast_id":3,
@@ -78,7 +78,8 @@ func composeHTTPResponse(req *http.Request, httpStatusCode int, messageBodyAsJSO
 }
 
 func TestServeHTTPSuccess(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	a := assert.New(t)
 
@@ -110,7 +111,8 @@ func TestServeHTTPSuccess(t *testing.T) {
 }
 
 func TestServeHTTPWithErrorCases(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	a := assert.New(t)
 
@@ -148,7 +150,8 @@ func TestServeHTTPWithErrorCases(t *testing.T) {
 }
 
 func TestSaveAndLoadSubscriptions(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	a := assert.New(t)
 
@@ -196,7 +199,8 @@ func TestRemoveTailingSlash(t *testing.T) {
 }
 
 func TestGCMConnector_parseParams(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	assert := assert.New(t)
 	routerMock := NewMockRouter(ctrl)
@@ -235,7 +239,8 @@ func TestGCMConnector_parseParams(t *testing.T) {
 }
 
 func TestGCMConnector_GetPrefix(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	assert := assert.New(t)
 	routerMock := NewMockRouter(ctrl)
@@ -248,7 +253,8 @@ func TestGCMConnector_GetPrefix(t *testing.T) {
 }
 
 func TestGCMConnector_Stop(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	assert := assert.New(t)
 	routerMock := NewMockRouter(ctrl)
@@ -265,7 +271,8 @@ func TestGCMConnector_Stop(t *testing.T) {
 }
 
 func TestGcmConnector_StartWithMessageSending(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	assert := assert.New(t)
 	routerMock := NewMockRouter(ctrl)
@@ -314,7 +321,8 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 }
 
 func TestGCMConnector_BroadcastMessage(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	a := assert.New(t)
 
@@ -364,7 +372,9 @@ func TestGCMConnector_BroadcastMessage(t *testing.T) {
 }
 
 func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	//defer testutil.EnableDebugForMethod()()
 
 	assert := assert.New(t)
 	routerMock := NewMockRouter(ctrl)
@@ -414,19 +424,4 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	gcm.channelFromRouter <- msg
 	// expect that the Http Server to give us a malformed message
 	<-done
-}
-
-func initCtrl(t *testing.T) func() {
-	ctrl = gomock.NewController(t)
-	return func() {
-		ctrl.Finish()
-	}
-}
-
-func enableDebugForMethod() func() {
-	reset := protocol.LogLevel
-	protocol.LogLevel = protocol.LEVEL_DEBUG
-	return func() {
-		protocol.LogLevel = reset
-	}
 }
