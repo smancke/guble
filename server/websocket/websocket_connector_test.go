@@ -1,7 +1,8 @@
-package server
+package websocket
 
 import (
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 
 	"github.com/golang/mock/gomock"
@@ -142,6 +143,12 @@ func Test_BadCommands(t *testing.T) {
 	assert.Equal(t, len(badRequests), counter, "expected number of bad requests does not match")
 }
 
+func TestExtractUserId(t *testing.T) {
+	assert.Equal(t, "marvin", extractUserId("/foo/user/marvin"))
+	assert.Equal(t, "marvin", extractUserId("/user/marvin"))
+	assert.Equal(t, "", extractUserId("/"))
+}
+
 func testWSHandler(
 	routerMock *MockRouter,
 	messageStore store.MessageStore,
@@ -207,7 +214,7 @@ type routeMatcher struct {
 }
 
 func (n routeMatcher) Matches(x interface{}) bool {
-	return n.path == string(x.(*Route).Path)
+	return n.path == string(x.(*server.Route).Path)
 }
 
 func (n routeMatcher) String() string {

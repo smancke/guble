@@ -1,7 +1,8 @@
-package server
+package websocket
 
 import (
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 
 	"github.com/gorilla/websocket"
@@ -19,13 +20,13 @@ var webSocketUpgrader = websocket.Upgrader{
 }
 
 type WSHandler struct {
-	Router        Router
+	Router        server.Router
 	prefix        string
 	messageStore  store.MessageStore
 	accessManager auth.AccessManager
 }
 
-func NewWSHandler(router Router, prefix string) (*WSHandler, error) {
+func NewWSHandler(router server.Router, prefix string) (*WSHandler, error) {
 	accessManager, err := router.AccessManager()
 	if err != nil {
 		return nil, err
@@ -274,4 +275,13 @@ func (ws *WebSocket) sendOK(name string, argPattern string, params ...interface{
 		IsError: false,
 	}
 	ws.sendChannel <- n.Bytes()
+}
+
+// parsed the userid out of an uri
+func extractUserId(requestUri string) string {
+	uriParts := strings.SplitN(requestUri, "/user/", 2)
+	if len(uriParts) != 2 {
+		return ""
+	}
+	return uriParts[1]
 }

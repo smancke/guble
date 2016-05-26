@@ -1,7 +1,8 @@
-package server
+package websocket
 
 import (
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 
 	"errors"
@@ -19,7 +20,7 @@ type Receiver struct {
 	cancelChannel       chan bool
 	sendChannel         chan []byte
 	applicationId       string
-	router              Router
+	router              server.Router
 	messageStore        store.MessageStore
 	path                protocol.Path
 	doFetch             bool
@@ -28,7 +29,7 @@ type Receiver struct {
 	maxCount            int
 	lastSendId          uint64
 	shouldStop          bool
-	route               *Route
+	route               *server.Route
 	enableNotifications bool
 	userId              string
 }
@@ -38,7 +39,7 @@ func NewReceiverFromCmd(
 	applicationId string,
 	cmd *protocol.Cmd,
 	sendChannel chan []byte,
-	router Router,
+	router server.Router,
 	messageStore store.MessageStore,
 	userId string) (*Receiver, error) {
 	var err error
@@ -134,7 +135,7 @@ func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) e
 }
 
 func (rec *Receiver) subscribe() {
-	rec.route = NewRoute(string(rec.path), make(chan MsgAndRoute, 3), rec.applicationId, rec.userId)
+	rec.route = server.NewRoute(string(rec.path), make(chan server.MsgAndRoute, 3), rec.applicationId, rec.userId)
 	_, err := rec.router.Subscribe(rec.route)
 	if err != nil {
 		rec.sendError(protocol.ERROR_SUBSCRIBED_TO, string(rec.path), err.Error())
