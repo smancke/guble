@@ -57,6 +57,10 @@ func (api *RestMessageApi) PostMessage(w http.ResponseWriter, r *http.Request, p
 	api.HandleMessage(msg)
 }
 
+func (api *RestMessageApi) Check() error {
+	return nil
+}
+
 // returns a query parameter
 func q(r *http.Request, name string) string {
 	params := r.URL.Query()[name]
