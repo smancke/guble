@@ -79,3 +79,11 @@ $MOCKGEN -self_package auth -package auth \
 replace "server/auth/mocks_auth_gen_test.go" \
       "auth \"github.com\/smancke\/guble\/server\/auth\"" \
       "auth\."
+
+
+# Server/Rest Mocks
+$MOCKGEN -package rest \
+      -destination server/rest/mocks_server_gen_test.go \
+      github.com/smancke/guble/server \
+      Router
+
