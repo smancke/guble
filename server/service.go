@@ -74,6 +74,11 @@ func (service *Service) Register(module interface{}) {
 		service.AddStopListener(stopable)
 	}
 
+	if checker, ok := module.(health.Checker); ok {
+		protocol.Info("register %v as HealthChecker", name)
+		service.AddHealthChecker(checker)
+	}
+
 	if endpoint, ok := module.(Endpoint); ok {
 		protocol.Info("register %v as Endpoint to %v", name, endpoint.GetPrefix())
 		service.webServer.Handle(endpoint.GetPrefix(), endpoint)
@@ -133,6 +138,10 @@ func (service *Service) AddStopListener(stopable Stopable) {
 
 func (service *Service) AddStartListener(startable Startable) {
 	service.startables = append(service.startables, startable)
+}
+
+func (service *Service) AddHealthChecker(healthChecker health.Checker) {
+	service.healthCheckers = append(service.healthCheckers, healthChecker)
 }
 
 func (service *Service) GetWebServer() *WebServer {
