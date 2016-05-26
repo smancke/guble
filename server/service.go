@@ -77,10 +77,6 @@ func (service *Service) Register(module interface{}) {
 	}
 }
 
-func (service *Service) AddHandler(prefix string, handler http.Handler) {
-	service.webServer.mux.Handle(prefix, handler)
-}
-
 func (service *Service) Start() error {
 	el := protocol.NewErrorList("Errors occured while startup the service: ")
 
@@ -94,14 +90,6 @@ func (service *Service) Start() error {
 		}
 	}
 	return el.ErrorOrNil()
-}
-
-func (service *Service) AddStopListener(stopable Stopable) {
-	service.stopables = append(service.stopables, stopable)
-}
-
-func (service *Service) AddStartListener(startable Startable) {
-	service.startables = append(service.startables, startable)
 }
 
 func (service *Service) Stop() error {
@@ -134,6 +122,18 @@ func (service *Service) Stop() error {
 		return fmt.Errorf("Errors while stopping modules %q", errors)
 	}
 	return nil
+}
+
+func (service *Service) AddStopListener(stopable Stopable) {
+	service.stopables = append(service.stopables, stopable)
+}
+
+func (service *Service) AddStartListener(startable Startable) {
+	service.startables = append(service.startables, startable)
+}
+
+func (service *Service) AddHandler(prefix string, handler http.Handler) {
+	service.webServer.mux.Handle(prefix, handler)
 }
 
 func (service *Service) GetWebServer() *WebServer {
