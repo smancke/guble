@@ -36,9 +36,7 @@ type Service struct {
 }
 
 // NewService registers the Main Router, where other modules can subscribe for messages
-func NewService(
-	addr string,
-	router Router) *Service {
+func NewService(addr string, router Router) *Service {
 	service := &Service{
 		stopListener:    make([]Stopable, 0, 5),
 		webServer:       NewWebServer(addr),
