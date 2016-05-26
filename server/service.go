@@ -34,6 +34,8 @@ type Service struct {
 	startables []Startable
 	// The time given to each Module on Stop()
 	StopGracePeriod time.Duration
+	healthCheckFrequency time.Duration
+	healthCheckThreshold int
 }
 
 // NewService registers the Main Router, where other modules can subscribe for messages
@@ -77,7 +79,7 @@ func (service *Service) Register(module interface{}) {
 	if checker, ok := module.(health.Checker); ok {
 		protocol.Info("register %v as HealthChecker", name)
 		//TODO parameterize / configure frequency and threshold
-		health.RegisterPeriodicThresholdFunc(name, time.Second*60, 1, health.CheckFunc(checker.Check))
+		health.RegisterPeriodicThresholdFunc(name, service.healthCheckFrequency, service.healthCheckThreshold, health.CheckFunc(checker.Check))
 	}
 
 	if endpoint, ok := module.(Endpoint); ok {
