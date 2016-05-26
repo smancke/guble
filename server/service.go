@@ -4,10 +4,10 @@ import (
 	"github.com/smancke/guble/protocol"
 
 	"fmt"
+	"github.com/docker/distribution/health"
 	"net/http"
 	"reflect"
 	"time"
-	"github.com/docker/distribution/health"
 )
 
 // Startable interface for modules which provide a start mechanism
@@ -33,15 +33,13 @@ type Service struct {
 	stopables  []Stopable
 	startables []Startable
 	// The time given to each Module on Stop()
-	StopGracePeriod time.Duration
+	StopGracePeriod      time.Duration
 	healthCheckFrequency time.Duration
 	healthCheckThreshold int
 }
 
 // NewService registers the Main Router, where other modules can subscribe for messages
-func NewService(
-	addr string,
-	router Router) *Service {
+func NewService(addr string, router Router) *Service {
 	service := &Service{
 		stopables:       make([]Stopable, 0, 5),
 		webServer:       NewWebServer(addr),
@@ -63,35 +61,35 @@ func NewService(
 //   Stopable: notify when the service stops
 //   health.Checker:
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
-func (service *Service) Register(module interface{}) {
+func (s *Service) Register(module interface{}) {
 	name := reflect.TypeOf(module).String()
 
 	if startable, ok := module.(Startable); ok {
 		protocol.Info("register %v as StartListener", name)
-		service.AddStartable(startable)
+		s.startables = append(s.startables, startable)
 	}
 
 	if stopable, ok := module.(Stopable); ok {
 		protocol.Info("register %v as StopListener", name)
-		service.AddStopable(stopable)
+		s.stopables = append(s.stopables, stopable)
 	}
 
 	if checker, ok := module.(health.Checker); ok {
 		protocol.Info("register %v as HealthChecker", name)
 		//TODO parameterize / configure frequency and threshold
-		health.RegisterPeriodicThresholdFunc(name, service.healthCheckFrequency, service.healthCheckThreshold, health.CheckFunc(checker.Check))
+		health.RegisterPeriodicThresholdFunc(name, s.healthCheckFrequency, s.healthCheckThreshold, health.CheckFunc(checker.Check))
 	}
 
 	if endpoint, ok := module.(Endpoint); ok {
 		protocol.Info("register %v as Endpoint to %v", name, endpoint.GetPrefix())
-		service.webServer.Handle(endpoint.GetPrefix(), endpoint)
+		s.webServer.Handle(endpoint.GetPrefix(), endpoint)
 	}
 }
 
-func (service *Service) Start() error {
+func (s *Service) Start() error {
 	el := protocol.NewErrorList("Errors occured while startup the service: ")
 
-	for _, startable := range service.startables {
+	for _, startable := range s.startables {
 		name := reflect.TypeOf(startable).String()
 
 		protocol.Debug("starting module %v", name)
@@ -103,9 +101,9 @@ func (service *Service) Start() error {
 	return el.ErrorOrNil()
 }
 
-func (service *Service) Stop() error {
+func (s *Service) Stop() error {
 	errors := make(map[string]error)
-	for _, stopable := range service.stopables {
+	for _, stopable := range s.stopables {
 		name := reflect.TypeOf(stopable).String()
 		stoppedChan := make(chan bool)
 		errorChan := make(chan error)
@@ -124,8 +122,8 @@ func (service *Service) Stop() error {
 			errors[name] = err
 		case <-stoppedChan:
 			protocol.Info("stopped %v", name)
-		case <-time.After(service.StopGracePeriod):
-			errors[name] = fmt.Errorf("error while stopping %v: not returned after %v seconds", name, service.StopGracePeriod)
+		case <-time.After(s.StopGracePeriod):
+			errors[name] = fmt.Errorf("error while stopping %v: not returned after %v seconds", name, s.StopGracePeriod)
 			protocol.Err(errors[name].Error())
 		}
 	}
@@ -135,14 +133,6 @@ func (service *Service) Stop() error {
 	return nil
 }
 
-func (service *Service) AddStopable(stopable Stopable) {
-	service.stopables = append(service.stopables, stopable)
-}
-
-func (service *Service) AddStartable(startable Startable) {
-	service.startables = append(service.startables, startable)
-}
-
-func (service *Service) GetWebServer() *WebServer {
-	return service.webServer
+func (s *Service) GetWebServer() *WebServer {
+	return s.webServer
 }
