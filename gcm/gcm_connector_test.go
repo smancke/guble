@@ -9,6 +9,7 @@ import (
 
 	"fmt"
 	"github.com/alexjlockwood/gcm"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -18,43 +19,46 @@ import (
 )
 
 var ctrl *gomock.Controller
+var correctGcmResponseMessageJSON = `
+{
+   "multicast_id":3,
+   "succes":1,
+   "failure":0,
+   "canonicals_ids":5,
+   "results":[
+      {
+         "message_id":"da",
+         "registration_id":"rId",
+         "error":""
+      }
+   ]
+}`
 
-func createDummyHttpServerEndoint(ch chan int) (*gcm.Sender, func()) {
-	calledBefore := 0
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		protocol.Debug("Served something")
-		// notify that somebody reached this http server
-		calledBefore++
-		ch <- calledBefore
+type RoundTripperFunc func(req *http.Request) *http.Response
 
-		w.WriteHeader(200)
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintln(w, `[{"email":"bob@example.com","status":"sent","reject_reason":"hard-bounce","_id":"1"}]`)
-	}))
-	// Make a transport that reroutes all traffic to the example server
-	transport := &http.Transport{
-		Proxy: func(req *http.Request) (*url.URL, error) {
-			return url.Parse(server.URL)
-		},
-	}
-	httpClient := &http.Client{Transport: transport}
-	return &gcm.Sender{ApiKey: "124", Http: httpClient}, func() {
-		server.Close()
-	}
-	// Make a http.Client with the transport
+func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	protocol.Debug("am intrat aicishea")
+	return rt(req), nil
+}
+
+func createSender(rt RoundTripperFunc) *gcm.Sender {
+	httpClient := &http.Client{Transport: rt}
+	return &gcm.Sender{ApiKey: "124", Http: httpClient}
 
 }
 
-func checkHttpResponseReceivedWithTimeout(ch chan int) bool {
-	isServerCalled := false
-	select {
-	case recv := <-ch:
-		protocol.Debug(fmt.Sprintf("Received %d", recv))
-		isServerCalled = true
-	case <-time.After(2 * time.Second):
-		isServerCalled = false
+func composeHTTPResponse(req *http.Request, httpStatusCode int, messageBodyAsJSON string) *http.Response {
+	resp := &http.Response{
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     make(http.Header),
+		Body:       ioutil.NopCloser(strings.NewReader(messageBodyAsJSON)),
+		Request:    req,
+		StatusCode: httpStatusCode,
 	}
-	return isServerCalled
+	resp.Header.Add("Content-Type", "application/json")
+	return resp
 }
 
 func TestPostMessage(t *testing.T) {
@@ -115,7 +119,7 @@ func TestSaveAndLoadSubscriptions(t *testing.T) {
 	a.Nil(err)
 
 	// when: we save the routes
-	for k, _ := range testRoutes {
+	for k := range testRoutes {
 		splitedKey := strings.SplitN(k, ":", 3)
 		userid := splitedKey[0]
 		topic := splitedKey[1]
@@ -149,7 +153,7 @@ func TestGCMConnector_parseParams(t *testing.T) {
 	assert.Nil(err)
 
 	testCases := []struct {
-		urlPath, userId, gcmID, topic, err string
+		urlPath, userID, gcmID, topic, err string
 	}{
 		{"/gcm/marvin/gcmId123/subscribe/notifications", "marvin", "gcmId123", "/notifications", ""},
 		{"/gcm2/marvin/gcmId123/subscribe/notifications", "", "", "", "Gcm request is not starting with gcm prefix"},
@@ -166,7 +170,7 @@ func TestGCMConnector_parseParams(t *testing.T) {
 			assert.NotNil(err)
 			assert.EqualError(err, c.err, fmt.Sprintf("Failed on testcase no=%d", i))
 		} else {
-			assert.Equal(userID, c.userId, fmt.Sprintf("Failed on testcase no=%d", i))
+			assert.Equal(userID, c.userID, fmt.Sprintf("Failed on testcase no=%d", i))
 			assert.Equal(gcmID, c.gcmID, fmt.Sprintf("Failed on testcase no=%d", i))
 			assert.Equal(topic, c.topic, fmt.Sprintf("Failed on testcase no=%d", i))
 			assert.Nil(err, fmt.Sprintf("Failed on testcase no=%d", i))
@@ -208,7 +212,6 @@ func TestGCMConnector_Stop(t *testing.T) {
 
 func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	defer initCtrl(t)()
-	//enableDebugForMethod()
 
 	assert := assert.New(t)
 	routerMock := NewMockRouter(ctrl)
@@ -227,28 +230,28 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	err = gcm.Start()
 	assert.Nil(err)
 
-	// create a channel for signaling if somebody reached the dummy http server
-	notificationChannel := make(chan int, 1)
+	done := make(chan bool, 1)
+	mockSender := createSender(RoundTripperFunc(func(req *http.Request) *http.Response {
+		// signal the ending of processing
+		defer func() {
+			done <- true
+		}()
 
-	//create a different http server as and endpoint and pass it to gcm.
-	testSender, closer := createDummyHttpServerEndoint(notificationChannel)
-	gcm.sender = testSender
-
-	defer closer()
+		return composeHTTPResponse(req, http.StatusOK, correctGcmResponseMessageJSON)
+	}))
+	gcm.sender = mockSender
 
 	// put a broadcast message with no recipients and expect to be dropped by
 	broadcastMsgWithNoRecipients := server.MsgAndRoute{Message: &protocol.Message{ID: uint64(4), Body: []byte("{id:id}"), Time: 1405544146, Path: "/gcm/broadcast"}}
 	gcm.channelFromRouter <- broadcastMsgWithNoRecipients
 	time.Sleep(time.Millisecond * 1000)
 	// expect that the HTTP Dummy Server to not handle any requests
-	assert.Equal(checkHttpResponseReceivedWithTimeout(notificationChannel), false)
 
 	// put a dummy gcm message with minimum information
 	msgWithNoRecipients := server.MsgAndRoute{Message: &protocol.Message{ID: uint64(4), Body: []byte("{id:id}"), Time: 1405544146, Path: "/gcm/marvin/gcm124/subscribe/stuff"}, Route: &server.Route{ApplicationID: "id"}}
 	gcm.channelFromRouter <- msgWithNoRecipients
-	time.Sleep(time.Millisecond * 1000)
 	// expect that the Http Server to give us a malformed message
-	assert.Equal(checkHttpResponseReceivedWithTimeout(notificationChannel), true)
+	<-done
 
 	// Stop the GcmConnector
 	err = gcm.Stop()
