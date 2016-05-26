@@ -70,6 +70,10 @@ func (conn *GCMConnector) Start() error {
 	return nil
 }
 
+func (conn *GCMConnector) Check() error {
+	return nil
+}
+
 func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
 	gcmID := msg.Route.ApplicationID
 

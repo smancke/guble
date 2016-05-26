@@ -84,7 +84,7 @@ func (fms *DummyMessageStore) store(partition string, msgId uint64, msg []byte) 
 	return nil
 }
 
-// Does nothing in the dummy implementation
+// Fetch does nothing in this dummy implementation
 func (fms *DummyMessageStore) Fetch(req FetchRequest) {
 }
 
