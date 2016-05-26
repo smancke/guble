@@ -2,6 +2,7 @@ package gubled
 
 import (
 	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 
 	"io/ioutil"
@@ -134,7 +135,8 @@ func TestArgDefaultValues(t *testing.T) {
 }
 
 func TestGcmOnlyStartedIfEnabled(t *testing.T) {
-	defer initCtrl(t)()
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	a := assert.New(t)
 
@@ -155,7 +157,8 @@ func containsGcmModule(modules []interface{}) bool {
 }
 
 func TestPanicOnMissingGcmApiKey(t *testing.T) {
-	defer initCtrl(t)()
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	defer func() {
 		if r := recover(); r == nil {
@@ -184,9 +187,9 @@ func TestCreateStoreBackendPanicInvalidBackend(t *testing.T) {
 }
 
 func initRouterMock() (*MockRouter, *MockAccessManager, *MockMessageStore) {
-	routerMock := NewMockRouter(ctrl)
-	amMock := NewMockAccessManager(ctrl)
-	msMock := NewMockMessageStore(ctrl)
+	routerMock := NewMockRouter(testutil.MockCtrl)
+	amMock := NewMockAccessManager(testutil.MockCtrl)
+	msMock := NewMockMessageStore(testutil.MockCtrl)
 
 	routerMock.EXPECT().AccessManager().Return(amMock, nil).AnyTimes()
 	routerMock.EXPECT().MessageStore().Return(msMock, nil).AnyTimes()
