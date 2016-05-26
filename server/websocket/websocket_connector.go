@@ -92,7 +92,7 @@ type WebSocket struct {
 	*WSHandler
 	WSConnection
 	applicationID string
-	userId        string
+	userID        string
 	sendChannel   chan []byte
 	receivers     map[protocol.Path]*Receiver
 }
@@ -102,7 +102,7 @@ func NewWebSocket(handler *WSHandler, wsConn WSConnection, userID string) *WebSo
 		WSHandler:     handler,
 		WSConnection:  wsConn,
 		applicationID: xid.New().String(),
-		userId:        userID,
+		userID:        userID,
 		sendChannel:   make(chan []byte, 10),
 		receivers:     make(map[protocol.Path]*Receiver),
 	}
@@ -123,9 +123,9 @@ func (ws *WebSocket) sendLoop() {
 			if ws.checkAccess(raw) {
 				if protocol.DebugEnabled() {
 					if len(raw) < 80 {
-						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v", ws.userId, ws.applicationID, len(raw), string(raw))
+						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v", ws.userID, ws.applicationID, len(raw), string(raw))
 					} else {
-						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v...", ws.userId, ws.applicationID, len(raw), string(raw[0:79]))
+						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v...", ws.userID, ws.applicationID, len(raw), string(raw[0:79]))
 					}
 				}
 
@@ -143,8 +143,8 @@ func (ws *WebSocket) checkAccess(raw []byte) bool {
 	protocol.Debug("raw message: %v", string(raw))
 	if raw[0] == byte('/') {
 		path := getPathFromRawMessage(raw)
-		protocol.Debug("Received msg %v %v", ws.userId, path)
-		return len(path) == 0 || ws.accessManager.IsAllowed(auth.READ, ws.userId, path)
+		protocol.Debug("Received msg %v %v", ws.userID, path)
+		return len(path) == 0 || ws.accessManager.IsAllowed(auth.READ, ws.userID, path)
 
 	}
 	return true
@@ -188,7 +188,7 @@ func (ws *WebSocket) sendConnectionMessage() {
 	n := &protocol.NotificationMessage{
 		Name: protocol.SUCCESS_CONNECTED,
 		Arg:  "You are connected to the server.",
-		Json: fmt.Sprintf(`{"ApplicationId": "%s", "UserId": "%s", "Time": "%s"}`, ws.applicationID, ws.userId, time.Now().Format(time.RFC3339)),
+		Json: fmt.Sprintf(`{"ApplicationId": "%s", "UserId": "%s", "Time": "%s"}`, ws.applicationID, ws.userID, time.Now().Format(time.RFC3339)),
 	}
 	ws.sendChannel <- n.Bytes()
 }
@@ -200,7 +200,7 @@ func (ws *WebSocket) handleReceiveCmd(cmd *protocol.Cmd) {
 		ws.sendChannel,
 		ws.Router,
 		ws.messageStore,
-		ws.userId,
+		ws.userID,
 	)
 	if err != nil {
 		protocol.Info("client error in handleReceiveCmd: %v", err.Error())
@@ -235,7 +235,7 @@ func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
 	msg := &protocol.Message{
 		Path:          protocol.Path(args[0]),
 		ApplicationID: ws.applicationID,
-		UserID:        ws.userId,
+		UserID:        ws.userID,
 		HeaderJSON:    cmd.HeaderJSON,
 		Body:          cmd.Body,
 	}
