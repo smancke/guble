@@ -30,7 +30,7 @@ func NewMockCtrl(t *testing.T) (*gomock.Controller, func()) {
 	return MockCtrl, func() { MockCtrl.Finish() }
 }
 
-// EnableDebugForMethod enables debug output throught the current test
+// EnableDebugForMethod enables debug output through the current test
 // Usage:
 //		test_util.EnableDebugForMethod()()
 func EnableDebugForMethod() func() {
