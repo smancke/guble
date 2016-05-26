@@ -31,6 +31,11 @@ $MOCKGEN -self_package server -package server \
       MessageStore
 
 $MOCKGEN -self_package server -package server \
+      -destination server/mocks_checker_gen_test.go \
+      github.com/docker/distribution/health \
+      Checker
+
+$MOCKGEN -self_package server -package server \
       -destination server/mocks_auth_gen_test.go \
       github.com/smancke/guble/server/auth \
       AccessManager

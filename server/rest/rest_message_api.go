@@ -64,6 +64,10 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	api.router.HandleMessage(msg)
 }
 
+func (api *RestMessageAPI) Check() error {
+	return nil
+}
+
 func (api *RestMessageAPI) extractTopic(path string) (string, error) {
 	p := removeTrailingSlash(api.prefix) + "/message"
 	if !strings.HasPrefix(path, p) {

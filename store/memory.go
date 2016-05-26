@@ -72,7 +72,7 @@ func (kvStore *MemoryKVStore) IterateKeys(schema string, keyPrefix string) chan 
 	kvStore.mutex.Unlock()
 	go func() {
 		kvStore.mutex.Lock()
-		for key, _ := range s {
+		for key := range s {
 			if strings.HasPrefix(key, keyPrefix) {
 				responseChan <- key
 			}

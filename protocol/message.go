@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// This struct represents a message in the guble protocol, as the server sends it to the client.
+// Message is a struct that represents a message in the guble protocol, as the server sends it to the client.
 type Message struct {
 
 	// The sequenceId of the message, which is given by the
@@ -36,7 +36,7 @@ type Message struct {
 	Body []byte
 }
 
-// returns the first line of a serialized message, without the newline
+// Metadata returns the first line of a serialized message, without the newline
 func (msg *Message) Metadata() string {
 	buff := &bytes.Buffer{}
 	msg.writeMetadata(buff)
@@ -47,7 +47,7 @@ func (msg *Message) BodyAsString() string {
 	return string(msg.Body)
 }
 
-// Serialize the message into a byte slice
+// Bytes serializes the message into a byte slice
 func (msg *Message) Bytes() []byte {
 	buff := &bytes.Buffer{}
 
@@ -112,7 +112,7 @@ type NotificationMessage struct {
 	IsError bool
 }
 
-// Serialize the notification message into a byte slice
+// Bytes serializes the notification message into a byte slice
 func (msg *NotificationMessage) Bytes() []byte {
 	buff := &bytes.Buffer{}
 
@@ -135,7 +135,7 @@ func (msg *NotificationMessage) Bytes() []byte {
 	return buff.Bytes()
 }
 
-// The path of a topic
+// Path is the path of a topic
 type Path string
 
 func (path Path) Partition() string {
@@ -145,8 +145,8 @@ func (path Path) Partition() string {
 	return strings.SplitN(string(path), "/", 2)[0]
 }
 
-// Parses a messages, send from the server to the client
-// The parsed messages is the types *Message or *NotificationMessage
+// ParseMessage parses a message, sent from the server to the client.
+// The parsed messages can have one of the types: *Message or *NotificationMessage
 func ParseMessage(message []byte) (interface{}, error) {
 	if len(message) >= 1 && (message[0] == '#' || message[0] == '!') {
 		return parseNotificationMessage(message)
