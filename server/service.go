@@ -41,10 +41,12 @@ type Service struct {
 // NewService registers the Main Router, where other modules can subscribe for messages
 func NewService(addr string, router Router) *Service {
 	service := &Service{
-		stopables:       make([]Stopable, 0, 5),
-		webServer:       NewWebServer(addr),
-		router:          router,
-		StopGracePeriod: time.Second * 2,
+		stopables:            make([]Stopable, 0, 5),
+		webServer:            NewWebServer(addr),
+		router:               router,
+		StopGracePeriod:      time.Second * 2,
+		healthCheckFrequency: time.Second * 60,
+		healthCheckThreshold: 1,
 	}
 	service.Register(service.webServer)
 	service.Register(service.router)
@@ -76,7 +78,6 @@ func (s *Service) Register(module interface{}) {
 
 	if checker, ok := module.(health.Checker); ok {
 		protocol.Info("register %v as HealthChecker", name)
-		//TODO parameterize / configure frequency and threshold
 		health.RegisterPeriodicThresholdFunc(name, s.healthCheckFrequency, s.healthCheckThreshold, health.CheckFunc(checker.Check))
 	}
 
