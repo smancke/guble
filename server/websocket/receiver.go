@@ -40,10 +40,14 @@ func NewReceiverFromCmd(
 	cmd *protocol.Cmd,
 	sendChannel chan []byte,
 	router server.Router,
-	messageStore store.MessageStore,
-	userId string) (*Receiver, error) {
-	var err error
-	rec := &Receiver{
+	userId string) (rec *Receiver, err error) {
+
+	messageStore, err := router.MessageStore()
+	if err != nil {
+		return nil, err
+	}
+
+	rec = &Receiver{
 		applicationId:       applicationId,
 		sendChannel:         sendChannel,
 		router:              router,
@@ -55,6 +59,7 @@ func NewReceiverFromCmd(
 	if len(cmd.Arg) == 0 || cmd.Arg[0] != '/' {
 		return nil, fmt.Errorf("command requires at least a path argument, but non given")
 	}
+
 	args := strings.SplitN(cmd.Arg, " ", 3)
 	rec.path = protocol.Path(args[0])
 
@@ -74,6 +79,7 @@ func NewReceiverFromCmd(
 			return nil, fmt.Errorf("maxCount has to be empty or int, but was %q: %v", args[1], err)
 		}
 	}
+
 	return rec, nil
 }
 

@@ -88,12 +88,12 @@ func Test_AnIncommingMessageIsDelivered(t *testing.T) {
 func Test_AnIncommingMessageIsNotAllowed(t *testing.T) {
 	defer initCtrl(t)()
 
-	wsconn, routerMock, messageStore := createDefaultMocks([]string{})
+	wsconn, routerMock, _ := createDefaultMocks([]string{})
 
 	tam := NewMockAccessManager(ctrl)
 	tam.EXPECT().IsAllowed(auth.READ, "testuser", protocol.Path("/foo")).Return(false)
 	handler := NewWebSocket(
-		testWSHandler(routerMock, messageStore, tam),
+		testWSHandler(routerMock, tam),
 		wsconn,
 		"testuser",
 	)
@@ -151,13 +151,11 @@ func TestExtractUserId(t *testing.T) {
 
 func testWSHandler(
 	routerMock *MockRouter,
-	messageStore store.MessageStore,
 	accessManager auth.AccessManager) *WSHandler {
 
 	return &WSHandler{
 		Router:        routerMock,
 		prefix:        "/prefix",
-		messageStore:  messageStore,
 		accessManager: accessManager,
 	}
 }
@@ -172,7 +170,7 @@ func runNewWebSocket(
 		accessManager = auth.NewAllowAllAccessManager(true)
 	}
 	websocket := NewWebSocket(
-		testWSHandler(routerMock, messageStore, accessManager),
+		testWSHandler(routerMock, accessManager),
 		wsconn,
 		"testuser",
 	)
@@ -196,6 +194,7 @@ func createDefaultMocks(inputMessages []string) (
 
 	routerMock := NewMockRouter(ctrl)
 	messageStore := NewMockMessageStore(ctrl)
+	routerMock.EXPECT().MessageStore().Return(messageStore, nil).AnyTimes()
 
 	wsconn := NewMockWSConnection(ctrl)
 	wsconn.EXPECT().Receive(gomock.Any()).Do(func(message *[]byte) error {

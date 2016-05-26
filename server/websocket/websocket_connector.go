@@ -3,7 +3,6 @@ package websocket
 import (
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
-	"github.com/smancke/guble/store"
 
 	"github.com/gorilla/websocket"
 	"github.com/rs/xid"
@@ -22,7 +21,6 @@ var webSocketUpgrader = websocket.Upgrader{
 type WSHandler struct {
 	Router        server.Router
 	prefix        string
-	messageStore  store.MessageStore
 	accessManager auth.AccessManager
 }
 
@@ -32,16 +30,10 @@ func NewWSHandler(router server.Router, prefix string) (*WSHandler, error) {
 		return nil, err
 	}
 
-	messageStore, err := router.MessageStore()
-	if err != nil {
-		return nil, err
-	}
-
 	return &WSHandler{
 		Router:        router,
 		prefix:        prefix,
 		accessManager: accessManager,
-		messageStore:  messageStore,
 	}, nil
 }
 
@@ -199,7 +191,6 @@ func (ws *WebSocket) handleReceiveCmd(cmd *protocol.Cmd) {
 		cmd,
 		ws.sendChannel,
 		ws.Router,
-		ws.messageStore,
 		ws.userID,
 	)
 	if err != nil {

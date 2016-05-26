@@ -283,12 +283,13 @@ func Test_Receiver_Fetch_Sends_error_on_failure_in_MaxMessageId(t *testing.T) {
 func aMockedReceiver(arg string) (*Receiver, chan []byte, *MockRouter, *MockMessageStore, error) {
 	routerMock := NewMockRouter(ctrl)
 	messageStore := NewMockMessageStore(ctrl)
+	routerMock.EXPECT().MessageStore().Return(messageStore, nil).AnyTimes()
 	sendChannel := make(chan []byte)
 	cmd := &protocol.Cmd{
 		Name: protocol.CmdReceive,
 		Arg:  arg,
 	}
-	rec, err := NewReceiverFromCmd("any-appId", cmd, sendChannel, routerMock, messageStore, "userId")
+	rec, err := NewReceiverFromCmd("any-appId", cmd, sendChannel, routerMock, "userId")
 	return rec, sendChannel, routerMock, messageStore, err
 }
 
