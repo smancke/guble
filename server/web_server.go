@@ -49,6 +49,10 @@ func (ws *WebServer) Stop() error {
 	return nil
 }
 
+func (ws *WebServer) Check() error {
+	return nil
+}
+
 func (ws *WebServer) Handle(prefix string, handler http.Handler) {
 	ws.mux.Handle(prefix, handler)
 }
