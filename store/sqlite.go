@@ -115,7 +115,7 @@ func (kvStore *SqliteKVStore) Delete(schema, key string) error {
 	return kvStore.db.Delete(&kvEntry{Schema: schema, Key: key}).Error
 }
 
-// Opens the database file.
+// Open opens the database file.
 // If the directory does not exist, it will be created.
 func (kvStore *SqliteKVStore) Open() error {
 	directoryPath := filepath.Dir(kvStore.filename)
@@ -145,9 +145,8 @@ func (kvStore *SqliteKVStore) Open() error {
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
 		protocol.Err("error in schema migration: %q", err)
 		return err
-	} else {
-		protocol.Debug("ensured db schema")
 	}
+	protocol.Debug("ensured db schema")
 
 	if !kvStore.syncOnWrite {
 		protocol.Info("setting db: PRAGMA synchronous = OFF")

@@ -139,7 +139,7 @@ func Benchmark_Storing_1Kb_Messages(b *testing.B) {
 	store, _ := NewMessagePartition(dir, "myMessages")
 
 	message := make([]byte, 1024)
-	for i, _ := range message {
+	for i := range message {
 		message[i] = 'a'
 	}
 
@@ -158,7 +158,7 @@ func Benchmark_Storing_1MB_Messages(b *testing.B) {
 	store, _ := NewMessagePartition(dir, "myMessages")
 
 	message := make([]byte, 1024*1024)
-	for i, _ := range message {
+	for i := range message {
 		message[i] = 'a'
 	}
 

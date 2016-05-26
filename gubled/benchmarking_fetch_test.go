@@ -24,7 +24,7 @@ func Benchmark_E2E_Fetch_HelloWorld_Messages(b *testing.B) {
 	time.Sleep(time.Millisecond * 10)
 
 	// fill the topic
-	location := "ws://" + service.GetWebServer().GetAddr() + "/stream/user/xy"
+	location := "ws://" + service.WebServer().GetAddr() + "/stream/user/xy"
 	c, err := client.Open(location, "http://localhost/", 1000, true)
 	a.NoError(err)
 

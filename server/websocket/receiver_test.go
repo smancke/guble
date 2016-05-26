@@ -39,7 +39,7 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	a.NoError(err)
 
 	// fetch first, starting at 0
-	fetch_first1 := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
+	fetchFirst1 := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
 		go func() {
 			a.Equal("foo", r.Partition)
 			a.Equal(1, r.Direction)
@@ -59,10 +59,10 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 		Do(func(partition string, callback func(maxMessageId uint64) error) {
 			callback(uint64(3))
 		}).Return(errUnreadMsgsAvailable)
-	messageId1.After(fetch_first1)
+	messageId1.After(fetchFirst1)
 
 	// fetch again, starting at 3, because, there is still a gap
-	fetch_first2 := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
+	fetchFirst2 := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
 		go func() {
 			a.Equal("foo", r.Partition)
 			a.Equal(1, r.Direction)
@@ -74,14 +74,14 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 			close(r.MessageC)
 		}()
 	})
-	fetch_first2.After(messageId1)
+	fetchFirst2.After(messageId1)
 
 	// the gap is closed
 	messageId2 := messageStore.EXPECT().DoInTx(gomock.Any(), gomock.Any()).
 		Do(func(partition string, callback func(maxMessageId uint64) error) {
 			callback(uint64(3))
 		})
-	messageId2.After(fetch_first2)
+	messageId2.After(fetchFirst2)
 
 	// subscribe
 	subscribe := routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *server.Route) {
@@ -93,7 +93,7 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	subscribe.After(messageId2)
 
 	// router closed, so we fetch again, starting at 6 (after meesages from subscribe)
-	fetch_after := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
+	fetchAfter := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
 		go func() {
 			a.Equal(uint64(6), r.StartId)
 			a.Equal(int(math.MaxInt32), r.Count)
@@ -103,7 +103,7 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 			close(r.MessageC)
 		}()
 	})
-	fetch_after.After(subscribe)
+	fetchAfter.After(subscribe)
 
 	// no gap
 	messageId3 := messageStore.EXPECT().DoInTx(gomock.Any(), gomock.Any()).
@@ -111,7 +111,7 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 			callback(uint64(6))
 		})
 
-	messageId3.After(fetch_after)
+	messageId3.After(fetchAfter)
 
 	// subscribe and don't send messages,
 	// so the client has to wait until we stop

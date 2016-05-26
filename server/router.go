@@ -97,6 +97,10 @@ func (router *router) Stop() error {
 	return nil
 }
 
+func (router *router) Check() error {
+	return nil
+}
+
 // Subscribe adds a route to the subscribers.
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Subscribe(r *Route) (*Route, error) {
