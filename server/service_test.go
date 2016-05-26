@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
@@ -12,7 +13,8 @@ import (
 )
 
 func TestStopingOfModules(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 	// given:
 	service, _, _, _ := aMockedService()
 
@@ -29,7 +31,8 @@ func TestStopingOfModules(t *testing.T) {
 }
 
 func TestStopingOfModulesTimeout(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	// given:
 	service, _, _, _ := aMockedService()
@@ -49,7 +52,8 @@ func TestStopingOfModulesTimeout(t *testing.T) {
 }
 
 func TestEndpointRegisterAndServing(t *testing.T) {
-	defer initCtrl(t)()
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	// given:
 	service, _, _, _ := aMockedService()
@@ -72,7 +76,7 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockRouter) {
 	kvStore := store.NewMemoryKVStore()
 	messageStore := store.NewDummyMessageStore(kvStore)
-	routerMock := NewMockRouter(ctrl)
+	routerMock := NewMockRouter(testutil.MockCtrl)
 	service := NewService("localhost:0", routerMock)
 	return service, kvStore, messageStore, routerMock
 

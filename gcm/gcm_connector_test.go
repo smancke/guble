@@ -1,9 +1,9 @@
 package gcm
 
 import (
-	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/julienschmidt/httprouter"
@@ -21,7 +21,8 @@ import (
 var ctrl *gomock.Controller
 
 func TestPostMessage(t *testing.T) {
-	defer initCtrl(t)()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
 	a := assert.New(t)
 
@@ -59,8 +60,10 @@ func TestPostMessage(t *testing.T) {
 }
 
 func TestSaveAndLoadSubscriptions(t *testing.T) {
-	defer initCtrl(t)()
-	defer enableDebugForMethod()()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	defer testutil.EnableDebugForMethod()()
+
 	a := assert.New(t)
 
 	// given: some test routes
@@ -104,15 +107,4 @@ func TestSaveAndLoadSubscriptions(t *testing.T) {
 func TestRemoveTailingSlash(t *testing.T) {
 	assert.Equal(t, "/foo", removeTrailingSlash("/foo/"))
 	assert.Equal(t, "/foo", removeTrailingSlash("/foo"))
-}
-
-func initCtrl(t *testing.T) func() {
-	ctrl = gomock.NewController(t)
-	return func() { ctrl.Finish() }
-}
-
-func enableDebugForMethod() func() {
-	reset := protocol.LogLevel
-	protocol.LogLevel = protocol.LEVEL_DEBUG
-	return func() { protocol.LogLevel = reset }
 }
