@@ -35,7 +35,7 @@ func TestStopingOfModulesTimeout(t *testing.T) {
 	service, _, _, _ := aMockedService()
 	service.StopGracePeriod = time.Millisecond * 5
 
-	// with a registered stopable, which blocks to long on stop
+	// with a registered stopable, which blocks too long on stop
 	stopable := NewMockStopable(ctrl)
 	service.Register(stopable)
 	stopable.EXPECT().Stop().Do(func() {
