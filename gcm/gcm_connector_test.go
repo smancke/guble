@@ -34,6 +34,7 @@ var correctGcmResponseMessageJSON = `
    ]
 }`
 
+// mock a https round tripper in order to not send the test reques gcm.
 type RoundTripperFunc func(req *http.Request) *http.Response
 
 func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -61,7 +62,7 @@ func composeHTTPResponse(req *http.Request, httpStatusCode int, messageBodyAsJSO
 	return resp
 }
 
-func TestPostMessage(t *testing.T) {
+func TestServeHTTPSuccess(t *testing.T) {
 	defer initCtrl(t)()
 
 	a := assert.New(t)
@@ -91,6 +92,44 @@ func TestPostMessage(t *testing.T) {
 
 	// the the result
 	a.Equal("registered: /notifications\n", string(w.Body.Bytes()))
+}
+
+func TestServeHTTPWithErrorCases(t *testing.T) {
+	defer initCtrl(t)()
+
+	a := assert.New(t)
+
+	// given:  a rest api with a message sink
+	routerMock := NewMockRouter(ctrl)
+
+	kvStore := store.NewMemoryKVStore()
+	routerMock.EXPECT().KVStore().Return(kvStore, nil)
+
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	a.Nil(err)
+
+	url, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe/notifications")
+	// and a http context
+	req := &http.Request{URL: url, Method: "GET"}
+	w := httptest.NewRecorder()
+
+	// do a GET instead of POST
+	gcm.ServeHTTP(w, req)
+
+	// check the result
+	a.Equal("Permission Denied\n", string(w.Body.Bytes()))
+	a.Equal(w.Code, 405)
+
+	// send a new request with wrong parameters encoding
+	req.Method = "POST"
+	req.URL, _ = url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe3/notifications")
+
+	w2 := httptest.NewRecorder()
+	gcm.ServeHTTP(w2, req)
+
+	a.Equal("Invalid Parameters in request\n", string(w2.Body.Bytes()))
+	a.Equal(w2.Code, http.StatusBadRequest)
+
 }
 
 func TestSaveAndLoadSubscriptions(t *testing.T) {
@@ -253,7 +292,8 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	// expect that the Http Server to give us a malformed message
 	<-done
 
-	// Stop the GcmConnector
+	//wait a couple of seconds and  Stop the GcmConnector
+	time.Sleep(time.Millisecond * 2000)
 	err = gcm.Stop()
 	assert.Nil(err)
 }

@@ -171,14 +171,14 @@ func (conn *GCMConnector) GetPrefix() string {
 
 func (conn *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		protocol.Err("Only HTTP POST METHOD SUPPORTED but received type=" + r.Method)
+		protocol.Err("Only HTTP POST METHOD SUPPORTED but received type=[%s]", r.Method)
 		http.Error(w, "Permission Denied", 405)
 		return
 	}
 
 	userID, gcmID, topic, err := conn.parseParams(r.URL.Path)
 	if err != nil {
-		http.Error(w, "Permission Denied", 405)
+		http.Error(w, "Invalid Parameters in request", http.StatusBadRequest)
 		return
 	}
 	conn.subscribe(topic, userID, gcmID)
