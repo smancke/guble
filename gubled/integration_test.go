@@ -15,7 +15,6 @@ import (
 )
 
 func TestSimplePingPong(t *testing.T) {
-	resetDefaultRegistryHealthCheck()
 	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	_, client1, client2, tearDown := initServerAndClients(t)
