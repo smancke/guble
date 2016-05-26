@@ -4,6 +4,7 @@ import (
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/websocket"
 	"github.com/smancke/guble/store"
 
 	"fmt"
@@ -76,7 +77,7 @@ var CreateModules = func(
 	args Args) []interface{} {
 	modules := make([]interface{}, 0, 2)
 
-	if wsHandler, err := server.NewWSHandler(router, "/stream/"); err != nil {
+	if wsHandler, err := websocket.NewWSHandler(router, "/stream/"); err != nil {
 		protocol.Err("Error loading WSHandler module: %s", err)
 	} else {
 		modules = append(modules, wsHandler)

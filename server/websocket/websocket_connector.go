@@ -91,7 +91,7 @@ func (conn *wsconn) Receive(bytes *[]byte) (err error) {
 type WebSocket struct {
 	*WSHandler
 	WSConnection
-	applicationId string
+	applicationID string
 	userId        string
 	sendChannel   chan []byte
 	receivers     map[protocol.Path]*Receiver
@@ -101,7 +101,7 @@ func NewWebSocket(handler *WSHandler, wsConn WSConnection, userID string) *WebSo
 	return &WebSocket{
 		WSHandler:     handler,
 		WSConnection:  wsConn,
-		applicationId: xid.New().String(),
+		applicationID: xid.New().String(),
 		userId:        userID,
 		sendChannel:   make(chan []byte, 10),
 		receivers:     make(map[protocol.Path]*Receiver),
@@ -123,14 +123,14 @@ func (ws *WebSocket) sendLoop() {
 			if ws.checkAccess(raw) {
 				if protocol.DebugEnabled() {
 					if len(raw) < 80 {
-						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v", ws.userId, ws.applicationId, len(raw), string(raw))
+						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v", ws.userId, ws.applicationID, len(raw), string(raw))
 					} else {
-						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v...", ws.userId, ws.applicationId, len(raw), string(raw[0:79]))
+						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v...", ws.userId, ws.applicationID, len(raw), string(raw[0:79]))
 					}
 				}
 
 				if err := ws.Send(raw); err != nil {
-					protocol.Info("applicationId=%v closed the connection", ws.applicationId)
+					protocol.Info("applicationId=%v closed the connection", ws.applicationID)
 					ws.cleanAndClose()
 					break
 				}
@@ -160,7 +160,7 @@ func (ws *WebSocket) receiveLoop() {
 	for {
 		err := ws.Receive(&message)
 		if err != nil {
-			protocol.Info("applicationId=%v closed the connection", ws.applicationId)
+			protocol.Info("applicationId=%v closed the connection", ws.applicationID)
 			ws.cleanAndClose()
 			break
 		}
@@ -188,14 +188,14 @@ func (ws *WebSocket) sendConnectionMessage() {
 	n := &protocol.NotificationMessage{
 		Name: protocol.SUCCESS_CONNECTED,
 		Arg:  "You are connected to the server.",
-		Json: fmt.Sprintf(`{"ApplicationId": "%s", "UserId": "%s", "Time": "%s"}`, ws.applicationId, ws.userId, time.Now().Format(time.RFC3339)),
+		Json: fmt.Sprintf(`{"ApplicationId": "%s", "UserId": "%s", "Time": "%s"}`, ws.applicationID, ws.userId, time.Now().Format(time.RFC3339)),
 	}
 	ws.sendChannel <- n.Bytes()
 }
 
 func (ws *WebSocket) handleReceiveCmd(cmd *protocol.Cmd) {
 	rec, err := NewReceiverFromCmd(
-		ws.applicationId,
+		ws.applicationID,
 		cmd,
 		ws.sendChannel,
 		ws.Router,
@@ -234,7 +234,7 @@ func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
 	args := strings.SplitN(cmd.Arg, " ", 2)
 	msg := &protocol.Message{
 		Path:          protocol.Path(args[0]),
-		ApplicationID: ws.applicationId,
+		ApplicationID: ws.applicationID,
 		UserID:        ws.userId,
 		HeaderJSON:    cmd.HeaderJSON,
 		Body:          cmd.Body,
@@ -249,7 +249,7 @@ func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
 }
 
 func (ws *WebSocket) cleanAndClose() {
-	protocol.Info("closing applicationId=%v", ws.applicationId)
+	protocol.Info("closing applicationId=%v", ws.applicationID)
 
 	for path, rec := range ws.receivers {
 		rec.Stop()
