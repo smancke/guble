@@ -37,6 +37,7 @@ func TestStopingOfModulesTimeout(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	defer testutil.ResetDefaultRegistryHealthCheck()
+	a := assert.New(t)
 
 	// given:
 	service, _, _, _ := aMockedService()
@@ -51,7 +52,7 @@ func TestStopingOfModulesTimeout(t *testing.T) {
 
 	// then the Stop returns with an error
 	err := service.Stop()
-	assert.Error(t, err)
+	a.Error(err)
 	protocol.Err(err.Error())
 }
 
@@ -59,6 +60,7 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	defer testutil.ResetDefaultRegistryHealthCheck()
+	a := assert.New(t)
 
 	// given:
 	service, _, _, _ := aMockedService()
@@ -72,16 +74,17 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 	// then I can call the handler
 	url := fmt.Sprintf("http://%s/foo", service.WebServer().GetAddr())
 	result, err := http.Get(url)
-	assert.NoError(t, err)
+	a.NoError(err)
 	body := make([]byte, 3)
 	result.Body.Read(body)
-	assert.Equal(t, "bar", string(body))
+	a.Equal("bar", string(body))
 }
 
 func TestHealthUp(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	defer testutil.ResetDefaultRegistryHealthCheck()
+	a := assert.New(t)
 
 	// given:
 	service, _, _, _ := aMockedService()
@@ -91,19 +94,22 @@ func TestHealthUp(t *testing.T) {
 	service.Start()
 	time.Sleep(time.Millisecond * 10)
 
-	// then I can call the health URL
+	// and when I call the health URL
 	url := fmt.Sprintf("http://%s/health", service.WebServer().GetAddr())
 	result, err := http.Get(url)
-	assert.NoError(t, err)
+
+	// then I get status 200 and JSON: {}
+	a.NoError(err)
 	body, err := ioutil.ReadAll(result.Body)
-	assert.NoError(t, err)
-	assert.Equal(t, "{}", string(body))
+	a.NoError(err)
+	a.Equal("{}", string(body))
 }
 
 func TestHealthDown(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	defer testutil.ResetDefaultRegistryHealthCheck()
+	a := assert.New(t)
 
 	// given:
 	service, _, _, _ := aMockedService()
@@ -117,14 +123,15 @@ func TestHealthDown(t *testing.T) {
 	service.Start()
 	time.Sleep(time.Millisecond * 10)
 
-	// then I can call the health URL
+	// and when I can call the health URL
 	url := fmt.Sprintf("http://%s/health", service.WebServer().GetAddr())
 	result, err := http.Get(url)
-	assert.NoError(t, err)
-	assert.Equal(t, 503, result.StatusCode)
+	// then I receive status 503 and a JSON error message
+	a.NoError(err)
+	a.Equal(503, result.StatusCode)
 	body, err := ioutil.ReadAll(result.Body)
-	assert.NoError(t, err)
-	assert.Equal(t, "{\"*server.MockChecker\":\"sick\"}", string(body))
+	a.NoError(err)
+	a.Equal("{\"*server.MockChecker\":\"sick\"}", string(body))
 }
 
 func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockRouter) {

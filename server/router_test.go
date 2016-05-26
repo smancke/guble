@@ -55,7 +55,6 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 func Test_SubscribeNotAllowed(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-
 	a := assert.New(t)
 
 	tam := NewMockAccessManager(ctrl)
@@ -77,13 +76,11 @@ func Test_SubscribeNotAllowed(t *testing.T) {
 	_, e = router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
 
 	a.Nil(e)
-
 }
 
 func Test_HandleMessageNotAllowed(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-
 	a := assert.New(t)
 
 	tam := NewMockAccessManager(ctrl)
@@ -142,7 +139,6 @@ func TestReplacingOfRoutes(t *testing.T) {
 func TestSimpleMessageSending(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-
 	a := assert.New(t)
 
 	// Given a Multiplexer with route
@@ -162,7 +158,6 @@ func TestSimpleMessageSending(t *testing.T) {
 func TestRoutingWithSubTopics(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-
 	a := assert.New(t)
 
 	// Given a Multiplexer with route
@@ -212,7 +207,6 @@ func TestMatchesTopic(t *testing.T) {
 func TestRouteIsRemovedIfChannelIsFull(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-
 	a := assert.New(t)
 
 	// Given a Multiplexer with route
@@ -266,9 +260,7 @@ func TestRouteIsRemovedIfChannelIsFull(t *testing.T) {
 func Test_Router_storeInTxAndHandle(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-
 	a := assert.New(t)
-
 	startTime := time.Now()
 
 	msg := &protocol.Message{Path: protocol.Path("/topic1")}
