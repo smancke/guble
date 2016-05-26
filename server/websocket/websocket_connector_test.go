@@ -5,6 +5,7 @@ import (
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
+	"sync"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -134,6 +135,9 @@ func Test_BadCommands(t *testing.T) {
 
 	counter := 0
 
+	var wg sync.WaitGroup
+	wg.Add(len(badRequests))
+
 	wsconn.EXPECT().Send(gomock.Any()).Do(func(data []byte) error {
 		if strings.HasPrefix(string(data), "#connected") {
 			return nil
@@ -143,11 +147,14 @@ func Test_BadCommands(t *testing.T) {
 		} else {
 			t.Logf("expected bad-request, but got: %v", string(data))
 		}
+
+		wg.Done()
 		return nil
 	}).AnyTimes()
 
 	runNewWebSocket(wsconn, routerMock, messageStore, nil)
 
+	wg.Wait()
 	assert.Equal(t, len(badRequests), counter, "expected number of bad requests does not match")
 }
 
@@ -195,7 +202,7 @@ func createDefaultMocks(inputMessages []string) (
 	*MockWSConnection,
 	*MockRouter,
 	*MockMessageStore) {
-	inputMessagesC := make(chan []byte, 10)
+	inputMessagesC := make(chan []byte, len(inputMessages))
 	for _, msg := range inputMessages {
 		inputMessagesC <- []byte(msg)
 	}
