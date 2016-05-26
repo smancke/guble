@@ -66,12 +66,12 @@ func (service *Service) Register(module interface{}) {
 
 	if startable, ok := module.(Startable); ok {
 		protocol.Info("register %v as StartListener", name)
-		service.AddStartListener(startable)
+		service.AddStartable(startable)
 	}
 
 	if stopable, ok := module.(Stopable); ok {
 		protocol.Info("register %v as StopListener", name)
-		service.AddStopListener(stopable)
+		service.AddStopable(stopable)
 	}
 
 	if checker, ok := module.(health.Checker); ok {
@@ -132,11 +132,11 @@ func (service *Service) Stop() error {
 	return nil
 }
 
-func (service *Service) AddStopListener(stopable Stopable) {
+func (service *Service) AddStopable(stopable Stopable) {
 	service.stopables = append(service.stopables, stopable)
 }
 
-func (service *Service) AddStartListener(startable Startable) {
+func (service *Service) AddStartable(startable Startable) {
 	service.startables = append(service.startables, startable)
 }
 
