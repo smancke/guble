@@ -60,7 +60,7 @@ func (conn *GCMConnector) Start() error {
 				if string(msg.Message.Path) == removeTrailingSlash(conn.prefix)+"/broadcast" {
 					go conn.broadcastMessage(msg)
 				} else {
-					go conn.sendMessageToGCM(msg)
+					go conn.sendMessage(msg)
 				}
 			case <-conn.stopChan:
 				return
@@ -70,7 +70,7 @@ func (conn *GCMConnector) Start() error {
 	return nil
 }
 
-func (conn *GCMConnector) sendMessageToGCM(msg server.MsgAndRoute) {
+func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
 	gcmID := msg.Route.ApplicationID
 
 	payload := conn.parseMessageToMap(msg.Message)
