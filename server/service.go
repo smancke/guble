@@ -54,10 +54,9 @@ func NewService(
 // Register the supplied module on this service.
 // This method checks the module for the following interfaces and
 // does the expected registrations:
+//   Startable: notify when the service stops
 //   Stopable: notify when the service stops
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
-//
-// If the module does not have a HandlerFunc, the prefix parameter is ignored
 func (service *Service) Register(module interface{}) {
 	name := reflect.TypeOf(module).String()
 
