@@ -4,6 +4,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/smancke/guble/protocol"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -46,6 +47,7 @@ type Client interface {
 }
 
 type client struct {
+	mu                  sync.RWMutex
 	ws                  WSConnection
 	messages            chan *protocol.Message
 	statusMessages      chan *protocol.NotificationMessage
@@ -85,7 +87,15 @@ func (c *client) SetWSConnectionFactory(connection WSConnectionFactory) {
 }
 
 func (c *client) IsConnected() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.connected
+}
+
+func (c *client) setIsConnected(connected bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.connected = connected
 }
 
 // Connect and start the read go routine.
@@ -94,14 +104,12 @@ func (c *client) IsConnected() bool {
 func (c *client) Start() error {
 	var err error
 	c.ws, err = c.wSConnectionFactory(c.url, c.origin)
-	c.connected = err == nil
+	c.setIsConnected(err == nil)
 
-	if c.autoReconnect {
+	if c.IsConnected() {
+		go c.readLoop()
+	} else if c.autoReconnect {
 		go c.startWithReconnect()
-	} else {
-		if c.IsConnected() {
-			go c.readLoop()
-		}
 	}
 	return err
 }
@@ -123,11 +131,11 @@ func (c *client) startWithReconnect() {
 		var err error
 		c.ws, err = c.wSConnectionFactory(c.url, c.origin)
 		if err != nil {
-			c.connected = false
+			c.setIsConnected(false)
 			protocol.Err("error on connect, retry in 50ms: %v", err)
 			time.Sleep(time.Millisecond * 50)
 		} else {
-			c.connected = true
+			c.setIsConnected(true)
 			protocol.Err("connected again")
 		}
 	}
@@ -137,7 +145,7 @@ func (c *client) readLoop() error {
 	for {
 		_, msg, err := c.ws.ReadMessage()
 		if err != nil {
-			c.connected = false
+			c.setIsConnected(false)
 			if c.shouldStop() {
 				return nil
 			}

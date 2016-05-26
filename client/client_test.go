@@ -259,6 +259,9 @@ func TestSendUnSubscribeMessage(t *testing.T) {
 	// when expects a message
 	connMock := NewMockWSConnection(ctrl)
 	connMock.EXPECT().WriteMessage(websocket.BinaryMessage, []byte("- /foo"))
+	connMock.EXPECT().ReadMessage().
+		Return(0, nil, fmt.Errorf(anErrorNotification)).
+		AnyTimes()
 	c.SetWSConnectionFactory(MockConnectionFactory(connMock))
 
 	c.Start()
