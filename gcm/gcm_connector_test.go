@@ -62,7 +62,7 @@ func TestPostMessage(t *testing.T) {
 func TestSaveAndLoadSubscriptions(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-	defer testutil.EnableDebugForMethod()()
+	// defer testutil.EnableDebugForMethod()()
 
 	a := assert.New(t)
 

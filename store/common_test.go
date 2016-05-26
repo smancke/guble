@@ -1,8 +1,6 @@
 package store
 
 import (
-	"github.com/smancke/guble/protocol"
-
 	"github.com/stretchr/testify/assert"
 
 	"crypto/rand"
@@ -154,12 +152,6 @@ func assertGetNoExist(a *assert.Assertions, s KVStore, schema string, key string
 	a.NoError(err)
 	a.False(exist)
 	a.Nil(val)
-}
-
-func enableDebugForMethod() func() {
-	reset := protocol.LogLevel
-	protocol.LogLevel = protocol.LEVEL_DEBUG
-	return func() { protocol.LogLevel = reset }
 }
 
 func randString(n int) string {
