@@ -59,6 +59,10 @@ func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	NewWebSocket(handle, &wsconn{c}, extractUserId(r.RequestURI)).Start()
 }
 
+func (handle *WSHandler) Check() error {
+	return nil
+}
+
 // WSConnection is a wrapper interface for the needed functions of the websocket.Conn
 // It is introduced for testability of the WSHandler
 type WSConnection interface {
