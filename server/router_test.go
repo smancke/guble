@@ -313,11 +313,10 @@ func aRouterRoute() (*router, *Route) {
 }
 
 func assertChannelContainsMessage(a *assert.Assertions, c chan MsgAndRoute, msg []byte) {
-	//log.Println("DEBUG: start assertChannelContainsMessage-> select")
 	select {
 	case msgBack := <-c:
 		a.Equal(string(msg), string(msgBack.Message.Body))
-	case <-time.After(time.Millisecond):
+	case <-time.After(time.Millisecond * 5):
 		a.Fail("No message received")
 	}
 }
