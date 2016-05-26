@@ -79,6 +79,29 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 	assert.Equal(t, "bar", string(body))
 }
 
+func TestHealthUp(t *testing.T) {
+	defer initCtrl(t)()
+
+	// reset existing health-checks
+	health.DefaultRegistry = health.NewRegistry()
+
+	// given:
+	service, _, _, _ := aMockedService()
+
+	// when starting the service
+	defer service.Stop()
+	service.Start()
+	time.Sleep(time.Millisecond * 10)
+
+	// then I can call the health URL
+	url := fmt.Sprintf("http://%s/health", service.WebServer().GetAddr())
+	result, err := http.Get(url)
+	assert.NoError(t, err)
+	body := make([]byte, 3)
+	result.Body.Read(body)
+	assert.Equal(t, "{}\x00", string(body))
+}
+
 func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockRouter) {
 	kvStore := store.NewMemoryKVStore()
 	messageStore := store.NewDummyMessageStore(kvStore)
