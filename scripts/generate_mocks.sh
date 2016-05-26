@@ -18,11 +18,11 @@ function replace {
 
 MOCKGEN=$GOPATH/bin/mockgen
 
-# Server mocks
+# server mocks
 $MOCKGEN  -self_package server -package server \
       -destination server/mocks_server_gen_test.go \
       github.com/smancke/guble/server \
-      Router,WSConnection,Startable,Stopable,Endpoint
+      Router,Startable,Stopable,Endpoint
 replace "server/mocks_server_gen_test.go" "server \"github.com\/smancke\/guble\/server\"" "server\."
 
 $MOCKGEN -self_package server -package server \
@@ -35,7 +35,7 @@ $MOCKGEN -self_package server -package server \
       github.com/smancke/guble/server/auth \
       AccessManager
 
-# Client mocks
+# client mocks
 $MOCKGEN  -self_package client -package client \
       -destination client/mocks_client_gen_test.go \
       github.com/smancke/guble/client \
@@ -43,7 +43,7 @@ $MOCKGEN  -self_package client -package client \
 replace "client/mocks_client_gen_test.go" "client \"github.com\/smancke\/guble\/client\"" "client\."
 
 
-# GCM Mocks
+# gcm mocks
 $MOCKGEN -package gcm \
       -destination gcm/mocks_server_gen_test.go \
       github.com/smancke/guble/server \
@@ -54,7 +54,7 @@ $MOCKGEN -self_package gcm -package gcm \
       github.com/smancke/guble/store \
       KVStore
 
-# Gubled mocks
+# gubled mocks
 $MOCKGEN -package gubled \
       -destination gubled/mocks_server_gen_test.go \
       github.com/smancke/guble/server \
@@ -71,7 +71,7 @@ $MOCKGEN -self_package gubled -package gubled \
       MessageStore
 
 
-# Auth mocks
+# auth mocks
 $MOCKGEN -self_package auth -package auth \
       -destination server/auth/mocks_auth_gen_test.go \
       github.com/smancke/guble/server/auth \
@@ -80,10 +80,32 @@ replace "server/auth/mocks_auth_gen_test.go" \
       "auth \"github.com\/smancke\/guble\/server\/auth\"" \
       "auth\."
 
+# server/websocket mocks
+$MOCKGEN  -self_package websocket -package websocket \
+      -destination server/websocket/mocks_websocket_gen_test.go \
+      github.com/smancke/guble/server/websocket \
+      WSConnection
+replace "server/websocket/mocks_websocket_gen_test.go" \
+      "websocket \"github.com\/smancke\/server\/websocket\"" \
+      "websocket\."
+
+$MOCKGEN -self_package websocket -package websocket \
+      -destination server/websocket/mocks_server_gen_test.go \
+      github.com/smancke/guble/server \
+      Router
+
+$MOCKGEN -self_package websocket -package websocket \
+      -destination server/websocket/mocks_store_gen_test.go \
+      github.com/smancke/guble/store \
+      MessageStore
+
+$MOCKGEN -self_package websocket -package websocket \
+      -destination server/websocket/mocks_auth_gen_test.go \
+      github.com/smancke/guble/server/auth \
+      AccessManager
 
 # Server/Rest Mocks
 $MOCKGEN -package rest \
       -destination server/rest/mocks_server_gen_test.go \
       github.com/smancke/guble/server \
       Router
-

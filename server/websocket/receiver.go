@@ -1,7 +1,8 @@
-package server
+package websocket
 
 import (
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 
 	"errors"
@@ -19,7 +20,7 @@ type Receiver struct {
 	cancelChannel       chan bool
 	sendChannel         chan []byte
 	applicationId       string
-	router              Router
+	router              server.Router
 	messageStore        store.MessageStore
 	path                protocol.Path
 	doFetch             bool
@@ -28,7 +29,7 @@ type Receiver struct {
 	maxCount            int
 	lastSendId          uint64
 	shouldStop          bool
-	route               *Route
+	route               *server.Route
 	enableNotifications bool
 	userId              string
 }
@@ -38,11 +39,15 @@ func NewReceiverFromCmd(
 	applicationId string,
 	cmd *protocol.Cmd,
 	sendChannel chan []byte,
-	router Router,
-	messageStore store.MessageStore,
-	userId string) (*Receiver, error) {
-	var err error
-	rec := &Receiver{
+	router server.Router,
+	userId string) (rec *Receiver, err error) {
+
+	messageStore, err := router.MessageStore()
+	if err != nil {
+		return nil, err
+	}
+
+	rec = &Receiver{
 		applicationId:       applicationId,
 		sendChannel:         sendChannel,
 		router:              router,
@@ -54,6 +59,7 @@ func NewReceiverFromCmd(
 	if len(cmd.Arg) == 0 || cmd.Arg[0] != '/' {
 		return nil, fmt.Errorf("command requires at least a path argument, but non given")
 	}
+
 	args := strings.SplitN(cmd.Arg, " ", 3)
 	rec.path = protocol.Path(args[0])
 
@@ -73,6 +79,7 @@ func NewReceiverFromCmd(
 			return nil, fmt.Errorf("maxCount has to be empty or int, but was %q: %v", args[1], err)
 		}
 	}
+
 	return rec, nil
 }
 
@@ -134,7 +141,7 @@ func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) e
 }
 
 func (rec *Receiver) subscribe() {
-	rec.route = NewRoute(string(rec.path), make(chan MsgAndRoute, 3), rec.applicationId, rec.userId)
+	rec.route = server.NewRoute(string(rec.path), make(chan server.MsgAndRoute, 3), rec.applicationId, rec.userId)
 	_, err := rec.router.Subscribe(rec.route)
 	if err != nil {
 		rec.sendError(protocol.ERROR_SUBSCRIBED_TO, string(rec.path), err.Error())

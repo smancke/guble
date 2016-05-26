@@ -1,7 +1,8 @@
-package server
+package websocket
 
 import (
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 
 	"github.com/golang/mock/gomock"
@@ -78,10 +79,10 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	messageId2.After(fetch_first2)
 
 	// subscribe
-	subscribe := routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *Route) {
+	subscribe := routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *server.Route) {
 		a.Equal(r.Path, protocol.Path("/foo"))
-		r.C <- MsgAndRoute{Message: &protocol.Message{ID: uint64(4), Body: []byte("router-a"), Time: 1405544146}, Route: r}
-		r.C <- MsgAndRoute{Message: &protocol.Message{ID: uint64(5), Body: []byte("router-b"), Time: 1405544146}, Route: r}
+		r.C <- server.MsgAndRoute{Message: &protocol.Message{ID: uint64(4), Body: []byte("router-a"), Time: 1405544146}, Route: r}
+		r.C <- server.MsgAndRoute{Message: &protocol.Message{ID: uint64(5), Body: []byte("router-b"), Time: 1405544146}, Route: r}
 		close(r.C) // emulate router close
 	})
 	subscribe.After(messageId2)
@@ -282,12 +283,13 @@ func Test_Receiver_Fetch_Sends_error_on_failure_in_MaxMessageId(t *testing.T) {
 func aMockedReceiver(arg string) (*Receiver, chan []byte, *MockRouter, *MockMessageStore, error) {
 	routerMock := NewMockRouter(ctrl)
 	messageStore := NewMockMessageStore(ctrl)
+	routerMock.EXPECT().MessageStore().Return(messageStore, nil).AnyTimes()
 	sendChannel := make(chan []byte)
 	cmd := &protocol.Cmd{
 		Name: protocol.CmdReceive,
 		Arg:  arg,
 	}
-	rec, err := NewReceiverFromCmd("any-appId", cmd, sendChannel, routerMock, messageStore, "userId")
+	rec, err := NewReceiverFromCmd("any-appId", cmd, sendChannel, routerMock, "userId")
 	return rec, sendChannel, routerMock, messageStore, err
 }
 
