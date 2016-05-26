@@ -5,8 +5,10 @@ import (
 	"github.com/smancke/guble/store"
 	"github.com/stretchr/testify/assert"
 
+	"errors"
 	"fmt"
 	"github.com/docker/distribution/health"
+	"io/ioutil"
 	"net/http"
 	"testing"
 	"time"
@@ -14,9 +16,8 @@ import (
 
 func TestStopingOfModules(t *testing.T) {
 	defer initCtrl(t)()
-
-	// reset existing health-checks
-	health.DefaultRegistry = health.NewRegistry()
+	defer resetDefaultRegistryHealthCheck()
+	resetDefaultRegistryHealthCheck()
 
 	// given:
 	service, _, _, _ := aMockedService()
@@ -34,9 +35,8 @@ func TestStopingOfModules(t *testing.T) {
 
 func TestStopingOfModulesTimeout(t *testing.T) {
 	defer initCtrl(t)()
-
-	// reset existing health-checks
-	health.DefaultRegistry = health.NewRegistry()
+	defer resetDefaultRegistryHealthCheck()
+	resetDefaultRegistryHealthCheck()
 
 	// given:
 	service, _, _, _ := aMockedService()
@@ -57,9 +57,8 @@ func TestStopingOfModulesTimeout(t *testing.T) {
 
 func TestEndpointRegisterAndServing(t *testing.T) {
 	defer initCtrl(t)()
-
-	// reset existing health-checks
-	health.DefaultRegistry = health.NewRegistry()
+	defer resetDefaultRegistryHealthCheck()
+	resetDefaultRegistryHealthCheck()
 
 	// given:
 	service, _, _, _ := aMockedService()
@@ -81,9 +80,8 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 
 func TestHealthUp(t *testing.T) {
 	defer initCtrl(t)()
-
-	// reset existing health-checks
-	health.DefaultRegistry = health.NewRegistry()
+	defer resetDefaultRegistryHealthCheck()
+	resetDefaultRegistryHealthCheck()
 
 	// given:
 	service, _, _, _ := aMockedService()
@@ -97,9 +95,36 @@ func TestHealthUp(t *testing.T) {
 	url := fmt.Sprintf("http://%s/health", service.WebServer().GetAddr())
 	result, err := http.Get(url)
 	assert.NoError(t, err)
-	body := make([]byte, 3)
-	result.Body.Read(body)
-	assert.Equal(t, "{}\x00", string(body))
+	body, err := ioutil.ReadAll(result.Body)
+	assert.NoError(t, err)
+	assert.Equal(t, "{}", string(body))
+}
+
+func TestHealthDown(t *testing.T) {
+	defer initCtrl(t)()
+	defer resetDefaultRegistryHealthCheck()
+	resetDefaultRegistryHealthCheck()
+
+	// given:
+	service, _, _, _ := aMockedService()
+	mockChecker := NewMockChecker(ctrl)
+	mockChecker.EXPECT().Check().Return(errors.New("sick")).AnyTimes()
+
+	// when starting the service with a short frequency
+	defer service.Stop()
+	service.healthCheckFrequency = time.Millisecond * 3
+	service.Register(mockChecker)
+	service.Start()
+	time.Sleep(time.Millisecond * 10)
+
+	// then I can call the health URL
+	url := fmt.Sprintf("http://%s/health", service.WebServer().GetAddr())
+	result, err := http.Get(url)
+	assert.NoError(t, err)
+	assert.Equal(t, 503, result.StatusCode)
+	body, err := ioutil.ReadAll(result.Body)
+	assert.NoError(t, err)
+	assert.Equal(t, "{\"*server.MockChecker\":\"sick\"}", string(body))
 }
 
 func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockRouter) {
@@ -120,4 +145,9 @@ func (*TestEndpoint) GetPrefix() string {
 func (*TestEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "bar")
 	return
+}
+
+// resetDefaultRegistryHealthCheck resets the existing registry containing health-checks
+func resetDefaultRegistryHealthCheck() {
+	health.DefaultRegistry = health.NewRegistry()
 }
