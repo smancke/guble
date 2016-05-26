@@ -5,7 +5,6 @@ import (
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 
-	"github.com/docker/distribution/health"
 	"github.com/stretchr/testify/assert"
 	"testing"
 
@@ -16,6 +15,7 @@ import (
 
 func TestSimplePingPong(t *testing.T) {
 	defer testutil.ResetDefaultRegistryHealthCheck()
+	testutil.ResetDefaultRegistryHealthCheck()
 
 	_, client1, client2, tearDown := initServerAndClients(t)
 	defer tearDown()
@@ -92,9 +92,4 @@ func checkConnectedNotificationJSON(t *testing.T, user string, connectedJSON str
 	assert.True(t, len(m["ApplicationId"]) > 0)
 	_, e := time.Parse(time.RFC3339, m["Time"])
 	assert.NoError(t, e)
-}
-
-// resetDefaultRegistryHealthCheck resets the existing registry containing health-checks
-func resetDefaultRegistryHealthCheck() {
-	health.DefaultRegistry = health.NewRegistry()
 }
