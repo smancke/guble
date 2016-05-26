@@ -27,10 +27,10 @@ type Endpoint interface {
 
 // Service is the main class for simple control of a server
 type Service struct {
-	webServer     *WebServer
-	router        Router
-	stopListener  []Stopable
-	startListener []Startable
+	webServer  *WebServer
+	router     Router
+	stopables  []Stopable
+	startables []Startable
 	// The time given to each Module on Stop()
 	StopGracePeriod time.Duration
 }
@@ -40,7 +40,7 @@ func NewService(
 	addr string,
 	router Router) *Service {
 	service := &Service{
-		stopListener:    make([]Stopable, 0, 5),
+		stopables:       make([]Stopable, 0, 5),
 		webServer:       NewWebServer(addr),
 		router:          router,
 		StopGracePeriod: time.Second * 2,
@@ -84,7 +84,7 @@ func (service *Service) AddHandler(prefix string, handler http.Handler) {
 func (service *Service) Start() error {
 	el := protocol.NewErrorList("Errors occured while startup the service: ")
 
-	for _, startable := range service.startListener {
+	for _, startable := range service.startables {
 		name := reflect.TypeOf(startable).String()
 
 		protocol.Debug("starting module %v", name)
@@ -97,16 +97,16 @@ func (service *Service) Start() error {
 }
 
 func (service *Service) AddStopListener(stopable Stopable) {
-	service.stopListener = append(service.stopListener, stopable)
+	service.stopables = append(service.stopables, stopable)
 }
 
 func (service *Service) AddStartListener(startable Startable) {
-	service.startListener = append(service.startListener, startable)
+	service.startables = append(service.startables, startable)
 }
 
 func (service *Service) Stop() error {
 	errors := make(map[string]error)
-	for _, stopable := range service.stopListener {
+	for _, stopable := range service.stopables {
 		name := reflect.TypeOf(stopable).String()
 		stoppedChan := make(chan bool)
 		errorChan := make(chan error)
