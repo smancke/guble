@@ -6,10 +6,10 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
+	"github.com/docker/distribution/health"
 	"net/http"
 	"testing"
 	"time"
-	"github.com/docker/distribution/health"
 )
 
 func TestStopingOfModules(t *testing.T) {
@@ -27,8 +27,7 @@ func TestStopingOfModules(t *testing.T) {
 
 	service.Start()
 
-	// when i stop the service,
-	// the stopable is called
+	// when i stop the service, the Stop() is called
 	stopable.EXPECT().Stop()
 	service.Stop()
 }
@@ -43,7 +42,7 @@ func TestStopingOfModulesTimeout(t *testing.T) {
 	service, _, _, _ := aMockedService()
 	service.StopGracePeriod = time.Millisecond * 5
 
-	// with a registered stopable, which blocks too long on stop
+	// with a registered Stopable, which blocks too long on stop
 	stopable := NewMockStopable(ctrl)
 	service.Register(stopable)
 	stopable.EXPECT().Stop().Do(func() {
@@ -86,7 +85,6 @@ func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockRouter)
 	routerMock := NewMockRouter(ctrl)
 	service := NewService("localhost:0", routerMock)
 	return service, kvStore, messageStore, routerMock
-
 }
 
 type TestEndpoint struct {
