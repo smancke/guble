@@ -11,11 +11,12 @@ import (
 
 	"encoding/json"
 	"time"
+	"github.com/smancke/guble/testutil"
 )
 
 func TestSimplePingPong(t *testing.T) {
 	resetDefaultRegistryHealthCheck()
-	defer resetDefaultRegistryHealthCheck()
+	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	_, client1, client2, tearDown := initServerAndClients(t)
 	defer tearDown()

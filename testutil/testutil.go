@@ -1,9 +1,11 @@
 package testutil
 
 import (
+	"github.com/docker/distribution/health"
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/stretchr/testify/assert"
+
 	"testing"
 	"time"
 )
@@ -46,4 +48,9 @@ func ExpectDone(a *assert.Assertions, doneChannel chan bool) {
 	case <-time.After(time.Second):
 		a.Fail("timeout in expectDone")
 	}
+}
+
+// ResetDefaultRegistryHealthCheck resets the existing registry containing health-checks
+func ResetDefaultRegistryHealthCheck() {
+	health.DefaultRegistry = health.NewRegistry()
 }

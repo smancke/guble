@@ -8,7 +8,6 @@ import (
 
 	"errors"
 	"fmt"
-	"github.com/docker/distribution/health"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -18,6 +17,8 @@ import (
 func TestStopingOfModules(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
+	defer testutil.ResetDefaultRegistryHealthCheck()
+
 	// given:
 	service, _, _, _ := aMockedService()
 
@@ -35,6 +36,7 @@ func TestStopingOfModules(t *testing.T) {
 func TestStopingOfModulesTimeout(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
+	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	// given:
 	service, _, _, _ := aMockedService()
@@ -56,6 +58,7 @@ func TestStopingOfModulesTimeout(t *testing.T) {
 func TestEndpointRegisterAndServing(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
+	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	// given:
 	service, _, _, _ := aMockedService()
@@ -76,9 +79,9 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 }
 
 func TestHealthUp(t *testing.T) {
-	defer initCtrl(t)()
-	defer resetDefaultRegistryHealthCheck()
-	resetDefaultRegistryHealthCheck()
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	// given:
 	service, _, _, _ := aMockedService()
@@ -98,9 +101,9 @@ func TestHealthUp(t *testing.T) {
 }
 
 func TestHealthDown(t *testing.T) {
-	defer initCtrl(t)()
-	defer resetDefaultRegistryHealthCheck()
-	resetDefaultRegistryHealthCheck()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	// given:
 	service, _, _, _ := aMockedService()
@@ -142,9 +145,4 @@ func (*TestEndpoint) GetPrefix() string {
 func (*TestEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "bar")
 	return
-}
-
-// resetDefaultRegistryHealthCheck resets the existing registry containing health-checks
-func resetDefaultRegistryHealthCheck() {
-	health.DefaultRegistry = health.NewRegistry()
 }
