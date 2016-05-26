@@ -1,26 +1,25 @@
 package gcm
 
 import (
+	"github.com/alexjlockwood/gcm"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 
-	"github.com/julienschmidt/httprouter"
-
-	"github.com/alexjlockwood/gcm"
-
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 )
 
+// GCM_REGISTRATIONS_SCHEMA is the default sqlite schema  for gcm
 const GCM_REGISTRATIONS_SCHEMA = "gcm_registration"
 
+// GCMConnector is the structure for handling the communication with Google Cloud Messaging
 type GCMConnector struct {
 	router             server.Router
 	kvStore            store.KVStore
-	mux                http.Handler
 	prefix             string
 	channelFromRouter  chan server.MsgAndRoute
 	closeRouteByRouter chan server.Route
@@ -28,8 +27,8 @@ type GCMConnector struct {
 	sender             *gcm.Sender
 }
 
-func NewGCMConnector(router server.Router, prefix string, gcmApiKey string) (*GCMConnector, error) {
-	mux := httprouter.New()
+// NewGCMConnector creates a new gcmConnector without starting it
+func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string) (*GCMConnector, error) {
 
 	kvStore, err := router.KVStore()
 	if err != nil {
@@ -39,32 +38,31 @@ func NewGCMConnector(router server.Router, prefix string, gcmApiKey string) (*GC
 	gcm := &GCMConnector{
 		router:            router,
 		kvStore:           kvStore,
-		mux:               mux,
 		prefix:            prefix,
 		channelFromRouter: make(chan server.MsgAndRoute, 1000),
 		stopChan:          make(chan bool, 1),
-		sender:            &gcm.Sender{ApiKey: gcmApiKey},
+		sender:            &gcm.Sender{ApiKey: gcmAPIKey},
 	}
 
-	mux.POST(removeTrailingSlash(gcm.prefix)+"/:userid/:gcmid/subscribe/*topic", gcm.Subscribe)
 	return gcm, nil
 }
 
-func (gcmConnector *GCMConnector) Start() error {
-	broadcastRoute := server.NewRoute(removeTrailingSlash(gcmConnector.prefix)+"/broadcast", gcmConnector.channelFromRouter, "gcm_connector", "gcm_connector")
-	gcmConnector.router.Subscribe(broadcastRoute)
+// Start open the connector and awaits for messages from router to be forwarded to gcm until the stop signal is emitted
+func (conn *GCMConnector) Start() error {
+	broadcastRoute := server.NewRoute(removeTrailingSlash(conn.prefix)+"/broadcast", conn.channelFromRouter, "gcm_connector", "gcm_connector")
+	conn.router.Subscribe(broadcastRoute)
 	go func() {
-		gcmConnector.loadSubscriptions()
+		conn.loadSubscriptions()
 
 		for {
 			select {
-			case msg := <-gcmConnector.channelFromRouter:
-				if string(msg.Message.Path) == removeTrailingSlash(gcmConnector.prefix)+"/broadcast" {
-					go gcmConnector.broadcastMessage(msg)
+			case msg := <-conn.channelFromRouter:
+				if string(msg.Message.Path) == removeTrailingSlash(conn.prefix)+"/broadcast" {
+					go conn.broadcastMessage(msg)
 				} else {
-					go gcmConnector.sendMessageToGCM(msg)
+					go conn.sendMessage(msg)
 				}
-			case <-gcmConnector.stopChan:
+			case <-conn.stopChan:
 				return
 			}
 		}
@@ -72,37 +70,37 @@ func (gcmConnector *GCMConnector) Start() error {
 	return nil
 }
 
-func (gcmConnector *GCMConnector) Check() error {
+func (conn *GCMConnector) Check() error {
 	return nil
 }
 
-func (gcmConnector *GCMConnector) sendMessageToGCM(msg server.MsgAndRoute) {
-	gcmId := msg.Route.ApplicationID
+func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
+	gcmID := msg.Route.ApplicationID
 
-	payload := gcmConnector.parseMessageToMap(msg.Message)
+	payload := conn.parseMessageToMap(msg.Message)
 
-	var messageToGcm = gcm.NewMessage(payload, gcmId)
-	protocol.Info("sending message to %v ...", gcmId)
-	result, err := gcmConnector.sender.Send(messageToGcm, 5)
+	var messageToGcm = gcm.NewMessage(payload, gcmID)
+	protocol.Info("sending message to %v ...", gcmID)
+	result, err := conn.sender.Send(messageToGcm, 5)
 	if err != nil {
-		protocol.Err("error sending message to cgmid=%v: %v", gcmId, err.Error())
+		protocol.Err("error sending message to cgmid=%v: %v", gcmID, err.Error())
 		return
 	}
 
-	errorJson := result.Results[0].Error
-	if errorJson != "" {
-		gcmConnector.handleJsonError(errorJson, gcmId, msg.Route)
+	errorJSON := result.Results[0].Error
+	if errorJSON != "" {
+		conn.handleJSONError(errorJSON, gcmID, msg.Route)
 	} else {
-		protocol.Debug("delivered message to gcm cgmid=%v: %v", gcmId, errorJson)
+		protocol.Debug("delivered message to gcm cgmid=%v: %v", gcmID, errorJSON)
 	}
 
 	//we only send to one receiver, so we know that we can replace the old id with the first registration id (=canonical id)
 	if result.CanonicalIDs != 0 {
-		gcmConnector.replaceSubscriptionWithCanonicalID(msg.Route, result.Results[0].RegistrationID)
+		conn.replaceSubscriptionWithCanonicalID(msg.Route, result.Results[0].RegistrationID)
 	}
 }
 
-func (gcmConnector *GCMConnector) parseMessageToMap(msg *protocol.Message) map[string]interface{} {
+func (conn *GCMConnector) parseMessageToMap(msg *protocol.Message) map[string]interface{} {
 	payload := map[string]interface{}{}
 	if msg.Body[0] == '{' {
 		json.Unmarshal(msg.Body, &payload)
@@ -113,12 +111,12 @@ func (gcmConnector *GCMConnector) parseMessageToMap(msg *protocol.Message) map[s
 	return payload
 }
 
-func (gcmConnector *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
+func (conn *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 	topic := msg.Message.Path
-	payload := gcmConnector.parseMessageToMap(msg.Message)
+	payload := conn.parseMessageToMap(msg.Message)
 	protocol.Info("broadcasting message with topic %v ...", string(topic))
 
-	subscriptions := gcmConnector.kvStore.Iterate(GCM_REGISTRATIONS_SCHEMA, "")
+	subscriptions := conn.kvStore.Iterate(GCM_REGISTRATIONS_SCHEMA, "")
 	count := 0
 	for {
 		select {
@@ -127,15 +125,15 @@ func (gcmConnector *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 				protocol.Info("send message to %v receivers", count)
 				return
 			}
-			gcmId := entry[0]
+			gmcID := entry[0]
 			//TODO collect 1000 gcmIds and send them in one request!
-			broadcastMessage := gcm.NewMessage(payload, gcmId)
+			broadcastMessage := gcm.NewMessage(payload, gmcID)
 			go func() {
 				//TODO error handling of response!
-				_, err := gcmConnector.sender.Send(broadcastMessage, 3)
-				protocol.Debug("sent broadcast message to gcmId=%v", gcmId)
+				_, err := conn.sender.Send(broadcastMessage, 3)
+				protocol.Debug("sent broadcast message to gcmId=%v", gmcID)
 				if err != nil {
-					protocol.Err("error sending broadcast message to cgmid=%v: %v", gcmId, err.Error())
+					protocol.Err("error sending broadcast message to cgmid=%v: %v", gmcID, err.Error())
 				}
 			}()
 			count++
@@ -143,70 +141,104 @@ func (gcmConnector *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 	}
 }
 
-func (gcmConnector *GCMConnector) replaceSubscriptionWithCanonicalID(route *server.Route, newGcmId string) {
-	oldGcmId := route.ApplicationID
+func (conn *GCMConnector) replaceSubscriptionWithCanonicalID(route *server.Route, newGcmID string) {
+	oldGcmID := route.ApplicationID
 	topic := string(route.Path)
-	userId := route.UserID
+	userID := route.UserID
 
-	protocol.Info("replacing old gcmId %v with canonicalId %v", oldGcmId, newGcmId)
-	gcmConnector.removeSubscription(route, oldGcmId)
-	gcmConnector.subscribe(topic, userId, newGcmId)
+	protocol.Info("replacing old gcmId %v with canonicalId %v", oldGcmID, newGcmID)
+
+	conn.removeSubscription(route, oldGcmID)
+	conn.subscribe(topic, userID, newGcmID)
 }
 
-func (gcmConnector *GCMConnector) handleJsonError(jsonError string, gcmId string, route *server.Route) {
+func (conn *GCMConnector) handleJSONError(jsonError string, gcmID string, route *server.Route) {
 	if jsonError == "NotRegistered" {
-		protocol.Debug("remove not registered cgm registration cgmid=%v", gcmId)
-		gcmConnector.removeSubscription(route, gcmId)
+		protocol.Debug("remove not registered cgm registration cgmid=%v", gcmID)
+		conn.removeSubscription(route, gcmID)
 	} else if jsonError == "InvalidRegistration" {
-		protocol.Err("the cgmid=%v is not registered. %v", gcmId, jsonError)
+		protocol.Err("the cgmid=%v is not registered. %v", gcmID, jsonError)
 	} else {
-		protocol.Err("unexpected error while sending to cgm cgmid=%v: %v", gcmId, jsonError)
+		protocol.Err("unexpected error while sending to cgm cgmid=%v: %v", gcmID, jsonError)
 	}
 }
 
-func (gcmConnector *GCMConnector) Stop() error {
-	gcmConnector.stopChan <- true
+// Stop signal the closing of gcmConnector
+func (conn *GCMConnector) Stop() error {
+	conn.stopChan <- true
 	return nil
 }
 
-func (gcmConnector *GCMConnector) GetPrefix() string {
-	return gcmConnector.prefix
+// GetPrefix is used to satisfy the HTTP handler interface
+func (conn *GCMConnector) GetPrefix() string {
+	return conn.prefix
 }
 
-func (gcmConnector *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	gcmConnector.mux.ServeHTTP(w, r)
-}
+func (conn *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		protocol.Err("Only HTTP POST METHOD SUPPORTED but received type=[%s]", r.Method)
+		http.Error(w, "Permission Denied", http.StatusMethodNotAllowed)
+		return
+	}
 
-func (gcmConnector *GCMConnector) Subscribe(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	topic := params.ByName(`topic`)
-	userid := params.ByName("userid")
-	gcmid := params.ByName(`gcmid`)
-
-	gcmConnector.subscribe(topic, userid, gcmid)
+	userID, gcmID, topic, err := conn.parseParams(r.URL.Path)
+	if err != nil {
+		http.Error(w, "Invalid Parameters in request", http.StatusBadRequest)
+		return
+	}
+	conn.subscribe(topic, userID, gcmID)
 
 	fmt.Fprintf(w, "registered: %v\n", topic)
 }
 
-func (gcmConnector *GCMConnector) subscribe(topic string, userid string, gcmid string) {
-	protocol.Info("gcm connector registration to userid=%q, gcmid=%q: %q", userid, gcmid, topic)
+// parseParams will parse the HTTP URL with format /gcm/:userid/:gcmid/subscribe/*topic
+// returning error if the request is not in the corect format   or else the parsed Params
+func (conn *GCMConnector) parseParams(path string) (userID, gcmID, topic string, err error) {
+	subscribePrefixPath := "subscribe"
+	currentURLPath := removeTrailingSlash(path)
 
-	route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmid, userid)
+	if strings.HasPrefix(currentURLPath, conn.prefix) != true {
+		err = errors.New("Gcm request is not starting with gcm prefix")
+		return
+	}
+	pathAfterPrefix := strings.TrimPrefix(currentURLPath, conn.prefix)
 
-	gcmConnector.router.Subscribe(route)
-	gcmConnector.saveSubscription(userid, topic, gcmid)
+	splitedParams := strings.SplitN(pathAfterPrefix, "/", 3)
+	if len(splitedParams) != 3 {
+		err = errors.New("Gcm request has wrong number of params")
+		return
+	}
+	userID = splitedParams[0]
+	gcmID = splitedParams[1]
+
+	if strings.HasPrefix(splitedParams[2], subscribePrefixPath+"/") != true {
+		err = errors.New("Gcm request third param is not subscribe")
+		return
+	}
+	topic = strings.TrimPrefix(splitedParams[2], subscribePrefixPath)
+	return userID, gcmID, topic, nil
 }
 
-func (gcmConnector *GCMConnector) removeSubscription(route *server.Route, gcmId string) {
-	gcmConnector.router.Unsubscribe(route)
-	gcmConnector.kvStore.Delete(GCM_REGISTRATIONS_SCHEMA, gcmId)
+func (conn *GCMConnector) subscribe(topic string, userID string, gcmID string) {
+	protocol.Info("gcm connector registration to userid=%q, gcmid=%q: %q", userID, gcmID, topic)
+
+	route := server.NewRoute(topic, conn.channelFromRouter, gcmID, userID)
+
+	conn.router.Subscribe(route)
+	conn.saveSubscription(userID, topic, gcmID)
 }
 
-func (gcmConnector *GCMConnector) saveSubscription(userid, topic, gcmid string) {
-	gcmConnector.kvStore.Put(GCM_REGISTRATIONS_SCHEMA, gcmid, []byte(userid+":"+topic))
+func (conn *GCMConnector) removeSubscription(route *server.Route, gcmID string) {
+	conn.router.Unsubscribe(route)
+	conn.kvStore.Delete(GCM_REGISTRATIONS_SCHEMA, gcmID)
 }
 
-func (gcmConnector *GCMConnector) loadSubscriptions() {
-	subscriptions := gcmConnector.kvStore.Iterate(GCM_REGISTRATIONS_SCHEMA, "")
+func (conn *GCMConnector) saveSubscription(userID, topic, gcmID string) {
+	conn.kvStore.Put(GCM_REGISTRATIONS_SCHEMA, gcmID, []byte(userID+":"+topic))
+}
+
+func (conn *GCMConnector) loadSubscriptions() {
+	subscriptions := conn.kvStore.Iterate(GCM_REGISTRATIONS_SCHEMA, "")
 	count := 0
 	for {
 		select {
@@ -215,21 +247,21 @@ func (gcmConnector *GCMConnector) loadSubscriptions() {
 				protocol.Info("renewed %v gcm subscriptions", count)
 				return
 			}
-			gcmId := entry[0]
+			gcmID := entry[0]
 			splitedValue := strings.SplitN(entry[1], ":", 2)
-			userid := splitedValue[0]
+			userID := splitedValue[0]
 			topic := splitedValue[1]
 
-			protocol.Debug("renew gcm subscription: user=%v, topic=%v, gcmid=%v", userid, topic, gcmId)
-			route := server.NewRoute(topic, gcmConnector.channelFromRouter, gcmId, userid)
-			gcmConnector.router.Subscribe(route)
+			protocol.Debug("renew gcm subscription: user=%v, topic=%v, gcmid=%v", userID, topic, gcmID)
+			route := server.NewRoute(topic, conn.channelFromRouter, gcmID, userID)
+			conn.router.Subscribe(route)
 			count++
 		}
 	}
 }
 
 func removeTrailingSlash(path string) string {
-	if len(path) > 0 && path[len(path)-1] == '/' {
+	if len(path) > 1 && path[len(path)-1] == '/' {
 		return path[:len(path)-1]
 	}
 	return path
