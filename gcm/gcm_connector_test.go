@@ -49,7 +49,7 @@ var errorResponseMessageJSON = `
    ]
 }`
 
-// mock a https round tripper in order to not send the test reques gcm.
+// mock a https round tripper in order to not send the test request to gcm.
 type RoundTripperFunc func(req *http.Request) *http.Response
 
 func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -383,7 +383,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 		assert.Equal("id", route.ApplicationID)
 	})
 
-	// expect the route subscribe with the new cannonicalId  from replaceSubscriptionWithCanonicalID
+	// expect the route subscribe with the new canonicalId from replaceSubscriptionWithCanonicalID
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
 		assert.Equal("/path", string(route.Path))
 		assert.Equal("marvin", route.UserID)

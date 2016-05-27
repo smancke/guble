@@ -47,7 +47,7 @@ func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string) (*GC
 	return gcm, nil
 }
 
-// Start open the connector and awaits for messages from router to be forwarded to gcm until the stop signal is emitted
+// Start opens the connector and awaits for messages from router to be forwarded to gcm until the stop signal is emitted
 func (conn *GCMConnector) Start() error {
 	broadcastRoute := server.NewRoute(removeTrailingSlash(conn.prefix)+"/broadcast", conn.channelFromRouter, "gcm_connector", "gcm_connector")
 	conn.router.Subscribe(broadcastRoute)
@@ -83,7 +83,7 @@ func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
 	protocol.Info("sending message to %v ...", gcmID)
 	result, err := conn.sender.Send(messageToGcm, 5)
 	if err != nil {
-		protocol.Err("error sending message to cgmid=%v: %v", gcmID, err.Error())
+		protocol.Err("error sending message to gcm gcmID=%v: %v", gcmID, err.Error())
 		return
 	}
 
@@ -91,7 +91,7 @@ func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
 	if errorJSON != "" {
 		conn.handleJSONError(errorJSON, gcmID, msg.Route)
 	} else {
-		protocol.Debug("delivered message to gcm cgmid=%v: %v", gcmID, errorJSON)
+		protocol.Debug("delivered message to gcm gcmID=%v: %v", gcmID, errorJSON)
 	}
 
 	//we only send to one receiver, so we know that we can replace the old id with the first registration id (=canonical id)
