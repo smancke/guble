@@ -1,4 +1,4 @@
-package server
+package webserver
 
 import (
 	"github.com/smancke/guble/protocol"
@@ -15,20 +15,19 @@ type WebServer struct {
 	addr   string
 }
 
-func NewWebServer(addr string) *WebServer {
+func New(addr string) *WebServer {
 	return &WebServer{
 		mux:  http.NewServeMux(),
 		addr: addr,
 	}
 }
 
-func (ws *WebServer) Start() error {
+func (ws *WebServer) Start() (err error) {
 	protocol.Info("starting up at %v", ws.addr)
 	ws.server = &http.Server{Addr: ws.addr, Handler: ws.mux}
-	var err error
 	ws.ln, err = net.Listen("tcp", ws.addr)
 	if err != nil {
-		return err
+		return
 	}
 
 	go func() {
@@ -39,7 +38,7 @@ func (ws *WebServer) Start() error {
 		}
 		protocol.Info("http server stopped")
 	}()
-	return nil
+	return
 }
 
 func (ws *WebServer) Stop() error {
