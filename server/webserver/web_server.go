@@ -15,7 +15,7 @@ type WebServer struct {
 	addr   string
 }
 
-func NewWebServer(addr string) *WebServer {
+func New(addr string) *WebServer {
 	return &WebServer{
 		mux:  http.NewServeMux(),
 		addr: addr,

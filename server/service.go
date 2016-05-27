@@ -43,7 +43,7 @@ type Service struct {
 func NewService(addr string, router Router) *Service {
 	service := &Service{
 		stopables:            make([]Stopable, 0, 5),
-		webServer:            webserver.NewWebServer(addr),
+		webServer:            webserver.New(addr),
 		router:               router,
 		StopGracePeriod:      time.Second * 2,
 		healthCheckFrequency: time.Second * 60,

@@ -12,7 +12,7 @@ import (
 func TestStartAndStopWebServer(t *testing.T) {
 
 	// given: a configured echo webserver
-	server := NewWebServer("localhost:3333")
+	server := New("localhost:3333")
 	server.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		bytes, _ := ioutil.ReadAll(r.Body)
 		w.Write(bytes)
