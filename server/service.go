@@ -106,6 +106,7 @@ func (s *Service) Start() error {
 
 func (s *Service) Stop() error {
 	errors := make(map[string]error)
+
 	for _, stopable := range s.stopables {
 		name := reflect.TypeOf(stopable).String()
 		stoppedChan := make(chan bool)

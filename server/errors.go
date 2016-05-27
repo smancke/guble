@@ -28,3 +28,12 @@ type PermissionDeniedError struct {
 func (e *PermissionDeniedError) Error() string {
 	return fmt.Sprintf("Access Denied for user=[%s] on path=[%s] for Operation=[%s]", e.userID, e.path, e.accessType)
 }
+
+// ServiceStoppingError is returned when a service is in stopping process
+type ServiceStoppingError struct {
+	name string
+}
+
+func (e *ServiceStoppingError) Error() string {
+	return fmt.Sprintf("Service %s stopping", e.name)
+}
