@@ -29,7 +29,6 @@ type WSConnectionFactory func(url string, origin string) (WSConnection, error)
 
 type Client interface {
 	Start() error
-	Stop() error
 	Close()
 
 	Subscribe(path string) error
@@ -113,11 +112,6 @@ func (c *client) Start() error {
 		go c.startWithReconnect()
 	}
 	return err
-}
-
-func (c *client) Stop() error {
-	c.shouldStopChan <- true
-	return nil
 }
 
 func (c *client) startWithReconnect() {
