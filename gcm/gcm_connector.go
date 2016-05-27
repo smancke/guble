@@ -83,7 +83,7 @@ func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
 	protocol.Info("sending message to %v ...", gcmID)
 	result, err := conn.sender.Send(messageToGcm, 5)
 	if err != nil {
-		protocol.Err("error sending message to gcm gcmID=%v: %v", gcmID, err.Error())
+		protocol.Err("error sending message to GCM gcmId=%v: %v", gcmID, err.Error())
 		return
 	}
 
@@ -91,7 +91,7 @@ func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
 	if errorJSON != "" {
 		conn.handleJSONError(errorJSON, gcmID, msg.Route)
 	} else {
-		protocol.Debug("delivered message to gcm gcmID=%v: %v", gcmID, errorJSON)
+		protocol.Debug("delivered message to GCM gcmId=%v: %v", gcmID, errorJSON)
 	}
 
 	// we only send to one receiver,
@@ -134,7 +134,7 @@ func (conn *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 				_, err := conn.sender.Send(broadcastMessage, 3)
 				protocol.Debug("sent broadcast message to gcmId=%v", gmcID)
 				if err != nil {
-					protocol.Err("error sending broadcast message to cgmid=%v: %v", gmcID, err.Error())
+					protocol.Err("error sending broadcast message to gcmId=%v: %v", gmcID, err.Error())
 				}
 			}()
 			count++
@@ -155,12 +155,12 @@ func (conn *GCMConnector) replaceSubscriptionWithCanonicalID(route *server.Route
 
 func (conn *GCMConnector) handleJSONError(jsonError string, gcmID string, route *server.Route) {
 	if jsonError == "NotRegistered" {
-		protocol.Debug("remove not registered cgm registration cgmid=%v", gcmID)
+		protocol.Debug("remove not registered cgm registration gcmid=%v", gcmID)
 		conn.removeSubscription(route, gcmID)
 	} else if jsonError == "InvalidRegistration" {
 		protocol.Err("the cgmid=%v is not registered. %v", gcmID, jsonError)
 	} else {
-		protocol.Err("unexpected error while sending to cgm cgmid=%v: %v", gcmID, jsonError)
+		protocol.Err("unexpected error while sending to cgm gcmId=%v: %v", gcmID, jsonError)
 	}
 }
 
@@ -193,7 +193,7 @@ func (conn *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // parseParams will parse the HTTP URL with format /gcm/:userid/:gcmid/subscribe/*topic
-// returning error if the request is not in the corect format   or else the parsed Params
+// returning the parsed Params, or error if the request is not in the correct format
 func (conn *GCMConnector) parseParams(path string) (userID, gcmID, topic string, err error) {
 	subscribePrefixPath := "subscribe"
 	currentURLPath := removeTrailingSlash(path)
