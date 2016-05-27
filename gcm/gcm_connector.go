@@ -74,7 +74,7 @@ func (conn *GCMConnector) Start() error {
 	return nil
 }
 
-// Stop signals the closing of gcmConnector
+// Stop signals the closing of GCMConnector
 func (conn *GCMConnector) Stop() error {
 	protocol.Debug("GCM Stop()")
 	close(conn.stopChan)
@@ -166,7 +166,7 @@ func (conn *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 			go func() {
 				//TODO error handling of response!
 				_, err := conn.sender.Send(broadcastMessage, 3)
-				protocol.Debug("sent broadcast message to gcmId=%v", gmcID)
+				protocol.Debug("sent broadcast message to gcmID=%v", gmcID)
 				if err != nil {
 					protocol.Err("error sending broadcast message to gcmID=%v: %v", gmcID, err.Error())
 				}
