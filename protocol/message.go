@@ -96,7 +96,7 @@ const (
 	ERROR_INTERNAL_SERVER = "error-server-internal"
 )
 
-// Representation of a status messages or error message, send from the server
+// NotificationMessage is a representation of a status messages or error message, sent from the server
 type NotificationMessage struct {
 
 	// The name of the message

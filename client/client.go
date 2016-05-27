@@ -155,7 +155,7 @@ func (c *client) readLoop() error {
 			return err
 		}
 		protocol.Debug("raw> %s", msg)
-		c.handleIncommoingMessage(msg)
+		c.handleIncomingMessage(msg)
 	}
 }
 
@@ -172,7 +172,7 @@ func (c *client) shouldStop() bool {
 	}
 }
 
-func (c *client) handleIncommoingMessage(msg []byte) {
+func (c *client) handleIncomingMessage(msg []byte) {
 	parsed, err := protocol.ParseMessage(msg)
 	if err != nil {
 		protocol.Err("parsing message failed %v", err)
