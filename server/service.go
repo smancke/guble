@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/webserver"
 
 	"fmt"
 	"github.com/docker/distribution/health"
@@ -28,7 +29,7 @@ type Endpoint interface {
 
 // Service is the main class for simple control of a server
 type Service struct {
-	webServer  *WebServer
+	webServer  *webserver.WebServer
 	router     Router
 	stopables  []Stopable
 	startables []Startable
@@ -42,7 +43,7 @@ type Service struct {
 func NewService(addr string, router Router) *Service {
 	service := &Service{
 		stopables:            make([]Stopable, 0, 5),
-		webServer:            NewWebServer(addr),
+		webServer:            webserver.NewWebServer(addr),
 		router:               router,
 		StopGracePeriod:      time.Second * 2,
 		healthCheckFrequency: time.Second * 60,
@@ -135,6 +136,6 @@ func (s *Service) Stop() error {
 	return nil
 }
 
-func (s *Service) WebServer() *WebServer {
+func (s *Service) WebServer() *webserver.WebServer {
 	return s.webServer
 }
