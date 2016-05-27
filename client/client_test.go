@@ -243,10 +243,20 @@ func TestSendSubscribeMessage(t *testing.T) {
 	// when expects a message
 	connMock := NewMockWSConnection(ctrl)
 	connMock.EXPECT().WriteMessage(websocket.BinaryMessage, []byte("+ /foo"))
+	connMock.EXPECT().
+		ReadMessage().
+		Return(websocket.BinaryMessage, []byte(aNormalMessage), nil).
+		Do(func() {
+			time.Sleep(time.Millisecond * 50)
+		}).
+		AnyTimes()
 	c.SetWSConnectionFactory(MockConnectionFactory(connMock))
 
 	c.Start()
 	c.Subscribe("/foo")
+
+	// stop client after 200ms
+	time.AfterFunc(time.Millisecond*200, func() { c.Stop() })
 }
 
 func TestSendUnSubscribeMessage(t *testing.T) {
