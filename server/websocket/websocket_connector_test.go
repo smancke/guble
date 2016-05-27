@@ -32,16 +32,30 @@ func Test_WebSocket_SubscribeAndUnsubscribe(t *testing.T) {
 	messages := []string{"+ /foo", "+ /bar", "- /foo"}
 	wsconn, routerMock, messageStore := createDefaultMocks(messages)
 
+	var wg sync.WaitGroup
+	wg.Add(3)
+	doneGroup := func(bytes []byte) error {
+		wg.Done()
+		return nil
+	}
+
 	routerMock.EXPECT().Subscribe(routeMatcher{"/foo"}).Return(nil, nil)
-	wsconn.EXPECT().Send([]byte("#" + protocol.SUCCESS_SUBSCRIBED_TO + " /foo"))
+	wsconn.EXPECT().
+		Send([]byte("#" + protocol.SUCCESS_SUBSCRIBED_TO + " /foo")).
+		Do(doneGroup)
 
 	routerMock.EXPECT().Subscribe(routeMatcher{"/bar"}).Return(nil, nil)
-	wsconn.EXPECT().Send([]byte("#" + protocol.SUCCESS_SUBSCRIBED_TO + " /bar"))
+	wsconn.EXPECT().
+		Send([]byte("#" + protocol.SUCCESS_SUBSCRIBED_TO + " /bar")).
+		Do(doneGroup)
 
 	routerMock.EXPECT().Unsubscribe(routeMatcher{"/foo"})
-	wsconn.EXPECT().Send([]byte("#" + protocol.SUCCESS_CANCELED + " /foo"))
+	wsconn.EXPECT().
+		Send([]byte("#" + protocol.SUCCESS_CANCELED + " /foo")).
+		Do(doneGroup)
 
 	websocket := runNewWebSocket(wsconn, routerMock, messageStore, nil)
+	wg.Wait()
 
 	a.Equal(1, len(websocket.receivers))
 	a.Equal(protocol.Path("/bar"), websocket.receivers[protocol.Path("/bar")].path)
