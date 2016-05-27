@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-// GCM_REGISTRATIONS_SCHEMA is the default sqlite schema  for gcm
+// GCM_REGISTRATIONS_SCHEMA is the default sqlite schema for gcm
 const GCM_REGISTRATIONS_SCHEMA = "gcm_registration"
 
 // GCMConnector is the structure for handling the communication with Google Cloud Messaging
@@ -94,7 +94,8 @@ func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
 		protocol.Debug("delivered message to gcm gcmID=%v: %v", gcmID, errorJSON)
 	}
 
-	//we only send to one receiver, so we know that we can replace the old id with the first registration id (=canonical id)
+	// we only send to one receiver,
+	// so we know that we can replace the old id with the first registration id (=canonical id)
 	if result.CanonicalIDs != 0 {
 		conn.replaceSubscriptionWithCanonicalID(msg.Route, result.Results[0].RegistrationID)
 	}
@@ -163,7 +164,7 @@ func (conn *GCMConnector) handleJSONError(jsonError string, gcmID string, route 
 	}
 }
 
-// Stop signal the closing of gcmConnector
+// Stop signals the closing of gcmConnector
 func (conn *GCMConnector) Stop() error {
 	conn.stopChan <- true
 	return nil
@@ -203,19 +204,19 @@ func (conn *GCMConnector) parseParams(path string) (userID, gcmID, topic string,
 	}
 	pathAfterPrefix := strings.TrimPrefix(currentURLPath, conn.prefix)
 
-	splitedParams := strings.SplitN(pathAfterPrefix, "/", 3)
-	if len(splitedParams) != 3 {
+	splitParams := strings.SplitN(pathAfterPrefix, "/", 3)
+	if len(splitParams) != 3 {
 		err = errors.New("Gcm request has wrong number of params")
 		return
 	}
-	userID = splitedParams[0]
-	gcmID = splitedParams[1]
+	userID = splitParams[0]
+	gcmID = splitParams[1]
 
-	if strings.HasPrefix(splitedParams[2], subscribePrefixPath+"/") != true {
+	if strings.HasPrefix(splitParams[2], subscribePrefixPath+"/") != true {
 		err = errors.New("Gcm request third param is not subscribe")
 		return
 	}
-	topic = strings.TrimPrefix(splitedParams[2], subscribePrefixPath)
+	topic = strings.TrimPrefix(splitParams[2], subscribePrefixPath)
 	return userID, gcmID, topic, nil
 }
 
@@ -248,9 +249,9 @@ func (conn *GCMConnector) loadSubscriptions() {
 				return
 			}
 			gcmID := entry[0]
-			splitedValue := strings.SplitN(entry[1], ":", 2)
-			userID := splitedValue[0]
-			topic := splitedValue[1]
+			splitValue := strings.SplitN(entry[1], ":", 2)
+			userID := splitValue[0]
+			topic := splitValue[1]
 
 			protocol.Debug("renew gcm subscription: user=%v, topic=%v, gcmid=%v", userID, topic, gcmID)
 			route := server.NewRoute(topic, conn.channelFromRouter, gcmID, userID)

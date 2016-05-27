@@ -227,7 +227,7 @@ func copyOf(message []byte) []byte {
 	return messageCopy
 }
 
-// Test wether the supplied routePath matches the message topic
+// Test whether the supplied routePath matches the message topic
 func matchesTopic(messagePath, routePath protocol.Path) bool {
 	messagePathLen := len(string(messagePath))
 	routePathLen := len(string(routePath))
