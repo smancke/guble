@@ -91,10 +91,10 @@ var CreateModules = func(router server.Router, args Args) []interface{} {
 			panic("gcm api key has to be provided, if gcm is enabled")
 		}
 
+		gcmWorkers := gcmWorkers(args.GcmWorkers)
 		protocol.Info("google cloud messaging: enabled")
-		nWorkers := gcmWorkers(args.GcmWorkers)
-		protocol.Debug("gcm: %v workers", nWorkers)
-		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey, nWorkers); err != nil {
+		protocol.Debug("gcm: %v workers", gcmWorkers)
+		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey, gcmWorkers); err != nil {
 			protocol.Err("Error loading GCMConnector: ", err)
 		} else {
 			modules = append(modules, gcm)

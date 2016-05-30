@@ -61,7 +61,6 @@ func (conn *GCMConnector) Start() error {
 		// (even if startup-time is longer, the routes are guaranteed to be there right after Start() returns)
 		conn.loadSubscriptions()
 
-		protocol.Debug("number of GCM workers: %v", conn.nWorkers)
 		for id := 1; id <= conn.nWorkers; id++ {
 			go conn.loopSendOrBroadcastMessage(id)
 		}
