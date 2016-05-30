@@ -67,7 +67,7 @@ func composeHTTPResponse(httpStatusCode int, messageBodyAsJSON string, doneCh ch
 	return RoundTripperFunc(func(req *http.Request) *http.Response {
 		// signal the ending of processing
 		defer func() {
-			doneCh <- true
+			close(doneCh)
 		}()
 
 		resp := &http.Response{
@@ -221,9 +221,9 @@ func TestGCMConnector_parseParams(t *testing.T) {
 		urlPath, userID, gcmID, topic, err string
 	}{
 		{"/gcm/marvin/gcmId123/subscribe/notifications", "marvin", "gcmId123", "/notifications", ""},
-		{"/gcm2/marvin/gcmId123/subscribe/notifications", "", "", "", "Gcm request is not starting with gcm prefix"},
-		{"/gcm/marvin/gcmId123/subscrib2e/notifications", "", "", "", "Gcm request third param is not subscribe"},
-		{"/gcm/marvin/gcmId123subscribenotifications", "", "", "", "Gcm request has wrong number of params"},
+		{"/gcm2/marvin/gcmId123/subscribe/notifications", "", "", "", "GCM request is not starting with gcm prefix"},
+		{"/gcm/marvin/gcmId123/subscrib2e/notifications", "", "", "", "GCM request third param is not subscribe"},
+		{"/gcm/marvin/gcmId123subscribenotifications", "", "", "", "GCM request has wrong number of params"},
 		{"/gcm/marvin/gcmId123/subscribe/notifications/alert/", "marvin", "gcmId123", "/notifications/alert", ""},
 	}
 
@@ -242,7 +242,6 @@ func TestGCMConnector_parseParams(t *testing.T) {
 		}
 
 	}
-
 }
 
 func TestGCMConnector_GetPrefix(t *testing.T) {
@@ -273,7 +272,7 @@ func TestGCMConnector_Stop(t *testing.T) {
 
 	err = gcm.Stop()
 	assert.Nil(err)
-	assert.Equal(len(gcm.stopChan), 1, "StopChan")
+	assert.Equal(len(gcm.stopChan), 0, "StopChan")
 
 }
 
