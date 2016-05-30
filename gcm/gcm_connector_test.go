@@ -49,7 +49,7 @@ var errorResponseMessageJSON = `
    ]
 }`
 
-// mock a https round tripper in order to not send the test request to gcm.
+// mock a https round tripper in order to not send the test request to GCM.
 type RoundTripperFunc func(req *http.Request) *http.Response
 
 func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -60,12 +60,11 @@ func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) 
 func createSender(rt RoundTripperFunc) *gcm.Sender {
 	httpClient := &http.Client{Transport: rt}
 	return &gcm.Sender{ApiKey: "124", Http: httpClient}
-
 }
 
 func composeHTTPResponse(httpStatusCode int, messageBodyAsJSON string, doneCh chan bool) RoundTripperFunc {
 	return RoundTripperFunc(func(req *http.Request) *http.Response {
-		// signal the ending of processing
+		// signal the end of processing
 		defer func() {
 			close(doneCh)
 		}()
@@ -113,7 +112,7 @@ func TestServeHTTPSuccess(t *testing.T) {
 	// when: I POST a message
 	gcm.ServeHTTP(w, req)
 
-	// then the result is as expected
+	// then
 	a.Equal("registered: /notifications\n", string(w.Body.Bytes()))
 }
 
@@ -303,7 +302,8 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 		Message: &protocol.Message{
 			ID:   uint64(4),
 			Body: []byte("{id:id}"),
-			Time: 1405544146, Path: "/gcm/broadcast"}}
+			Time: 1405544146,
+			Path: "/gcm/broadcast"}}
 	gcm.channelFromRouter <- broadcastMsgWithNoRecipients
 	time.Sleep(time.Second)
 	// expect that the HTTP Dummy Server to not handle any requests
@@ -367,7 +367,8 @@ func TestGCMConnector_BroadcastMessage(t *testing.T) {
 		Message: &protocol.Message{
 			ID:   uint64(4),
 			Body: []byte("{id:id}"),
-			Time: 1405544146, Path: "/gcm/broadcast"}}
+			Time: 1405544146,
+			Path: "/gcm/broadcast"}}
 	gcm.broadcastMessage(broadcastMessage)
 	// wait for the message to be processed by http server
 	<-done
@@ -417,8 +418,12 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 		Message: &protocol.Message{
 			ID:   uint64(4),
 			Body: []byte("{id:id}"),
-			Time: 1405544146, Path: "/gcm/marvin/gcm124/subscribe/stuff"},
-		Route: &server.Route{ApplicationID: "id", Path: "/path", UserID: "marvin"}}
+			Time: 1405544146,
+			Path: "/gcm/marvin/gcm124/subscribe/stuff"},
+		Route: &server.Route{
+			ApplicationID: "id",
+			Path:          "/path",
+			UserID:        "marvin"}}
 
 	gcm.channelFromRouter <- msg
 	// expect that the Http Server to give us a malformed message
