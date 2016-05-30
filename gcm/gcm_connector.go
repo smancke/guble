@@ -16,7 +16,7 @@ import (
 	"runtime"
 )
 
-// GCM_REGISTRATIONS_SCHEMA is the default sqlite schema for gcm
+// GCM_REGISTRATIONS_SCHEMA is the default sqlite schema for GCM
 const GCM_REGISTRATIONS_SCHEMA = "gcm_registration"
 
 // GCMConnector is the structure for handling the communication with Google Cloud Messaging
@@ -40,7 +40,7 @@ func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string) (*GC
 		return nil, err
 	}
 
-	//TODO Cosmin: check with dev-team the number of GCM workers, below
+	//TODO Cosmin: check with dev-team the default number of GCM workers, below
 	gcm := &GCMConnector{
 		router:            router,
 		kvStore:           kvStore,
@@ -54,18 +54,18 @@ func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string) (*GC
 	return gcm, nil
 }
 
-// Start opens the connector, start more goroutines / workers to handle messages coming from the router
+// Start opens the connector, creates more goroutines / workers to handle messages coming from the router
 func (conn *GCMConnector) Start() error {
 	broadcastRoute := server.NewRoute(removeTrailingSlash(conn.prefix)+"/broadcast", conn.channelFromRouter, "gcm_connector", "gcm_connector")
 	conn.router.Subscribe(broadcastRoute)
 	go func() {
 		//TODO Cosmin: should loadSubscriptions() be taken out of this goroutine, and executed before ?
-		// even if startup-time is longer, the routes are guaranteed to be there right after Start() returns
+		// (even if startup-time is longer, the routes are guaranteed to be there right after Start() returns)
 		conn.loadSubscriptions()
 
 		protocol.Debug("number of GCM workers: %v", conn.nWorkers)
-		for i := 1; i <= conn.nWorkers; i++ {
-			go conn.loopSendOrBroadcastMessage(i)
+		for id := 1; id <= conn.nWorkers; id++ {
+			go conn.loopSendOrBroadcastMessage(id)
 		}
 	}()
 	return nil
@@ -86,10 +86,10 @@ func (conn *GCMConnector) Check() error {
 
 // loopSendOrBroadcastMessage awaits in a loop for messages from router to be forwarded to GCM,
 // until the stop-channel is closed
-func (conn *GCMConnector) loopSendOrBroadcastMessage(i int) {
+func (conn *GCMConnector) loopSendOrBroadcastMessage(id int) {
 	defer conn.waitGroup.Done()
 	conn.waitGroup.Add(1)
-	protocol.Debug("starting GCM worker %v", i)
+	protocol.Debug("starting GCM worker %v", id)
 	for {
 		select {
 		case msg, opened := <-conn.channelFromRouter:
@@ -101,7 +101,7 @@ func (conn *GCMConnector) loopSendOrBroadcastMessage(i int) {
 				}
 			}
 		case <-conn.stopChan:
-			protocol.Debug("stopping GCM worker %v", i)
+			protocol.Debug("stopping GCM worker %v", id)
 			return
 		}
 	}

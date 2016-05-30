@@ -28,7 +28,7 @@ func Test_MessagePartition_forConcurrentWriteAndReads(t *testing.T) {
 	go messagePartitionWriter(a, store, n, writerDone)
 
 	readerDone := make(chan bool)
-	for i := 0; i < nReaders; i++ {
+	for i := 1; i <= nReaders; i++ {
 		go messagePartitionReader("reader" + strconv.Itoa(i), a, store, n, readerDone)
 	}
 
