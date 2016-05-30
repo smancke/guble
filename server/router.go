@@ -43,10 +43,7 @@ type router struct {
 }
 
 // NewRouter returns a pointer to Router
-func NewRouter(
-	accessManager auth.AccessManager,
-	messageStore store.MessageStore,
-	kvStore store.KVStore) Router {
+func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore) Router {
 	return &router{
 		routes:          make(map[protocol.Path][]Route),
 		messageIn:       make(chan *protocol.Message, 500),
@@ -122,16 +119,17 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 func (router *router) subscribe(r *Route) {
 	protocol.Info("subscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
 
-	routeList, present := router.routes[r.Path]
-	if !present {
-		routeList = []Route{}
-		router.routes[r.Path] = routeList
+	list, present := router.routes[r.Path]
+	if present {
+		// try to remove, to avoid double subscriptions of the same app
+		list = remove(list, r)
+	} else {
+		// Path not present yet. Initialize the slice
+		list = make([]Route, 0, 1)
+		router.routes[r.Path] = list
 	}
 
-	// try to remove, to avoid double subscriptions of the same app
-	routeList = remove(routeList, r)
-
-	router.routes[r.Path] = append(routeList, *r)
+	router.routes[r.Path] = append(list, *r)
 }
 
 func (router *router) Unsubscribe(r *Route) {
