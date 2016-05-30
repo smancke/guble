@@ -269,7 +269,7 @@ func TestGCMConnector_Stop(t *testing.T) {
 
 	err = gcm.Stop()
 	assert.Nil(err)
-	assert.Equal(len(gcm.stopChan), 0, "StopChan")
+	assert.Equal(len(gcm.stopC), 0, "StopChan")
 }
 
 func TestGcmConnector_StartWithMessageSending(t *testing.T) {
@@ -304,7 +304,7 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 			Body: []byte("{id:id}"),
 			Time: 1405544146,
 			Path: "/gcm/broadcast"}}
-	gcm.channelFromRouter <- broadcastMsgWithNoRecipients
+	gcm.routerC <- broadcastMsgWithNoRecipients
 	time.Sleep(time.Second)
 	// expect that the HTTP Dummy Server to not handle any requests
 
@@ -316,7 +316,7 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 			Time: 1405544146,
 			Path: "/gcm/marvin/gcm124/subscribe/stuff"},
 		Route: &server.Route{ApplicationID: "id"}}
-	gcm.channelFromRouter <- msgWithNoRecipients
+	gcm.routerC <- msgWithNoRecipients
 	// expect that the Http Server to give us a malformed message
 	<-done
 
@@ -425,7 +425,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 			Path:          "/path",
 			UserID:        "marvin"}}
 
-	gcm.channelFromRouter <- msg
+	gcm.routerC <- msg
 	// expect that the Http Server to give us a malformed message
 	<-done
 }
