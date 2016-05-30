@@ -63,13 +63,11 @@ func (conn *GCMConnector) Start() error {
 		// even if startup-time is longer, the routes are guaranteed to be there right after Start() returns
 		conn.loadSubscriptions()
 
-
 		protocol.Debug("number of GCM workers: %v", conn.workersNumber)
 		for i := 1; i <= conn.workersNumber; i++ {
 			protocol.Debug("starting GCM worker %v", i)
 			go conn.loopSendOrBroadcastMessage()
 		}
-		conn.waitGroup.Add(conn.workersNumber)
 	}()
 	return nil
 }
@@ -90,20 +88,21 @@ func (conn *GCMConnector) Check() error {
 // loopSendOrBroadcastMessage awaits in a loop for messages from router to be forwarded to GCM,
 // until the stop-channel is closed
 func (conn *GCMConnector) loopSendOrBroadcastMessage() {
+	defer conn.waitGroup.Done()
+	conn.waitGroup.Add(1)
 	for {
 		select {
-		case msg := <-conn.channelFromRouter:
-			if string(msg.Message.Path) == removeTrailingSlash(conn.prefix)+"/broadcast" {
-				go conn.broadcastMessage(msg)
-			} else {
-				go conn.sendMessage(msg)
+		case msg, opened := <-conn.channelFromRouter:
+			if opened {
+				if string(msg.Message.Path) == removeTrailingSlash(conn.prefix) + "/broadcast" {
+					go conn.broadcastMessage(msg)
+				} else {
+					go conn.sendMessage(msg)
+				}
 			}
-		case _, opened := <-conn.stopChan:
-			if !opened {
-				protocol.Debug("GCM worker stopping")
-				conn.waitGroup.Done()
-				return
-			}
+		case <-conn.stopChan:
+			protocol.Debug("stopping GCM worker")
+			return
 		}
 	}
 }
