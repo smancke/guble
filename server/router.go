@@ -4,6 +4,7 @@ import (
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/store"
+	"golang.org/x/net/context"
 	"runtime"
 	"strings"
 	"time"
@@ -29,12 +30,14 @@ type subRequest struct {
 
 type router struct {
 	// mapping the path to the route slice
-	routes          map[protocol.Path][]Route
-	messageIn       chan *protocol.Message
-	subscribeChan   chan subRequest
-	unsubscribeChan chan subRequest
-	stop            chan bool
-	stopping        bool
+	routes       map[protocol.Path][]Route
+	handleC      chan *protocol.Message
+	subscribeC   chan subRequest
+	unsubscribeC chan subRequest
+
+	// context to signal shutdown, used internally for now
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	// external services
 	accessManager auth.AccessManager
@@ -47,12 +50,18 @@ func NewRouter(
 	accessManager auth.AccessManager,
 	messageStore store.MessageStore,
 	kvStore store.KVStore) Router {
+
+	// TODO: in order to see if we going to use this wider
+	ctx, cancel := context.WithCancel(context.TODO())
+
 	return &router{
-		routes:          make(map[protocol.Path][]Route),
-		messageIn:       make(chan *protocol.Message, 500),
-		subscribeChan:   make(chan subRequest, 10),
-		unsubscribeChan: make(chan subRequest, 10),
-		stop:            make(chan bool, 1),
+		routes:       make(map[protocol.Path][]Route),
+		handleC:      make(chan *protocol.Message, 500),
+		subscribeC:   make(chan subRequest, 10),
+		unsubscribeC: make(chan subRequest, 10),
+
+		ctx:    ctx,
+		cancel: cancel,
 
 		accessManager: accessManager,
 		messageStore:  messageStore,
@@ -65,25 +74,31 @@ func (router *router) Start() error {
 		panic("AccessManager not set. Cannot start.")
 	}
 
+	stopping := false
 	go func() {
 		for {
+			if stopping && len(router.handleC) == 0 &&
+				len(router.unsubscribeC) == 0 &&
+				len(router.subscribeC) == 0 {
+				router.closeRoutes()
+				break
+			}
+
 			func() {
 				defer protocol.PanicLogger()
 
 				select {
-				case message := <-router.messageIn:
+				case message := <-router.handleC:
 					router.handleMessage(message)
 					runtime.Gosched()
-				case subscriber := <-router.subscribeChan:
+				case subscriber := <-router.subscribeC:
 					router.subscribe(subscriber.route)
 					subscriber.doneNotify <- true
-				case unsubscriber := <-router.unsubscribeChan:
+				case unsubscriber := <-router.unsubscribeC:
 					router.unsubscribe(unsubscriber.route)
 					unsubscriber.doneNotify <- true
-				case <-router.stop:
-					router.closeAllRoutes()
-					protocol.Debug("stopping message router")
-					break
+				case <-router.ctx.Done():
+					stopping = true
 				}
 			}()
 		}
@@ -94,7 +109,8 @@ func (router *router) Start() error {
 
 // Stop stops the router by closing the stop channel
 func (router *router) Stop() error {
-	close(router.stop)
+	protocol.Debug("stopping message router")
+	router.cancel()
 	return nil
 }
 
@@ -105,6 +121,10 @@ func (router *router) Check() error {
 // Subscribe adds a route to the subscribers.
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Subscribe(r *Route) (*Route, error) {
+	if router.ctx.Err() != nil {
+		return nil, &ServiceStoppingError{"Router"}
+	}
+
 	protocol.Debug("subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
 	accessAllowed := router.accessManager.IsAllowed(auth.READ, r.UserID, r.Path)
 	if !accessAllowed {
@@ -114,7 +134,7 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 		route:      r,
 		doneNotify: make(chan bool),
 	}
-	router.subscribeChan <- req
+	router.subscribeC <- req
 	<-req.doneNotify
 	return r, nil
 }
@@ -139,7 +159,7 @@ func (router *router) Unsubscribe(r *Route) {
 		route:      r,
 		doneNotify: make(chan bool),
 	}
-	router.unsubscribeChan <- req
+	router.unsubscribeC <- req
 	<-req.doneNotify
 }
 
@@ -157,6 +177,10 @@ func (router *router) unsubscribe(r *Route) {
 
 func (router *router) HandleMessage(message *protocol.Message) error {
 	protocol.Debug("Route.HandleMessage: %v %v", message.UserID, message.Path)
+	if router.ctx.Err() != nil {
+		return &ServiceStoppingError{"Router"}
+	}
+
 	if !router.accessManager.IsAllowed(auth.WRITE, message.UserID, message.Path) {
 		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
 	}
@@ -178,12 +202,12 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 		return err
 	}
 
-	if float32(len(router.messageIn))/float32(cap(router.messageIn)) > 0.9 {
-		protocol.Warn("router.messageIn channel very full: current=%v, max=%v\n", len(router.messageIn), cap(router.messageIn))
+	if float32(len(router.handleC))/float32(cap(router.handleC)) > 0.9 {
+		protocol.Warn("router.messageIn channel very full: current=%v, max=%v\n", len(router.handleC), cap(router.handleC))
 		time.Sleep(time.Millisecond)
 	}
 
-	router.messageIn <- msg
+	router.handleC <- msg
 	return nil
 }
 
@@ -192,9 +216,9 @@ func (router *router) handleMessage(message *protocol.Message) {
 		protocol.Info("routing message: %v", message.Metadata())
 	}
 
-	for currentRoutePath, currentRouteList := range router.routes {
-		if matchesTopic(message.Path, currentRoutePath) {
-			for _, route := range currentRouteList {
+	for path, list := range router.routes {
+		if matchesTopic(message.Path, path) {
+			for _, route := range list {
 				router.deliverMessage(route, message)
 			}
 		}
@@ -203,8 +227,9 @@ func (router *router) handleMessage(message *protocol.Message) {
 
 func (router *router) deliverMessage(route Route, message *protocol.Message) {
 	defer protocol.PanicLogger()
+
 	select {
-	case route.C <- MsgAndRoute{Message: message, Route: &route}:
+	case route.Channel() <- MsgAndRoute{Message: message, Route: &route}:
 	// fine, we could send the message
 	default:
 		protocol.Info("queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)
@@ -213,7 +238,7 @@ func (router *router) deliverMessage(route Route, message *protocol.Message) {
 	}
 }
 
-func (router *router) closeAllRoutes() {
+func (router *router) closeRoutes() {
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
 			close(route.C)
