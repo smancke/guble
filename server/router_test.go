@@ -35,11 +35,11 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 
 	// the routes are stored
 	a.Equal(2, len(router.routes[protocol.Path("/blah")]))
-	a.True(routeBlah1.equals(router.routes[protocol.Path("/blah")][0]))
-	a.True(routeBlah2.equals(router.routes[protocol.Path("/blah")][1]))
+	a.True(routeBlah1.equals(*router.routes[protocol.Path("/blah")][0]))
+	a.True(routeBlah2.equals(*router.routes[protocol.Path("/blah")][1]))
 
 	a.Equal(1, len(router.routes[protocol.Path("/foo")]))
-	a.True(routeFoo.equals(router.routes[protocol.Path("/foo")][0]))
+	a.True(routeFoo.equals(*router.routes[protocol.Path("/foo")][0]))
 
 	// when i remove routes
 	router.Unsubscribe(routeBlah1)
@@ -47,7 +47,7 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 
 	// then they are gone
 	a.Equal(1, len(router.routes[protocol.Path("/blah")]))
-	a.True(routeBlah2.equals(router.routes[protocol.Path("/blah")][0]))
+	a.True(routeBlah2.equals(*router.routes[protocol.Path("/blah")][0]))
 
 	a.Nil(router.routes[protocol.Path("/foo")])
 }

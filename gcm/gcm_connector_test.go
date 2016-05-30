@@ -43,7 +43,7 @@ var errorResponseMessageJSON = `
    "results":[
       {
          "message_id":"err",
-         "registration_id":"gmcCanonicalId",
+         "registration_id":"gcmCanonicalId",
          "error":"InvalidRegistration"
       }
    ]
@@ -360,13 +360,15 @@ func TestGCMConnector_BroadcastMessage(t *testing.T) {
 	gcm.broadcastMessage(broadcastMessage)
 	//wait for the message to be processed by http server
 	<-done
+	<-time.After(100 * time.Millisecond)
+	gcm.Stop()
 
 }
 
 func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-	//defer testutil.EnableDebugForMethod()()
+	// defer testutil.EnableDebugForMethod()()
 
 	assert := assert.New(t)
 	routerMock := NewMockRouter(ctrl)
@@ -386,7 +388,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
 		assert.Equal("/path", string(route.Path))
 		assert.Equal("marvin", route.UserID)
-		assert.Equal("gmcCanonicalId", route.ApplicationID)
+		assert.Equal("gcmCanonicalId", route.ApplicationID)
 	})
 
 	kvStore := store.NewMemoryKVStore()
@@ -410,4 +412,6 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	gcm.channelFromRouter <- msg
 	// expect that the Http Server to give us a malformed message
 	<-done
+	<-time.After(100 * time.Millisecond)
+	gcm.Stop()
 }
