@@ -16,17 +16,19 @@ import (
 	"os/signal"
 	"path"
 	"syscall"
+	"runtime"
 )
 
 type Args struct {
-	Listen      string `arg:"-l,help: [Host:]Port the address to listen on (:8080)" env:"GUBLE_LISTEN"`
-	LogInfo     bool   `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
-	LogDebug    bool   `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
-	StoragePath string `arg:"--storage-path,help: The path for storing messages and key value data if 'file' is enabled (/var/lib/guble)" env:"GUBLE_STORAGE_PATH"`
-	KVBackend   string `arg:"--kv-backend,help: The storage backend for the key value store to use: file|memory (file)" env:"GUBLE_KV_BACKEND"`
-	MSBackend   string `arg:"--ms-backend,help: The message storage backend : file|memory (file)" env:"GUBLE_MS_BACKEND"`
-	GcmEnable   bool   `arg:"--gcm-enable: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
-	GcmApiKey   string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
+	Listen           string `arg:"-l,help: [Host:]Port the address to listen on (:8080)" env:"GUBLE_LISTEN"`
+	LogInfo          bool   `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
+	LogDebug         bool   `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
+	StoragePath      string `arg:"--storage-path,help: The path for storing messages and key value data if 'file' is enabled (/var/lib/guble)" env:"GUBLE_STORAGE_PATH"`
+	KVBackend  string `arg:"--kv-backend,help: The storage backend for the key value store to use: file|memory (file)" env:"GUBLE_KV_BACKEND"`
+	MSBackend  string `arg:"--ms-backend,help: The message storage backend : file|memory (file)" env:"GUBLE_MS_BACKEND"`
+	GcmEnable  bool   `arg:"--gcm-enable: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
+	GcmApiKey  string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
+	GcmWorkers int `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging" env:"GUBLE_GCM_WORKERS"`
 }
 
 var ValidateStoragePath = func(args Args) error {
@@ -90,7 +92,7 @@ var CreateModules = func(router server.Router, args Args) []interface{} {
 		}
 
 		protocol.Info("google cloud messaging: enabled")
-		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey); err != nil {
+		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey, gcmWorkers(args.GcmWorkers)); err != nil {
 			protocol.Err("Error loading GCMConnector: ", err)
 		} else {
 			modules = append(modules, gcm)
@@ -100,6 +102,13 @@ var CreateModules = func(router server.Router, args Args) []interface{} {
 	}
 
 	return modules
+}
+
+func gcmWorkers(n int) int {
+	if n <= 0 {
+		return runtime.GOMAXPROCS(0);
+	}
+	return n;
 }
 
 func Main() {

@@ -12,8 +12,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	//"runtime"
-	"runtime"
 )
 
 // GCM_REGISTRATIONS_SCHEMA is the default sqlite schema for GCM
@@ -33,7 +31,7 @@ type GCMConnector struct {
 }
 
 // NewGCMConnector creates a new GCMConnector without starting it
-func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string) (*GCMConnector, error) {
+func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string, nWorkers int) (*GCMConnector, error) {
 
 	kvStore, err := router.KVStore()
 	if err != nil {
@@ -48,7 +46,7 @@ func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string) (*GC
 		channelFromRouter: make(chan server.MsgAndRoute, 1000),
 		stopChan:          make(chan bool, 1),
 		sender:            &gcm.Sender{ApiKey: gcmAPIKey},
-		nWorkers:          runtime.GOMAXPROCS(0),
+		nWorkers:          nWorkers,
 	}
 
 	return gcm, nil

@@ -101,7 +101,7 @@ func TestServeHTTPSuccess(t *testing.T) {
 		a.Equal("gcmId123", route.ApplicationID)
 	})
 
-	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi", 1)
 	a.Nil(err)
 
 	url, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe/notifications")
@@ -128,7 +128,7 @@ func TestServeHTTPWithErrorCases(t *testing.T) {
 	kvStore := store.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
 
-	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi", 1)
 	a.Nil(err)
 
 	url, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe/notifications")
@@ -177,7 +177,7 @@ func TestSaveAndLoadSubscriptions(t *testing.T) {
 		delete(testRoutes, fmt.Sprintf("%v:%v:%v", route.UserID, route.Path, route.ApplicationID))
 	}).AnyTimes()
 
-	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi", 1)
 	a.Nil(err)
 
 	// when: we save the routes
@@ -212,7 +212,7 @@ func TestGCMConnector_parseParams(t *testing.T) {
 	kvStore := store.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
 
-	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi", 1)
 	assert.Nil(err)
 
 	testCases := []struct {
@@ -250,7 +250,7 @@ func TestGCMConnector_GetPrefix(t *testing.T) {
 	kvStore := store.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
 
-	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi", 1)
 	assert.Nil(err)
 	assert.Equal(gcm.GetPrefix(), "/gcm/")
 }
@@ -264,7 +264,7 @@ func TestGCMConnector_Stop(t *testing.T) {
 	kvStore := store.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
 
-	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi", 1)
 	assert.Nil(err)
 
 	err = gcm.Stop()
@@ -287,7 +287,7 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	kvStore := store.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
 
-	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi", 1)
 	assert.Nil(err)
 
 	err = gcm.Start()
@@ -344,7 +344,7 @@ func TestGCMConnector_BroadcastMessage(t *testing.T) {
 		a.Equal("gcmId123", route.ApplicationID)
 	})
 
-	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi", 1)
 	a.Nil(err)
 
 	url, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe/notifications")
@@ -403,7 +403,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	kvStore := store.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
 
-	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi")
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi", 1)
 	assert.Nil(err)
 
 	err = gcm.Start()
