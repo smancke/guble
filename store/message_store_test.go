@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"testing"
@@ -86,4 +87,52 @@ func Test_MessageStore_Close(t *testing.T) {
 	a.NoError(store.Stop())
 
 	a.Equal(0, len(store.partitions))
+}
+
+func Test_MaxMessageId(t *testing.T) {
+	a := assert.New(t)
+	dir, _ := ioutil.TempDir("", "message_store_test")
+	//defer os.RemoveAll(dir)
+	expectedMaxId := 2
+
+	// when i store a message
+	store := NewFileMessageStore(dir)
+	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
+	a.NoError(store.Store("p1", uint64(expectedMaxId), []byte("bbbbbbbbbb")))
+
+	maxID, err := store.MaxMessageId("p1")
+	a.Nil(err, "No error should be received for partition p1")
+	a.Equal(maxID, uint64(expectedMaxId), fmt.Sprintf("MaxId should be [%d]", expectedMaxId))
+}
+
+func Test_MessagePartitionReturningError(t *testing.T) {
+	a := assert.New(t)
+
+	store := NewFileMessageStore("/TestDir")
+	_, err := store.partitionStore("p1")
+	a.NotNil(err)
+	fmt.Println(err)
+
+	store2 := NewFileMessageStore("/")
+	_, err2 := store2.partitionStore("p1")
+	fmt.Println(err2)
+}
+
+func Test_FetchWithError(t *testing.T) {
+	a := assert.New(t)
+	store := NewFileMessageStore("/TestDir")
+
+	chanCallBack := make(chan error, 1)
+	aFetchRequest := FetchRequest{Partition: "p1", StartId: 2, Count: 1, ErrorCallback: chanCallBack}
+	store.Fetch(aFetchRequest)
+	err := <-aFetchRequest.ErrorCallback
+	a.NotNil(err)
+}
+
+func Test_StoreWithError(t *testing.T) {
+	a := assert.New(t)
+	store := NewFileMessageStore("/TestDir")
+
+	err := store.Store("p1", uint64(1), []byte("124151qfas"))
+	a.NotNil(err)
 }
