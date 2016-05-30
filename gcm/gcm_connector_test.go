@@ -43,7 +43,7 @@ var errorResponseMessageJSON = `
    "results":[
       {
          "message_id":"err",
-         "registration_id":"gcmCanonicalId",
+         "registration_id":"gcmCanonicalID",
          "error":"InvalidRegistration"
       }
    ]
@@ -388,7 +388,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
 		assert.Equal("/path", string(route.Path))
 		assert.Equal("marvin", route.UserID)
-		assert.Equal("gcmCanonicalId", route.ApplicationID)
+		assert.Equal("gcmCanonicalID", route.ApplicationID)
 	})
 
 	kvStore := store.NewMemoryKVStore()
