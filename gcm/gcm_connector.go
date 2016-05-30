@@ -65,8 +65,7 @@ func (conn *GCMConnector) Start() error {
 
 		protocol.Debug("number of GCM workers: %v", conn.workersNumber)
 		for i := 1; i <= conn.workersNumber; i++ {
-			protocol.Debug("starting GCM worker %v", i)
-			go conn.loopSendOrBroadcastMessage()
+			go conn.loopSendOrBroadcastMessage(i)
 		}
 	}()
 	return nil
@@ -87,9 +86,10 @@ func (conn *GCMConnector) Check() error {
 
 // loopSendOrBroadcastMessage awaits in a loop for messages from router to be forwarded to GCM,
 // until the stop-channel is closed
-func (conn *GCMConnector) loopSendOrBroadcastMessage() {
+func (conn *GCMConnector) loopSendOrBroadcastMessage(i int) {
 	defer conn.waitGroup.Done()
 	conn.waitGroup.Add(1)
+	protocol.Debug("starting GCM worker %v", i)
 	for {
 		select {
 		case msg, opened := <-conn.channelFromRouter:
@@ -101,7 +101,7 @@ func (conn *GCMConnector) loopSendOrBroadcastMessage() {
 				}
 			}
 		case <-conn.stopChan:
-			protocol.Debug("stopping GCM worker")
+			protocol.Debug("stopping GCM worker %v", i)
 			return
 		}
 	}
