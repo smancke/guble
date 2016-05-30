@@ -28,11 +28,11 @@ type GCMConnector struct {
 	closeRouteByRouter chan server.Route
 	stopChan           chan bool
 	sender             *gcm.Sender
-	workersNumber      int
+	nWorkers           int
 	waitGroup          sync.WaitGroup
 }
 
-// NewGCMConnector creates a new gcmConnector without starting it
+// NewGCMConnector creates a new GCMConnector without starting it
 func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string) (*GCMConnector, error) {
 
 	kvStore, err := router.KVStore()
@@ -48,7 +48,7 @@ func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string) (*GC
 		channelFromRouter: make(chan server.MsgAndRoute, 1000),
 		stopChan:          make(chan bool, 1),
 		sender:            &gcm.Sender{ApiKey: gcmAPIKey},
-		workersNumber:     runtime.GOMAXPROCS(0),
+		nWorkers:          runtime.GOMAXPROCS(0),
 	}
 
 	return gcm, nil
@@ -63,8 +63,8 @@ func (conn *GCMConnector) Start() error {
 		// even if startup-time is longer, the routes are guaranteed to be there right after Start() returns
 		conn.loadSubscriptions()
 
-		protocol.Debug("number of GCM workers: %v", conn.workersNumber)
-		for i := 1; i <= conn.workersNumber; i++ {
+		protocol.Debug("number of GCM workers: %v", conn.nWorkers)
+		for i := 1; i <= conn.nWorkers; i++ {
 			go conn.loopSendOrBroadcastMessage(i)
 		}
 	}()
@@ -94,7 +94,7 @@ func (conn *GCMConnector) loopSendOrBroadcastMessage(i int) {
 		select {
 		case msg, opened := <-conn.channelFromRouter:
 			if opened {
-				if string(msg.Message.Path) == removeTrailingSlash(conn.prefix) + "/broadcast" {
+				if string(msg.Message.Path) == removeTrailingSlash(conn.prefix)+"/broadcast" {
 					go conn.broadcastMessage(msg)
 				} else {
 					go conn.sendMessage(msg)
