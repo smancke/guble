@@ -5,6 +5,7 @@ import (
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/rest"
+	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/server/websocket"
 	"github.com/smancke/guble/store"
 
@@ -126,7 +127,7 @@ func Main() {
 		os.Exit(1)
 	}
 
-	service := StartupService(args)
+	service := StartService(args)
 
 	waitForTermination(func() {
 		err := service.Stop()
@@ -136,14 +137,15 @@ func Main() {
 	})
 }
 
-func StartupService(args Args) *server.Service {
+func StartService(args Args) *server.Service {
 	accessManager := auth.NewAllowAllAccessManager(true)
 	messageStore := CreateMessageStore(args)
 	kvStore := CreateKVStore(args)
 
 	router := server.NewRouter(accessManager, messageStore, kvStore)
+	webserver := webserver.New(args.Listen)
 
-	service := server.NewService(args.Listen, router)
+	service := server.NewService(router, webserver)
 
 	for _, module := range CreateModules(router, args) {
 		service.Register(module)

@@ -29,7 +29,7 @@ type Endpoint interface {
 
 // Service is the main class for simple control of a server
 type Service struct {
-	webServer  *webserver.WebServer
+	webserver  *webserver.WebServer
 	router     Router
 	stopables  []Stopable
 	startables []Startable
@@ -40,19 +40,19 @@ type Service struct {
 }
 
 // NewService registers the Main Router, where other modules can subscribe for messages
-func NewService(addr string, router Router) *Service {
+func NewService(router Router, webserver *webserver.WebServer) *Service {
 	service := &Service{
 		stopables:            make([]Stopable, 0, 5),
-		webServer:            webserver.New(addr),
+		webserver:            webserver,
 		router:               router,
 		StopGracePeriod:      time.Second * 2,
 		healthCheckFrequency: time.Second * 60,
 		healthCheckThreshold: 1,
 	}
-	service.Register(service.webServer)
 	service.Register(service.router)
+	service.Register(service.webserver)
 
-	service.webServer.Handle("/health", http.HandlerFunc(health.StatusHandler))
+	service.webserver.Handle("/health", http.HandlerFunc(health.StatusHandler))
 
 	return service
 }
@@ -85,7 +85,7 @@ func (s *Service) Register(module interface{}) {
 	if endpoint, ok := module.(Endpoint); ok {
 		prefix := endpoint.GetPrefix()
 		protocol.Info("register %v as Endpoint to %v", name, prefix)
-		s.webServer.Handle(prefix, endpoint)
+		s.webserver.Handle(prefix, endpoint)
 	}
 }
 
@@ -137,5 +137,5 @@ func (s *Service) Stop() error {
 }
 
 func (s *Service) WebServer() *webserver.WebServer {
-	return s.webServer
+	return s.webserver
 }
