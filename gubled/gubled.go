@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"runtime"
 	"syscall"
 )
 
@@ -27,6 +28,7 @@ type Args struct {
 	MSBackend   string `arg:"--ms-backend,help: The message storage backend : file|memory (file)" env:"GUBLE_MS_BACKEND"`
 	GcmEnable   bool   `arg:"--gcm-enable: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
 	GcmApiKey   string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
+	GcmWorkers  int    `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default is GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
 }
 
 var ValidateStoragePath = func(args Args) error {
@@ -89,8 +91,10 @@ var CreateModules = func(router server.Router, args Args) []interface{} {
 			panic("gcm api key has to be provided, if gcm is enabled")
 		}
 
+		gcmWorkers := gcmWorkers(args.GcmWorkers)
 		protocol.Info("google cloud messaging: enabled")
-		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey); err != nil {
+		protocol.Debug("gcm: %v workers", gcmWorkers)
+		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey, gcmWorkers); err != nil {
 			protocol.Err("Error loading GCMConnector: ", err)
 		} else {
 			modules = append(modules, gcm)
@@ -167,6 +171,13 @@ func loadArgs() Args {
 	env.Parse(&args)
 	arg.MustParse(&args)
 	return args
+}
+
+func gcmWorkers(n int) int {
+	if n <= 0 {
+		return runtime.GOMAXPROCS(0)
+	}
+	return n
 }
 
 func waitForTermination(callback func()) {

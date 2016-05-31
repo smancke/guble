@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func Test_MessagePartition_foConcurrentWriteAndReads(t *testing.T) {
+func Test_MessagePartition_forConcurrentWriteAndReads(t *testing.T) {
 	//defer enableDebugForMethod()()
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "partition_store_test")
@@ -22,15 +22,15 @@ func Test_MessagePartition_foConcurrentWriteAndReads(t *testing.T) {
 	store, _ := NewMessagePartition(dir, "myMessages")
 
 	n := 1000 * 100
+	nReaders := 5
 
 	writerDone := make(chan bool)
-	readerDone := make(chan bool)
 	go messagePartitionWriter(a, store, n, writerDone)
-	go messagePartitionReader("reader1", a, store, n, readerDone)
-	go messagePartitionReader("reader2", a, store, n, readerDone)
-	go messagePartitionReader("reader3", a, store, n, readerDone)
-	go messagePartitionReader("reader4", a, store, n, readerDone)
-	go messagePartitionReader("reader5", a, store, n, readerDone)
+
+	readerDone := make(chan bool)
+	for i := 1; i <= nReaders; i++ {
+		go messagePartitionReader("reader" + strconv.Itoa(i), a, store, n, readerDone)
+	}
 
 	select {
 	case <-writerDone:
@@ -39,7 +39,7 @@ func Test_MessagePartition_foConcurrentWriteAndReads(t *testing.T) {
 	}
 
 	timeout := time.After(time.Second * 15)
-	for i := 0; i < 5; i++ {
+	for i := 0; i < nReaders; i++ {
 		select {
 		case <-readerDone:
 		case <-timeout:
