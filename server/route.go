@@ -33,7 +33,7 @@ func NewRoute(
 	}
 }
 
-func (r Route) equals(other Route) bool {
+func (r *Route) equals(other *Route) bool {
 	return r.Path == other.Path &&
 		r.UserID == other.UserID &&
 		r.ApplicationID == other.ApplicationID
