@@ -43,7 +43,7 @@ var errorResponseMessageJSON = `
    "results":[
       {
          "message_id":"err",
-         "registration_id":"gmcCanonicalId",
+         "registration_id":"gcmCanonicalID",
          "error":"InvalidRegistration"
       }
    ]
@@ -239,6 +239,8 @@ func TestGCMConnector_parseParams(t *testing.T) {
 			assert.Nil(err, fmt.Sprintf("Failed on testcase no=%d", i))
 		}
 	}
+	err = gcm.Stop()
+	assert.Nil(err)
 }
 
 func TestGCMConnector_GetPrefix(t *testing.T) {
@@ -326,10 +328,11 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	// expect that the Http Server to give us a malformed message
 	<-done
 
-	// wait and Stop the GcmConnector
-	time.Sleep(time.Second * 2)
-	err = gcm.Stop()
-	assert.Nil(err)
+	//wait a couple of seconds and  Stop the GcmConnector
+	time.AfterFunc(2*time.Second, func() {
+		err = gcm.Stop()
+		assert.Nil(err)
+	})
 }
 
 func TestGCMConnector_BroadcastMessage(t *testing.T) {
@@ -378,12 +381,16 @@ func TestGCMConnector_BroadcastMessage(t *testing.T) {
 	gcm.broadcastMessage(broadcastMessage)
 	// wait for the message to be processed by http server
 	<-done
+	time.AfterFunc(100*time.Millisecond, func() {
+		err := gcm.Stop()
+		a.Nil(err)
+	})
 }
 
 func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-	//defer testutil.EnableDebugForMethod()()
+	// defer testutil.EnableDebugForMethod()()
 
 	assert := assert.New(t)
 	routerMock := NewMockRouter(ctrl)
@@ -403,7 +410,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
 		assert.Equal("/path", string(route.Path))
 		assert.Equal("marvin", route.UserID)
-		assert.Equal("gmcCanonicalId", route.ApplicationID)
+		assert.Equal("gcmCanonicalID", route.ApplicationID)
 	})
 
 	kvStore := store.NewMemoryKVStore()
@@ -434,4 +441,8 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	gcm.routerC <- msg
 	// expect that the Http Server to give us a malformed message
 	<-done
+	time.AfterFunc(100*time.Millisecond, func() {
+		err = gcm.Stop()
+		assert.Nil(err)
+	})
 }

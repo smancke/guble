@@ -29,7 +29,7 @@ type subRequest struct {
 
 type router struct {
 	// mapping the path to the route slice
-	routes          map[protocol.Path][]Route
+	routes          map[protocol.Path][]*Route
 	messageIn       chan *protocol.Message
 	subscribeChan   chan subRequest
 	unsubscribeChan chan subRequest
@@ -42,12 +42,9 @@ type router struct {
 }
 
 // NewRouter returns a pointer to Router
-func NewRouter(
-	accessManager auth.AccessManager,
-	messageStore store.MessageStore,
-	kvStore store.KVStore) Router {
+func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore) Router {
 	return &router{
-		routes:          make(map[protocol.Path][]Route),
+		routes:          make(map[protocol.Path][]*Route),
 		messageIn:       make(chan *protocol.Message, 500),
 		subscribeChan:   make(chan subRequest, 10),
 		unsubscribeChan: make(chan subRequest, 10),
@@ -121,16 +118,17 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 func (router *router) subscribe(r *Route) {
 	protocol.Info("subscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
 
-	routeList, present := router.routes[r.Path]
-	if !present {
-		routeList = []Route{}
-		router.routes[r.Path] = routeList
+	list, present := router.routes[r.Path]
+	if present {
+		// try to remove, to avoid double subscriptions of the same app
+		list = remove(list, r)
+	} else {
+		// Path not present yet. Initialize the slice
+		list = make([]*Route, 0, 1)
+		router.routes[r.Path] = list
 	}
 
-	// try to remove, to avoid double subscriptions of the same app
-	routeList = remove(routeList, r)
-
-	router.routes[r.Path] = append(routeList, *r)
+	router.routes[r.Path] = append(list, r)
 }
 
 func (router *router) Unsubscribe(r *Route) {
@@ -200,15 +198,15 @@ func (router *router) handleMessage(message *protocol.Message) {
 	}
 }
 
-func (router *router) deliverMessage(route Route, message *protocol.Message) {
+func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 	defer protocol.PanicLogger()
 	select {
-	case route.C <- MsgAndRoute{Message: message, Route: &route}:
+	case route.C <- MsgAndRoute{Message: message, Route: route}:
 	// fine, we could send the message
 	default:
 		protocol.Info("queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)
 		close(route.C)
-		router.unsubscribe(&route)
+		router.unsubscribe(route)
 	}
 }
 
@@ -216,7 +214,7 @@ func (router *router) closeAllRoutes() {
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
 			close(route.C)
-			router.unsubscribe(&route)
+			router.unsubscribe(route)
 		}
 	}
 }
@@ -238,7 +236,7 @@ func matchesTopic(messagePath, routePath protocol.Path) bool {
 
 // remove a route from the supplied list,
 // based on same ApplicationID id and same path
-func remove(slice []Route, route *Route) []Route {
+func remove(slice []*Route, route *Route) []*Route {
 	position := -1
 	for p, r := range slice {
 		if r.ApplicationID == route.ApplicationID && r.Path == route.Path {
