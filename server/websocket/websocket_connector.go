@@ -119,9 +119,11 @@ func (ws *WebSocket) sendLoop() {
 			if ws.checkAccess(raw) {
 				if protocol.DebugEnabled() {
 					if len(raw) < 80 {
-						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v", ws.userID, ws.applicationID, len(raw), string(raw))
+						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v",
+							ws.userID, ws.applicationID, len(raw), string(raw))
 					} else {
-						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v...", ws.userID, ws.applicationID, len(raw), string(raw[0:79]))
+						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v...",
+							ws.userID, ws.applicationID, len(raw), string(raw[0:79]))
 					}
 				}
 
@@ -208,7 +210,7 @@ func (ws *WebSocket) handleReceiveCmd(cmd *protocol.Cmd) {
 
 func (ws *WebSocket) handleCancelCmd(cmd *protocol.Cmd) {
 	if len(cmd.Arg) == 0 {
-		ws.sendError(protocol.ERROR_BAD_REQUEST, "- command requires a path argument, but non given")
+		ws.sendError(protocol.ERROR_BAD_REQUEST, "- command requires a path argument, but none given")
 		return
 	}
 	path := protocol.Path(cmd.Arg)
@@ -222,7 +224,7 @@ func (ws *WebSocket) handleCancelCmd(cmd *protocol.Cmd) {
 func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
 	protocol.Debug("sending %v", string(cmd.Bytes()))
 	if len(cmd.Arg) == 0 {
-		ws.sendError(protocol.ERROR_BAD_REQUEST, "send command requires a path argument, but non given")
+		ws.sendError(protocol.ERROR_BAD_REQUEST, "send command requires a path argument, but none given")
 		return
 	}
 
