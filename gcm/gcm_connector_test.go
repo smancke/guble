@@ -116,6 +116,42 @@ func TestServeHTTPSuccess(t *testing.T) {
 	a.Equal("registered: /notifications\n", string(w.Body.Bytes()))
 }
 
+func TestGCMConnector_Check(t *testing.T) {
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	testutil.EnableDebugForMethod()
+
+	assert := assert.New(t)
+	routerMock := NewMockRouter(ctrl)
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
+		assert.Equal("/gcm/broadcast", string(route.Path))
+		assert.Equal("gcm_connector", route.UserID)
+		assert.Equal("gcm_connector", route.ApplicationID)
+	})
+
+	kvStore := store.NewMemoryKVStore()
+	routerMock.EXPECT().KVStore().Return(kvStore, nil)
+
+	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi", 1)
+	assert.Nil(err)
+
+	err = gcm.Start()
+	assert.Nil(err)
+
+	done := make(chan bool, 1)
+	mockSender := createSender(composeHTTPResponse(http.StatusOK, correctGcmResponseMessageJSON, done))
+	gcm.sender = mockSender
+	err = gcm.Check()
+	fmt.Println(err)
+
+	done2 := make(chan bool, 1)
+	mockSender2 := createSender(composeHTTPResponse(http.StatusUnauthorized, "", done2))
+	gcm.sender = mockSender2
+	err = gcm.Check()
+	fmt.Println(err)
+
+}
+
 func TestServeHTTPWithErrorCases(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
