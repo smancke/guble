@@ -29,11 +29,11 @@ type subRequest struct {
 
 type router struct {
 	// mapping the path to the route slice
-	routes          map[protocol.Path][]*Route
-	messageIn       chan *protocol.Message
-	subscribeChan   chan subRequest
-	unsubscribeChan chan subRequest
-	stop            chan bool
+	routes       map[protocol.Path][]*Route
+	handleC      chan *protocol.Message
+	subscribeC   chan subRequest
+	unsubscribeC chan subRequest
+	stop         chan bool
 
 	// external services
 	accessManager auth.AccessManager
@@ -44,11 +44,11 @@ type router struct {
 // NewRouter returns a pointer to Router
 func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore) Router {
 	return &router{
-		routes:          make(map[protocol.Path][]*Route),
-		messageIn:       make(chan *protocol.Message, 500),
-		subscribeChan:   make(chan subRequest, 10),
-		unsubscribeChan: make(chan subRequest, 10),
-		stop:            make(chan bool, 1),
+		routes:       make(map[protocol.Path][]*Route),
+		handleC:      make(chan *protocol.Message, 500),
+		subscribeC:   make(chan subRequest, 10),
+		unsubscribeC: make(chan subRequest, 10),
+		stop:         make(chan bool, 1),
 
 		accessManager: accessManager,
 		messageStore:  messageStore,
@@ -67,13 +67,13 @@ func (router *router) Start() error {
 				defer protocol.PanicLogger()
 
 				select {
-				case message := <-router.messageIn:
+				case message := <-router.handleC:
 					router.handleMessage(message)
 					runtime.Gosched()
-				case subscriber := <-router.subscribeChan:
+				case subscriber := <-router.subscribeC:
 					router.subscribe(subscriber.route)
 					subscriber.doneNotify <- true
-				case unsubscriber := <-router.unsubscribeChan:
+				case unsubscriber := <-router.unsubscribeC:
 					router.unsubscribe(unsubscriber.route)
 					unsubscriber.doneNotify <- true
 				case <-router.stop:
@@ -110,7 +110,7 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 		route:      r,
 		doneNotify: make(chan bool),
 	}
-	router.subscribeChan <- req
+	router.subscribeC <- req
 	<-req.doneNotify
 	return r, nil
 }
@@ -136,7 +136,7 @@ func (router *router) Unsubscribe(r *Route) {
 		route:      r,
 		doneNotify: make(chan bool),
 	}
-	router.unsubscribeChan <- req
+	router.unsubscribeC <- req
 	<-req.doneNotify
 }
 
@@ -175,12 +175,12 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 		return err
 	}
 
-	if float32(len(router.messageIn))/float32(cap(router.messageIn)) > 0.9 {
-		protocol.Warn("router.messageIn channel very full: current=%v, max=%v\n", len(router.messageIn), cap(router.messageIn))
+	if float32(len(router.handleC))/float32(cap(router.handleC)) > 0.9 {
+		protocol.Warn("router.messageIn channel very full: current=%v, max=%v\n", len(router.handleC), cap(router.handleC))
 		time.Sleep(time.Millisecond)
 	}
 
-	router.messageIn <- msg
+	router.handleC <- msg
 	return nil
 }
 

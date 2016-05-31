@@ -280,7 +280,7 @@ func Test_Router_storeInTxAndHandle(t *testing.T) {
 
 	receive := make(chan *protocol.Message)
 	go func() {
-		msg := <-router.messageIn
+		msg := <-router.handleC
 
 		a.Equal(uint64(42), msg.ID)
 		t := time.Unix(msg.Time, 0) // publishing time
