@@ -366,7 +366,6 @@ func TestGCMConnector_BroadcastMessage(t *testing.T) {
 func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-	//defer testutil.EnableDebugForMethod()()
 
 	assert := assert.New(t)
 	routerMock := NewMockRouter(ctrl)

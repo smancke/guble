@@ -105,6 +105,14 @@ func Test_MaxMessageId(t *testing.T) {
 	a.Equal(maxID, uint64(expectedMaxId), fmt.Sprintf("MaxId should be [%d]", expectedMaxId))
 }
 
+func Test_MaxMessageIdError(t *testing.T) {
+	a := assert.New(t)
+	store := NewFileMessageStore("/TestDir")
+
+	_, err := store.MaxMessageId("p2")
+	a.NotNil(err)
+}
+
 func Test_MessagePartitionReturningError(t *testing.T) {
 	a := assert.New(t)
 
@@ -134,5 +142,46 @@ func Test_StoreWithError(t *testing.T) {
 	store := NewFileMessageStore("/TestDir")
 
 	err := store.Store("p1", uint64(1), []byte("124151qfas"))
+	a.NotNil(err)
+}
+
+func Test_DoInTx(t *testing.T) {
+	a := assert.New(t)
+	dir, _ := ioutil.TempDir("", "message_store_test")
+	store := NewFileMessageStore(dir)
+	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
+
+	err := store.DoInTx("p1", func(maxId uint64) error {
+		return nil
+	})
+	a.Nil(err)
+}
+
+func Test_DoInTxError(t *testing.T) {
+	a := assert.New(t)
+	store := NewFileMessageStore("/TestDir")
+
+	err := store.DoInTx("p2", nil)
+	a.NotNil(err)
+}
+
+func Test_StoreTx(t *testing.T) {
+	a := assert.New(t)
+
+	dir, _ := ioutil.TempDir("", "message_store_test")
+	store := NewFileMessageStore(dir)
+	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
+
+	actualStored := store.StoreTx("p1", func(maxId uint64) []byte {
+		return nil
+	})
+	a.Nil(actualStored)
+}
+
+func Test_StoreTxError(t *testing.T) {
+	a := assert.New(t)
+	store := NewFileMessageStore("/TestDir")
+
+	err := store.StoreTx("p2", nil)
 	a.NotNil(err)
 }
