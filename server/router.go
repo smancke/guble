@@ -34,7 +34,6 @@ type router struct {
 	subscribeChan   chan subRequest
 	unsubscribeChan chan subRequest
 	stop            chan bool
-	stopping        bool
 
 	// external services
 	accessManager auth.AccessManager
