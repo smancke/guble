@@ -269,7 +269,13 @@ func TestGCMConnector_Stop(t *testing.T) {
 
 	err = gcm.Stop()
 	assert.Nil(err)
-	assert.Equal(len(gcm.stopC), 0, "StopChan")
+	assert.Equal(len(gcm.stopC), 0, "The Stop Channel should be empty")
+	select {
+	case _, opened := <-gcm.stopC:
+		assert.False(opened, "The Stop Channel should be closed")
+	default:
+		assert.Fail("Reading from the Stop Channel should not block")
+	}
 }
 
 func TestGcmConnector_StartWithMessageSending(t *testing.T) {
