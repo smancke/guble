@@ -124,8 +124,8 @@ func (rec *Receiver) subscriptionLoop() {
 
 		if !rec.shouldStop {
 			//fmt.Printf(" router closed .. on msg: %v\n", rec.lastSendId)
-			// the router kicked us out, because we are to slow for realtime listening,
-			// so we setup parameters for fetching and cloging the gap. Than we can subscribe again.
+			// the router kicked us out, because we are too slow for realtime listening,
+			// so we setup parameters for fetching and closing the gap. Than we can subscribe again.
 			rec.startId = int64(rec.lastSendId + 1)
 			rec.doFetch = true
 		}
