@@ -1,7 +1,6 @@
 package gcm
 
 import (
-	"github.com/alexjlockwood/gcm"
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
@@ -10,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -18,70 +16,6 @@ import (
 	"testing"
 	"time"
 )
-
-var correctGcmResponseMessageJSON = `
-{
-   "multicast_id":3,
-   "succes":1,
-   "failure":0,
-   "canonicals_ids":5,
-   "results":[
-      {
-         "message_id":"da",
-         "registration_id":"rId",
-         "error":""
-      }
-   ]
-}`
-
-var errorResponseMessageJSON = `
-{
-   "multicast_id":3,
-   "succes":0,
-   "failure":1,
-   "canonicals_ids":5,
-   "results":[
-      {
-         "message_id":"err",
-         "registration_id":"gcmCanonicalID",
-         "error":"InvalidRegistration"
-      }
-   ]
-}`
-
-// mock a https round tripper in order to not send the test request to GCM.
-type RoundTripperFunc func(req *http.Request) *http.Response
-
-func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	protocol.Debug("Served request for %v", req.URL.Path)
-	return rt(req), nil
-}
-
-func createSender(rt RoundTripperFunc) *gcm.Sender {
-	httpClient := &http.Client{Transport: rt}
-	return &gcm.Sender{ApiKey: "124", Http: httpClient}
-}
-
-func composeHTTPResponse(httpStatusCode int, messageBodyAsJSON string, doneCh chan bool) RoundTripperFunc {
-	return RoundTripperFunc(func(req *http.Request) *http.Response {
-		// signal the end of processing
-		defer func() {
-			close(doneCh)
-		}()
-
-		resp := &http.Response{
-			Proto:      "HTTP/1.1",
-			ProtoMajor: 1,
-			ProtoMinor: 1,
-			Header:     make(http.Header),
-			Body:       ioutil.NopCloser(strings.NewReader(messageBodyAsJSON)),
-			Request:    req,
-			StatusCode: httpStatusCode,
-		}
-		resp.Header.Add("Content-Type", "application/json")
-		return resp
-	})
-}
 
 func TestServeHTTPSuccess(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
@@ -192,7 +126,7 @@ func TestSaveAndLoadSubscriptions(t *testing.T) {
 	// and reload the routes
 	gcm.loadSubscriptions()
 
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(50 * time.Millisecond)
 
 	// then: all expected subscriptions were called
 	a.Equal(0, len(testRoutes))
@@ -302,8 +236,9 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	a.Nil(err)
 
 	done := make(chan bool, 1)
-	mockSender := createSender(composeHTTPResponse(http.StatusOK, correctGcmResponseMessageJSON, done))
-	gcm.sender = mockSender
+	mockSender := testutil.CreateGcmSender(
+		testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.CorrectGcmResponseMessageJSON, done))
+	gcm.Sender = mockSender
 
 	// put a broadcast message with no recipients and expect to be dropped by
 	broadcastMsgWithNoRecipients := server.MsgAndRoute{
@@ -313,7 +248,7 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 			Time: 1405544146,
 			Path: "/gcm/broadcast"}}
 	gcm.routerC <- broadcastMsgWithNoRecipients
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	// expect that the HTTP Dummy Server to not handle any requests
 
 	// put a dummy gcm message with minimum information
@@ -329,7 +264,7 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	<-done
 
 	//wait and stop the GcmConnector
-	time.AfterFunc(time.Second, func() {
+	time.AfterFunc(50*time.Millisecond, func() {
 		err = gcm.Stop()
 		a.Nil(err)
 	})
@@ -368,8 +303,9 @@ func TestGCMConnector_BroadcastMessage(t *testing.T) {
 	a.Equal("registered: /notifications\n", string(w.Body.Bytes()))
 
 	done := make(chan bool, 1)
-	mockSender := createSender(composeHTTPResponse(http.StatusOK, correctGcmResponseMessageJSON, done))
-	gcm.sender = mockSender
+	mockSender := testutil.CreateGcmSender(
+		testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.CorrectGcmResponseMessageJSON, done))
+	gcm.Sender = mockSender
 
 	// put a broadcast message with no recipients and expect to be dropped by
 	broadcastMessage := server.MsgAndRoute{
@@ -381,7 +317,7 @@ func TestGCMConnector_BroadcastMessage(t *testing.T) {
 	gcm.broadcastMessage(broadcastMessage)
 	// wait for the message to be processed by http server
 	<-done
-	time.AfterFunc(100*time.Millisecond, func() {
+	time.AfterFunc(50*time.Millisecond, func() {
 		err := gcm.Stop()
 		a.Nil(err)
 	})
@@ -423,8 +359,9 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	a.Nil(err)
 
 	done := make(chan bool, 1)
-	mockSender := createSender(composeHTTPResponse(http.StatusOK, errorResponseMessageJSON, done))
-	gcm.sender = mockSender
+	mockSender := testutil.CreateGcmSender(
+		testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.ErrorResponseMessageJSON, done))
+	gcm.Sender = mockSender
 
 	// put a dummy gcm message with minimum information
 	msg := server.MsgAndRoute{
@@ -439,9 +376,9 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 			UserID:        "marvin"}}
 
 	gcm.routerC <- msg
-	// expect that the Http Server to give us a malformed message
+	// expect that the Http Server gives us a malformed message
 	<-done
-	time.AfterFunc(100*time.Millisecond, func() {
+	time.AfterFunc(50*time.Millisecond, func() {
 		err = gcm.Stop()
 		a.Nil(err)
 	})

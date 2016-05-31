@@ -18,7 +18,11 @@ func Benchmark_E2E_Fetch_HelloWorld_Messages(b *testing.B) {
 	dir, _ := ioutil.TempDir("", "guble_benchmark_test")
 	defer os.RemoveAll(dir)
 
-	service := StartupService(Args{Listen: "localhost:0", KVBackend: "memory", MSBackend: "file", StoragePath: dir})
+	service := StartService(Args{
+		Listen:      "localhost:0",
+		KVBackend:   "memory",
+		MSBackend:   "file",
+		StoragePath: dir})
 	defer service.Stop()
 
 	time.Sleep(time.Millisecond * 10)

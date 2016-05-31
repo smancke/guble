@@ -139,3 +139,7 @@ func (s *Service) Stop() error {
 func (s *Service) WebServer() *webserver.WebServer {
 	return s.webServer
 }
+
+func (s *Service) Router() *Router {
+	return &s.router
+}
