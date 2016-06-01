@@ -33,7 +33,12 @@ type router struct {
 	handleC      chan *protocol.Message
 	subscribeC   chan subRequest
 	unsubscribeC chan subRequest
-	stop         chan bool
+
+	// Channel that signals stop of the router
+	stop chan bool
+	// marks that the router is in stopping process
+	// no incomming messages are acceepted
+	stopping bool
 
 	// external services
 	accessManager auth.AccessManager
@@ -48,7 +53,8 @@ func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore
 		handleC:      make(chan *protocol.Message, 500),
 		subscribeC:   make(chan subRequest, 10),
 		unsubscribeC: make(chan subRequest, 10),
-		stop:         make(chan bool, 1),
+
+		stop: make(chan bool, 1),
 
 		accessManager: accessManager,
 		messageStore:  messageStore,
@@ -63,6 +69,11 @@ func (router *router) Start() error {
 
 	go func() {
 		for {
+			if router.stopping && router.channelsEmpty() {
+				router.closeRoutes()
+				return
+			}
+
 			func() {
 				defer protocol.PanicLogger()
 
@@ -77,9 +88,8 @@ func (router *router) Start() error {
 					router.unsubscribe(unsubscriber.route)
 					unsubscriber.doneNotify <- true
 				case <-router.stop:
-					router.closeAllRoutes()
+					router.stopping = true
 					protocol.Debug("stopping message router")
-					break
 				}
 			}()
 		}
@@ -88,9 +98,14 @@ func (router *router) Start() error {
 	return nil
 }
 
+func (router *router) channelsEmpty() bool {
+	return len(router.handleC) == 0 && len(router.subscribeC) == 0 &&
+		len(router.unsubscribeC) == 0
+}
+
 // Stop stops the router by closing the stop channel
 func (router *router) Stop() error {
-	close(router.stop)
+	router.stop <- true
 	return nil
 }
 
@@ -102,6 +117,11 @@ func (router *router) Check() error {
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Subscribe(r *Route) (*Route, error) {
 	protocol.Debug("subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
+
+	if err := router.isStopping(); err != nil {
+		return nil, err
+	}
+
 	accessAllowed := router.accessManager.IsAllowed(auth.READ, r.UserID, r.Path)
 	if !accessAllowed {
 		return r, &PermissionDeniedError{r.UserID, auth.READ, r.Path}
@@ -142,11 +162,12 @@ func (router *router) Unsubscribe(r *Route) {
 
 func (router *router) unsubscribe(r *Route) {
 	protocol.Info("unsubscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
-	routeList, present := router.routes[r.Path]
+
+	list, present := router.routes[r.Path]
 	if !present {
 		return
 	}
-	router.routes[r.Path] = remove(routeList, r)
+	router.routes[r.Path] = remove(list, r)
 	if len(router.routes[r.Path]) == 0 {
 		delete(router.routes, r.Path)
 	}
@@ -154,11 +175,23 @@ func (router *router) unsubscribe(r *Route) {
 
 func (router *router) HandleMessage(message *protocol.Message) error {
 	protocol.Debug("Route.HandleMessage: %v %v", message.UserID, message.Path)
+
+	if err := router.isStopping(); err != nil {
+		return err
+	}
+
 	if !router.accessManager.IsAllowed(auth.WRITE, message.UserID, message.Path) {
 		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
 	}
 
 	return router.storeMessage(message)
+}
+
+func (router *router) isStopping() error {
+	if router.stopping {
+		return &ModuleStoppingError{"Router"}
+	}
+	return nil
 }
 
 // Assign the new message id and store it and handle by passing the stored message
@@ -205,15 +238,15 @@ func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 	// fine, we could send the message
 	default:
 		protocol.Info("queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)
-		close(route.C)
+		route.Close()
 		router.unsubscribe(route)
 	}
 }
 
-func (router *router) closeAllRoutes() {
+func (router *router) closeRoutes() {
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
-			close(route.C)
+			route.Close()
 			router.unsubscribe(route)
 		}
 	}

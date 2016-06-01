@@ -14,7 +14,7 @@ import (
 var aTestByteMessage = []byte("Hello World!")
 var chanSize = 10
 
-func TestAddAndRemoveRoutes(t *testing.T) {
+func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 	a := assert.New(t)
 
 	accessManager := auth.NewAllowAllAccessManager(true)
@@ -52,7 +52,7 @@ func TestAddAndRemoveRoutes(t *testing.T) {
 	a.Nil(router.routes[protocol.Path("/foo")])
 }
 
-func Test_SubscribeNotAllowed(t *testing.T) {
+func TestRouter_SubscribeNotAllowed(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	a := assert.New(t)
@@ -78,7 +78,7 @@ func Test_SubscribeNotAllowed(t *testing.T) {
 	a.Nil(e)
 }
 
-func Test_HandleMessageNotAllowed(t *testing.T) {
+func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	a := assert.New(t)
@@ -87,7 +87,7 @@ func Test_HandleMessageNotAllowed(t *testing.T) {
 	msMock := NewMockMessageStore(ctrl)
 
 	// Given a Multiplexer with route
-	router, r := aRouterRoute()
+	router, r := aRouterRoute(chanSize)
 	router.accessManager = tam
 	router.messageStore = msMock
 
@@ -118,7 +118,7 @@ func Test_HandleMessageNotAllowed(t *testing.T) {
 	a.Nil(e)
 }
 
-func TestReplacingOfRoutes(t *testing.T) {
+func TestRouter_ReplacingOfRoutes(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a router with a route
@@ -136,13 +136,13 @@ func TestReplacingOfRoutes(t *testing.T) {
 	a.Equal("newUserId", router.routes["/blah"][0].UserID)
 }
 
-func TestSimpleMessageSending(t *testing.T) {
+func TestRouter_SimpleMessageSending(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	a := assert.New(t)
 
 	// Given a Multiplexer with route
-	router, r := aRouterRoute()
+	router, r := aRouterRoute(chanSize)
 
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
@@ -155,7 +155,7 @@ func TestSimpleMessageSending(t *testing.T) {
 	assertChannelContainsMessage(a, r.C, aTestByteMessage)
 }
 
-func TestRoutingWithSubTopics(t *testing.T) {
+func TestRouter_RoutingWithSubTopics(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	a := assert.New(t)
@@ -204,13 +204,13 @@ func TestMatchesTopic(t *testing.T) {
 	}
 }
 
-func TestRouteIsRemovedIfChannelIsFull(t *testing.T) {
+func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	a := assert.New(t)
 
 	// Given a Multiplexer with route
-	router, r := aRouterRoute()
+	router, r := aRouterRoute(chanSize)
 
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
@@ -257,7 +257,7 @@ func TestRouteIsRemovedIfChannelIsFull(t *testing.T) {
 	}
 }
 
-func Test_Router_storeInTxAndHandle(t *testing.T) {
+func TestRouter_storeInTxAndHandle(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	a := assert.New(t)
@@ -295,7 +295,74 @@ func Test_Router_storeInTxAndHandle(t *testing.T) {
 	a.Equal(routedMsg.Bytes(), storedMsg)
 }
 
-func aRouterRoute() (*router, *Route) {
+// Router should handle the buffered messages and after that close the route
+func TestRouter_CleanShutdown(t *testing.T) {
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	// testutil.EnableDebugForMethod()
+
+	assert := assert.New(t)
+
+	var ID uint64
+
+	msMock := NewMockMessageStore(ctrl)
+	msMock.EXPECT().StoreTx("blah", gomock.Any()).
+		Return(nil).
+		Do(func(partition string, callback func(msgID uint64) []byte) error {
+			ID++
+			callback(ID)
+			return nil
+		}).
+		AnyTimes()
+
+	router := NewRouter(auth.NewAllowAllAccessManager(true), msMock, nil).(*router)
+	router.Start()
+
+	_, err := router.Subscribe(NewRoute("/blah", make(chan MsgAndRoute, 3), "appid01", "user01"))
+	assert.Nil(err)
+
+	// Send messages in the router until error
+	done := make(chan bool)
+	go func() {
+		i := 0
+
+		for {
+			i++
+			err := router.HandleMessage(&protocol.Message{
+				Path: protocol.Path("/blah"),
+				Body: aTestByteMessage,
+			})
+
+			if err != nil {
+				mse, ok := err.(*ModuleStoppingError)
+				assert.True(ok)
+				assert.Equal("Router", mse.Name)
+				return
+			}
+
+			// if done has been closed and no error then we must fail the test
+			select {
+			case _, ok := <-done:
+				if !ok {
+					assert.Fail("Expected error from router handle message")
+				}
+			default:
+			}
+		}
+	}()
+
+	err = router.Stop()
+	assert.Nil(err)
+
+	time.AfterFunc(20*time.Millisecond, func() {
+		close(done)
+	})
+
+	// wait above goroutine to finish
+	<-time.After(50 * time.Millisecond)
+}
+
+func aRouterRoute(chSize int) (*router, *Route) {
 	router := NewRouter(auth.NewAllowAllAccessManager(true), nil, nil).(*router)
 	router.Start()
 	route, _ := router.Subscribe(

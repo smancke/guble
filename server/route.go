@@ -20,11 +20,7 @@ type Route struct {
 }
 
 // NewRoute creates a new route pointer
-func NewRoute(
-	path string,
-	channel chan MsgAndRoute,
-	applicationID string,
-	userID string) *Route {
+func NewRoute(path string, channel chan MsgAndRoute, applicationID string, userID string) *Route {
 	return &Route{
 		Path:          protocol.Path(path),
 		C:             channel,
@@ -37,4 +33,9 @@ func (r *Route) equals(other *Route) bool {
 	return r.Path == other.Path &&
 		r.UserID == other.UserID &&
 		r.ApplicationID == other.ApplicationID
+}
+
+// Close closes the route channel
+func (r *Route) Close() {
+	close(r.C)
 }
