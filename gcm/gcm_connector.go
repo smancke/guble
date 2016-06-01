@@ -118,7 +118,7 @@ func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
 
 	var messageToGcm = gcm.NewMessage(payload, gcmID)
 	protocol.Debug("gcm: sending message to %v", gcmID)
-	protocol.Debug("gcm: channel len: %v", len(conn.routerC))
+	protocol.Debug("gcm: channel length: %v", len(conn.routerC))
 
 	result, err := conn.Sender.Send(messageToGcm, sendRetries)
 	if err != nil {
@@ -144,7 +144,7 @@ func (conn *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 	topic := msg.Message.Path
 	payload := conn.parseMessageToMap(msg.Message)
 	protocol.Debug("gcm: broadcasting message with topic %v", string(topic))
-	protocol.Debug("gcm: channel len: %v", len(conn.routerC))
+	protocol.Debug("gcm: channel length: %v", len(conn.routerC))
 
 	subscriptions := conn.kvStore.Iterate(registrationsSchema, "")
 	count := 0

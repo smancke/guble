@@ -264,9 +264,9 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	<-done
 
 	//wait a little to Stop the GcmConnector
-	time.Sleep(250 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	err = gcm.Stop()
-	assert.Nil(err)
+	a.NoError(err)
 }
 
 func TestGCMConnector_BroadcastMessage(t *testing.T) {
@@ -275,7 +275,6 @@ func TestGCMConnector_BroadcastMessage(t *testing.T) {
 
 	a := assert.New(t)
 
-	// given:  a rest api with a message sink
 	routerMock := NewMockRouter(ctrl)
 
 	kvStore := store.NewMemoryKVStore()
@@ -317,7 +316,7 @@ func TestGCMConnector_BroadcastMessage(t *testing.T) {
 	// wait for the message to be processed by http server
 	<-done
 	//wait before closing the gcm connector
-	time.Sleep(250 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	err = gcm.Stop()
 	a.Nil(err)
 }
@@ -378,7 +377,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	// expect that the Http Server gives us a malformed message
 	<-done
 	//wait before closing the gcm connector
-	time.Sleep(250 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	err = gcm.Stop()
-	assert.Nil(err)
+	a.NoError(err)
 }
