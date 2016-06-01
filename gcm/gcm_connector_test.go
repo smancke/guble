@@ -73,14 +73,14 @@ func TestGCMConnector_Check(t *testing.T) {
 	assert.Nil(err)
 
 	done := make(chan bool, 1)
-	mockSender := createSender(composeHTTPResponse(http.StatusOK, correctGcmResponseMessageJSON, done))
-	gcm.sender = mockSender
+	mockSender := testutil.CreateGcmSender(testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.CorrectGcmResponseMessageJSON, done))
+	gcm.Sender = mockSender
 	err = gcm.Check()
 	fmt.Println(err)
 
 	done2 := make(chan bool, 1)
-	mockSender2 := createSender(composeHTTPResponse(http.StatusUnauthorized, "", done2))
-	gcm.sender = mockSender2
+	mockSender2 := testutil.CreateGcmSender(testutil.CreateRoundTripperWithJsonResponse(http.StatusUnauthorized, "", done2))
+	gcm.Sender = mockSender2
 	err = gcm.Check()
 	fmt.Println(err)
 
