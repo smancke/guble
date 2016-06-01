@@ -90,10 +90,9 @@ var CreateModules = func(router server.Router, args Args) []interface{} {
 		if args.GcmApiKey == "" {
 			panic("GCM API Key has to be provided, if GCM is enabled")
 		}
-		gcmWorkers := gcmWorkers(args.GcmWorkers)
 		protocol.Info("google cloud messaging: enabled")
-		protocol.Debug("gcm: %v workers", gcmWorkers)
-		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey, gcmWorkers); err != nil {
+		protocol.Debug("gcm: %v workers", args.GcmWorkers)
+		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey, args.GcmWorkers); err != nil {
 			protocol.Err("Error loading GCMConnector: ", err)
 		} else {
 			modules = append(modules, gcm)
@@ -144,7 +143,9 @@ func StartService(args Args) *server.Service {
 
 	service := server.NewService(args.Listen, router)
 
-	for _, module := range CreateModules(router, args) {
+	service.Modules = CreateModules(router, args)
+
+	for _, module := range service.Modules {
 		service.Register(module)
 	}
 
@@ -165,18 +166,12 @@ func loadArgs() Args {
 		KVBackend:   "file",
 		MSBackend:   "file",
 		StoragePath: "/var/lib/guble",
+		GcmWorkers:  runtime.GOMAXPROCS(0),
 	}
 
 	env.Parse(&args)
 	arg.MustParse(&args)
 	return args
-}
-
-func gcmWorkers(n int) int {
-	if n <= 0 {
-		return runtime.GOMAXPROCS(0)
-	}
-	return n
 }
 
 func waitForTermination(callback func()) {
