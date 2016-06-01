@@ -31,6 +31,7 @@ type Endpoint interface {
 type Service struct {
 	webServer  *webserver.WebServer
 	router     Router
+	Modules    []interface{}
 	stopables  []Stopable
 	startables []Startable
 	// The time given to each Module on Stop()
@@ -138,8 +139,4 @@ func (s *Service) Stop() error {
 
 func (s *Service) WebServer() *webserver.WebServer {
 	return s.webServer
-}
-
-func (s *Service) Router() *Router {
-	return &s.router
 }
