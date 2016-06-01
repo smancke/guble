@@ -29,7 +29,7 @@ func BenchmarkGCMConnector_BroadcastMessagesMultipleWorkers(b *testing.B) {
 }
 
 func throughputBroadcastMessages(b *testing.B, nWorkers int) float64 {
-	testutil.EnableDebugForMethod()
+	//testutil.EnableDebugForMethod()
 	protocol.Debug("b.N=%v\n", b.N)
 	defer testutil.ResetDefaultRegistryHealthCheck()
 	a := assert.New(b)
