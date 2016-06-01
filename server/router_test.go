@@ -299,7 +299,7 @@ func TestRouter_storeInTxAndHandle(t *testing.T) {
 func TestRouter_CleanShutdown(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-	// testutil.EnableDebugForMethod()
+	testutil.EnableDebugForMethod()
 
 	assert := assert.New(t)
 
@@ -318,16 +318,28 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	router := NewRouter(auth.NewAllowAllAccessManager(true), msMock, nil).(*router)
 	router.Start()
 
-	_, err := router.Subscribe(NewRoute("/blah", make(chan MsgAndRoute, 3), "appid01", "user01"))
+	route, err := router.Subscribe(NewRoute("/blah", make(chan MsgAndRoute, 3), "appid01", "user01"))
 	assert.Nil(err)
 
-	// Send messages in the router until error
 	done := make(chan bool)
-	go func() {
-		i := 0
 
+	// read the messages until done is closed
+	go func() {
 		for {
-			i++
+			_, ok := <-route.Messages()
+			select {
+			case <-done:
+				return
+			default:
+				assert.True(ok)
+			}
+		}
+	}()
+
+	// Send messages in the router until error
+	go func() {
+		for {
+			// time.Sleep(5 * time.Millisecond)
 			err := router.HandleMessage(&protocol.Message{
 				Path: protocol.Path("/blah"),
 				Body: aTestByteMessage,
@@ -351,12 +363,9 @@ func TestRouter_CleanShutdown(t *testing.T) {
 		}
 	}()
 
+	close(done)
 	err = router.Stop()
 	assert.Nil(err)
-
-	time.AfterFunc(20*time.Millisecond, func() {
-		close(done)
-	})
 
 	// wait above goroutine to finish
 	<-time.After(50 * time.Millisecond)

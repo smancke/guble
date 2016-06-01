@@ -39,3 +39,7 @@ func (r *Route) equals(other *Route) bool {
 func (r *Route) Close() {
 	close(r.C)
 }
+
+func (r *Route) Messages() chan MsgAndRoute {
+	return r.C
+}

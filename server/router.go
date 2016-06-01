@@ -6,6 +6,7 @@ import (
 	"github.com/smancke/guble/store"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -40,6 +41,9 @@ type router struct {
 	// no incomming messages are acceepted
 	stopping bool
 
+	// Add any operation that we need to wait upon here
+	wg sync.WaitGroup
+
 	// external services
 	accessManager auth.AccessManager
 	messageStore  store.MessageStore
@@ -68,9 +72,11 @@ func (router *router) Start() error {
 	}
 
 	go func() {
+		router.wg.Add(1)
 		for {
 			if router.stopping && router.channelsEmpty() {
 				router.closeRoutes()
+				router.wg.Done()
 				return
 			}
 
@@ -106,6 +112,7 @@ func (router *router) channelsEmpty() bool {
 // Stop stops the router by closing the stop channel
 func (router *router) Stop() error {
 	router.stop <- true
+	router.wg.Wait()
 	return nil
 }
 
