@@ -43,16 +43,6 @@ func (r *Route) Messages() chan *MessageForRoute {
 	return r.messagesC
 }
 
-// Deliver tries to send the message in to the route channel
-// should be used as a goroutine
-func (r *Route) Deliver(m *protocol.Message) {
-	mr := &MessageForRoute{m, r}
-	select {
-	case r.Messages() <- mr:
-		protocol.Debug("Message sent through route channel", m, r)
-	}
-}
-
 // MsgAndRoute is a wrapper that provides the message and the route togheter.
 // Useful for sending both information over a channel
 type MessageForRoute struct {
