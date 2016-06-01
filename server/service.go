@@ -106,6 +106,7 @@ func (s *Service) Start() error {
 
 func (s *Service) Stop() error {
 	errors := make(map[string]error)
+
 	for _, stopable := range s.stopables {
 		name := reflect.TypeOf(stopable).String()
 		stoppedChan := make(chan bool)
@@ -138,4 +139,17 @@ func (s *Service) Stop() error {
 
 func (s *Service) WebServer() *webserver.WebServer {
 	return s.webserver
+}
+
+// stop module with a timeout
+func stopAsyncTimeout(m Stopable, timeout int) chan error {
+	errC := make(chan err)
+	go func() {
+	}()
+	return errC
+}
+
+// wait for channel to respond or until time expired
+func wait() error {
+
 }
