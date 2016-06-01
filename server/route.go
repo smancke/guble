@@ -14,7 +14,7 @@ type MsgAndRoute struct {
 // Route represents a topic for subscription that has a channel to receive message
 type Route struct {
 	Path          protocol.Path
-	C             chan MsgAndRoute
+	messagesC     chan MsgAndRoute
 	UserID        string // UserID that subscribed or pushes messages to the router
 	ApplicationID string // ApplicationID that
 }
@@ -23,7 +23,7 @@ type Route struct {
 func NewRoute(path string, channel chan MsgAndRoute, applicationID string, userID string) *Route {
 	return &Route{
 		Path:          protocol.Path(path),
-		C:             channel,
+		messagesC:     channel,
 		UserID:        userID,
 		ApplicationID: applicationID,
 	}
@@ -37,9 +37,9 @@ func (r *Route) equals(other *Route) bool {
 
 // Close closes the route channel
 func (r *Route) Close() {
-	close(r.C)
+	close(r.messagesC)
 }
 
 func (r *Route) Messages() chan MsgAndRoute {
-	return r.C
+	return r.messagesC
 }

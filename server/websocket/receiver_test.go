@@ -86,9 +86,9 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	// subscribe
 	subscribe := routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *server.Route) {
 		a.Equal(r.Path, protocol.Path("/foo"))
-		r.C <- server.MsgAndRoute{Message: &protocol.Message{ID: uint64(4), Body: []byte("router-a"), Time: 1405544146}, Route: r}
-		r.C <- server.MsgAndRoute{Message: &protocol.Message{ID: uint64(5), Body: []byte("router-b"), Time: 1405544146}, Route: r}
-		close(r.C) // emulate router close
+		r.Messages() <- server.MsgAndRoute{Message: &protocol.Message{ID: uint64(4), Body: []byte("router-a"), Time: 1405544146}, Route: r}
+		r.Messages() <- server.MsgAndRoute{Message: &protocol.Message{ID: uint64(5), Body: []byte("router-b"), Time: 1405544146}, Route: r}
+		r.Close() // emulate router close
 	})
 	subscribe.After(messageId2)
 
