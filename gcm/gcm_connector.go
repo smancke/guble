@@ -21,15 +21,15 @@ const BROADCAST_RETRIES = 3
 
 // GCMConnector is the structure for handling the communication with Google Cloud Messaging
 type GCMConnector struct {
-	router             server.Router
-	kvStore            store.KVStore
-	prefix             string
-	routerC            chan server.MessageForRoute
-	closeRouteByRouter chan server.Route
-	stopC              chan bool
-	sender             *gcm.Sender
-	nWorkers           int
-	waitGroup          sync.WaitGroup
+	router        server.Router
+	kvStore       store.KVStore
+	prefix        string
+	routerC       chan *server.MessageForRoute
+	stopC         chan bool
+	sender        *gcm.Sender
+	nWorkers      int
+	waitGroup     sync.WaitGroup
+	broadcastPath string
 }
 
 // NewGCMConnector creates a new GCMConnector without starting it
@@ -41,22 +41,28 @@ func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string, nWor
 	}
 
 	//TODO Cosmin: check with dev-team the default number of GCM workers, below
-	gcm := &GCMConnector{
-		router:   router,
-		kvStore:  kvStore,
-		prefix:   prefix,
-		routerC:  make(chan server.MessageForRoute, 1000),
-		stopC:    make(chan bool, 1),
-		sender:   &gcm.Sender{ApiKey: gcmAPIKey},
-		nWorkers: nWorkers,
+	conn := &GCMConnector{
+		router:        router,
+		kvStore:       kvStore,
+		prefix:        prefix,
+		routerC:       make(chan *server.MessageForRoute, 1000),
+		stopC:         make(chan bool, 1),
+		sender:        &gcm.Sender{ApiKey: gcmAPIKey},
+		nWorkers:      nWorkers,
+		broadcastPath: removeTrailingSlash(prefix) + "/broadcast",
 	}
 
-	return gcm, nil
+	return conn, nil
 }
 
 // Start opens the connector, creates more goroutines / workers to handle messages coming from the router
 func (conn *GCMConnector) Start() error {
-	broadcastRoute := server.NewRoute(removeTrailingSlash(conn.prefix)+"/broadcast", conn.routerC, "gcm_connector", "gcm_connector")
+	broadcastRoute := server.NewRoute(
+		conn.broadcastPath,
+		"gcm_connector",
+		"gcm_connector",
+		conn.routerC,
+	)
 	conn.router.Subscribe(broadcastRoute)
 	go func() {
 		//TODO Cosmin: should loadSubscriptions() be taken out of this goroutine, and executed before ?
@@ -93,7 +99,7 @@ func (conn *GCMConnector) loopSendOrBroadcastMessage(id int) {
 		select {
 		case msg, opened := <-conn.routerC:
 			if opened {
-				if string(msg.Message.Path) == removeTrailingSlash(conn.prefix)+"/broadcast" {
+				if string(msg.Message.Path) == conn.broadcastPath {
 					go conn.broadcastMessage(msg)
 				} else {
 					go conn.sendMessage(msg)
@@ -106,7 +112,7 @@ func (conn *GCMConnector) loopSendOrBroadcastMessage(id int) {
 	}
 }
 
-func (conn *GCMConnector) sendMessage(msg server.MessageForRoute) {
+func (conn *GCMConnector) sendMessage(msg *server.MessageForRoute) {
 	gcmID := msg.Route.ApplicationID
 
 	payload := conn.parseMessageToMap(msg.Message)
@@ -144,7 +150,7 @@ func (conn *GCMConnector) parseMessageToMap(msg *protocol.Message) map[string]in
 	return payload
 }
 
-func (conn *GCMConnector) broadcastMessage(msg server.MessageForRoute) {
+func (conn *GCMConnector) broadcastMessage(msg *server.MessageForRoute) {
 	topic := msg.Message.Path
 	payload := conn.parseMessageToMap(msg.Message)
 	protocol.Info("gcm: broadcasting message with topic %v ...", string(topic))
@@ -249,7 +255,7 @@ func (conn *GCMConnector) parseParams(path string) (userID, gcmID, topic string,
 func (conn *GCMConnector) subscribe(topic string, userID string, gcmID string) {
 	protocol.Info("GCM connector registration to userID=%q, gcmID=%q: %q", userID, gcmID, topic)
 
-	route := server.NewRoute(topic, conn.routerC, gcmID, userID)
+	route := server.NewRoute(topic, gcmID, userID, conn.routerC)
 
 	conn.router.Subscribe(route)
 	conn.saveSubscription(userID, topic, gcmID)
@@ -280,7 +286,7 @@ func (conn *GCMConnector) loadSubscriptions() {
 			topic := splitValue[1]
 
 			protocol.Debug("renewing GCM subscription: userID=%v, topic=%v, gcmID=%v", userID, topic, gcmID)
-			route := server.NewRoute(topic, conn.routerC, gcmID, userID)
+			route := server.NewRoute(topic, gcmID, userID, conn.routerC)
 			conn.router.Subscribe(route)
 			count++
 		}

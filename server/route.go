@@ -6,7 +6,7 @@ import (
 )
 
 // NewRoute creates a new route pointer
-func NewRoute(path string, channel chan MessageForRoute, applicationID string, userID string) *Route {
+func NewRoute(path, applicationID, userID string, channel chan *MessageForRoute) *Route {
 	return &Route{
 		Path:          protocol.Path(path),
 		messagesC:     channel,
@@ -18,7 +18,7 @@ func NewRoute(path string, channel chan MessageForRoute, applicationID string, u
 // Route represents a topic for subscription that has a channel to receive message
 type Route struct {
 	Path          protocol.Path
-	messagesC     chan MessageForRoute
+	messagesC     chan *MessageForRoute
 	UserID        string // UserID that subscribed or pushes messages to the router
 	ApplicationID string // ApplicationID that
 }
@@ -39,14 +39,14 @@ func (r *Route) Close() {
 }
 
 // Messages return the route channel to send or receive messages
-func (r *Route) Messages() chan MessageForRoute {
+func (r *Route) Messages() chan *MessageForRoute {
 	return r.messagesC
 }
 
 // Deliver tries to send the message in to the route channel
 // should be used as a goroutine
 func (r *Route) Deliver(m *protocol.Message) {
-	mr := MessageForRoute{m, r}
+	mr := &MessageForRoute{m, r}
 	select {
 	case r.Messages() <- mr:
 		protocol.Debug("Message sent through route channel", m, r)
