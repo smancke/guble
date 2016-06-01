@@ -241,7 +241,7 @@ func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 	defer protocol.PanicLogger()
 
 	select {
-	case route.Messages() <- MsgAndRoute{Message: message, Route: route}:
+	case route.Messages() <- MessageForRoute{Message: message, Route: route}:
 	// fine, we could send the message
 	default:
 		protocol.Info("queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)

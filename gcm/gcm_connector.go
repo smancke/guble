@@ -24,7 +24,7 @@ type GCMConnector struct {
 	router             server.Router
 	kvStore            store.KVStore
 	prefix             string
-	routerC            chan server.MsgAndRoute
+	routerC            chan server.MessageForRoute
 	closeRouteByRouter chan server.Route
 	stopC              chan bool
 	sender             *gcm.Sender
@@ -45,7 +45,7 @@ func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string, nWor
 		router:   router,
 		kvStore:  kvStore,
 		prefix:   prefix,
-		routerC:  make(chan server.MsgAndRoute, 1000),
+		routerC:  make(chan server.MessageForRoute, 1000),
 		stopC:    make(chan bool, 1),
 		sender:   &gcm.Sender{ApiKey: gcmAPIKey},
 		nWorkers: nWorkers,
@@ -106,7 +106,7 @@ func (conn *GCMConnector) loopSendOrBroadcastMessage(id int) {
 	}
 }
 
-func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
+func (conn *GCMConnector) sendMessage(msg server.MessageForRoute) {
 	gcmID := msg.Route.ApplicationID
 
 	payload := conn.parseMessageToMap(msg.Message)
@@ -144,7 +144,7 @@ func (conn *GCMConnector) parseMessageToMap(msg *protocol.Message) map[string]in
 	return payload
 }
 
-func (conn *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
+func (conn *GCMConnector) broadcastMessage(msg server.MessageForRoute) {
 	topic := msg.Message.Path
 	payload := conn.parseMessageToMap(msg.Message)
 	protocol.Info("gcm: broadcasting message with topic %v ...", string(topic))

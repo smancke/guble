@@ -24,7 +24,7 @@ func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 	router.Start()
 
 	// when i add two routes in the same path
-	channel := make(chan MsgAndRoute, chanSize)
+	channel := make(chan MessageForRoute, chanSize)
 	routeBlah1, _ := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
 	routeBlah2, _ := router.Subscribe(NewRoute("/blah", channel, "appid02", "user01"))
 
@@ -63,7 +63,7 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 	router := NewRouter(tam, nil, nil).(*router)
 	router.Start()
 
-	channel := make(chan MsgAndRoute, chanSize)
+	channel := make(chan MessageForRoute, chanSize)
 	_, e := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
 
 	// default TestAccessManager denies all
@@ -170,7 +170,7 @@ func TestRouter_RoutingWithSubTopics(t *testing.T) {
 	msMock.EXPECT().StoreTx("blah", gomock.Any()).Return(nil)
 	msMock.EXPECT().StoreTx("blahblub", gomock.Any()).Return(nil)
 
-	channel := make(chan MsgAndRoute, chanSize)
+	channel := make(chan MessageForRoute, chanSize)
 	r, _ := router.Subscribe(NewRoute("/blah", channel, "appid01", "user01"))
 
 	// when i send a message to a subroute
@@ -318,7 +318,7 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	router := NewRouter(auth.NewAllowAllAccessManager(true), msMock, nil).(*router)
 	router.Start()
 
-	route, err := router.Subscribe(NewRoute("/blah", make(chan MsgAndRoute, 3), "appid01", "user01"))
+	route, err := router.Subscribe(NewRoute("/blah", make(chan MessageForRoute, 3), "appid01", "user01"))
 	assert.Nil(err)
 
 	done := make(chan bool)
@@ -374,12 +374,12 @@ func aRouterRoute(chSize int) (*router, *Route) {
 	router := NewRouter(auth.NewAllowAllAccessManager(true), nil, nil).(*router)
 	router.Start()
 	route, _ := router.Subscribe(
-		NewRoute("/blah", make(chan MsgAndRoute, chanSize), "appid01", "user01"),
+		NewRoute("/blah", make(chan MessageForRoute, chanSize), "appid01", "user01"),
 	)
 	return router, route
 }
 
-func assertChannelContainsMessage(a *assert.Assertions, c chan MsgAndRoute, msg []byte) {
+func assertChannelContainsMessage(a *assert.Assertions, c chan MessageForRoute, msg []byte) {
 	select {
 	case msgBack := <-c:
 		a.Equal(string(msg), string(msgBack.Message.Body))

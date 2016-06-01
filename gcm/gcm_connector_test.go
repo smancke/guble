@@ -300,7 +300,7 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	gcm.sender = mockSender
 
 	// put a broadcast message with no recipients and expect to be dropped by
-	broadcastMsgWithNoRecipients := server.MsgAndRoute{
+	broadcastMsgWithNoRecipients := server.MessageForRoute{
 		Message: &protocol.Message{
 			ID:   uint64(4),
 			Body: []byte("{id:id}"),
@@ -311,7 +311,7 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	// expect that the HTTP Dummy Server to not handle any requests
 
 	// put a dummy gcm message with minimum information
-	msgWithNoRecipients := server.MsgAndRoute{
+	msgWithNoRecipients := server.MessageForRoute{
 		Message: &protocol.Message{
 			ID:   uint64(4),
 			Body: []byte("{id:id}"),
@@ -366,7 +366,7 @@ func TestGCMConnector_BroadcastMessage(t *testing.T) {
 	gcm.sender = mockSender
 
 	// put a broadcast message with no recipients and expect to be dropped by
-	broadcastMessage := server.MsgAndRoute{
+	broadcastMessage := server.MessageForRoute{
 		Message: &protocol.Message{
 			ID:   uint64(4),
 			Body: []byte("{id:id}"),
@@ -421,7 +421,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	gcm.sender = mockSender
 
 	// put a dummy gcm message with minimum information
-	msg := server.MsgAndRoute{
+	msg := server.MessageForRoute{
 		Message: &protocol.Message{
 			ID:   uint64(4),
 			Body: []byte("{id:id}"),
