@@ -88,7 +88,7 @@ func (conn *GCMConnector) Stop() error {
 // the gcmStatus will pe up.Otherwise the error from sending the message will be returned
 func (conn *GCMConnector) Check() error {
 	payload := conn.parseMessageToMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
-	_, err := conn.sender.Send(gcm.NewMessage(payload, ""), MESSAGE_RETRIES)
+	_, err := conn.Sender.Send(gcm.NewMessage(payload, ""), sendRetries)
 	if err != nil {
 		protocol.Err("error sending ping  message", err.Error())
 		return err

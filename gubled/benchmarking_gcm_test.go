@@ -55,7 +55,6 @@ func throughputBroadcastMessages(b *testing.B, nWorkers int) float64 {
 	service := StartService(args)
 
 	protocol.Debug("Overwriting the GCM Sender with a Mock")
-	protocol.Debug("%v", service.Modules)
 	gcmConnector, ok := service.Modules[2].(*gcm.GCMConnector)
 	a.True(ok, "Modules[2] should be of type GCMConnector")
 	gcmConnector.Sender = testutil.CreateGcmSender(
