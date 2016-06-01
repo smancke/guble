@@ -322,11 +322,10 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	// expect that the Http Server to give us a malformed message
 	<-done
 
-	//wait a couple of seconds and  Stop the GcmConnector
-	time.AfterFunc(2*time.Second, func() {
-		err = gcm.Stop()
-		assert.Nil(err)
-	})
+	//wait a little to Stop the GcmConnector
+	time.Sleep(250 * time.Millisecond)
+	err = gcm.Stop()
+	assert.Nil(err)
 }
 
 func TestGCMConnector_BroadcastMessage(t *testing.T) {
@@ -375,10 +374,10 @@ func TestGCMConnector_BroadcastMessage(t *testing.T) {
 	gcm.broadcastMessage(broadcastMessage)
 	// wait for the message to be processed by http server
 	<-done
-	time.AfterFunc(100*time.Millisecond, func() {
-		err := gcm.Stop()
-		a.Nil(err)
-	})
+	//wait before closing the gcm connector
+	time.Sleep(250 * time.Millisecond)
+	err = gcm.Stop()
+	a.Nil(err)
 }
 
 func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
@@ -435,9 +434,8 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	gcm.routerC <- msg
 	// expect that the Http Server to give us a malformed message
 	<-done
-	time.AfterFunc(100*time.Millisecond, func() {
-		err = gcm.Stop()
-		assert.Nil(err)
-	})
+	//wait before closing the gcm connector
+	time.Sleep(250 * time.Millisecond)
+	err = gcm.Stop()
+	assert.Nil(err)
 }
-
