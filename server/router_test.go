@@ -339,7 +339,6 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	// Send messages in the router until error
 	go func() {
 		for {
-			// time.Sleep(5 * time.Millisecond)
 			err := router.HandleMessage(&protocol.Message{
 				Path: protocol.Path("/blah"),
 				Body: aTestByteMessage,

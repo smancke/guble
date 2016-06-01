@@ -95,7 +95,6 @@ func (router *router) Start() error {
 					unsubscriber.doneNotify <- true
 				case <-router.stop:
 					router.stopping = true
-					protocol.Debug("stopping message router")
 				}
 			}()
 		}
@@ -111,6 +110,7 @@ func (router *router) channelsEmpty() bool {
 
 // Stop stops the router by closing the stop channel
 func (router *router) Stop() error {
+	protocol.Debug("stopping message router")
 	router.stop <- true
 	router.wg.Wait()
 	return nil
@@ -182,7 +182,6 @@ func (router *router) unsubscribe(r *Route) {
 
 func (router *router) HandleMessage(message *protocol.Message) error {
 	protocol.Debug("Route.HandleMessage: %v %v", message.UserID, message.Path)
-
 	if err := router.isStopping(); err != nil {
 		return err
 	}
@@ -229,9 +228,9 @@ func (router *router) handleMessage(message *protocol.Message) {
 		protocol.Info("routing message: %v", message.Metadata())
 	}
 
-	for currentRoutePath, currentRouteList := range router.routes {
-		if matchesTopic(message.Path, currentRoutePath) {
-			for _, route := range currentRouteList {
+	for path, list := range router.routes {
+		if matchesTopic(message.Path, path) {
+			for _, route := range list {
 				router.deliverMessage(route, message)
 			}
 		}
@@ -240,8 +239,9 @@ func (router *router) handleMessage(message *protocol.Message) {
 
 func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 	defer protocol.PanicLogger()
+
 	select {
-	case route.C <- MsgAndRoute{Message: message, Route: route}:
+	case route.Messages() <- MsgAndRoute{Message: message, Route: route}:
 	// fine, we could send the message
 	default:
 		protocol.Info("queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)
