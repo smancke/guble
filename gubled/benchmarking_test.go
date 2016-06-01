@@ -15,7 +15,7 @@ import (
 
 type testgroup struct {
 	t                *testing.T
-	groupId          int
+	groupID          int
 	addr             string
 	done             chan bool
 	messagesToSend   int
@@ -23,10 +23,10 @@ type testgroup struct {
 	topic            string
 }
 
-func newTestgroup(t *testing.T, groupId int, addr string, messagesToSend int) *testgroup {
+func newTestgroup(t *testing.T, groupID int, addr string, messagesToSend int) *testgroup {
 	return &testgroup{
 		t:              t,
-		groupId:        groupId,
+		groupID:        groupID,
 		addr:           addr,
 		done:           make(chan bool),
 		messagesToSend: messagesToSend,
@@ -98,7 +98,7 @@ func TestThroughput(t *testing.T) {
 }
 
 func (test *testgroup) Init() {
-	test.topic = fmt.Sprintf("/%v-foo", test.groupId)
+	test.topic = fmt.Sprintf("/%v-foo", test.groupID)
 	var err error
 	location := "ws://" + test.addr + "/stream/user/xy"
 	//location := "ws://gathermon.mancke.net:8080/stream/"
@@ -125,7 +125,7 @@ func (test *testgroup) expectStatusMessage(name string, arg string) {
 		assert.Equal(test.t, name, notify.Name)
 		assert.Equal(test.t, arg, notify.Arg)
 	case <-time.After(time.Second * 1):
-		test.t.Logf("[%v] no notification of type %s after 1 second", test.groupId, name)
+		test.t.Logf("[%v] no notification of type %s after 1 second", test.groupID, name)
 		test.done <- false
 		test.t.Fail()
 		return
@@ -148,12 +148,12 @@ func (test *testgroup) Start() {
 			assert.Equal(test.t, body, msg.BodyAsString())
 			assert.Equal(test.t, test.topic, string(msg.Path))
 		case msg := <-test.client1.Errors():
-			test.t.Logf("[%v] received error: %v", test.groupId, msg)
+			test.t.Logf("[%v] received error: %v", test.groupID, msg)
 			test.done <- false
 			test.t.Fail()
 			return
 		case <-time.After(time.Second * 5):
-			test.t.Logf("[%v] no message received for 5 seconds, expected message %v", test.groupId, i)
+			test.t.Logf("[%v] no message received for 5 seconds, expected message %v", test.groupID, i)
 			test.done <- false
 			test.t.Fail()
 			return
