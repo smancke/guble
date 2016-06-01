@@ -1,10 +1,11 @@
 package testutil
 
 import (
+	"github.com/smancke/guble/protocol"
+
 	"github.com/alexjlockwood/gcm"
 	"github.com/docker/distribution/health"
 	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/protocol"
 	"github.com/stretchr/testify/assert"
 
 	"io/ioutil"

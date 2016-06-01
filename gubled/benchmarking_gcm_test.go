@@ -34,7 +34,7 @@ func throughputBroadcastMessages(b *testing.B, nWorkers int) float64 {
 	defer testutil.ResetDefaultRegistryHealthCheck()
 	a := assert.New(b)
 
-	dir, errTempDir := ioutil.TempDir("", "guble_benchmark_gcm_test")
+	dir, errTempDir := ioutil.TempDir("", "guble_benchmarking_gcm_test")
 	defer func() {
 		errRemove := os.RemoveAll(dir)
 		if errRemove != nil {
@@ -55,7 +55,7 @@ func throughputBroadcastMessages(b *testing.B, nWorkers int) float64 {
 	service := StartService(args)
 
 	protocol.Debug("Overwriting the GCM Sender with a Mock")
-	gcmConnector, ok := service.Modules[2].(*gcm.GCMConnector)
+	gcmConnector, ok := service.Modules()[2].(*gcm.GCMConnector)
 	a.True(ok, "Modules[2] should be of type GCMConnector")
 	gcmConnector.Sender = testutil.CreateGcmSender(
 		testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.CorrectGcmResponseMessageJSON, nil))

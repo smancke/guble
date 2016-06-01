@@ -143,11 +143,7 @@ func StartService(args Args) *server.Service {
 
 	service := server.NewService(args.Listen, router)
 
-	service.Modules = CreateModules(router, args)
-
-	for _, module := range service.Modules {
-		service.Register(module)
-	}
+	service.RegisterModules(CreateModules(router, args))
 
 	if err := service.Start(); err != nil {
 		protocol.Err(err.Error())

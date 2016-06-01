@@ -83,7 +83,6 @@ func TestGCMConnector_Check(t *testing.T) {
 	gcm.Sender = mockSender2
 	err = gcm.Check()
 	fmt.Println(err)
-
 }
 
 func TestServeHTTPWithErrorCases(t *testing.T) {

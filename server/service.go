@@ -31,9 +31,9 @@ type Endpoint interface {
 type Service struct {
 	webServer  *webserver.WebServer
 	router     Router
-	Modules    []interface{}
-	stopables  []Stopable
+	modules    []interface{}
 	startables []Startable
+	stopables  []Stopable
 	// The time given to each Module on Stop()
 	StopGracePeriod      time.Duration
 	healthCheckFrequency time.Duration
@@ -43,7 +43,6 @@ type Service struct {
 // NewService registers the Main Router, where other modules can subscribe for messages
 func NewService(addr string, router Router) *Service {
 	service := &Service{
-		stopables:            make([]Stopable, 0, 5),
 		webServer:            webserver.New(addr),
 		router:               router,
 		StopGracePeriod:      time.Second * 2,
@@ -58,6 +57,13 @@ func NewService(addr string, router Router) *Service {
 	return service
 }
 
+func (s *Service) RegisterModules(modules []interface{}) {
+	for _, module := range modules {
+		s.modules = append(s.modules, module)
+		s.Register(module)
+	}
+}
+
 // Register the supplied module on this service.
 // This method checks the module for the following interfaces and
 // does the expected registrations:
@@ -69,23 +75,23 @@ func (s *Service) Register(module interface{}) {
 	name := reflect.TypeOf(module).String()
 
 	if startable, ok := module.(Startable); ok {
-		protocol.Info("register %v as Startable", name)
+		protocol.Info("registering %v as Startable", name)
 		s.startables = append(s.startables, startable)
 	}
 
 	if stopable, ok := module.(Stopable); ok {
-		protocol.Info("register %v as Stopable", name)
+		protocol.Info("registering %v as Stopable", name)
 		s.stopables = append(s.stopables, stopable)
 	}
 
 	if checker, ok := module.(health.Checker); ok {
-		protocol.Info("register %v as HealthChecker", name)
+		protocol.Info("registering %v as HealthChecker", name)
 		health.RegisterPeriodicThresholdFunc(name, s.healthCheckFrequency, s.healthCheckThreshold, health.CheckFunc(checker.Check))
 	}
 
 	if endpoint, ok := module.(Endpoint); ok {
 		prefix := endpoint.GetPrefix()
-		protocol.Info("register %v as Endpoint to %v", name, prefix)
+		protocol.Info("registering %v as Endpoint to %v", name, prefix)
 		s.webServer.Handle(prefix, endpoint)
 	}
 }
@@ -139,4 +145,8 @@ func (s *Service) Stop() error {
 
 func (s *Service) WebServer() *webserver.WebServer {
 	return s.webServer
+}
+
+func (s *Service) Modules() []interface{} {
+	return s.modules
 }
