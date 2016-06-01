@@ -79,13 +79,10 @@ func (conn *GCMConnector) Stop() error {
 }
 
 // Check returns nil if health-check succeeds, or an error if health-check fails
-//curl --header "Authorization: key=$api_key" \
-//--header Content-Type:"application/json" \
-//https://gcm-http.googleapis.com/gcm/send \
-//-d "{\"registration_ids\":[\"ABC\"]}"
+// by sending a request with only apikey. If the response is processed by the GCM endpoint
+// the gcmStatus will pe up.Otherwise the error from sending the message will be returned
 func (conn *GCMConnector) Check() error {
-	pay := `{"registration_ids":["ABC"]}`
-	payload := conn.parseMessageToMap(&protocol.Message{Body: []byte(pay)})
+	payload := conn.parseMessageToMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
 	_, err := conn.sender.Send(gcm.NewMessage(payload, ""), MESSAGE_RETRIES)
 	if err != nil {
 		protocol.Err("error sending ping  message", err.Error())
