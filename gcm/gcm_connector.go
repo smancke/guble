@@ -27,14 +27,14 @@ const (
 
 // GCMConnector is the structure for handling the communication with Google Cloud Messaging
 type GCMConnector struct {
-	Sender    *gcm.Sender
-	router    server.Router
-	kvStore   store.KVStore
-	prefix    string
-	routerC   chan server.MsgAndRoute
-	stopC     chan bool
-	nWorkers  int
-	waitGroup sync.WaitGroup
+	Sender   *gcm.Sender
+	router   server.Router
+	kvStore  store.KVStore
+	prefix   string
+	routerC  chan server.MsgAndRoute
+	stopC    chan bool
+	nWorkers int
+	wg       sync.WaitGroup
 }
 
 // NewGCMConnector creates a new GCMConnector without starting it
@@ -79,7 +79,7 @@ func (conn *GCMConnector) Start() error {
 func (conn *GCMConnector) Stop() error {
 	protocol.Debug("GCM Stop()")
 	close(conn.stopC)
-	conn.waitGroup.Wait()
+	conn.wg.Wait()
 	return nil
 }
 
@@ -91,8 +91,8 @@ func (conn *GCMConnector) Check() error {
 // loopSendOrBroadcastMessage awaits in a loop for messages from router to be forwarded to GCM,
 // until the stop-channel is closed
 func (conn *GCMConnector) loopSendOrBroadcastMessage(id int) {
-	defer conn.waitGroup.Done()
-	conn.waitGroup.Add(1)
+	defer conn.wg.Done()
+	conn.wg.Add(1)
 	protocol.Debug("starting GCM worker %v", id)
 	for {
 		select {
@@ -117,7 +117,9 @@ func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
 	payload := conn.parseMessageToMap(msg.Message)
 
 	var messageToGcm = gcm.NewMessage(payload, gcmID)
-	protocol.Info("sending message to %v ...", gcmID)
+	protocol.Debug("gcm: sending message to %v", gcmID)
+	protocol.Debug("gcm: channel len: %v", len(conn.routerC))
+
 	result, err := conn.Sender.Send(messageToGcm, sendRetries)
 	if err != nil {
 		protocol.Err("error sending message to GCM gcmID=%v: %v", gcmID, err.Error())
@@ -138,21 +140,11 @@ func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
 	}
 }
 
-func (conn *GCMConnector) parseMessageToMap(msg *protocol.Message) map[string]interface{} {
-	payload := map[string]interface{}{}
-	if msg.Body[0] == '{' {
-		json.Unmarshal(msg.Body, &payload)
-	} else {
-		payload["message"] = msg.BodyAsString()
-	}
-	protocol.Debug("gcm: parsed message is: %v", payload)
-	return payload
-}
-
 func (conn *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 	topic := msg.Message.Path
 	payload := conn.parseMessageToMap(msg.Message)
-	protocol.Info("gcm: broadcasting message with topic %v ...", string(topic))
+	protocol.Debug("gcm: broadcasting message with topic %v", string(topic))
+	protocol.Debug("gcm: channel len: %v", len(conn.routerC))
 
 	subscriptions := conn.kvStore.Iterate(registrationsSchema, "")
 	count := 0
@@ -177,6 +169,17 @@ func (conn *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 			count++
 		}
 	}
+}
+
+func (conn *GCMConnector) parseMessageToMap(msg *protocol.Message) map[string]interface{} {
+	payload := map[string]interface{}{}
+	if msg.Body[0] == '{' {
+		json.Unmarshal(msg.Body, &payload)
+	} else {
+		payload["message"] = msg.BodyAsString()
+	}
+	protocol.Debug("gcm: parsed message is: %v", payload)
+	return payload
 }
 
 func (conn *GCMConnector) replaceSubscriptionWithCanonicalID(route *server.Route, newGcmID string) {
