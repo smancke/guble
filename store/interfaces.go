@@ -26,6 +26,10 @@ type MessageStore interface {
 	// This ensures, that wile the code is executed, no change to the supplied maxMessageId can occur.
 	// The error result if the fnToExecute or an error while locking will be returned by DoInTx.
 	DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error
+
+	//Check if the current messageStore os having enough space to save on Disk
+	// If not enough space is available an error will be returned
+	Check() error
 }
 
 type MessageAndId struct {

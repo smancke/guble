@@ -3,9 +3,11 @@ package store
 import (
 	"github.com/smancke/guble/protocol"
 
+	"errors"
 	"os"
 	"path"
 	"sync"
+	"syscall"
 )
 
 // FileMessageStore is an implementation of the MessageStore interface based on files
@@ -106,4 +108,27 @@ func (fms *FileMessageStore) partitionStore(partition string) (*MessagePartition
 		fms.partitions[partition] = partitionStore
 	}
 	return partitionStore, nil
+}
+
+func (fms *FileMessageStore) Check() error {
+	var stat syscall.Statfs_t
+	wd, err := os.Getwd()
+	if err != nil {
+		protocol.Err("MessageStore check returned error", err)
+		return err
+	}
+	syscall.Statfs(wd, &stat)
+
+	// Available blocks * size per block = available space in bytes
+	freeSpace := stat.Bavail * uint64(stat.Bsize)
+	// total system blocks * size per block = total space in bytes
+	totalSpace := stat.Blocks * uint64(stat.Bsize)
+
+	usedSpacePercentage := 1 - (float64(freeSpace) / float64(totalSpace))
+	if usedSpacePercentage > 0.95 {
+		protocol.Err("Disk space is used in a proportion more than 95%")
+		return errors.New("HDD Disk is almost full .")
+	}
+
+	return nil
 }
