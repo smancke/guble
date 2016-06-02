@@ -11,6 +11,13 @@ import (
 	"time"
 )
 
+const (
+	healthEndpointPrefix        = "/health"
+	defaultStopGracePeriod      = time.Second * 2
+	defaultHealthCheckFrequency = time.Second * 60
+	defaultHealthCheckThreshold = 1
+)
+
 // Startable interface for modules which provide a start mechanism
 type Startable interface {
 	Start() error
@@ -45,14 +52,14 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 	service := &Service{
 		webserver:            webserver,
 		router:               router,
-		StopGracePeriod:      time.Second * 2,
-		healthCheckFrequency: time.Second * 60,
-		healthCheckThreshold: 1,
+		StopGracePeriod:      defaultStopGracePeriod,
+		healthCheckFrequency: defaultHealthCheckFrequency,
+		healthCheckThreshold: defaultHealthCheckThreshold,
 	}
 	service.Register(service.router)
 	service.Register(service.webserver)
 
-	service.webserver.Handle("/health", http.HandlerFunc(health.StatusHandler))
+	service.webserver.Handle(healthEndpointPrefix, http.HandlerFunc(health.StatusHandler))
 
 	return service
 }
