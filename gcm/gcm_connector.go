@@ -23,6 +23,8 @@ const (
 
 	// broadcastRetries is the number of retries when broadcasting a message
 	broadcastRetries = 3
+
+	subscribePrefixPath = "subscribe"
 )
 
 // GCMConnector is the structure for handling the communication with Google Cloud Messaging
@@ -102,7 +104,7 @@ func (conn *GCMConnector) Check() error {
 func (conn *GCMConnector) loopSendOrBroadcastMessage(id int) {
 	defer conn.wg.Done()
 	conn.wg.Add(1)
-	protocol.Debug("starting GCM worker %v", id)
+	protocol.Debug("gcm: starting worker %v", id)
 	for {
 		select {
 		case msg, opened := <-conn.routerC:
@@ -114,7 +116,7 @@ func (conn *GCMConnector) loopSendOrBroadcastMessage(id int) {
 				}
 			}
 		case <-conn.stopC:
-			protocol.Debug("stopping GCM worker %v", id)
+			protocol.Debug("gcm: stopping worker %v", id)
 			return
 		}
 	}
@@ -126,12 +128,11 @@ func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
 	payload := conn.parseMessageToMap(msg.Message)
 
 	var messageToGcm = gcm.NewMessage(payload, gcmID)
-	protocol.Debug("gcm: sending message to %v", gcmID)
-	protocol.Debug("gcm: channel length: %v", len(conn.routerC))
+	protocol.Debug("gcm: sending message to: %v ; channel length: ", gcmID, len(conn.routerC))
 
 	result, err := conn.Sender.Send(messageToGcm, sendRetries)
 	if err != nil {
-		protocol.Err("error sending message to GCM gcmID=%v: %v", gcmID, err.Error())
+		protocol.Err("gcm: error sending message to GCM gcmID=%v: %v", gcmID, err.Error())
 		return
 	}
 
@@ -139,7 +140,7 @@ func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
 	if errorJSON != "" {
 		conn.handleJSONError(errorJSON, gcmID, msg.Route)
 	} else {
-		protocol.Debug("delivered message to GCM gcmID=%v: %v", gcmID, errorJSON)
+		protocol.Debug("gcm: delivered message to GCM gcmID=%v: %v", gcmID, errorJSON)
 	}
 
 	// we only send to one receiver,
@@ -152,8 +153,7 @@ func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
 func (conn *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
 	topic := msg.Message.Path
 	payload := conn.parseMessageToMap(msg.Message)
-	protocol.Debug("gcm: broadcasting message with topic %v", string(topic))
-	protocol.Debug("gcm: channel length: %v", len(conn.routerC))
+	protocol.Debug("gcm: broadcasting message with topic: %v ; channel length: %v", string(topic), len(conn.routerC))
 
 	subscriptions := conn.kvStore.Iterate(registrationsSchema, "")
 	count := 0
@@ -238,7 +238,6 @@ func (conn *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // parseParams will parse the HTTP URL with format /gcm/:userid/:gcmid/subscribe/*topic
 // returning the parsed Params, or error if the request is not in the correct format
 func (conn *GCMConnector) parseParams(path string) (userID, gcmID, topic string, err error) {
-	subscribePrefixPath := "subscribe"
 	currentURLPath := removeTrailingSlash(path)
 
 	if strings.HasPrefix(currentURLPath, conn.prefix) != true {

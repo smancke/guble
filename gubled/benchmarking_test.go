@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/testutil"
 	"io/ioutil"
 	"log"
 	"os"
@@ -34,6 +35,8 @@ func newTestgroup(t *testing.T, groupId int, addr string, messagesToSend int) *t
 }
 
 func TestThroughput(t *testing.T) {
+	defer testutil.ResetDefaultRegistryHealthCheck()
+
 	//defer enableDebugForMethod()()
 	dir, _ := ioutil.TempDir("", "guble_benchmarking_test")
 	defer os.RemoveAll(dir)

@@ -101,12 +101,15 @@ func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) 
 }
 
 func CreateGcmSender(rt RoundTripperFunc) *gcm.Sender {
+	protocol.Debug("CreateGcmSender")
 	httpClient := &http.Client{Transport: rt}
 	return &gcm.Sender{ApiKey: "124", Http: httpClient}
 }
 
 func CreateRoundTripperWithJsonResponse(httpStatusCode int, messageBodyAsJSON string, doneC chan bool) RoundTripperFunc {
+	protocol.Debug("CreateRoundTripperWithJsonResponse")
 	return RoundTripperFunc(func(req *http.Request) *http.Response {
+		protocol.Debug("RoundTripperFunc")
 		if doneC != nil {
 			defer func() {
 				close(doneC)
