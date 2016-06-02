@@ -27,8 +27,7 @@ type MessageStore interface {
 	// The error result if the fnToExecute or an error while locking will be returned by DoInTx.
 	DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error
 
-	//Check if the current messageStore os having enough space to save on Disk
-	// If not enough space is available an error will be returned
+	//Check if the current messageStore is having enough space to save on Disk
 	Check() error
 }
 
