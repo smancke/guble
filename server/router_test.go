@@ -322,14 +322,28 @@ func TestRouter_Check(t *testing.T) {
 	// Given a Multiplexer with route
 	router, _ := aRouterRoute()
 
+	// mock messageStore
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
 
+	//mock kvStore
+	mockKvStore := NewMockKVStore(ctrl)
+	router.kvStore = mockKvStore
+
 	msMock.EXPECT().Check().Return(nil)
+	mockKvStore.EXPECT().Check().Return(nil)
+	//both router health checks will work
 	err := router.Check()
 	a.Nil(err)
 
+	//router messageStore will return error
 	msMock.EXPECT().Check().Return(errors.New("HDD Disk is almost full ."))
+	err = router.Check()
+	a.NotNil(err)
+
+	//router message store will return no error but router kvstore will return error
+	msMock.EXPECT().Check().Return(nil)
+	mockKvStore.EXPECT().Check().Return(errors.New("DB closed"))
 	err = router.Check()
 	a.NotNil(err)
 }

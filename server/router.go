@@ -99,6 +99,12 @@ func (router *router) Check() error {
 	if err != nil {
 		return err
 	}
+
+	err = router.kvStore.Check()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
