@@ -185,3 +185,13 @@ func Test_StoreTxError(t *testing.T) {
 	err := store.StoreTx("p2", nil)
 	a.NotNil(err)
 }
+
+func Test_Check(t *testing.T) {
+	a := assert.New(t)
+	dir, _ := ioutil.TempDir("", "message_store_test")
+	store := NewFileMessageStore(dir)
+	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
+
+	err := store.Check()
+	a.Nil(err)
+}
