@@ -42,7 +42,7 @@ import (
 // }
 
 func initServerAndClients(t *testing.T) (*server.Service, client.Client, client.Client, func()) {
-	service := StartupService(Args{Listen: "localhost:0", KVBackend: "memory"})
+	service := StartService(Args{Listen: "localhost:0", KVBackend: "memory"})
 
 	time.Sleep(time.Millisecond * 100)
 
