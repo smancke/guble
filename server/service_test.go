@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
@@ -138,7 +139,7 @@ func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockRouter)
 	kvStore := store.NewMemoryKVStore()
 	messageStore := store.NewDummyMessageStore(kvStore)
 	routerMock := NewMockRouter(testutil.MockCtrl)
-	service := NewService("localhost:0", routerMock)
+	service := NewService(routerMock, webserver.New("localhost:0"))
 	return service, kvStore, messageStore, routerMock
 }
 

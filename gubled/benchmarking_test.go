@@ -16,7 +16,7 @@ import (
 
 type testgroup struct {
 	t                *testing.T
-	groupId          int
+	groupID          int
 	addr             string
 	done             chan bool
 	messagesToSend   int
@@ -24,10 +24,10 @@ type testgroup struct {
 	topic            string
 }
 
-func newTestgroup(t *testing.T, groupId int, addr string, messagesToSend int) *testgroup {
+func newTestgroup(t *testing.T, groupID int, addr string, messagesToSend int) *testgroup {
 	return &testgroup{
 		t:              t,
-		groupId:        groupId,
+		groupID:        groupID,
 		addr:           addr,
 		done:           make(chan bool),
 		messagesToSend: messagesToSend,
@@ -105,7 +105,7 @@ func TestThroughput(t *testing.T) {
 }
 
 func (tg *testgroup) Init() {
-	tg.topic = fmt.Sprintf("/%v-foo", tg.groupId)
+	tg.topic = fmt.Sprintf("/%v-foo", tg.groupID)
 	var err error
 	location := "ws://" + tg.addr + "/stream/user/xy"
 	//location := "ws://gathermon.mancke.net:8080/stream/"
@@ -132,7 +132,7 @@ func (tg *testgroup) expectStatusMessage(name string, arg string) {
 		assert.Equal(tg.t, name, notify.Name)
 		assert.Equal(tg.t, arg, notify.Arg)
 	case <-time.After(time.Second * 1):
-		tg.t.Logf("[%v] no notification of type %s after 1 second", tg.groupId, name)
+		tg.t.Logf("[%v] no notification of type %s until timeout", tg.groupID, name)
 		tg.done <- false
 		tg.t.Fail()
 		return
@@ -155,12 +155,12 @@ func (tg *testgroup) Start() {
 			assert.Equal(tg.t, body, msg.BodyAsString())
 			assert.Equal(tg.t, tg.topic, string(msg.Path))
 		case msg := <-tg.client1.Errors():
-			tg.t.Logf("[%v] received error: %v", tg.groupId, msg)
+			tg.t.Logf("[%v] received error: %v", tg.groupID, msg)
 			tg.done <- false
 			tg.t.Fail()
 			return
 		case <-time.After(time.Second * 5):
-			tg.t.Logf("[%v] no message received for 5 seconds, expected message %v", tg.groupId, i)
+			tg.t.Logf("[%v] no message received until timeout, expected message %v", tg.groupID, i)
 			tg.done <- false
 			tg.t.Fail()
 			return

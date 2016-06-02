@@ -8,6 +8,7 @@ import (
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/rest"
+	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/server/websocket"
 	"github.com/smancke/guble/store"
 
@@ -140,8 +141,9 @@ func StartService(args Args) *server.Service {
 	kvStore := CreateKVStore(args)
 
 	router := server.NewRouter(accessManager, messageStore, kvStore)
+	webserver := webserver.New(args.Listen)
 
-	service := server.NewService(args.Listen, router)
+	service := server.NewService(router, webserver)
 
 	service.RegisterModules(CreateModules(router, args))
 

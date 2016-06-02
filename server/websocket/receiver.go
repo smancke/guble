@@ -141,7 +141,8 @@ func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) e
 }
 
 func (rec *Receiver) subscribe() {
-	rec.route = server.NewRoute(string(rec.path), make(chan server.MsgAndRoute, 3), rec.applicationId, rec.userId)
+	routeC := make(chan *server.MessageForRoute, 3)
+	rec.route = server.NewRoute(string(rec.path), rec.applicationId, rec.userId, routeC)
 	_, err := rec.router.Subscribe(rec.route)
 	if err != nil {
 		rec.sendError(protocol.ERROR_SUBSCRIBED_TO, string(rec.path), err.Error())
@@ -153,7 +154,7 @@ func (rec *Receiver) subscribe() {
 func (rec *Receiver) receiveFromSubscription() {
 	for {
 		select {
-		case msgAndRoute, ok := <-rec.route.C:
+		case msgAndRoute, ok := <-rec.route.MessagesChannel():
 			if !ok {
 				protocol.Debug("Router closed the channel returning from subscription", rec.applicationId)
 				return

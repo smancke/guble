@@ -188,9 +188,9 @@ func TestGCMConnector_parseParams(t *testing.T) {
 		urlPath, userID, gcmID, topic, err string
 	}{
 		{"/gcm/marvin/gcmId123/subscribe/notifications", "marvin", "gcmId123", "/notifications", ""},
-		{"/gcm2/marvin/gcmId123/subscribe/notifications", "", "", "", "GCM request is not starting with gcm prefix"},
-		{"/gcm/marvin/gcmId123/subscrib2e/notifications", "", "", "", "GCM request third param is not subscribe"},
-		{"/gcm/marvin/gcmId123subscribenotifications", "", "", "", "GCM request has wrong number of params"},
+		{"/gcm2/marvin/gcmId123/subscribe/notifications", "", "", "", "gcm: GCM request is not starting with gcm prefix"},
+		{"/gcm/marvin/gcmId123/subscrib2e/notifications", "", "", "", "gcm: GCM request third param is not subscribe"},
+		{"/gcm/marvin/gcmId123subscribenotifications", "", "", "", "gcm: GCM request has wrong number of params"},
 		{"/gcm/marvin/gcmId123/subscribe/notifications/alert/", "marvin", "gcmId123", "/notifications/alert", ""},
 	}
 
@@ -276,7 +276,7 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	gcm.Sender = mockSender
 
 	// put a broadcast message with no recipients and expect to be dropped by
-	broadcastMsgWithNoRecipients := server.MsgAndRoute{
+	broadcastMsgWithNoRecipients := &server.MessageForRoute{
 		Message: &protocol.Message{
 			ID:   uint64(4),
 			Body: []byte("{id:id}"),
@@ -287,7 +287,7 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	// expect that the HTTP Dummy Server to not handle any requests
 
 	// put a dummy gcm message with minimum information
-	msgWithNoRecipients := server.MsgAndRoute{
+	msgWithNoRecipients := &server.MessageForRoute{
 		Message: &protocol.Message{
 			ID:   uint64(4),
 			Body: []byte("{id:id}"),
@@ -341,7 +341,7 @@ func TestGCMConnector_BroadcastMessage(t *testing.T) {
 	gcm.Sender = mockSender
 
 	// put a broadcast message with no recipients and expect to be dropped by
-	broadcastMessage := server.MsgAndRoute{
+	broadcastMessage := &server.MessageForRoute{
 		Message: &protocol.Message{
 			ID:   uint64(4),
 			Body: []byte("{id:id}"),
@@ -397,7 +397,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	gcm.Sender = mockSender
 
 	// put a dummy gcm message with minimum information
-	msg := server.MsgAndRoute{
+	msg := &server.MessageForRoute{
 		Message: &protocol.Message{
 			ID:   uint64(4),
 			Body: []byte("{id:id}"),

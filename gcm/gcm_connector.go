@@ -29,14 +29,15 @@ const (
 
 // GCMConnector is the structure for handling the communication with Google Cloud Messaging
 type GCMConnector struct {
-	Sender   *gcm.Sender
-	router   server.Router
-	kvStore  store.KVStore
-	prefix   string
-	routerC  chan server.MsgAndRoute
-	stopC    chan bool
-	nWorkers int
-	wg       sync.WaitGroup
+	Sender        *gcm.Sender
+	router        server.Router
+	kvStore       store.KVStore
+	prefix        string
+	routerC       chan *server.MessageForRoute
+	stopC         chan bool
+	nWorkers      int
+	wg            sync.WaitGroup
+	broadcastPath string
 }
 
 // NewGCMConnector creates a new GCMConnector without starting it
@@ -47,23 +48,28 @@ func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string, nWor
 		return nil, err
 	}
 
-	//TODO Cosmin: check with dev-team the default number of GCM workers, below
-	gcm := &GCMConnector{
-		Sender:   &gcm.Sender{ApiKey: gcmAPIKey},
-		router:   router,
-		kvStore:  kvStore,
-		prefix:   prefix,
-		routerC:  make(chan server.MsgAndRoute, 1000*nWorkers),
-		stopC:    make(chan bool, 1),
-		nWorkers: nWorkers,
+	conn := &GCMConnector{
+		Sender:        &gcm.Sender{ApiKey: gcmAPIKey},
+		router:        router,
+		kvStore:       kvStore,
+		prefix:        prefix,
+		routerC:       make(chan *server.MessageForRoute, 1000*nWorkers),
+		stopC:         make(chan bool, 1),
+		nWorkers:      nWorkers,
+		broadcastPath: removeTrailingSlash(prefix) + "/broadcast",
 	}
 
-	return gcm, nil
+	return conn, nil
 }
 
 // Start opens the connector, creates more goroutines / workers to handle messages coming from the router
 func (conn *GCMConnector) Start() error {
-	broadcastRoute := server.NewRoute(removeTrailingSlash(conn.prefix)+"/broadcast", conn.routerC, "gcm_connector", "gcm_connector")
+	broadcastRoute := server.NewRoute(
+		conn.broadcastPath,
+		"gcm_connector",
+		"gcm_connector",
+		conn.routerC,
+	)
 	conn.router.Subscribe(broadcastRoute)
 	go func() {
 		//TODO Cosmin: should loadSubscriptions() be taken out of this goroutine, and executed before ?
@@ -87,15 +93,14 @@ func (conn *GCMConnector) Stop() error {
 
 // Check returns nil if health-check succeeds, or an error if health-check fails
 // by sending a request with only apikey. If the response is processed by the GCM endpoint
-// the gcmStatus will pe up.Otherwise the error from sending the message will be returned
+// the gcmStatus will be UP, otherwise the error from sending the message will be returned.
 func (conn *GCMConnector) Check() error {
 	payload := conn.parseMessageToMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
 	_, err := conn.Sender.Send(gcm.NewMessage(payload, ""), sendRetries)
 	if err != nil {
-		protocol.Err("error sending ping  message", err.Error())
+		protocol.Err("gcm: error sending ping message", err.Error())
 		return err
 	}
-
 	return nil
 }
 
@@ -109,7 +114,7 @@ func (conn *GCMConnector) loopSendOrBroadcastMessage(id int) {
 		select {
 		case msg, opened := <-conn.routerC:
 			if opened {
-				if string(msg.Message.Path) == removeTrailingSlash(conn.prefix)+"/broadcast" {
+				if string(msg.Message.Path) == conn.broadcastPath {
 					go conn.broadcastMessage(msg)
 				} else {
 					go conn.sendMessage(msg)
@@ -122,7 +127,7 @@ func (conn *GCMConnector) loopSendOrBroadcastMessage(id int) {
 	}
 }
 
-func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
+func (conn *GCMConnector) sendMessage(msg *server.MessageForRoute) {
 	gcmID := msg.Route.ApplicationID
 
 	payload := conn.parseMessageToMap(msg.Message)
@@ -150,7 +155,7 @@ func (conn *GCMConnector) sendMessage(msg server.MsgAndRoute) {
 	}
 }
 
-func (conn *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
+func (conn *GCMConnector) broadcastMessage(msg *server.MessageForRoute) {
 	topic := msg.Message.Path
 	payload := conn.parseMessageToMap(msg.Message)
 	protocol.Debug("gcm: broadcasting message with topic: %v ; channel length: %v", string(topic), len(conn.routerC))
@@ -204,12 +209,12 @@ func (conn *GCMConnector) replaceSubscriptionWithCanonicalID(route *server.Route
 
 func (conn *GCMConnector) handleJSONError(jsonError string, gcmID string, route *server.Route) {
 	if jsonError == "NotRegistered" {
-		protocol.Debug("remove not registered GCM registration gcmID=%v", gcmID)
+		protocol.Debug("gcm: removing not registered GCM registration gcmID=%v", gcmID)
 		conn.removeSubscription(route, gcmID)
 	} else if jsonError == "InvalidRegistration" {
-		protocol.Err("the gcmID=%v is not registered. %v", gcmID, jsonError)
+		protocol.Err("gcm: the gcmID=%v is not registered. %v", gcmID, jsonError)
 	} else {
-		protocol.Err("unexpected error while sending to GCM gcmID=%v: %v", gcmID, jsonError)
+		protocol.Err("gcm: unexpected error while sending to GCM gcmID=%v: %v", gcmID, jsonError)
 	}
 }
 
@@ -220,7 +225,7 @@ func (conn *GCMConnector) GetPrefix() string {
 
 func (conn *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		protocol.Err("Only HTTP POST METHOD SUPPORTED but received type=[%s]", r.Method)
+		protocol.Err("gcm: Only HTTP POST METHOD SUPPORTED but received type=[%s]", r.Method)
 		http.Error(w, "Permission Denied", http.StatusMethodNotAllowed)
 		return
 	}
@@ -241,21 +246,21 @@ func (conn *GCMConnector) parseParams(path string) (userID, gcmID, topic string,
 	currentURLPath := removeTrailingSlash(path)
 
 	if strings.HasPrefix(currentURLPath, conn.prefix) != true {
-		err = errors.New("GCM request is not starting with gcm prefix")
+		err = errors.New("gcm: GCM request is not starting with gcm prefix")
 		return
 	}
 	pathAfterPrefix := strings.TrimPrefix(currentURLPath, conn.prefix)
 
 	splitParams := strings.SplitN(pathAfterPrefix, "/", 3)
 	if len(splitParams) != 3 {
-		err = errors.New("GCM request has wrong number of params")
+		err = errors.New("gcm: GCM request has wrong number of params")
 		return
 	}
 	userID = splitParams[0]
 	gcmID = splitParams[1]
 
 	if strings.HasPrefix(splitParams[2], subscribePrefixPath+"/") != true {
-		err = errors.New("GCM request third param is not subscribe")
+		err = errors.New("gcm: GCM request third param is not subscribe")
 		return
 	}
 	topic = strings.TrimPrefix(splitParams[2], subscribePrefixPath)
@@ -263,9 +268,9 @@ func (conn *GCMConnector) parseParams(path string) (userID, gcmID, topic string,
 }
 
 func (conn *GCMConnector) subscribe(topic string, userID string, gcmID string) {
-	protocol.Info("GCM connector registration to userID=%q, gcmID=%q: %q", userID, gcmID, topic)
+	protocol.Info("gcm: GCM connector registration to userID=%q, gcmID=%q: %q", userID, gcmID, topic)
 
-	route := server.NewRoute(topic, conn.routerC, gcmID, userID)
+	route := server.NewRoute(topic, gcmID, userID, conn.routerC)
 
 	conn.router.Subscribe(route)
 	conn.saveSubscription(userID, topic, gcmID)
@@ -287,7 +292,7 @@ func (conn *GCMConnector) loadSubscriptions() {
 		select {
 		case entry, ok := <-subscriptions:
 			if !ok {
-				protocol.Info("renewed %v GCM subscriptions", count)
+				protocol.Info("gcm: renewed %v GCM subscriptions", count)
 				return
 			}
 			gcmID := entry[0]
@@ -295,8 +300,8 @@ func (conn *GCMConnector) loadSubscriptions() {
 			userID := splitValue[0]
 			topic := splitValue[1]
 
-			protocol.Debug("renewing GCM subscription: userID=%v, topic=%v, gcmID=%v", userID, topic, gcmID)
-			route := server.NewRoute(topic, conn.routerC, gcmID, userID)
+			protocol.Debug("gcm: renewing GCM subscription: userID=%v, topic=%v, gcmID=%v", userID, topic, gcmID)
+			route := server.NewRoute(topic, gcmID, userID, conn.routerC)
 			conn.router.Subscribe(route)
 			count++
 		}
