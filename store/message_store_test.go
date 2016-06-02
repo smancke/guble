@@ -189,7 +189,6 @@ func Test_StoreTxError(t *testing.T) {
 
 func Test_Check(t *testing.T) {
 	a := assert.New(t)
-	testutil.EnableDebugForMethod()
 	dir, _ := ioutil.TempDir("", "message_store_test")
 	store := NewFileMessageStore(dir)
 	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
