@@ -125,8 +125,9 @@ func (fms *FileMessageStore) Check() error {
 	totalSpace := stat.Blocks * uint64(stat.Bsize)
 
 	usedSpacePercentage := 1 - (float64(freeSpace) / float64(totalSpace))
+
 	if usedSpacePercentage > 0.95 {
-		protocol.Err("Disk space is used in a proportion more than 95%.Actual space used %.2f", usedSpacePercentage)
+		protocol.Err("Disk space is used  more than 95 percent. Actual percent of space used %.2f", usedSpacePercentage)
 		return errors.New("HDD Disk is almost full .")
 	}
 
