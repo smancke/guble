@@ -29,14 +29,14 @@ const (
 
 // GCMConnector is the structure for handling the communication with Google Cloud Messaging
 type GCMConnector struct {
-	sender             *gcm.Sender
-	router             server.Router
-	kvStore            store.KVStore
-	prefix             string
-	routerC            chan server.MsgAndRoute
-	stopC              chan bool
-	nWorkers           int
-	waitGroup          sync.WaitGroup
+	Sender        *gcm.Sender
+	router        server.Router
+	kvStore       store.KVStore
+	prefix        string
+	routerC       chan *server.MessageForRoute
+	stopC         chan bool
+	nWorkers      int
+	wg            sync.WaitGroup
 	broadcastPath string
 }
 
@@ -48,15 +48,14 @@ func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string, nWor
 		return nil, err
 	}
 
-	//TODO Cosmin: check with dev-team the default number of GCM workers, below
 	conn := &GCMConnector{
-		sender:   &gcm.Sender{ApiKey: gcmAPIKey},
-		router:   router,
-		kvStore:  kvStore,
-		prefix:   prefix,
-		routerC:  make(chan *server.MsgForRoute, 1000*nWorkers),
-		stopC:    make(chan bool, 1),
-		nWorkers: nWorkers,
+		Sender:        &gcm.Sender{ApiKey: gcmAPIKey},
+		router:        router,
+		kvStore:       kvStore,
+		prefix:        prefix,
+		routerC:       make(chan *server.MessageForRoute, 1000*nWorkers),
+		stopC:         make(chan bool, 1),
+		nWorkers:      nWorkers,
 		broadcastPath: removeTrailingSlash(prefix) + "/broadcast",
 	}
 
@@ -94,15 +93,14 @@ func (conn *GCMConnector) Stop() error {
 
 // Check returns nil if health-check succeeds, or an error if health-check fails
 // by sending a request with only apikey. If the response is processed by the GCM endpoint
-// the gcmStatus will pe up.Otherwise the error from sending the message will be returned
+// the gcmStatus will be UP, otherwise the error from sending the message will be returned.
 func (conn *GCMConnector) Check() error {
 	payload := conn.parseMessageToMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
 	_, err := conn.Sender.Send(gcm.NewMessage(payload, ""), sendRetries)
 	if err != nil {
-		protocol.Err("error sending ping  message", err.Error())
+		protocol.Err("gcm: error sending ping message", err.Error())
 		return err
 	}
-
 	return nil
 }
 
@@ -157,7 +155,7 @@ func (conn *GCMConnector) sendMessage(msg *server.MessageForRoute) {
 	}
 }
 
-func (conn *GCMConnector) broadcastMessage(msg server.MsgAndRoute) {
+func (conn *GCMConnector) broadcastMessage(msg *server.MessageForRoute) {
 	topic := msg.Message.Path
 	payload := conn.parseMessageToMap(msg.Message)
 	protocol.Debug("gcm: broadcasting message with topic: %v ; channel length: %v", string(topic), len(conn.routerC))

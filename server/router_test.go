@@ -395,7 +395,7 @@ func TestRouter_Check(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a Multiplexer with route
-	router, _ := aRouterRoute()
+	router, _ := aRouterRoute(1)
 
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
@@ -404,7 +404,7 @@ func TestRouter_Check(t *testing.T) {
 	err := router.Check()
 	a.Nil(err)
 
-	msMock.EXPECT().Check().Return(errors.New("HDD Disk is almost full ."))
+	msMock.EXPECT().Check().Return(errors.New("HDD Disk is almost full."))
 	err = router.Check()
 	a.NotNil(err)
 }
