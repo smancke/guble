@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/testutil"
 	"io/ioutil"
 	"log"
 	"os"
@@ -34,11 +35,17 @@ func newTestgroup(t *testing.T, groupID int, addr string, messagesToSend int) *t
 }
 
 func TestThroughput(t *testing.T) {
+	defer testutil.ResetDefaultRegistryHealthCheck()
+
 	//defer enableDebugForMethod()()
-	dir, _ := ioutil.TempDir("", "guble_benchmark_test")
+	dir, _ := ioutil.TempDir("", "guble_benchmarking_test")
 	defer os.RemoveAll(dir)
 
-	service := StartService(Args{Listen: "localhost:0", KVBackend: "memory", MSBackend: "file", StoragePath: dir})
+	service := StartService(Args{
+		Listen:      "localhost:0",
+		KVBackend:   "memory",
+		MSBackend:   "file",
+		StoragePath: dir})
 	defer func() {
 		service.Stop()
 	}()
@@ -97,72 +104,72 @@ func TestThroughput(t *testing.T) {
 	log.Printf("finished! Throughput: %v/sec (%v message in %v)", int(throughput), totalMessages, end.Sub(start))
 }
 
-func (test *testgroup) Init() {
-	test.topic = fmt.Sprintf("/%v-foo", test.groupID)
+func (tg *testgroup) Init() {
+	tg.topic = fmt.Sprintf("/%v-foo", tg.groupID)
 	var err error
-	location := "ws://" + test.addr + "/stream/user/xy"
+	location := "ws://" + tg.addr + "/stream/user/xy"
 	//location := "ws://gathermon.mancke.net:8080/stream/"
 	//location := "ws://127.0.0.1:8080/stream/"
-	test.client1, err = client.Open(location, "http://localhost/", 10, false)
+	tg.client1, err = client.Open(location, "http://localhost/", 10, false)
 	if err != nil {
 		panic(err)
 	}
-	test.client2, err = client.Open(location, "http://localhost/", 10, false)
+	tg.client2, err = client.Open(location, "http://localhost/", 10, false)
 	if err != nil {
 		panic(err)
 	}
 
-	test.expectStatusMessage(protocol.SUCCESS_CONNECTED, "You are connected to the server.")
+	tg.expectStatusMessage(protocol.SUCCESS_CONNECTED, "You are connected to the server.")
 
-	test.client1.Subscribe(test.topic)
+	tg.client1.Subscribe(tg.topic)
 	time.Sleep(time.Millisecond * 1)
 	//test.expectStatusMessage(protocol.SUCCESS_SUBSCRIBED_TO, test.topic)
 }
 
-func (test *testgroup) expectStatusMessage(name string, arg string) {
+func (tg *testgroup) expectStatusMessage(name string, arg string) {
 	select {
-	case notify := <-test.client1.StatusMessages():
-		assert.Equal(test.t, name, notify.Name)
-		assert.Equal(test.t, arg, notify.Arg)
+	case notify := <-tg.client1.StatusMessages():
+		assert.Equal(tg.t, name, notify.Name)
+		assert.Equal(tg.t, arg, notify.Arg)
 	case <-time.After(time.Second * 1):
-		test.t.Logf("[%v] no notification of type %s after 1 second", test.groupID, name)
-		test.done <- false
-		test.t.Fail()
+		tg.t.Logf("[%v] no notification of type %s after 1 second", tg.groupID, name)
+		tg.done <- false
+		tg.t.Fail()
 		return
 	}
 }
 
-func (test *testgroup) Start() {
+func (tg *testgroup) Start() {
 	go func() {
-		for i := 0; i < test.messagesToSend; i++ {
+		for i := 0; i < tg.messagesToSend; i++ {
 			body := fmt.Sprintf("Hallo-%v", i)
-			test.client2.Send(test.topic, body, "")
+			tg.client2.Send(tg.topic, body, "")
 		}
 	}()
 
-	for i := 0; i < test.messagesToSend; i++ {
+	for i := 0; i < tg.messagesToSend; i++ {
 		body := fmt.Sprintf("Hallo-%v", i)
 
 		select {
-		case msg := <-test.client1.Messages():
-			assert.Equal(test.t, body, msg.BodyAsString())
-			assert.Equal(test.t, test.topic, string(msg.Path))
-		case msg := <-test.client1.Errors():
-			test.t.Logf("[%v] received error: %v", test.groupID, msg)
-			test.done <- false
-			test.t.Fail()
+		case msg := <-tg.client1.Messages():
+			assert.Equal(tg.t, body, msg.BodyAsString())
+			assert.Equal(tg.t, tg.topic, string(msg.Path))
+		case msg := <-tg.client1.Errors():
+			tg.t.Logf("[%v] received error: %v", tg.groupId, msg)
+			tg.done <- false
+			tg.t.Fail()
 			return
 		case <-time.After(time.Second * 5):
-			test.t.Logf("[%v] no message received for 5 seconds, expected message %v", test.groupID, i)
-			test.done <- false
-			test.t.Fail()
+			tg.t.Logf("[%v] no message received for 5 seconds, expected message %v", tg.groupId, i)
+			tg.done <- false
+			tg.t.Fail()
 			return
 		}
 	}
-	test.done <- true
+	tg.done <- true
 }
 
-func (test *testgroup) Clean() {
-	test.client1.Close()
-	test.client2.Close()
+func (tg *testgroup) Clean() {
+	tg.client1.Close()
+	tg.client2.Close()
 }

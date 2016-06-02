@@ -117,6 +117,10 @@ func (router *router) Stop() error {
 }
 
 func (router *router) Check() error {
+	err := router.messageStore.Check()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

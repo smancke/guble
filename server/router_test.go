@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
@@ -386,4 +387,24 @@ func assertChannelContainsMessage(a *assert.Assertions, c chan *MessageForRoute,
 	case <-time.After(time.Millisecond * 5):
 		a.Fail("No message received")
 	}
+}
+
+func TestRouter_Check(t *testing.T) {
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	a := assert.New(t)
+
+	// Given a Multiplexer with route
+	router, _ := aRouterRoute()
+
+	msMock := NewMockMessageStore(ctrl)
+	router.messageStore = msMock
+
+	msMock.EXPECT().Check().Return(nil)
+	err := router.Check()
+	a.Nil(err)
+
+	msMock.EXPECT().Check().Return(errors.New("HDD Disk is almost full ."))
+	err = router.Check()
+	a.NotNil(err)
 }

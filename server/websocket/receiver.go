@@ -176,7 +176,6 @@ func (rec *Receiver) receiveFromSubscription() {
 			rec.sendOK(protocol.SUCCESS_CANCELED, string(rec.path))
 			return
 		}
-
 	}
 }
 
@@ -189,8 +188,6 @@ func (rec *Receiver) fetchOnlyLoop() {
 }
 
 func (rec *Receiver) fetch() error {
-	//var err error
-
 	fetch := store.FetchRequest{
 		Partition:     rec.path.Partition(),
 		MessageC:      make(chan store.MessageAndId, 3),

@@ -10,7 +10,7 @@ import (
 
 func Test_Fetch(t *testing.T) {
 	a := assert.New(t)
-	dir, _ := ioutil.TempDir("", "message_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_store_test")
 	//defer os.RemoveAll(dir)
 
 	// when i store a message
@@ -74,7 +74,7 @@ func Test_Fetch(t *testing.T) {
 
 func Test_MessageStore_Close(t *testing.T) {
 	a := assert.New(t)
-	dir, _ := ioutil.TempDir("", "message_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_store_test")
 	//defer os.RemoveAll(dir)
 
 	// when i store a message
@@ -91,7 +91,7 @@ func Test_MessageStore_Close(t *testing.T) {
 
 func Test_MaxMessageId(t *testing.T) {
 	a := assert.New(t)
-	dir, _ := ioutil.TempDir("", "message_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_store_test")
 	//defer os.RemoveAll(dir)
 	expectedMaxId := 2
 
@@ -147,7 +147,7 @@ func Test_StoreWithError(t *testing.T) {
 
 func Test_DoInTx(t *testing.T) {
 	a := assert.New(t)
-	dir, _ := ioutil.TempDir("", "message_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_store_test")
 	store := NewFileMessageStore(dir)
 	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
 
@@ -168,7 +168,7 @@ func Test_DoInTxError(t *testing.T) {
 func Test_StoreTx(t *testing.T) {
 	a := assert.New(t)
 
-	dir, _ := ioutil.TempDir("", "message_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_store_test")
 	store := NewFileMessageStore(dir)
 	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
 
@@ -184,4 +184,14 @@ func Test_StoreTxError(t *testing.T) {
 
 	err := store.StoreTx("p2", nil)
 	a.NotNil(err)
+}
+
+func Test_Check(t *testing.T) {
+	a := assert.New(t)
+	dir, _ := ioutil.TempDir("", "message_store_test")
+	store := NewFileMessageStore(dir)
+	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
+
+	err := store.Check()
+	a.Nil(err)
 }
