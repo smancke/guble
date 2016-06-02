@@ -154,7 +154,7 @@ func (rec *Receiver) subscribe() {
 func (rec *Receiver) receiveFromSubscription() {
 	for {
 		select {
-		case msgAndRoute, ok := <-rec.route.Messages():
+		case msgAndRoute, ok := <-rec.route.MessagesChannel():
 			if !ok {
 				protocol.Debug("Router closed the channel returning from subscription", rec.applicationId)
 				return

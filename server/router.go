@@ -21,8 +21,7 @@ type Router interface {
 	HandleMessage(message *protocol.Message) error
 }
 
-// Helper struct to pass `Route` to subscription channel and provide a
-// notification channel
+// Helper struct to pass `Route` to subscription channel and provide a notification channel.
 type subRequest struct {
 	route      *Route
 	doneNotify chan bool
@@ -38,13 +37,13 @@ type router struct {
 	// Channel that signals stop of the router
 	stop chan bool
 	// marks that the router is in stopping process
-	// no incomming messages are acceepted
+	// no incoming messages are accepted
 	stopping bool
 
 	// Add any operation that we need to wait upon here
 	wg sync.WaitGroup
 
-	// external services
+	// external 'services'
 	accessManager auth.AccessManager
 	messageStore  store.MessageStore
 	kvStore       store.KVStore
@@ -74,7 +73,7 @@ func (router *router) Start() error {
 	go func() {
 		router.wg.Add(1)
 		for {
-			if router.stopping && router.channelsEmpty() {
+			if router.stopping && router.channelsAreEmpty() {
 				router.closeRoutes()
 				router.wg.Done()
 				return
@@ -103,11 +102,6 @@ func (router *router) Start() error {
 	return nil
 }
 
-func (router *router) channelsEmpty() bool {
-	return len(router.handleC) == 0 && len(router.subscribeC) == 0 &&
-		len(router.unsubscribeC) == 0
-}
-
 // Stop stops the router by closing the stop channel
 func (router *router) Stop() error {
 	protocol.Debug("router: stopping")
@@ -122,6 +116,19 @@ func (router *router) Check() error {
 		return err
 	}
 	return nil
+}
+
+func (router *router) HandleMessage(message *protocol.Message) error {
+	protocol.Debug("router: HandleMessage: %v %v", message.UserID, message.Path)
+	if err := router.isStopping(); err != nil {
+		return err
+	}
+
+	if !router.accessManager.IsAllowed(auth.WRITE, message.UserID, message.Path) {
+		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
+	}
+
+	return router.storeMessage(message)
 }
 
 // Subscribe adds a route to the subscribers.
@@ -146,22 +153,6 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 	return r, nil
 }
 
-func (router *router) subscribe(r *Route) {
-	protocol.Debug("router: subscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
-
-	list, present := router.routes[r.Path]
-	if present {
-		// try to remove, to avoid double subscriptions of the same app
-		list = remove(list, r)
-	} else {
-		// Path not present yet. Initialize the slice
-		list = make([]*Route, 0, 1)
-		router.routes[r.Path] = list
-	}
-
-	router.routes[r.Path] = append(list, r)
-}
-
 func (router *router) Unsubscribe(r *Route) {
 	req := subRequest{
 		route:      r,
@@ -169,6 +160,21 @@ func (router *router) Unsubscribe(r *Route) {
 	}
 	router.unsubscribeC <- req
 	<-req.doneNotify
+}
+
+func (router *router) subscribe(r *Route) {
+	protocol.Debug("router: subscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
+
+	list, present := router.routes[r.Path]
+	if present {
+		// Try to remove, to avoid double subscriptions of the same app
+		list = remove(list, r)
+	} else {
+		// Path not present yet. Initialize the slice
+		list = make([]*Route, 0, 1)
+		router.routes[r.Path] = list
+	}
+	router.routes[r.Path] = append(list, r)
 }
 
 func (router *router) unsubscribe(r *Route) {
@@ -183,18 +189,8 @@ func (router *router) unsubscribe(r *Route) {
 		delete(router.routes, r.Path)
 	}
 }
-
-func (router *router) HandleMessage(message *protocol.Message) error {
-	protocol.Debug("router: HandleMessage: %v %v", message.UserID, message.Path)
-	if err := router.isStopping(); err != nil {
-		return err
-	}
-
-	if !router.accessManager.IsAllowed(auth.WRITE, message.UserID, message.Path) {
-		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
-	}
-
-	return router.storeMessage(message)
+func (router *router) channelsAreEmpty() bool {
+	return len(router.handleC) == 0 && len(router.subscribeC) == 0 && len(router.unsubscribeC) == 0
 }
 
 func (router *router) isStopping() error {
@@ -219,7 +215,8 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 	}
 
 	if float32(len(router.handleC))/float32(cap(router.handleC)) > 0.9 {
-		protocol.Warn("router: messageIn channel very full: current=%v, max=%v\n", len(router.handleC), cap(router.handleC))
+		protocol.Warn("router: messageIn channel almost full: current length=%v, max. capacity=%v\n",
+			len(router.handleC), cap(router.handleC))
 		time.Sleep(time.Millisecond)
 	}
 
@@ -243,7 +240,7 @@ func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 	defer protocol.PanicLogger()
 
 	select {
-	case route.Messages() <- &MessageForRoute{Message: message, Route: route}:
+	case route.MessagesChannel() <- &MessageForRoute{Message: message, Route: route}:
 	// fine, we could send the message
 	default:
 		protocol.Warn("router: queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)

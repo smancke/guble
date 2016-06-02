@@ -75,36 +75,36 @@ func (s *Service) Register(module interface{}) {
 	name := reflect.TypeOf(module).String()
 
 	if startable, ok := module.(Startable); ok {
-		protocol.Info("registering %v as Startable", name)
+		protocol.Info("service: registering %v as Startable", name)
 		s.startables = append(s.startables, startable)
 	}
 
 	if stopable, ok := module.(Stopable); ok {
-		protocol.Info("registering %v as Stopable", name)
+		protocol.Info("service: registering %v as Stopable", name)
 		s.stopables = append(s.stopables, stopable)
 	}
 
 	if checker, ok := module.(health.Checker); ok {
-		protocol.Info("registering %v as HealthChecker", name)
+		protocol.Info("service: registering %v as HealthChecker", name)
 		health.RegisterPeriodicThresholdFunc(name, s.healthCheckFrequency, s.healthCheckThreshold, health.CheckFunc(checker.Check))
 	}
 
 	if endpoint, ok := module.(Endpoint); ok {
 		prefix := endpoint.GetPrefix()
-		protocol.Info("registering %v as Endpoint to %v", name, prefix)
+		protocol.Info("service: registering %v as Endpoint to %v", name, prefix)
 		s.webserver.Handle(prefix, endpoint)
 	}
 }
 
 func (s *Service) Start() error {
-	el := protocol.NewErrorList("Errors occured while startup the service: ")
+	el := protocol.NewErrorList("service: errors occured while starting: ")
 
 	for _, startable := range s.startables {
 		name := reflect.TypeOf(startable).String()
 
-		protocol.Debug("starting module %v", name)
+		protocol.Debug("service: starting module %v", name)
 		if err := startable.Start(); err != nil {
-			protocol.Err("error on startup module %v", name)
+			protocol.Err("service: error while starting module %v", name)
 			el.Add(err)
 		}
 	}
@@ -115,30 +115,30 @@ func (s *Service) Stop() error {
 	errors := make(map[string]error)
 	for _, stopable := range s.stopables {
 		name := reflect.TypeOf(stopable).String()
-		stoppedChan := make(chan bool)
-		errorChan := make(chan error)
-		protocol.Info("stopping %v ...", name)
+		stoppedC := make(chan bool)
+		errorC := make(chan error)
+		protocol.Info("service: stopping %v ...", name)
 		go func() {
 			err := stopable.Stop()
 			if err != nil {
-				errorChan <- err
+				errorC <- err
 				return
 			}
-			stoppedChan <- true
+			stoppedC <- true
 		}()
 		select {
-		case err := <-errorChan:
-			protocol.Err("error while stopping %v: %v", name, err.Error)
+		case err := <-errorC:
+			protocol.Err("service: error while stopping %v: %v", name, err.Error)
 			errors[name] = err
-		case <-stoppedChan:
-			protocol.Info("stopped %v", name)
+		case <-stoppedC:
+			protocol.Info("service: stopped %v", name)
 		case <-time.After(s.StopGracePeriod):
-			errors[name] = fmt.Errorf("error while stopping %v: not returned after %v seconds", name, s.StopGracePeriod)
+			errors[name] = fmt.Errorf("service: error while stopping %v: did not stop after timeout %v", name, s.StopGracePeriod)
 			protocol.Err(errors[name].Error())
 		}
 	}
 	if len(errors) > 0 {
-		return fmt.Errorf("Errors while stopping modules %q", errors)
+		return fmt.Errorf("service: errors while stopping modules: %q", errors)
 	}
 	return nil
 }
