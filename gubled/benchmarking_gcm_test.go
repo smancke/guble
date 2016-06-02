@@ -85,7 +85,7 @@ func throughputSend(b *testing.B, nWorkers int, sampleSend func(c client.Client)
 		clients = append(clients, client)
 	}
 
-	// create topic
+	// create a topic
 	url := fmt.Sprintf("http://%s/gcm/0/gcmId0/subscribe/topic", service.WebServer().GetAddr())
 	response, errPost := http.Post(url, "text/plain", bytes.NewBufferString(""))
 	a.NoError(errPost)
@@ -99,10 +99,10 @@ func throughputSend(b *testing.B, nWorkers int, sampleSend func(c client.Client)
 	b.ResetTimer()
 
 	var wg sync.WaitGroup
+	wg.Add(gomaxprocs)
 	for _, c := range clients {
 		go func(c client.Client) {
 			defer wg.Done()
-			wg.Add(1)
 			for i := 0; i < b.N; i++ {
 				a.NoError(sampleSend(c))
 			}
@@ -110,10 +110,7 @@ func throughputSend(b *testing.B, nWorkers int, sampleSend func(c client.Client)
 	}
 	wg.Wait()
 
-	//TODO Cosmin: this delay should be eliminated after clean-shutdown is operational
-	time.Sleep(500 * time.Millisecond)
-
-	// stop service (and wait for all the messages to be processed during the grace period)
+	// stop service (and wait for all the messages to be processed during the given grace period)
 	service.StopGracePeriod = 10 * time.Second
 	err := service.Stop()
 	a.Nil(err)

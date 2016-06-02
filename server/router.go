@@ -110,7 +110,7 @@ func (router *router) channelsEmpty() bool {
 
 // Stop stops the router by closing the stop channel
 func (router *router) Stop() error {
-	protocol.Debug("stopping message router")
+	protocol.Debug("router: stopping")
 	router.stop <- true
 	router.wg.Wait()
 	return nil
@@ -127,7 +127,7 @@ func (router *router) Check() error {
 // Subscribe adds a route to the subscribers.
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Subscribe(r *Route) (*Route, error) {
-	protocol.Debug("subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
+	protocol.Debug("router: subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
 
 	if err := router.isStopping(); err != nil {
 		return nil, err
@@ -147,7 +147,7 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 }
 
 func (router *router) subscribe(r *Route) {
-	protocol.Info("subscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
+	protocol.Debug("router: subscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
 
 	list, present := router.routes[r.Path]
 	if present {
@@ -172,7 +172,7 @@ func (router *router) Unsubscribe(r *Route) {
 }
 
 func (router *router) unsubscribe(r *Route) {
-	protocol.Info("unsubscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
+	protocol.Debug("router: unsubscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
 
 	list, present := router.routes[r.Path]
 	if !present {
@@ -185,7 +185,7 @@ func (router *router) unsubscribe(r *Route) {
 }
 
 func (router *router) HandleMessage(message *protocol.Message) error {
-	protocol.Debug("Route.HandleMessage: %v %v", message.UserID, message.Path)
+	protocol.Debug("router: HandleMessage: %v %v", message.UserID, message.Path)
 	if err := router.isStopping(); err != nil {
 		return err
 	}
@@ -214,12 +214,12 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 	}
 
 	if err := router.messageStore.StoreTx(msg.Path.Partition(), txCallback); err != nil {
-		protocol.Err("error storing message in partition %v: %v", msg.Path.Partition(), err)
+		protocol.Err("router: error storing message in partition %v: %v", msg.Path.Partition(), err)
 		return err
 	}
 
 	if float32(len(router.handleC))/float32(cap(router.handleC)) > 0.9 {
-		protocol.Warn("router.messageIn channel very full: current=%v, max=%v\n", len(router.handleC), cap(router.handleC))
+		protocol.Warn("router: messageIn channel very full: current=%v, max=%v\n", len(router.handleC), cap(router.handleC))
 		time.Sleep(time.Millisecond)
 	}
 
@@ -228,9 +228,7 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 }
 
 func (router *router) handleMessage(message *protocol.Message) {
-	if protocol.InfoEnabled() {
-		protocol.Info("routing message: %v", message.Metadata())
-	}
+	protocol.Debug("router: routing message: %v", message.Metadata())
 
 	for path, list := range router.routes {
 		if matchesTopic(message.Path, path) {
@@ -248,7 +246,7 @@ func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 	case route.Messages() <- &MessageForRoute{Message: message, Route: route}:
 	// fine, we could send the message
 	default:
-		protocol.Info("queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)
+		protocol.Warn("router: queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)
 		route.Close()
 		router.unsubscribe(route)
 	}
