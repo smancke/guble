@@ -209,12 +209,12 @@ func (conn *GCMConnector) replaceSubscriptionWithCanonicalID(route *server.Route
 
 func (conn *GCMConnector) handleJSONError(jsonError string, gcmID string, route *server.Route) {
 	if jsonError == "NotRegistered" {
-		protocol.Debug("remove not registered GCM registration gcmID=%v", gcmID)
+		protocol.Debug("gcm: removing not registered GCM registration gcmID=%v", gcmID)
 		conn.removeSubscription(route, gcmID)
 	} else if jsonError == "InvalidRegistration" {
-		protocol.Err("the gcmID=%v is not registered. %v", gcmID, jsonError)
+		protocol.Err("gcm: the gcmID=%v is not registered. %v", gcmID, jsonError)
 	} else {
-		protocol.Err("unexpected error while sending to GCM gcmID=%v: %v", gcmID, jsonError)
+		protocol.Err("gcm: unexpected error while sending to GCM gcmID=%v: %v", gcmID, jsonError)
 	}
 }
 
@@ -225,7 +225,7 @@ func (conn *GCMConnector) GetPrefix() string {
 
 func (conn *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		protocol.Err("Only HTTP POST METHOD SUPPORTED but received type=[%s]", r.Method)
+		protocol.Err("gcm: Only HTTP POST METHOD SUPPORTED but received type=[%s]", r.Method)
 		http.Error(w, "Permission Denied", http.StatusMethodNotAllowed)
 		return
 	}
@@ -246,21 +246,21 @@ func (conn *GCMConnector) parseParams(path string) (userID, gcmID, topic string,
 	currentURLPath := removeTrailingSlash(path)
 
 	if strings.HasPrefix(currentURLPath, conn.prefix) != true {
-		err = errors.New("GCM request is not starting with gcm prefix")
+		err = errors.New("gcm: GCM request is not starting with gcm prefix")
 		return
 	}
 	pathAfterPrefix := strings.TrimPrefix(currentURLPath, conn.prefix)
 
 	splitParams := strings.SplitN(pathAfterPrefix, "/", 3)
 	if len(splitParams) != 3 {
-		err = errors.New("GCM request has wrong number of params")
+		err = errors.New("gcm: GCM request has wrong number of params")
 		return
 	}
 	userID = splitParams[0]
 	gcmID = splitParams[1]
 
 	if strings.HasPrefix(splitParams[2], subscribePrefixPath+"/") != true {
-		err = errors.New("GCM request third param is not subscribe")
+		err = errors.New("gcm: GCM request third param is not subscribe")
 		return
 	}
 	topic = strings.TrimPrefix(splitParams[2], subscribePrefixPath)
@@ -268,7 +268,7 @@ func (conn *GCMConnector) parseParams(path string) (userID, gcmID, topic string,
 }
 
 func (conn *GCMConnector) subscribe(topic string, userID string, gcmID string) {
-	protocol.Info("GCM connector registration to userID=%q, gcmID=%q: %q", userID, gcmID, topic)
+	protocol.Info("gcm: GCM connector registration to userID=%q, gcmID=%q: %q", userID, gcmID, topic)
 
 	route := server.NewRoute(topic, gcmID, userID, conn.routerC)
 
@@ -292,7 +292,7 @@ func (conn *GCMConnector) loadSubscriptions() {
 		select {
 		case entry, ok := <-subscriptions:
 			if !ok {
-				protocol.Info("renewed %v GCM subscriptions", count)
+				protocol.Info("gcm: renewed %v GCM subscriptions", count)
 				return
 			}
 			gcmID := entry[0]
@@ -300,7 +300,7 @@ func (conn *GCMConnector) loadSubscriptions() {
 			userID := splitValue[0]
 			topic := splitValue[1]
 
-			protocol.Debug("renewing GCM subscription: userID=%v, topic=%v, gcmID=%v", userID, topic, gcmID)
+			protocol.Debug("gcm: renewing GCM subscription: userID=%v, topic=%v, gcmID=%v", userID, topic, gcmID)
 			route := server.NewRoute(topic, gcmID, userID, conn.routerC)
 			conn.router.Subscribe(route)
 			count++

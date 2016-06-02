@@ -188,9 +188,9 @@ func TestGCMConnector_parseParams(t *testing.T) {
 		urlPath, userID, gcmID, topic, err string
 	}{
 		{"/gcm/marvin/gcmId123/subscribe/notifications", "marvin", "gcmId123", "/notifications", ""},
-		{"/gcm2/marvin/gcmId123/subscribe/notifications", "", "", "", "GCM request is not starting with gcm prefix"},
-		{"/gcm/marvin/gcmId123/subscrib2e/notifications", "", "", "", "GCM request third param is not subscribe"},
-		{"/gcm/marvin/gcmId123subscribenotifications", "", "", "", "GCM request has wrong number of params"},
+		{"/gcm2/marvin/gcmId123/subscribe/notifications", "", "", "", "gcm: GCM request is not starting with gcm prefix"},
+		{"/gcm/marvin/gcmId123/subscrib2e/notifications", "", "", "", "gcm: GCM request third param is not subscribe"},
+		{"/gcm/marvin/gcmId123subscribenotifications", "", "", "", "gcm: GCM request has wrong number of params"},
 		{"/gcm/marvin/gcmId123/subscribe/notifications/alert/", "marvin", "gcmId123", "/notifications/alert", ""},
 	}
 
