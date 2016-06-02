@@ -94,5 +94,6 @@ func (kvStore *MemoryKVStore) getSchema(schema string) map[string][]byte {
 }
 
 func (kvStore *MemoryKVStore) Check() error {
+	// if the memory is full other parts of guble will crash so no check is here
 	return nil
 }
