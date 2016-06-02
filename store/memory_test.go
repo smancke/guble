@@ -1,6 +1,7 @@
 package store
 
 import (
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -18,4 +19,12 @@ func TestMemoryIterate(t *testing.T) {
 
 func BenchmarkMemoryPutGet(b *testing.B) {
 	CommonBenchPutGet(b, NewMemoryKVStore())
+}
+
+func Test_Check_MemoryKvStore(t *testing.T) {
+	a := assert.New(t)
+	store := NewMemoryKVStore()
+
+	err := store.Check()
+	a.Nil(err)
 }

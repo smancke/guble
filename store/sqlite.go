@@ -159,6 +159,16 @@ func (kvStore *SqliteKVStore) Open() error {
 	return nil
 }
 
+func (kvStore *SqliteKVStore) Check() error {
+
+	if err := kvStore.db.DB().Ping(); err != nil {
+		protocol.Err("error pinging database %q: %q", kvStore.filename, err.Error())
+		return err
+	}
+
+	return nil
+}
+
 func ensureWriteableDirectory(dir string) error {
 	dirInfo, err := os.Stat(dir)
 	if os.IsNotExist(err) {

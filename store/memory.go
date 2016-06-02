@@ -92,3 +92,7 @@ func (kvStore *MemoryKVStore) getSchema(schema string) map[string][]byte {
 	kvStore.data[schema] = s
 	return s
 }
+
+func (kvStore *MemoryKVStore) Check() error {
+	return nil
+}
