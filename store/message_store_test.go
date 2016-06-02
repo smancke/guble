@@ -2,7 +2,6 @@ package store
 
 import (
 	"fmt"
-	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"testing"
