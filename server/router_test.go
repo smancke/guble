@@ -397,6 +397,10 @@ func TestRouter_Check(t *testing.T) {
 	// Given a Multiplexer with route
 	router, _ := aRouterRoute(1)
 
+	//first the messageStore and kvStore will be nil
+	err := router.Check()
+	a.NotNil(err)
+
 	// mock messageStore
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
@@ -408,7 +412,7 @@ func TestRouter_Check(t *testing.T) {
 	msMock.EXPECT().Check().Return(nil)
 	mockKvStore.EXPECT().Check().Return(nil)
 	//both router health checks will work
-	err := router.Check()
+	err = router.Check()
 	a.Nil(err)
 
 	//router messageStore will return error
