@@ -25,7 +25,7 @@ func TestStopingOfModules(t *testing.T) {
 
 	// with a registered Stopable
 	stopable := NewMockStopable(ctrl)
-	service.Register(stopable)
+	service.register(stopable)
 
 	service.Start()
 
@@ -46,7 +46,7 @@ func TestStopingOfModulesTimeout(t *testing.T) {
 
 	// with a registered Stopable, which blocks too long on stop
 	stopable := NewMockStopable(ctrl)
-	service.Register(stopable)
+	service.register(stopable)
 	stopable.EXPECT().Stop().Do(func() {
 		time.Sleep(time.Millisecond * 10)
 	})
@@ -67,7 +67,7 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 	service, _, _, _ := aMockedService()
 
 	// when I register an endpoint at path /foo
-	service.Register(&TestEndpoint{})
+	service.register(&TestEndpoint{})
 	service.Start()
 	defer service.Stop()
 	time.Sleep(time.Millisecond * 10)
@@ -120,7 +120,7 @@ func TestHealthDown(t *testing.T) {
 	// when starting the service with a short frequency
 	defer service.Stop()
 	service.healthCheckFrequency = time.Millisecond * 3
-	service.Register(mockChecker)
+	service.register(mockChecker)
 	service.Start()
 	time.Sleep(time.Millisecond * 10)
 

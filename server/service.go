@@ -56,8 +56,8 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 		healthCheckFrequency: defaultHealthCheckFrequency,
 		healthCheckThreshold: defaultHealthCheckThreshold,
 	}
-	service.Register(service.router)
-	service.Register(service.webserver)
+	service.register(service.router)
+	service.register(service.webserver)
 
 	service.webserver.Handle(healthEndpointPrefix, http.HandlerFunc(health.StatusHandler))
 
@@ -67,7 +67,7 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 func (s *Service) RegisterModules(modules []interface{}) {
 	for _, module := range modules {
 		s.modules = append(s.modules, module)
-		s.Register(module)
+		s.register(module)
 	}
 }
 
@@ -78,7 +78,7 @@ func (s *Service) RegisterModules(modules []interface{}) {
 //   Stopable: notify when the service stops
 //   health.Checker:
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
-func (s *Service) Register(module interface{}) {
+func (s *Service) register(module interface{}) {
 	name := reflect.TypeOf(module).String()
 
 	if startable, ok := module.(Startable); ok {
@@ -160,7 +160,7 @@ func (s *Service) WebServer() *webserver.WebServer {
 
 // stop module with a timeout
 func stopAsyncTimeout(m Stopable, timeout int) chan error {
-	errC := make(chan err)
+	errC := make(chan error)
 	go func() {
 	}()
 	return errC
