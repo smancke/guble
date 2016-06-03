@@ -111,10 +111,20 @@ func (router *router) Stop() error {
 }
 
 func (router *router) Check() error {
+	if router.messageStore == nil || router.kvStore == nil {
+		return ErrServiceNotProvided
+	}
+
 	err := router.messageStore.Check()
 	if err != nil {
 		return err
 	}
+
+	err = router.kvStore.Check()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

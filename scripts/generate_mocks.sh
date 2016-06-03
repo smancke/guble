@@ -28,7 +28,7 @@ replace "server/mocks_server_gen_test.go" "server \"github.com\/smancke\/guble\/
 $MOCKGEN -self_package server -package server \
       -destination server/mocks_store_gen_test.go \
       github.com/smancke/guble/store \
-      MessageStore
+      MessageStore,KVStore
 
 $MOCKGEN -self_package server -package server \
       -destination server/mocks_checker_gen_test.go \
