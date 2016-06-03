@@ -6,6 +6,7 @@ import (
 	"github.com/smancke/guble/store"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -20,8 +21,7 @@ type Router interface {
 	HandleMessage(message *protocol.Message) error
 }
 
-// Helper struct to pass `Route` to subscription channel and provide a
-// notification channel
+// Helper struct to pass `Route` to subscription channel and provide a notification channel.
 type subRequest struct {
 	route      *Route
 	doneNotify chan bool
@@ -29,13 +29,21 @@ type subRequest struct {
 
 type router struct {
 	// mapping the path to the route slice
-	routes          map[protocol.Path][]*Route
-	messageIn       chan *protocol.Message
-	subscribeChan   chan subRequest
-	unsubscribeChan chan subRequest
-	stop            chan bool
+	routes       map[protocol.Path][]*Route
+	handleC      chan *protocol.Message
+	subscribeC   chan subRequest
+	unsubscribeC chan subRequest
 
-	// external services
+	// Channel that signals stop of the router
+	stop chan bool
+	// marks that the router is in stopping process
+	// no incoming messages are accepted
+	stopping bool
+
+	// Add any operation that we need to wait upon here
+	wg sync.WaitGroup
+
+	// external 'services'
 	accessManager auth.AccessManager
 	messageStore  store.MessageStore
 	kvStore       store.KVStore
@@ -44,11 +52,12 @@ type router struct {
 // NewRouter returns a pointer to Router
 func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore) Router {
 	return &router{
-		routes:          make(map[protocol.Path][]*Route),
-		messageIn:       make(chan *protocol.Message, 500),
-		subscribeChan:   make(chan subRequest, 10),
-		unsubscribeChan: make(chan subRequest, 10),
-		stop:            make(chan bool, 1),
+		routes:       make(map[protocol.Path][]*Route),
+		handleC:      make(chan *protocol.Message, 500),
+		subscribeC:   make(chan subRequest, 10),
+		unsubscribeC: make(chan subRequest, 10),
+
+		stop: make(chan bool, 1),
 
 		accessManager: accessManager,
 		messageStore:  messageStore,
@@ -62,24 +71,29 @@ func (router *router) Start() error {
 	}
 
 	go func() {
+		router.wg.Add(1)
 		for {
+			if router.stopping && router.channelsAreEmpty() {
+				router.closeRoutes()
+				router.wg.Done()
+				return
+			}
+
 			func() {
 				defer protocol.PanicLogger()
 
 				select {
-				case message := <-router.messageIn:
+				case message := <-router.handleC:
 					router.handleMessage(message)
 					runtime.Gosched()
-				case subscriber := <-router.subscribeChan:
+				case subscriber := <-router.subscribeC:
 					router.subscribe(subscriber.route)
 					subscriber.doneNotify <- true
-				case unsubscriber := <-router.unsubscribeChan:
+				case unsubscriber := <-router.unsubscribeC:
 					router.unsubscribe(unsubscriber.route)
 					unsubscriber.doneNotify <- true
 				case <-router.stop:
-					router.closeAllRoutes()
-					protocol.Debug("stopping message router")
-					break
+					router.stopping = true
 				}
 			}()
 		}
@@ -90,7 +104,9 @@ func (router *router) Start() error {
 
 // Stop stops the router by closing the stop channel
 func (router *router) Stop() error {
-	close(router.stop)
+	protocol.Debug("router: stopping")
+	router.stop <- true
+	router.wg.Wait()
 	return nil
 }
 
@@ -108,10 +124,28 @@ func (router *router) Check() error {
 	return nil
 }
 
+func (router *router) HandleMessage(message *protocol.Message) error {
+	protocol.Debug("router: HandleMessage: %v %v", message.UserID, message.Path)
+	if err := router.isStopping(); err != nil {
+		return err
+	}
+
+	if !router.accessManager.IsAllowed(auth.WRITE, message.UserID, message.Path) {
+		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
+	}
+
+	return router.storeMessage(message)
+}
+
 // Subscribe adds a route to the subscribers.
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Subscribe(r *Route) (*Route, error) {
-	protocol.Debug("subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
+	protocol.Debug("router: subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
+
+	if err := router.isStopping(); err != nil {
+		return nil, err
+	}
+
 	accessAllowed := router.accessManager.IsAllowed(auth.READ, r.UserID, r.Path)
 	if !accessAllowed {
 		return r, &PermissionDeniedError{r.UserID, auth.READ, r.Path}
@@ -120,25 +154,9 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 		route:      r,
 		doneNotify: make(chan bool),
 	}
-	router.subscribeChan <- req
+	router.subscribeC <- req
 	<-req.doneNotify
 	return r, nil
-}
-
-func (router *router) subscribe(r *Route) {
-	protocol.Info("subscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
-
-	list, present := router.routes[r.Path]
-	if present {
-		// try to remove, to avoid double subscriptions of the same app
-		list = remove(list, r)
-	} else {
-		// Path not present yet. Initialize the slice
-		list = make([]*Route, 0, 1)
-		router.routes[r.Path] = list
-	}
-
-	router.routes[r.Path] = append(list, r)
 }
 
 func (router *router) Unsubscribe(r *Route) {
@@ -146,29 +164,46 @@ func (router *router) Unsubscribe(r *Route) {
 		route:      r,
 		doneNotify: make(chan bool),
 	}
-	router.unsubscribeChan <- req
+	router.unsubscribeC <- req
 	<-req.doneNotify
 }
 
+func (router *router) subscribe(r *Route) {
+	protocol.Debug("router: subscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
+
+	list, present := router.routes[r.Path]
+	if present {
+		// Try to remove, to avoid double subscriptions of the same app
+		list = remove(list, r)
+	} else {
+		// Path not present yet. Initialize the slice
+		list = make([]*Route, 0, 1)
+		router.routes[r.Path] = list
+	}
+	router.routes[r.Path] = append(list, r)
+}
+
 func (router *router) unsubscribe(r *Route) {
-	protocol.Info("unsubscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
-	routeList, present := router.routes[r.Path]
+	protocol.Debug("router: unsubscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
+
+	list, present := router.routes[r.Path]
 	if !present {
 		return
 	}
-	router.routes[r.Path] = remove(routeList, r)
+	router.routes[r.Path] = remove(list, r)
 	if len(router.routes[r.Path]) == 0 {
 		delete(router.routes, r.Path)
 	}
 }
+func (router *router) channelsAreEmpty() bool {
+	return len(router.handleC) == 0 && len(router.subscribeC) == 0 && len(router.unsubscribeC) == 0
+}
 
-func (router *router) HandleMessage(message *protocol.Message) error {
-	protocol.Debug("Route.HandleMessage: %v %v", message.UserID, message.Path)
-	if !router.accessManager.IsAllowed(auth.WRITE, message.UserID, message.Path) {
-		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
+func (router *router) isStopping() error {
+	if router.stopping {
+		return &ModuleStoppingError{"Router"}
 	}
-
-	return router.storeMessage(message)
+	return nil
 }
 
 // Assign the new message id and store it and handle by passing the stored message
@@ -181,27 +216,26 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 	}
 
 	if err := router.messageStore.StoreTx(msg.Path.Partition(), txCallback); err != nil {
-		protocol.Err("error storing message in partition %v: %v", msg.Path.Partition(), err)
+		protocol.Err("router: error storing message in partition %v: %v", msg.Path.Partition(), err)
 		return err
 	}
 
-	if float32(len(router.messageIn))/float32(cap(router.messageIn)) > 0.9 {
-		protocol.Warn("router.messageIn channel very full: current=%v, max=%v\n", len(router.messageIn), cap(router.messageIn))
+	if float32(len(router.handleC))/float32(cap(router.handleC)) > 0.9 {
+		protocol.Warn("router: messageIn channel almost full: current length=%v, max. capacity=%v\n",
+			len(router.handleC), cap(router.handleC))
 		time.Sleep(time.Millisecond)
 	}
 
-	router.messageIn <- msg
+	router.handleC <- msg
 	return nil
 }
 
 func (router *router) handleMessage(message *protocol.Message) {
-	if protocol.InfoEnabled() {
-		protocol.Info("routing message: %v", message.Metadata())
-	}
+	protocol.Debug("router: routing message: %v", message.Metadata())
 
-	for currentRoutePath, currentRouteList := range router.routes {
-		if matchesTopic(message.Path, currentRoutePath) {
-			for _, route := range currentRouteList {
+	for path, list := range router.routes {
+		if matchesTopic(message.Path, path) {
+			for _, route := range list {
 				router.deliverMessage(route, message)
 			}
 		}
@@ -210,20 +244,21 @@ func (router *router) handleMessage(message *protocol.Message) {
 
 func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 	defer protocol.PanicLogger()
+
 	select {
-	case route.C <- MsgAndRoute{Message: message, Route: route}:
+	case route.MessagesChannel() <- &MessageForRoute{Message: message, Route: route}:
 	// fine, we could send the message
 	default:
-		protocol.Info("queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)
-		close(route.C)
+		protocol.Warn("router: queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)
+		route.Close()
 		router.unsubscribe(route)
 	}
 }
 
-func (router *router) closeAllRoutes() {
+func (router *router) closeRoutes() {
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
-			close(route.C)
+			route.Close()
 			router.unsubscribe(route)
 		}
 	}

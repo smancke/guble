@@ -16,15 +16,24 @@ var (
 type PermissionDeniedError struct {
 
 	// userId of request
-	userID string
+	UserID string
 
 	// accessType  requested(READ/WRITE)
-	accessType auth.AccessType
+	AccessType auth.AccessType
 
 	// requested topic
-	path protocol.Path
+	Path protocol.Path
 }
 
 func (e *PermissionDeniedError) Error() string {
-	return fmt.Sprintf("Access Denied for user=[%s] on path=[%s] for Operation=[%s]", e.userID, e.path, e.accessType)
+	return fmt.Sprintf("Access Denied for user=[%s] on path=[%s] for Operation=[%s]", e.UserID, e.Path, e.AccessType)
+}
+
+// ModuleStoppingError is returned when the module is stopping
+type ModuleStoppingError struct {
+	Name string
+}
+
+func (m *ModuleStoppingError) Error() string {
+	return fmt.Sprintf("Service %s is stopping", m.Name)
 }

@@ -114,21 +114,21 @@ func (fms *FileMessageStore) Check() error {
 	var stat syscall.Statfs_t
 	wd, err := os.Getwd()
 	if err != nil {
-		protocol.Err("MessageStore check returned error", err)
+		protocol.Err("FileMessageStore Check() returned error", err)
 		return err
 	}
 	syscall.Statfs(wd, &stat)
 
-	// Available blocks * size per block = available space in bytes
+	// available space in bytes = available blocks * size per block
 	freeSpace := stat.Bavail * uint64(stat.Bsize)
-	// total system blocks * size per block = total space in bytes
+	// total space in bytes = total system blocks * size per block
 	totalSpace := stat.Blocks * uint64(stat.Bsize)
 
 	usedSpacePercentage := 1 - (float64(freeSpace) / float64(totalSpace))
 
 	if usedSpacePercentage > 0.95 {
-		protocol.Err("Disk space is used  more than 95 percent. Actual percent of space used %.2f", usedSpacePercentage)
-		return errors.New("HDD Disk is almost full .")
+		protocol.Err("Disk space is used more than 95 percent: %.2f", usedSpacePercentage)
+		return errors.New("Disk is almost full.")
 	}
 
 	return nil

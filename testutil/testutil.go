@@ -1,11 +1,16 @@
 package testutil
 
 import (
+	"github.com/smancke/guble/protocol"
+
+	"github.com/alexjlockwood/gcm"
 	"github.com/docker/distribution/health"
 	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/protocol"
 	"github.com/stretchr/testify/assert"
 
+	"io/ioutil"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
@@ -53,4 +58,74 @@ func ExpectDone(a *assert.Assertions, doneChannel chan bool) {
 // ResetDefaultRegistryHealthCheck resets the existing registry containing health-checks
 func ResetDefaultRegistryHealthCheck() {
 	health.DefaultRegistry = health.NewRegistry()
+}
+
+const (
+	CorrectGcmResponseMessageJSON = `
+{
+   "multicast_id":3,
+   "succes":1,
+   "failure":0,
+   "canonicals_ids":5,
+   "results":[
+      {
+         "message_id":"da",
+         "registration_id":"rId",
+         "error":""
+      }
+   ]
+}`
+
+	ErrorResponseMessageJSON = `
+{
+   "multicast_id":3,
+   "succes":0,
+   "failure":1,
+   "canonicals_ids":5,
+   "results":[
+      {
+         "message_id":"err",
+         "registration_id":"gcmCanonicalID",
+         "error":"InvalidRegistration"
+      }
+   ]
+}`
+)
+
+// mock a https round tripper in order to not send the test request to GCM.
+type RoundTripperFunc func(req *http.Request) *http.Response
+
+func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	protocol.Debug("Served request for %v", req.URL.Path)
+	return rt(req), nil
+}
+
+func CreateGcmSender(rt RoundTripperFunc) *gcm.Sender {
+	protocol.Debug("CreateGcmSender")
+	httpClient := &http.Client{Transport: rt}
+	return &gcm.Sender{ApiKey: "124", Http: httpClient}
+}
+
+func CreateRoundTripperWithJsonResponse(httpStatusCode int, messageBodyAsJSON string, doneC chan bool) RoundTripperFunc {
+	protocol.Debug("CreateRoundTripperWithJsonResponse")
+	return RoundTripperFunc(func(req *http.Request) *http.Response {
+		protocol.Debug("RoundTripperFunc")
+		if doneC != nil {
+			defer func() {
+				close(doneC)
+			}()
+		}
+
+		resp := &http.Response{
+			Proto:      "HTTP/1.1",
+			ProtoMajor: 1,
+			ProtoMinor: 1,
+			Header:     make(http.Header),
+			Body:       ioutil.NopCloser(strings.NewReader(messageBodyAsJSON)),
+			Request:    req,
+			StatusCode: httpStatusCode,
+		}
+		resp.Header.Add("Content-Type", "application/json")
+		return resp
+	})
 }

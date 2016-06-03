@@ -43,6 +43,10 @@ func (msg *Message) Metadata() string {
 	return string(buff.Bytes())
 }
 
+func (msg *Message) String() string {
+	return fmt.Sprintf("%d", msg.ID)
+}
+
 func (msg *Message) BodyAsString() string {
 	return string(msg.Body)
 }
