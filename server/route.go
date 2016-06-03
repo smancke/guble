@@ -15,12 +15,12 @@ func NewRoute(path, applicationID, userID string, channel chan *MessageForRoute)
 	}
 }
 
-// Route represents a topic for subscription that has a channel to receive message
+// Route represents a topic for subscription that has a channel to receive messages.
 type Route struct {
 	Path          protocol.Path
 	messagesC     chan *MessageForRoute
 	UserID        string // UserID that subscribed or pushes messages to the router
-	ApplicationID string // ApplicationID that
+	ApplicationID string
 }
 
 func (r *Route) String() string {
@@ -33,23 +33,12 @@ func (r *Route) equals(other *Route) bool {
 		r.ApplicationID == other.ApplicationID
 }
 
-// Close closes the route channel
+// Close closes the route channel.
 func (r *Route) Close() {
 	close(r.messagesC)
 }
 
-// Messages return the route channel to send or receive messages
-func (r *Route) Messages() chan *MessageForRoute {
+// Messages returns the route channel to send or receive messages.
+func (r *Route) MessagesChannel() chan *MessageForRoute {
 	return r.messagesC
-}
-
-// MsgAndRoute is a wrapper that provides the message and the route togheter.
-// Useful for sending both information over a channel
-type MessageForRoute struct {
-	Message *protocol.Message
-	Route   *Route
-}
-
-func (m *MessageForRoute) String() string {
-	return fmt.Sprintf("Message %s for route %s")
 }

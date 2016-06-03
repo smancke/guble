@@ -16,6 +16,11 @@ import (
 
 var WriteTestFilename = "db_testfile"
 
+const (
+	maxIdleConns = 2
+	maxOpenConns = 5
+)
+
 type kvEntry struct {
 	Schema    string    `gorm:"primary_key"sql:"type:varchar(200)"`
 	Key       string    `gorm:"primary_key"sql:"type:varchar(200)"`
@@ -41,7 +46,6 @@ func (kvStore *SqliteKVStore) Stop() error {
 	if kvStore.db != nil {
 		return kvStore.db.Close()
 	}
-
 	return nil
 }
 
@@ -74,7 +78,7 @@ func (kvStore *SqliteKVStore) Iterate(schema string, keyPrefix string) (entries 
 			Rows()
 
 		if err != nil {
-			protocol.Err("error fetching keys from db %v", err)
+			protocol.Err("kv-sqlite: error fetching keys from db %v", err)
 		} else {
 			defer rows.Close()
 			for rows.Next() {
@@ -97,7 +101,7 @@ func (kvStore *SqliteKVStore) IterateKeys(schema string, keyPrefix string) chan 
 			Rows()
 
 		if err != nil {
-			protocol.Err("error fetching keys from db %v", err)
+			protocol.Err("kv-sqlite: error fetching keys from db %v", err)
 		} else {
 			defer rows.Close()
 			for rows.Next() {
@@ -120,7 +124,7 @@ func (kvStore *SqliteKVStore) Delete(schema, key string) error {
 func (kvStore *SqliteKVStore) Open() error {
 	directoryPath := filepath.Dir(kvStore.filename)
 	if err := ensureWriteableDirectory(directoryPath); err != nil {
-		protocol.Err("error db directory not writeable %q: %q", kvStore.filename, err)
+		protocol.Err("kv-sqlite: error db directory not writeable %q: %q", kvStore.filename, err)
 		return err
 	}
 
@@ -132,26 +136,26 @@ func (kvStore *SqliteKVStore) Open() error {
 	}
 
 	if err := gormdb.DB().Ping(); err != nil {
-		protocol.Err("error pinging database %q: %q", kvStore.filename, err.Error())
+		protocol.Err("kv-sqlite: error pinging database %q: %q", kvStore.filename, err.Error())
 	} else {
-		protocol.Debug("can ping database %q", kvStore.filename)
+		protocol.Debug("kv-sqlite: can ping database %q", kvStore.filename)
 	}
 
 	//gormdb.LogMode(true)
-	gormdb.DB().SetMaxIdleConns(2)
-	gormdb.DB().SetMaxOpenConns(5)
 	gormdb.SingularTable(true)
+	gormdb.DB().SetMaxIdleConns(maxIdleConns)
+	gormdb.DB().SetMaxOpenConns(maxOpenConns)
 
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
-		protocol.Err("error in schema migration: %q", err)
+		protocol.Err("kv-sqlite: error in schema migration: %q", err)
 		return err
 	}
-	protocol.Debug("ensured db schema")
+	protocol.Debug("kv-sqlite: ensured db schema")
 
 	if !kvStore.syncOnWrite {
-		protocol.Info("setting db: PRAGMA synchronous = OFF")
+		protocol.Info("kv-sqlite: setting db: PRAGMA synchronous = OFF")
 		if err := gormdb.Exec("PRAGMA synchronous = OFF").Error; err != nil {
-			protocol.Err("error setting PRAGMA synchronous = OFF: %v", err)
+			protocol.Err("kv-sqlite: error setting PRAGMA synchronous = OFF: %v", err)
 			return err
 		}
 	}
@@ -169,7 +173,7 @@ func ensureWriteableDirectory(dir string) error {
 	}
 
 	if err != nil || !dirInfo.IsDir() {
-		return fmt.Errorf("not a directory %v", dir)
+		return fmt.Errorf("kv-sqlite: not a directory %v", dir)
 	}
 
 	writeTest := path.Join(dir, WriteTestFilename)

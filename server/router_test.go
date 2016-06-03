@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
@@ -152,7 +153,7 @@ func TestRouter_SimpleMessageSending(t *testing.T) {
 	router.HandleMessage(&protocol.Message{Path: r.Path, Body: aTestByteMessage})
 
 	// then I can receive it a short time later
-	assertChannelContainsMessage(a, r.Messages(), aTestByteMessage)
+	assertChannelContainsMessage(a, r.MessagesChannel(), aTestByteMessage)
 }
 
 func TestRouter_RoutingWithSubTopics(t *testing.T) {
@@ -177,13 +178,13 @@ func TestRouter_RoutingWithSubTopics(t *testing.T) {
 	router.HandleMessage(&protocol.Message{Path: "/blah/blub", Body: aTestByteMessage})
 
 	// then I can receive the message
-	assertChannelContainsMessage(a, r.Messages(), aTestByteMessage)
+	assertChannelContainsMessage(a, r.MessagesChannel(), aTestByteMessage)
 
 	// but, when i send a message to a resource, which is just a substring
 	router.HandleMessage(&protocol.Message{Path: "/blahblub", Body: aTestByteMessage})
 
 	// then the message gets not delivered
-	a.Equal(0, len(r.Messages()))
+	a.Equal(0, len(r.MessagesChannel()))
 }
 
 func TestMatchesTopic(t *testing.T) {
@@ -240,7 +241,7 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 	// fetch messages from the channel
 	for i := 0; i < chanSize; i++ {
 		select {
-		case _, open := <-r.Messages():
+		case _, open := <-r.MessagesChannel():
 			a.True(open)
 		case <-time.After(time.Millisecond * 10):
 			a.Fail("error not enough messages in channel")
@@ -249,10 +250,10 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 
 	// and the channel is closed
 	select {
-	case _, open := <-r.Messages():
+	case _, open := <-r.MessagesChannel():
 		a.False(open)
 	default:
-		fmt.Printf("len(r.C): %v", len(r.Messages()))
+		fmt.Printf("len(r.C): %v", len(r.MessagesChannel()))
 		a.Fail("channel was not closed")
 	}
 }
@@ -326,7 +327,7 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	// read the messages until done is closed
 	go func() {
 		for {
-			_, ok := <-route.Messages()
+			_, ok := <-route.MessagesChannel()
 			select {
 			case <-done:
 				return
@@ -386,4 +387,24 @@ func assertChannelContainsMessage(a *assert.Assertions, c chan *MessageForRoute,
 	case <-time.After(time.Millisecond * 5):
 		a.Fail("No message received")
 	}
+}
+
+func TestRouter_Check(t *testing.T) {
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	a := assert.New(t)
+
+	// Given a Multiplexer with route
+	router, _ := aRouterRoute(1)
+
+	msMock := NewMockMessageStore(ctrl)
+	router.messageStore = msMock
+
+	msMock.EXPECT().Check().Return(nil)
+	err := router.Check()
+	a.Nil(err)
+
+	msMock.EXPECT().Check().Return(errors.New("HDD Disk is almost full."))
+	err = router.Check()
+	a.NotNil(err)
 }

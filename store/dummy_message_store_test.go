@@ -97,6 +97,14 @@ func Test_DummyMessageStore_SyncIdsOnStop(t *testing.T) {
 	a.Equal([]byte(strconv.FormatUint(uint64(42), 10)), value)
 }
 
+func Test_CheckDummyStore(t *testing.T) {
+	a := assert.New(t)
+	store := NewDummyMessageStore(NewMemoryKVStore())
+
+	err := store.Check()
+	a.Nil(err)
+}
+
 func fne(args ...interface{}) interface{} {
 	if args[1] != nil {
 		panic(args[1])

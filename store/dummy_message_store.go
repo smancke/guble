@@ -159,3 +159,7 @@ func (fms *DummyMessageStore) startSequenceSync() {
 	}
 	fms.stoppedC <- true
 }
+
+func (fms *DummyMessageStore) Check() error {
+	return nil
+}

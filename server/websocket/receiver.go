@@ -154,7 +154,7 @@ func (rec *Receiver) subscribe() {
 func (rec *Receiver) receiveFromSubscription() {
 	for {
 		select {
-		case msgAndRoute, ok := <-rec.route.Messages():
+		case msgAndRoute, ok := <-rec.route.MessagesChannel():
 			if !ok {
 				protocol.Debug("Router closed the channel returning from subscription", rec.applicationId)
 				return
@@ -176,7 +176,6 @@ func (rec *Receiver) receiveFromSubscription() {
 			rec.sendOK(protocol.SUCCESS_CANCELED, string(rec.path))
 			return
 		}
-
 	}
 }
 
@@ -189,8 +188,6 @@ func (rec *Receiver) fetchOnlyLoop() {
 }
 
 func (rec *Receiver) fetch() error {
-	//var err error
-
 	fetch := store.FetchRequest{
 		Partition:     rec.path.Partition(),
 		MessageC:      make(chan store.MessageAndId, 3),

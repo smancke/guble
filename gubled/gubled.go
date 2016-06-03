@@ -1,18 +1,18 @@
 package gubled
 
 import (
+	"github.com/alexflint/go-arg"
+	"github.com/caarlos0/env"
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/rest"
 	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/server/websocket"
 	"github.com/smancke/guble/store"
 
 	"fmt"
-	"github.com/alexflint/go-arg"
-	"github.com/caarlos0/env"
-	"github.com/smancke/guble/server/auth"
 	"os"
 	"os/signal"
 	"path"
@@ -60,7 +60,7 @@ var CreateKVStore = func(args Args) store.KVStore {
 		}
 		return db
 	default:
-		panic(fmt.Errorf("unknown key value backend: %q", args.KVBackend))
+		panic(fmt.Errorf("unknown key-value backend: %q", args.KVBackend))
 	}
 }
 
@@ -72,12 +72,12 @@ var CreateMessageStore = func(args Args) store.MessageStore {
 		protocol.Info("using FileMessageStore in directory: %q", args.StoragePath)
 		return store.NewFileMessageStore(args.StoragePath)
 	default:
-		panic(fmt.Errorf("unknown message store backend: %q", args.MSBackend))
+		panic(fmt.Errorf("unknown message-store backend: %q", args.MSBackend))
 	}
 }
 
 var CreateModules = func(router server.Router, args Args) []interface{} {
-	modules := make([]interface{}, 0, 2)
+	modules := make([]interface{}, 0, 3)
 
 	if wsHandler, err := websocket.NewWSHandler(router, "/stream/"); err != nil {
 		protocol.Err("Error loading WSHandler module: %s", err)
@@ -89,13 +89,11 @@ var CreateModules = func(router server.Router, args Args) []interface{} {
 
 	if args.GcmEnable {
 		if args.GcmApiKey == "" {
-			panic("gcm api key has to be provided, if gcm is enabled")
+			panic("GCM API Key has to be provided, if GCM is enabled")
 		}
-
-		gcmWorkers := gcmWorkers(args.GcmWorkers)
 		protocol.Info("google cloud messaging: enabled")
-		protocol.Debug("gcm: %v workers", gcmWorkers)
-		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey, gcmWorkers); err != nil {
+		protocol.Debug("gcm: %v workers", args.GcmWorkers)
+		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey, args.GcmWorkers); err != nil {
 			protocol.Err("Error loading GCMConnector: ", err)
 		} else {
 			modules = append(modules, gcm)
@@ -147,9 +145,7 @@ func StartService(args Args) *server.Service {
 
 	service := server.NewService(router, webserver)
 
-	for _, module := range CreateModules(router, args) {
-		service.Register(module)
-	}
+	service.RegisterModules(CreateModules(router, args))
 
 	if err := service.Start(); err != nil {
 		protocol.Err(err.Error())
@@ -168,6 +164,7 @@ func loadArgs() Args {
 		KVBackend:   "file",
 		MSBackend:   "file",
 		StoragePath: "/var/lib/guble",
+		GcmWorkers:  runtime.GOMAXPROCS(0),
 	}
 
 	env.Parse(&args)
@@ -175,17 +172,10 @@ func loadArgs() Args {
 	return args
 }
 
-func gcmWorkers(n int) int {
-	if n <= 0 {
-		return runtime.GOMAXPROCS(0)
-	}
-	return n
-}
-
 func waitForTermination(callback func()) {
-	sigc := make(chan os.Signal)
-	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
-	protocol.Info("Got signal '%v' .. exiting gracefully now", <-sigc)
+	signalC := make(chan os.Signal)
+	signal.Notify(signalC, syscall.SIGINT, syscall.SIGTERM)
+	protocol.Info("Got signal '%v' .. exiting gracefully now", <-signalC)
 	callback()
 	protocol.Info("exit now")
 	os.Exit(0)
