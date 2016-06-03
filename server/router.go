@@ -35,7 +35,7 @@ type router struct {
 	unsubscribeC chan subRequest
 
 	// Channel that signals stop of the router
-	stop chan bool
+	stopC chan bool
 	// marks that the router is in stopping process
 	// no incoming messages are accepted
 	stopping bool
@@ -57,7 +57,7 @@ func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore
 		subscribeC:   make(chan subRequest, 10),
 		unsubscribeC: make(chan subRequest, 10),
 
-		stop: make(chan bool, 1),
+		stopC: make(chan bool, 1),
 
 		accessManager: accessManager,
 		messageStore:  messageStore,
@@ -92,7 +92,7 @@ func (router *router) Start() error {
 				case unsubscriber := <-router.unsubscribeC:
 					router.unsubscribe(unsubscriber.route)
 					unsubscriber.doneNotify <- true
-				case <-router.stop:
+				case <-router.stopC:
 					router.stopping = true
 				}
 			}()
@@ -105,7 +105,7 @@ func (router *router) Start() error {
 // Stop stops the router by closing the stop channel
 func (router *router) Stop() error {
 	protocol.Debug("router: stopping")
-	router.stop <- true
+	router.stopC <- true
 	router.wg.Wait()
 	return nil
 }
@@ -189,6 +189,7 @@ func (router *router) unsubscribe(r *Route) {
 		delete(router.routes, r.Path)
 	}
 }
+
 func (router *router) channelsAreEmpty() bool {
 	return len(router.handleC) == 0 && len(router.subscribeC) == 0 && len(router.unsubscribeC) == 0
 }
@@ -225,7 +226,7 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 }
 
 func (router *router) handleMessage(message *protocol.Message) {
-	protocol.Debug("router: routing message: %v", message.Metadata())
+	protocol.Debug("router: handleMessage: %v", message.Metadata())
 
 	for path, list := range router.routes {
 		if matchesTopic(message.Path, path) {
@@ -252,8 +253,9 @@ func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 func (router *router) closeRoutes() {
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
-			route.Close()
 			router.unsubscribe(route)
+			protocol.Debug("router: closing route %v", route)
+			route.Close()
 		}
 	}
 }

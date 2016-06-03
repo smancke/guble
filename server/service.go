@@ -36,13 +36,10 @@ type Endpoint interface {
 
 // Service is the main class for simple control of a server
 type Service struct {
-	webserver  *webserver.WebServer
-	router     Router
-	modules    []interface{}
-	startables []Startable
-	stopables  []Stopable
-	// The time given to each Module on Stop()
-	StopGracePeriod      time.Duration
+	webserver            *webserver.WebServer
+	router               Router
+	modules              []interface{}
+	StopGracePeriod      time.Duration // The timeout given to each Module on Stop()
 	healthCheckFrequency time.Duration
 	healthCheckThreshold int
 }
@@ -56,77 +53,76 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 		healthCheckFrequency: defaultHealthCheckFrequency,
 		healthCheckThreshold: defaultHealthCheckThreshold,
 	}
-	service.register(service.router)
-	service.register(service.webserver)
-
-	service.webserver.Handle(healthEndpointPrefix, http.HandlerFunc(health.StatusHandler))
+	service.registerModule(service.router)
+	service.registerModule(service.webserver)
 
 	return service
 }
 
 func (s *Service) RegisterModules(modules []interface{}) {
 	for _, module := range modules {
-		s.modules = append(s.modules, module)
-		s.register(module)
+		s.registerModule(module)
 	}
 }
 
-// Register the supplied module on this service.
-// This method checks the module for the following interfaces and
-// does the expected registrations:
-//   Startable,
-//   Stopable: notify when the service stops
+func (s *Service) registerModule(module interface{}) {
+	s.modules = append(s.modules, module)
+}
+
+// Start checks the modules for the following interfaces and registers and/or starts:
+//   Startable:
 //   health.Checker:
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
-func (s *Service) register(module interface{}) {
-	name := reflect.TypeOf(module).String()
-
-	if startable, ok := module.(Startable); ok {
-		protocol.Info("service: registering %v as Startable", name)
-		s.startables = append(s.startables, startable)
-	}
-
-	if stopable, ok := module.(Stopable); ok {
-		protocol.Info("service: registering %v as Stopable", name)
-		s.stopables = append(s.stopables, stopable)
-	}
-
-	if checker, ok := module.(health.Checker); ok {
-		protocol.Info("service: registering %v as HealthChecker", name)
-		health.RegisterPeriodicThresholdFunc(name, s.healthCheckFrequency, s.healthCheckThreshold, health.CheckFunc(checker.Check))
-	}
-
-	if endpoint, ok := module.(Endpoint); ok {
-		prefix := endpoint.GetPrefix()
-		protocol.Info("service: registering %v as Endpoint to %v", name, prefix)
-		s.webserver.Handle(prefix, endpoint)
-	}
-}
-
 func (s *Service) Start() error {
 	el := protocol.NewErrorList("service: errors occured while starting: ")
-
-	for _, startable := range s.startables {
-		name := reflect.TypeOf(startable).String()
-
-		protocol.Debug("service: starting module %v", name)
-		if err := startable.Start(); err != nil {
-			protocol.Err("service: error while starting module %v", name)
-			el.Add(err)
+	s.webserver.Handle(healthEndpointPrefix, http.HandlerFunc(health.StatusHandler))
+	for _, module := range s.modules {
+		name := reflect.TypeOf(module).String()
+		if startable, ok := module.(Startable); ok {
+			protocol.Info("service: starting module %v", name)
+			if err := startable.Start(); err != nil {
+				protocol.Err("service: error while starting module %v", name)
+				el.Add(err)
+			}
+		}
+		if checker, ok := module.(health.Checker); ok {
+			protocol.Info("service: registering %v as HealthChecker", name)
+			health.RegisterPeriodicThresholdFunc(name, s.healthCheckFrequency, s.healthCheckThreshold, health.CheckFunc(checker.Check))
+		}
+		if endpoint, ok := module.(Endpoint); ok {
+			prefix := endpoint.GetPrefix()
+			protocol.Info("service: registering %v as Endpoint to %v", name, prefix)
+			s.webserver.Handle(prefix, endpoint)
 		}
 	}
 	return el.ErrorOrNil()
 }
 
 func (s *Service) Stop() error {
+	stopables := make([]Stopable, 0)
+	for _, module := range s.modules {
+		name := reflect.TypeOf(module).String()
+		if stopable, ok := module.(Stopable); ok {
+			protocol.Info("service: %v is Stopable", name)
+			stopables = append(stopables, stopable)
+		}
+	}
+	// stopOrder allows the customized stopping of the modules
+	// (not necessarily in the reverse order of their Registrations)
+	stopOrder := make([]int, len(stopables))
+	for i := 0; i < len(stopables); i++ {
+		stopOrder[i] = len(stopables) - i - 1
+	}
+	protocol.Debug("service: stopping %d modules, in order: %v", len(stopOrder), stopOrder)
+
 	errors := make(map[string]error)
-	for _, stopable := range s.stopables {
-		name := reflect.TypeOf(stopable).String()
+	for _, i := range stopOrder {
+		name := reflect.TypeOf(stopables[i]).String()
 		stoppedC := make(chan bool)
 		errorC := make(chan error)
-		protocol.Info("service: stopping %v ...", name)
+		protocol.Info("service: stopping [%d] %v", i, name)
 		go func() {
-			err := stopable.Stop()
+			err := stopables[i].Stop()
 			if err != nil {
 				errorC <- err
 				return
@@ -160,13 +156,13 @@ func (s *Service) WebServer() *webserver.WebServer {
 
 // stop module with a timeout
 func stopAsyncTimeout(m Stopable, timeout int) chan error {
-	errC := make(chan error)
+	errorC := make(chan error)
 	go func() {
 	}()
-	return errC
+	return errorC
 }
 
 // wait for channel to respond or until time expired
 func wait() error {
-
+	return nil
 }
