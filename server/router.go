@@ -28,22 +28,14 @@ type subRequest struct {
 }
 
 type router struct {
-	// mapping the path to the route slice
-	routes       map[protocol.Path][]*Route
+	routes       map[protocol.Path][]*Route // mapping the path to the route slice
 	handleC      chan *protocol.Message
 	subscribeC   chan subRequest
 	unsubscribeC chan subRequest
+	stopC        chan bool      // Channel that signals stop of the router
+	stopping     bool           // Flag: the router is in stopping process and no incoming messages are accepted
+	wg           sync.WaitGroup // Add any operation that we need to wait upon here
 
-	// Channel that signals stop of the router
-	stopC chan bool
-	// marks that the router is in stopping process
-	// no incoming messages are accepted
-	stopping bool
-
-	// Add any operation that we need to wait upon here
-	wg sync.WaitGroup
-
-	// external 'services'
 	accessManager auth.AccessManager
 	messageStore  store.MessageStore
 	kvStore       store.KVStore
@@ -52,12 +44,12 @@ type router struct {
 // NewRouter returns a pointer to Router
 func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore) Router {
 	return &router{
-		routes:       make(map[protocol.Path][]*Route),
+		routes: make(map[protocol.Path][]*Route),
+
 		handleC:      make(chan *protocol.Message, 500),
 		subscribeC:   make(chan subRequest, 10),
 		unsubscribeC: make(chan subRequest, 10),
-
-		stopC: make(chan bool, 1),
+		stopC:        make(chan bool, 1),
 
 		accessManager: accessManager,
 		messageStore:  messageStore,
@@ -84,7 +76,7 @@ func (router *router) Start() error {
 
 				select {
 				case message := <-router.handleC:
-					router.handleMessage(message)
+					router.routeMessage(message)
 					runtime.Gosched()
 				case subscriber := <-router.subscribeC:
 					router.subscribe(subscriber.route)
@@ -225,8 +217,8 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 	return nil
 }
 
-func (router *router) handleMessage(message *protocol.Message) {
-	protocol.Debug("router: handleMessage: %v", message.Metadata())
+func (router *router) routeMessage(message *protocol.Message) {
+	protocol.Debug("router: routeMessage: %v", message.Metadata())
 
 	for path, list := range router.routes {
 		if matchesTopic(message.Path, path) {
@@ -245,8 +237,8 @@ func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 	// fine, we could send the message
 	default:
 		protocol.Warn("router: queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)
-		route.Close()
 		router.unsubscribe(route)
+		route.Close()
 	}
 }
 

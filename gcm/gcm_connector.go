@@ -76,6 +76,7 @@ func (conn *GCMConnector) Start() error {
 		// (even if startup-time is longer, the routes are guaranteed to be there right after Start() returns)
 		conn.loadSubscriptions()
 
+		conn.wg.Add(conn.nWorkers)
 		for id := 1; id <= conn.nWorkers; id++ {
 			go conn.loopSendOrBroadcastMessage(id)
 		}
@@ -109,7 +110,6 @@ func (conn *GCMConnector) Check() error {
 // until the stop-channel is closed
 func (conn *GCMConnector) loopSendOrBroadcastMessage(id int) {
 	defer conn.wg.Done()
-	conn.wg.Add(1)
 	protocol.Debug("gcm: starting worker %v", id)
 	for {
 		select {
