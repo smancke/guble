@@ -85,9 +85,10 @@ func (conn *GCMConnector) Start() error {
 
 // Stop signals the closing of GCMConnector
 func (conn *GCMConnector) Stop() error {
-	protocol.Debug("GCM Stop()")
+	protocol.Debug("gcm: stopping")
 	close(conn.stopC)
 	conn.wg.Wait()
+	protocol.Debug("gcm: stopped")
 	return nil
 }
 
@@ -98,7 +99,7 @@ func (conn *GCMConnector) Check() error {
 	payload := conn.parseMessageToMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
 	_, err := conn.Sender.Send(gcm.NewMessage(payload, ""), sendRetries)
 	if err != nil {
-		protocol.Err("gcm: error sending ping message", err.Error())
+		protocol.Err("gcm: error sending ping message %v", err.Error())
 		return err
 	}
 	return nil
