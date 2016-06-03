@@ -23,7 +23,7 @@ func New(addr string) *WebServer {
 }
 
 func (ws *WebServer) Start() (err error) {
-	protocol.Info("starting up at %v", ws.addr)
+	protocol.Info("webserver: starting up at %v", ws.addr)
 	ws.server = &http.Server{Addr: ws.addr, Handler: ws.mux}
 	ws.ln, err = net.Listen("tcp", ws.addr)
 	if err != nil {
@@ -36,7 +36,7 @@ func (ws *WebServer) Start() (err error) {
 		if err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
 			protocol.Err("ListenAndServe %s", err.Error())
 		}
-		protocol.Info("http server stopped")
+		protocol.Info("webserver: http server stopped")
 	}()
 	return
 }
