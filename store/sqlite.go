@@ -7,6 +7,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 
 	"fmt"
+	"github.com/vektra/errors"
 	"io/ioutil"
 	"os"
 	"path"
@@ -160,6 +161,20 @@ func (kvStore *SqliteKVStore) Open() error {
 		}
 	}
 	kvStore.db = gormdb
+	return nil
+}
+
+func (kvStore *SqliteKVStore) Check() error {
+	if kvStore.db == nil {
+		protocol.Err("Db pointer is not initialized")
+		return errors.New("Db service is null.")
+	}
+
+	if err := kvStore.db.DB().Ping(); err != nil {
+		protocol.Err("error pinging database %q: %q", kvStore.filename, err.Error())
+		return err
+	}
+
 	return nil
 }
 

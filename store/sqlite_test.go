@@ -1,6 +1,7 @@
 package store
 
 import (
+	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
 )
@@ -41,4 +42,25 @@ func BenchmarkSqlitePutGet(b *testing.B) {
 	db := NewSqliteKVStore(f, false)
 	db.Open()
 	CommonBenchPutGet(b, db)
+}
+
+func Test_CheckSqlKvStore(t *testing.T) {
+	a := assert.New(t)
+	f := tempFilename()
+	defer os.Remove(f)
+
+	store := NewSqliteKVStore(f, false)
+	//start the DB
+	store.Open()
+
+	//check should work
+	err := store.Check()
+	a.Nil(err, "Db ping should work")
+
+	//close DB
+	store.Stop()
+
+	//check should throw an error
+	err = store.Check()
+	a.NotNil(err, "Db ping should not work.Db is closed")
 }

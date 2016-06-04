@@ -90,4 +90,7 @@ type KVStore interface {
 	// IterateKeys iterates over all keys in the key value store.
 	// The keys will be sent to the channel, which is closed after the last entry.
 	IterateKeys(schema string, keyPrefix string) (keys chan string)
+
+	// Check gives the status of the kvStore service at a moment signaling if an error contacting the db is raised
+	Check() error
 }
