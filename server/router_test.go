@@ -6,6 +6,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -18,11 +19,8 @@ var chanSize = 10
 func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 	a := assert.New(t)
 
-	accessManager := auth.NewAllowAllAccessManager(true)
-
-	// Given a Multiplexer
-	router := NewRouter(accessManager, nil, nil).(*router)
-	router.Start()
+	// Given a Router
+	router, _, _, _ := aStartedRouter()
 
 	// when i add two routes in the same path
 	channel := make(chan *MessageForRoute, chanSize)
@@ -58,10 +56,13 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 	defer finish()
 	a := assert.New(t)
 
-	tam := NewMockAccessManager(ctrl)
-	tam.EXPECT().IsAllowed(auth.READ, "user01", protocol.Path("/blah")).Return(false)
+	am := NewMockAccessManager(ctrl)
+	msMock := NewMockMessageStore(ctrl)
+	kvMock := NewMockKVStore(ctrl)
 
-	router := NewRouter(tam, nil, nil).(*router)
+	am.EXPECT().IsAllowed(auth.READ, "user01", protocol.Path("/blah")).Return(false)
+
+	router := NewRouter(am, msMock, kvMock).(*router)
 	router.Start()
 
 	channel := make(chan *MessageForRoute, chanSize)
@@ -71,7 +72,7 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 	a.NotNil(e)
 
 	// now add permissions
-	tam.EXPECT().IsAllowed(auth.READ, "user01", protocol.Path("/blah")).Return(true)
+	am.EXPECT().IsAllowed(auth.READ, "user01", protocol.Path("/blah")).Return(true)
 
 	// and user shall be allowed to subscribe
 	_, e = router.Subscribe(NewRoute("/blah", "appid01", "user01", channel))
@@ -84,15 +85,17 @@ func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 	defer finish()
 	a := assert.New(t)
 
-	tam := NewMockAccessManager(ctrl)
+	amMock := NewMockAccessManager(ctrl)
 	msMock := NewMockMessageStore(ctrl)
+	kvMock := NewMockKVStore(ctrl)
 
 	// Given a Multiplexer with route
 	router, r := aRouterRoute(chanSize)
-	router.accessManager = tam
+	router.accessManager = amMock
 	router.messageStore = msMock
+	router.kvStore = kvMock
 
-	tam.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(false)
+	amMock.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(false)
 
 	// when i send a message to the route
 	e := router.HandleMessage(&protocol.Message{
@@ -105,7 +108,7 @@ func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 	a.NotNil(e)
 
 	// and when permission is granted
-	tam.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(true)
+	amMock.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(true)
 	msMock.EXPECT().StoreTx(r.Path.Partition(), gomock.Any()).Return(nil)
 
 	// sending message
@@ -123,8 +126,7 @@ func TestRouter_ReplacingOfRoutes(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a router with a route
-	router := NewRouter(auth.NewAllowAllAccessManager(true), nil, nil).(*router)
-	router.Start()
+	router, _, _, _ := aStartedRouter()
 
 	router.Subscribe(NewRoute("/blah", "appid01", "user01", nil))
 
@@ -162,8 +164,7 @@ func TestRouter_RoutingWithSubTopics(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a Multiplexer with route
-	router := NewRouter(auth.NewAllowAllAccessManager(true), nil, nil).(*router)
-	router.Start()
+	router, _, _, _ := aStartedRouter()
 
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
@@ -298,9 +299,9 @@ func TestRouter_storeInTxAndHandle(t *testing.T) {
 
 // Router should handle the buffered messages and after that close the route
 func TestRouter_CleanShutdown(t *testing.T) {
+	//testutil.EnableDebugForMethod()
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-	testutil.EnableDebugForMethod()
 
 	assert := assert.New(t)
 
@@ -316,8 +317,8 @@ func TestRouter_CleanShutdown(t *testing.T) {
 		}).
 		AnyTimes()
 
-	router := NewRouter(auth.NewAllowAllAccessManager(true), msMock, nil).(*router)
-	router.Start()
+	router, _, _, _ := aStartedRouter()
+	router.messageStore = msMock
 
 	route, err := router.Subscribe(NewRoute("/blah", "appid01", "user01", make(chan *MessageForRoute, 3)))
 	assert.Nil(err)
@@ -371,11 +372,67 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	<-time.After(50 * time.Millisecond)
 }
 
-func aRouterRoute(chSize int) (*router, *Route) {
-	router := NewRouter(auth.NewAllowAllAccessManager(true), nil, nil).(*router)
+func TestRouter_Check(t *testing.T) {
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	a := assert.New(t)
+
+	msMock := NewMockMessageStore(ctrl)
+	kvsMock := NewMockKVStore(ctrl)
+	amMock := NewMockAccessManager(ctrl)
+
+	// Given a Multiplexer with route
+	router, _ := aRouterRoute(1)
+
+	// Test 1a: Given accessManager is nil, then router's Check return error
+	router.accessManager = nil
+	a.NotNil(router.Check())
+
+	// Test 1b: Given messageStore is nil, then router's Check return error
+	router.messageStore = nil
+	a.NotNil(router.Check())
+
+	// Test 1c: Given kvStore is nil, then router's Check return error
+	router.kvStore = nil
+	a.NotNil(router.Check())
+
+	// Test 2: Given mocked store dependencies, both healthy
+	router.messageStore = msMock
+	router.kvStore = kvsMock
+	router.accessManager = amMock
+
+	msMock.EXPECT().Check().Return(nil)
+	kvsMock.EXPECT().Check().Return(nil)
+
+	// Then the aggregated router health check will return "no error" / nil
+	a.Nil(router.Check())
+
+	// Test 3: Given a mocked messageStore which returns error on Check(),
+	// Then router's aggregated Check() should return error
+	msMock.EXPECT().Check().Return(errors.New("HDD Disk is almost full ."))
+	a.NotNil(router.Check())
+
+	// Test 4: Given a mocked kvStore which returns an error on Check()
+	// and a healthy messageStore,
+	// Then router's aggregated Check should return error
+	kvsMock.EXPECT().Check().Return(errors.New("DB closed"))
+	msMock.EXPECT().Check().Return(nil)
+	a.NotNil(router.Check())
+}
+
+func aStartedRouter() (*router, auth.AccessManager, store.MessageStore, store.KVStore) {
+	am := auth.NewAllowAllAccessManager(true)
+	kvs := store.NewMemoryKVStore()
+	ms := store.NewDummyMessageStore(kvs)
+	router := NewRouter(am, ms, kvs).(*router)
 	router.Start()
+	return router, am, ms, kvs
+}
+
+func aRouterRoute(chSize int) (*router, *Route) {
+	router, _, _, _ := aStartedRouter()
 	route, _ := router.Subscribe(
-		NewRoute("/blah", "appid01", "user01", make(chan *MessageForRoute, chanSize)),
+		NewRoute("/blah", "appid01", "user01", make(chan *MessageForRoute, chSize)),
 	)
 	return router, route
 }
@@ -387,42 +444,4 @@ func assertChannelContainsMessage(a *assert.Assertions, c chan *MessageForRoute,
 	case <-time.After(time.Millisecond * 5):
 		a.Fail("No message received")
 	}
-}
-
-func TestRouter_Check(t *testing.T) {
-	ctrl, finish := testutil.NewMockCtrl(t)
-	defer finish()
-	a := assert.New(t)
-
-	// Given a Multiplexer with route
-	router, _ := aRouterRoute(1)
-
-	//first the messageStore and kvStore will be nil
-	err := router.Check()
-	a.NotNil(err)
-
-	// mock messageStore
-	msMock := NewMockMessageStore(ctrl)
-	router.messageStore = msMock
-
-	//mock kvStore
-	mockKvStore := NewMockKVStore(ctrl)
-	router.kvStore = mockKvStore
-
-	msMock.EXPECT().Check().Return(nil)
-	mockKvStore.EXPECT().Check().Return(nil)
-	//both router health checks will work
-	err = router.Check()
-	a.Nil(err)
-
-	//router messageStore will return error
-	msMock.EXPECT().Check().Return(errors.New("HDD Disk is almost full ."))
-	err = router.Check()
-	a.NotNil(err)
-
-	//router message store will return no error but router kvstore will return error
-	msMock.EXPECT().Check().Return(nil)
-	mockKvStore.EXPECT().Check().Return(errors.New("DB closed"))
-	err = router.Check()
-	a.NotNil(err)
 }

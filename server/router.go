@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/store"
@@ -62,10 +63,7 @@ func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore
 }
 
 func (router *router) Start() error {
-	if router.accessManager == nil {
-		panic("AccessManager not set. Cannot start.")
-	}
-
+	router.panicIfInternalDependenciesAreNil()
 	go func() {
 		router.wg.Add(1)
 		for {
@@ -107,7 +105,7 @@ func (router *router) Stop() error {
 }
 
 func (router *router) Check() error {
-	if router.messageStore == nil || router.kvStore == nil {
+	if router.accessManager == nil || router.messageStore == nil || router.kvStore == nil {
 		return ErrServiceNotProvided
 	}
 
@@ -195,6 +193,13 @@ func (router *router) unsubscribe(r *Route) {
 	router.routes[r.Path] = remove(list, r)
 	if len(router.routes[r.Path]) == 0 {
 		delete(router.routes, r.Path)
+	}
+}
+
+func (router *router) panicIfInternalDependenciesAreNil() {
+	if router.accessManager == nil || router.kvStore == nil || router.messageStore == nil {
+		panic(fmt.Sprintf("router: some internal dependencies are not set: AccessManager=%v, KVStore=%v, MessageStore=%v",
+			router.accessManager == nil, router.kvStore == nil, router.messageStore == nil))
 	}
 }
 
