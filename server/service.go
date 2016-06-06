@@ -98,8 +98,9 @@ func (s *Service) Start() error {
 	return el.ErrorOrNil()
 }
 
+// Stop stops the registered modules in the required order
 func (s *Service) Stop() error {
-	stopables := make([]Stopable, 0)
+	var stopables []Stopable
 	for _, module := range s.modules {
 		name := reflect.TypeOf(module).String()
 		if stopable, ok := module.(Stopable); ok {
@@ -119,9 +120,7 @@ func (s *Service) Stop() error {
 		len(stopOrder), s.StopGracePeriod, stopOrder)
 	errors := make(map[string]error)
 	for _, order := range stopOrder {
-		name := reflect.TypeOf(stopables[order]).String()
-		protocol.Info("service: stopping [%d] %v", order, name)
-		err := s.stopModule(stopables[order], name)
+		err := stopModule(stopables[order])
 		if err != nil {
 			errors[name] = err
 		}
@@ -132,15 +131,20 @@ func (s *Service) Stop() error {
 	return nil
 }
 
+// Modules returns the slice of registered modules
 func (s *Service) Modules() []interface{} {
 	return s.modules
 }
 
+// WebServer returns the service *webserver.WebServer instance
 func (s *Service) WebServer() *webserver.WebServer {
 	return s.webserver
 }
 
-func (s *Service) stopModule(stopable Stopable, name string) error {
+func stopModule(stopable Stopable) error {
+	name := reflect.TypeOf(stopable).String()
+	protocol.Info("service: stopping [%d] %v", order, name)
+
 	if _, ok := stopable.(Router); ok {
 		protocol.Debug("service: %v is a Router and requires a blocking stop", name)
 		return stopable.Stop()
@@ -152,8 +156,8 @@ func (s *Service) stopModule(stopable Stopable, name string) error {
 // If Stopable stopped correctly, it returns nil.
 func stopWithTimeout(stopable Stopable, name string, timeout time.Duration) error {
 	select {
-	case err, opened := <-stopChannel(stopable):
-		if opened {
+	case err := <-stopChannel(stopable):
+		if err != nil {
 			protocol.Err("service: error while stopping %v: %v", name, err.Error)
 			return err
 		}
@@ -172,7 +176,6 @@ func stopChannel(stopable Stopable) chan error {
 		err := stopable.Stop()
 		if err != nil {
 			errorC <- err
-			return
 		}
 		close(errorC)
 	}()
