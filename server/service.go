@@ -86,12 +86,12 @@ func (s *Service) Start() error {
 			}
 		}
 		if checker, ok := module.(health.Checker); ok {
-			protocol.Info("service: registering %v as HealthChecker", name)
+			protocol.Info("service: registering module %v as HealthChecker", name)
 			health.RegisterPeriodicThresholdFunc(name, s.healthCheckFrequency, s.healthCheckThreshold, health.CheckFunc(checker.Check))
 		}
 		if endpoint, ok := module.(Endpoint); ok {
 			prefix := endpoint.GetPrefix()
-			protocol.Info("service: registering %v as Endpoint to %v", name, prefix)
+			protocol.Info("service: registering module %v as Endpoint to %v", name, prefix)
 			s.webserver.Handle(prefix, endpoint)
 		}
 	}
@@ -108,9 +108,9 @@ func (s *Service) Stop() error {
 			stopables = append(stopables, stopable)
 		}
 	}
-	// stopOrder allows the customized stopping of the modules,
-	// and not necessarily in the exact reverse order of their Registrations.
-	// Now, router is first to stop, the rest of the modules are stopped in reverse-registration-order.
+	// stopOrder allows the customized stopping of the modules
+	// (not necessarily in the exact reverse order of their registrations).
+	// Router is first to stop, then the rest of the modules are stopped in reverse-registration-order.
 	stopOrder := make([]int, len(stopables))
 	for i := 1; i < len(stopables); i++ {
 		stopOrder[i] = len(stopables) - i
@@ -149,12 +149,12 @@ func stopModule(stopable Stopable) error {
 		protocol.Debug("service: %v is a Router and requires a blocking stop", name)
 		return stopable.Stop()
 	}
-	return stopWithTimeout(stopable, name, s.StopGracePeriod)
+	return stopModuleWithTimeout(stopable, name, s.StopGracePeriod)
 }
 
 // stopWithTimeout waits for channel to respond with an error, or until time expires - and returns an error.
 // If Stopable stopped correctly, it returns nil.
-func stopWithTimeout(stopable Stopable, name string, timeout time.Duration) error {
+func stopModuleWithTimeout(stopable Stopable, name string, timeout time.Duration) error {
 	select {
 	case err := <-stopChannel(stopable):
 		if err != nil {

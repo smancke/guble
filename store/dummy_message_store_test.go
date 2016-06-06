@@ -44,7 +44,7 @@ func Test_DummyMessageStore_InitIdsFromKvStore(t *testing.T) {
 func Test_DummyMessageStore_SyncIds(t *testing.T) {
 	a := assert.New(t)
 
-	// given: as store which synces every 1ms
+	// given: a store which syncs every 1ms
 	kvStore := NewMemoryKVStore()
 	store := NewDummyMessageStore(kvStore)
 	store.idSyncDuration = time.Millisecond
@@ -58,7 +58,10 @@ func Test_DummyMessageStore_SyncIds(t *testing.T) {
 	defer store.Stop()
 
 	// when: we set an id and wait for 4ms
+	// Lock/unlock mutex here, because normal invocation of setId() in the code is done while already protected by mutex
+	store.topicSequencesLock.Lock()
 	store.setId("partition", uint64(42))
+	store.topicSequencesLock.Unlock()
 	time.Sleep(time.Millisecond * 4)
 
 	// the value is synced to the kv store

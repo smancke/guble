@@ -40,7 +40,7 @@ func Benchmark_E2E_Fetch_HelloWorld_Messages(b *testing.B) {
 		select {
 		case <-c.StatusMessages():
 			// wait for, but ignore
-		case <-time.After(time.Millisecond * 50):
+		case <-time.After(time.Millisecond * 100):
 			a.Fail("timeout on send notification")
 			return
 		}
