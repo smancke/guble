@@ -10,6 +10,10 @@ import (
 	"time"
 )
 
+const (
+	overloadedChannelRatio = 0.9
+)
+
 // Router interface provides mechanism for PubSub messaging
 type Router interface {
 	KVStore() (store.KVStore, error)
@@ -136,7 +140,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 // Subscribe adds a route to the subscribers.
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Subscribe(r *Route) (*Route, error) {
-	protocol.Debug("router: subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
+	protocol.Debug("router: Subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
 
 	if err := router.isStopping(); err != nil {
 		return nil, err
@@ -156,6 +160,8 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 }
 
 func (router *router) Unsubscribe(r *Route) {
+	protocol.Debug("router: Unsubscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
+
 	req := subRequest{
 		route:      r,
 		doneNotify: make(chan bool),
@@ -203,7 +209,7 @@ func (router *router) isStopping() error {
 	return nil
 }
 
-// Assign the new message id and store it and handle by passing the stored message
+// Assign the new message id, store message and handle it by passing the stored message
 // to the messageIn channel
 func (router *router) storeMessage(msg *protocol.Message) error {
 	txCallback := func(msgId uint64) []byte {
@@ -217,9 +223,10 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 		return err
 	}
 
-	if float32(len(router.handleC))/float32(cap(router.handleC)) > 0.9 {
-		protocol.Warn("router: messageIn channel almost full: current length=%v, max. capacity=%v\n",
+	if float32(len(router.handleC))/float32(cap(router.handleC)) > overloadedChannelRatio {
+		protocol.Warn("router: handleC channel almost full: current length=%v, max. capacity=%v",
 			len(router.handleC), cap(router.handleC))
+		// TODO Cosmin: noticed this, it seems weird to try handling contention like this
 		time.Sleep(time.Millisecond)
 	}
 
@@ -246,13 +253,14 @@ func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 	case route.MessagesChannel() <- &MessageForRoute{Message: message, Route: route}:
 	// fine, we could send the message
 	default:
-		protocol.Warn("router: queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)
+		protocol.Warn("router: deliverMessage: queue was full, unsubscribing and closing delivery channel for route: %v", route)
 		router.unsubscribe(route)
 		route.Close()
 	}
 }
 
 func (router *router) closeRoutes() {
+	protocol.Debug("router: closeRoutes()")
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
 			router.unsubscribe(route)
