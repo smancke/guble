@@ -130,7 +130,7 @@ func Main() {
 	waitForTermination(func() {
 		err := service.Stop()
 		if err != nil {
-			protocol.Err("Service: ", err)
+			protocol.Err("service: error when stopping: ", err)
 		}
 	})
 }

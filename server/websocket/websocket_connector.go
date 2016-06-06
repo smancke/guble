@@ -119,16 +119,16 @@ func (ws *WebSocket) sendLoop() {
 			if ws.checkAccess(raw) {
 				if protocol.DebugEnabled() {
 					if len(raw) < 80 {
-						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v",
+						protocol.Debug("websocket: send to client (userId=%v, applicationId=%v, totalSize=%v): %v",
 							ws.userID, ws.applicationID, len(raw), string(raw))
 					} else {
-						protocol.Debug("send to client (userId=%v, applicationId=%v, totalSize=%v): %v...",
+						protocol.Debug("websocket: send to client (userId=%v, applicationId=%v, totalSize=%v): %v...",
 							ws.userID, ws.applicationID, len(raw), string(raw[0:79]))
 					}
 				}
 
 				if err := ws.Send(raw); err != nil {
-					protocol.Info("applicationId=%v closed the connection", ws.applicationID)
+					protocol.Debug("websocket: applicationId=%v closed the connection", ws.applicationID)
 					ws.cleanAndClose()
 					break
 				}
@@ -138,10 +138,10 @@ func (ws *WebSocket) sendLoop() {
 }
 
 func (ws *WebSocket) checkAccess(raw []byte) bool {
-	protocol.Debug("raw message: %v", string(raw))
+	protocol.Debug("websocket: raw message: %v", string(raw))
 	if raw[0] == byte('/') {
 		path := getPathFromRawMessage(raw)
-		protocol.Debug("Received msg %v %v", ws.userID, path)
+		protocol.Debug("websocket: Received msg %v %v", ws.userID, path)
 		return len(path) == 0 || ws.accessManager.IsAllowed(auth.READ, ws.userID, path)
 
 	}
@@ -158,7 +158,7 @@ func (ws *WebSocket) receiveLoop() {
 	for {
 		err := ws.Receive(&message)
 		if err != nil {
-			protocol.Info("applicationId=%v closed the connection", ws.applicationID)
+			protocol.Debug("websocket: applicationId=%v closed the connection", ws.applicationID)
 			ws.cleanAndClose()
 			break
 		}
@@ -200,7 +200,7 @@ func (ws *WebSocket) handleReceiveCmd(cmd *protocol.Cmd) {
 		ws.userID,
 	)
 	if err != nil {
-		protocol.Info("client error in handleReceiveCmd: %v", err.Error())
+		protocol.Err("websocket: client error in handleReceiveCmd: %v", err.Error())
 		ws.sendError(protocol.ERROR_BAD_REQUEST, err.Error())
 		return
 	}
@@ -222,7 +222,7 @@ func (ws *WebSocket) handleCancelCmd(cmd *protocol.Cmd) {
 }
 
 func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
-	protocol.Debug("sending %v", string(cmd.Bytes()))
+	protocol.Debug("websocket: sending %v", string(cmd.Bytes()))
 	if len(cmd.Arg) == 0 {
 		ws.sendError(protocol.ERROR_BAD_REQUEST, "send command requires a path argument, but none given")
 		return
@@ -246,7 +246,7 @@ func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
 }
 
 func (ws *WebSocket) cleanAndClose() {
-	protocol.Info("closing applicationId=%v", ws.applicationID)
+	protocol.Debug("websocket: closing applicationId=%v", ws.applicationID)
 
 	for path, rec := range ws.receivers {
 		rec.Stop()
