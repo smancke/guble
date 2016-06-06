@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	//"bytes"
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -84,13 +85,13 @@ func throughputSend(b *testing.B, nWorkers int, sampleSend func(c client.Client)
 	}
 
 	// create a topic
-	//url := fmt.Sprintf("http://%s/gcm/0/gcmId0/subscribe/topic", service.WebServer().GetAddr())
-	//response, errPost := http.Post(url, "text/plain", bytes.NewBufferString(""))
-	//a.NoError(errPost)
-	//a.Equal(response.StatusCode, 200)
-	//body, errReadAll := ioutil.ReadAll(response.Body)
-	//a.NoError(errReadAll)
-	//a.Equal("registered: /topic\n", string(body))
+	url := fmt.Sprintf("http://%s/gcm/0/gcmId0/subscribe/topic", service.WebServer().GetAddr())
+	response, errPost := http.Post(url, "text/plain", bytes.NewBufferString(""))
+	a.NoError(errPost)
+	a.Equal(response.StatusCode, 200)
+	body, errReadAll := ioutil.ReadAll(response.Body)
+	a.NoError(errReadAll)
+	a.Equal("registered: /topic\n", string(body))
 
 	protocol.Debug("starting the benchmark timer")
 	start := time.Now()
