@@ -124,6 +124,8 @@ func (fms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
 
 // the the id to a new value
 func (fms *DummyMessageStore) setId(partition string, id uint64) {
+	fms.topicSequencesLock.Lock()
+	defer fms.topicSequencesLock.Unlock()
 	fms.topicSequences[partition] = id
 }
 
