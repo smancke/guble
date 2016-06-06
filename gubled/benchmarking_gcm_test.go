@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	//"bytes"
 	"bytes"
 	"fmt"
 	"io/ioutil"
