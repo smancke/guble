@@ -50,20 +50,13 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 		healthCheckFrequency: defaultHealthCheckFrequency,
 		healthCheckThreshold: defaultHealthCheckThreshold,
 	}
-	service.registerModule(service.router)
-	service.registerModule(service.webserver)
-
+	service.RegisterModules(service.router, service.webserver)
 	return service
 }
 
-func (s *Service) RegisterModules(modules []interface{}) {
-	for _, module := range modules {
-		s.registerModule(module)
-	}
-}
-
-func (s *Service) registerModule(module interface{}) {
-	s.modules = append(s.modules, module)
+func (s *Service) RegisterModules(modules ...interface{}) {
+	protocol.Debug("service: RegisterModules: adding %d modules after existing %d modules", len(s.modules), len(modules))
+	s.modules = append(s.modules, modules...)
 }
 
 // Start checks the modules for the following interfaces and registers and/or starts:
