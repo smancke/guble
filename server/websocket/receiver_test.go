@@ -83,12 +83,14 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 		})
 	messageId2.After(fetchFirst2)
 
+	routerMock.EXPECT().NewRoute("/foo", "any-appId", "userId", gomock.Any(), -1)
+
 	// subscribe
 	subscribe := routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *server.Route) {
 		a.Equal(r.Path, protocol.Path("/foo"))
-		r.MessagesC() <- &server.MessageForRoute{Message: &protocol.Message{ID: uint64(4), Body: []byte("router-a"), Time: 1405544146}, Route: r}
-		r.MessagesC() <- &server.MessageForRoute{Message: &protocol.Message{ID: uint64(5), Body: []byte("router-b"), Time: 1405544146}, Route: r}
-		r.Close() // emulate router close
+		r.Deliver(&protocol.Message{ID: uint64(4), Body: []byte("router-a"), Time: 1405544146})
+		r.Deliver(&protocol.Message{ID: uint64(5), Body: []byte("router-b"), Time: 1405544146})
+		r.Close() // emulate route close
 	})
 	subscribe.After(messageId2)
 

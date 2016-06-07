@@ -11,27 +11,31 @@ import (
 var (
 	errEmptyQueue = errors.New("Empty queue")
 	errTimeout    = errors.New("Channel sending timeout")
+
+	defaultQueueCap = 50
 )
 
 // NewRoute creates a new route pointer
-func NewRoute(path, applicationID, userID string, chanSize, queueSize, timeout time.Duration) *Route {
-	return &Route{
+func (router *router) NewRoute(
+	path, applicationID, userID string,
+	c chan *MessageForRoute,
+	timeout time.Duration) *Route {
+
+	route := &Route{
+		router:        router,
+		messagesC:     c,
+		queue:         newQueue(),
+		timeout:       timeout,
 		Path:          protocol.Path(path),
 		UserID:        userID,
 		ApplicationID: applicationID,
-
-		messagesC: make(chan *MessageForRoute, chanSize),
-		queue:     newQueue(queueSize),
-		timeout:   timeout,
 	}
+	return route
 }
 
 // Route represents a topic for subscription that has a channel to receive messages.
 type Route struct {
-	Path          protocol.Path
-	UserID        string // UserID that subscribed or pushes messages to the router
-	ApplicationID string
-
+	*router
 	messagesC chan *MessageForRoute
 	queue     *queue
 	timeout   time.Duration
@@ -40,6 +44,10 @@ type Route struct {
 	consuming bool
 	invalid   bool
 	mu        sync.RWMutex
+
+	Path          protocol.Path
+	UserID        string // UserID that subscribed or pushes messages to the router
+	ApplicationID string
 }
 
 func (r *Route) String() string {
@@ -54,10 +62,18 @@ func (r *Route) equals(other *Route) bool {
 
 // Close closes the route channel.
 func (r *Route) Close() {
+	// closing channel makes the route invalid
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.invalid = true
 	close(r.messagesC)
 
 	// release the queue
 	r.queue = nil
+
+	// route should also unsubscribe
+	r.unsubscribe(r)
 }
 
 // MessagesC returns the route channel to receive messages. To send messages through
@@ -68,7 +84,7 @@ func (r *Route) MessagesC() <-chan *MessageForRoute {
 
 // Deliver takes a messages and adds it to the queue to be delivered in to the
 // channel
-func (r *Route) Deliver(m *MessageForRoute) error {
+func (r *Route) Deliver(m *protocol.Message) error {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -94,7 +110,7 @@ func (r *Route) consume() {
 	}()
 
 	var (
-		m   *MessageForRoute
+		m   *protocol.Message
 		err error
 	)
 
@@ -118,59 +134,49 @@ func (r *Route) consume() {
 
 			if err == errTimeout {
 				r.Close()
-
-				// channel been closed, ending the consuming
-				r.mu.Lock()
-				r.invalid = true
-				r.mu.Unlock()
-
+				// channel been closed, ending the consumer
 				return
 			}
 		}
 	}
 }
 
-func (r *Route) send(m *MessageForRoute) error {
+func (r *Route) send(m *protocol.Message) error {
 	// no timeout, means we dont close the channel
+	mr := &MessageForRoute{Message: m, Route: r}
 	if r.timeout == -1 {
-		r.messagesC <- m
+		r.messagesC <- mr
 		return nil
 	}
 
 	select {
-	case r.messagesC <- m:
+	case r.messagesC <- mr:
 		return nil
 	case <-time.After(r.timeout):
+		r.Close()
 		return errTimeout
 	}
 }
 
-func newQueue(size int) *queue {
-	var length = 1
-	if size > 0 {
-		length = size
-	}
-
+func newQueue() *queue {
 	return &queue{
-		size:  size,
-		queue: make([]*MessageForRoute, 0, length),
+		queue: make([]*protocol.Message, 0, defaultQueueCap),
 	}
 }
 
 type queue struct {
 	mu    sync.Mutex
-	size  int
-	queue []*MessageForRoute
+	queue []*protocol.Message
 }
 
-func (q *queue) Push(m *MessageForRoute) {
+func (q *queue) Push(m *protocol.Message) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	q.queue = append(q.queue, m)
 }
 
-func (q *queue) Pop() (*MessageForRoute, error) {
+func (q *queue) Pop() (*protocol.Message, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if len(q.queue) == 0 {

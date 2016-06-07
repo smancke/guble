@@ -21,6 +21,7 @@ type Router interface {
 	AccessManager() (auth.AccessManager, error)
 	MessageStore() (store.MessageStore, error)
 
+	NewRoute(string, string, string, chan *MessageForRoute, time.Duration) *Route
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
 	HandleMessage(message *protocol.Message) error
@@ -245,22 +246,9 @@ func (router *router) routeMessage(message *protocol.Message) {
 	for path, list := range router.routes {
 		if matchesTopic(message.Path, path) {
 			for _, route := range list {
-				router.deliverMessage(route, message)
+				route.Deliver(message)
 			}
 		}
-	}
-}
-
-func (router *router) deliverMessage(route *Route, message *protocol.Message) {
-	defer protocol.PanicLogger()
-
-	select {
-	case route.MessagesC() <- &MessageForRoute{Message: message, Route: route}:
-	// fine, we could send the message
-	default:
-		protocol.Warn("router: deliverMessage: queue was full, unsubscribing and closing delivery channel for route: %v", route)
-		router.unsubscribe(route)
-		route.Close()
 	}
 }
 
