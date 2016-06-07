@@ -145,7 +145,7 @@ func StartService(args Args) *server.Service {
 
 	service := server.NewService(router, webserver)
 
-	service.RegisterModules(CreateModules(router, args))
+	service.RegisterModules(CreateModules(router, args)...)
 
 	if err := service.Start(); err != nil {
 		protocol.Err(err.Error())
