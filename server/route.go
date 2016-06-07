@@ -16,16 +16,13 @@ var (
 )
 
 // NewRoute creates a new route pointer
-func (router *router) NewRoute(
-	path, applicationID, userID string,
-	c chan *MessageForRoute,
-	timeout time.Duration) *Route {
-
+func NewRoute(path, applicationID, userID string, c chan *MessageForRoute) *Route {
 	route := &Route{
-		router:        router,
 		messagesC:     c,
 		queue:         newQueue(),
-		timeout:       timeout,
+		queueSize:     1, // Default behaviour, allow only one element at once, not recommended
+		timeout:       -1,
+		closeC:        make(chan bool),
 		Path:          protocol.Path(path),
 		UserID:        userID,
 		ApplicationID: applicationID,
@@ -35,10 +32,11 @@ func (router *router) NewRoute(
 
 // Route represents a topic for subscription that has a channel to receive messages.
 type Route struct {
-	*router
 	messagesC chan *MessageForRoute
 	queue     *queue
-	timeout   time.Duration
+	queueSize int           // Allowed queue size
+	timeout   time.Duration // timeout before closing channel
+	closeC    chan bool
 
 	// Indicates if the consumer go routine is running
 	consuming bool
@@ -48,6 +46,26 @@ type Route struct {
 	Path          protocol.Path
 	UserID        string // UserID that subscribed or pushes messages to the router
 	ApplicationID string
+}
+
+// SetTimeout sets the timeout duration that the route will wait before it will close a
+// blocking channel
+func (r *Route) SetTimeout(timeout time.Duration) *Route {
+	r.timeout = timeout
+	return r
+}
+
+// SetQueueSize sets the queue size that is allowed before closing the route channel
+func (r *Route) SetQueueSize(size int) *Route {
+	r.queueSize = size
+	return r
+}
+
+// IsInvalid returns true if the route is invalid, has been closed previously
+func (r *Route) IsInvalid() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.invalid
 }
 
 func (r *Route) String() string {
@@ -60,35 +78,25 @@ func (r *Route) equals(other *Route) bool {
 		r.ApplicationID == other.ApplicationID
 }
 
-// Close closes the route channel.
-func (r *Route) Close() {
-	// closing channel makes the route invalid
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.invalid = true
-	close(r.messagesC)
-
-	// release the queue
-	r.queue = nil
-
-	// route should also unsubscribe
-	r.unsubscribe(r)
-}
-
 // MessagesC returns the route channel to receive messages. To send messages through
 // a route use the `Deliver` method
-func (r *Route) MessagesC() <-chan *MessageForRoute {
+func (r *Route) MessagesC() chan *MessageForRoute {
 	return r.messagesC
 }
 
 // Deliver takes a messages and adds it to the queue to be delivered in to the
 // channel
 func (r *Route) Deliver(m *protocol.Message) error {
+	protocol.Debug("Delivering message %s", m)
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	if r.invalid {
+		return ErrInvalidRoute
+	}
+
+	if r.queue.Len() >= r.queueSize {
+		r.Close()
 		return ErrInvalidRoute
 	}
 
@@ -152,10 +160,31 @@ func (r *Route) send(m *protocol.Message) error {
 	select {
 	case r.messagesC <- mr:
 		return nil
+	case <-r.closeC:
+		return ErrInvalidRoute
 	case <-time.After(r.timeout):
 		r.Close()
 		return errTimeout
 	}
+}
+
+// Close closes the route channel.
+func (r *Route) Close() {
+	protocol.Debug("Closing route: %s", r)
+	// closing channel makes the route invalid
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	// route already closed
+	if r.invalid {
+		return
+	}
+
+	r.invalid = true
+	close(r.messagesC)
+	close(r.closeC)
+
+	// release the queue
+	r.queue = nil
 }
 
 func newQueue() *queue {
@@ -186,4 +215,8 @@ func (q *queue) Pop() (*protocol.Message, error) {
 	m := q.queue[0]
 	q.queue = q.queue[1:]
 	return m, nil
+}
+
+func (q *queue) Len() int {
+	return len(q.queue)
 }

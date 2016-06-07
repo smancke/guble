@@ -10,7 +10,6 @@ import (
 	auth "github.com/smancke/guble/server/auth"
 	store "github.com/smancke/guble/store"
 	http "net/http"
-	time "time"
 )
 
 // Mock of Router interface
@@ -75,16 +74,6 @@ func (_m *MockRouter) MessageStore() (store.MessageStore, error) {
 
 func (_mr *_MockRouterRecorder) MessageStore() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MessageStore")
-}
-
-func (_m *MockRouter) NewRoute(_param0 string, _param1 string, _param2 string, _param3 chan *MessageForRoute, _param4 time.Duration) *Route {
-	ret := _m.ctrl.Call(_m, "NewRoute", _param0, _param1, _param2, _param3, _param4)
-	ret0, _ := ret[0].(*Route)
-	return ret0
-}
-
-func (_mr *_MockRouterRecorder) NewRoute(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "NewRoute", arg0, arg1, arg2, arg3, arg4)
 }
 
 func (_m *MockRouter) Subscribe(_param0 *Route) (*Route, error) {

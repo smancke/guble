@@ -210,6 +210,7 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	a := assert.New(t)
+	defer testutil.EnableDebugForMethod()()
 
 	// Given a Router with route
 	router, r := aRouterRoute(chanSize)
@@ -224,7 +225,7 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 	}
 
 	// when I send one more message
-	done := make(chan bool, 1)
+	done := make(chan bool)
 	go func() {
 		router.HandleMessage(&protocol.Message{Path: r.Path, Body: aTestByteMessage})
 		done <- true

@@ -21,7 +21,6 @@ type Router interface {
 	AccessManager() (auth.AccessManager, error)
 	MessageStore() (store.MessageStore, error)
 
-	NewRoute(string, string, string, chan *MessageForRoute, time.Duration) *Route
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
 	HandleMessage(message *protocol.Message) error
@@ -243,10 +242,13 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 func (router *router) routeMessage(message *protocol.Message) {
 	protocol.Debug("router: routeMessage: %v", message.Metadata())
 
-	for path, list := range router.routes {
+	for path, pathRoutes := range router.routes {
 		if matchesTopic(message.Path, path) {
-			for _, route := range list {
-				route.Deliver(message)
+			for _, route := range pathRoutes {
+				if err := route.Deliver(message); err == ErrInvalidRoute {
+					// Unsubscribe invalid routes
+					router.unsubscribe(route)
+				}
 			}
 		}
 	}
