@@ -10,6 +10,10 @@ import (
 var (
 	// ErrServiceNotProvided is returned when the service required is not set.
 	ErrServiceNotProvided = errors.New("Service not provided.")
+
+	// ErrInvalidRoute is returned by the `Deliver` method of a `Route` when it has been closed
+	// due to slow processing
+	ErrInvalidRoute = errors.New("Route is invalid. Channel is closed.")
 )
 
 // PermissionDeniedError is returned when AccessManager denies a user request for a topic
