@@ -16,7 +16,6 @@ func NewErrorList(descriptionPrefix string) *ErrorList {
 		descriptionPrefix: descriptionPrefix,
 		errors:            []error{},
 	}
-
 }
 
 // Add adds an error.
@@ -30,6 +29,13 @@ func (l *ErrorList) ErrorOrNil() error {
 	if len(l.errors) == 0 {
 		return nil
 	}
+	return errors.New(l.Error())
+}
+
+func (l *ErrorList) Error() string {
+	if len(l.errors) == 0 {
+		return ""
+	}
 	buffer := bytes.Buffer{}
 	buffer.WriteString(l.descriptionPrefix)
 	for i, err := range l.errors {
@@ -38,5 +44,5 @@ func (l *ErrorList) ErrorOrNil() error {
 			buffer.WriteString("; ")
 		}
 	}
-	return errors.New(buffer.String())
+	return buffer.String()
 }

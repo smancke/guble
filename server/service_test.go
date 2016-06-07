@@ -1,7 +1,6 @@
 package server
 
 import (
-	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
@@ -25,36 +24,13 @@ func TestStopingOfModules(t *testing.T) {
 
 	// with a registered Stopable
 	stopable := NewMockStopable(ctrl)
-	service.Register(stopable)
+	service.registerModule(stopable)
 
 	service.Start()
 
 	// when i stop the service, the Stop() is called
 	stopable.EXPECT().Stop()
 	service.Stop()
-}
-
-func TestStopingOfModulesTimeout(t *testing.T) {
-	ctrl, finish := testutil.NewMockCtrl(t)
-	defer finish()
-	defer testutil.ResetDefaultRegistryHealthCheck()
-	a := assert.New(t)
-
-	// given:
-	service, _, _, _ := aMockedService()
-	service.StopGracePeriod = time.Millisecond * 5
-
-	// with a registered Stopable, which blocks too long on stop
-	stopable := NewMockStopable(ctrl)
-	service.Register(stopable)
-	stopable.EXPECT().Stop().Do(func() {
-		time.Sleep(time.Millisecond * 10)
-	})
-
-	// then the Stop returns with an error
-	err := service.Stop()
-	a.Error(err)
-	protocol.Err(err.Error())
 }
 
 func TestEndpointRegisterAndServing(t *testing.T) {
@@ -67,7 +43,7 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 	service, _, _, _ := aMockedService()
 
 	// when I register an endpoint at path /foo
-	service.Register(&TestEndpoint{})
+	service.registerModule(&TestEndpoint{})
 	service.Start()
 	defer service.Stop()
 	time.Sleep(time.Millisecond * 10)
@@ -120,7 +96,7 @@ func TestHealthDown(t *testing.T) {
 	// when starting the service with a short frequency
 	defer service.Stop()
 	service.healthCheckFrequency = time.Millisecond * 3
-	service.Register(mockChecker)
+	service.registerModule(mockChecker)
 	service.Start()
 	time.Sleep(time.Millisecond * 10)
 

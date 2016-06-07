@@ -44,8 +44,8 @@ func BenchmarkGCMConnector_SendMessagesMultipleWorkers(b *testing.B) {
 
 func throughputSend(b *testing.B, nWorkers int, sampleSend func(c client.Client) error) float64 {
 	//testutil.EnableDebugForMethod()
+	fmt.Printf("b.N=%v\n", b.N)
 	defer testutil.ResetDefaultRegistryHealthCheck()
-	protocol.Debug("b.N=%v\n", b.N)
 	a := assert.New(b)
 
 	dir, errTempDir := ioutil.TempDir("", "guble_benchmarking_gcm_test")
@@ -69,12 +69,10 @@ func throughputSend(b *testing.B, nWorkers int, sampleSend func(c client.Client)
 	service := StartService(args)
 
 	protocol.Debug("Overwriting the GCM Sender with a Mock")
-	gcmConnector, ok := service.Modules()[2].(*gcm.GCMConnector)
-	a.True(ok, "Modules[2] should be of type GCMConnector")
+	gcmConnector, ok := service.Modules()[4].(*gcm.GCMConnector)
+	a.True(ok, "Modules[4] should be of type GCMConnector")
 	gcmConnector.Sender = testutil.CreateGcmSender(
 		testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.CorrectGcmResponseMessageJSON, nil))
-
-	service.Start()
 
 	gomaxprocs := runtime.GOMAXPROCS(0)
 	clients := make([]client.Client, 0, gomaxprocs)
@@ -94,10 +92,11 @@ func throughputSend(b *testing.B, nWorkers int, sampleSend func(c client.Client)
 	a.NoError(errReadAll)
 	a.Equal("registered: /topic\n", string(body))
 
-	protocol.Debug("Starting the benchmark - sending multiple messages from each client")
+	protocol.Debug("starting the benchmark timer")
 	start := time.Now()
 	b.ResetTimer()
 
+	protocol.Debug("sending multiple messages from each client in separate goroutines")
 	var wg sync.WaitGroup
 	wg.Add(gomaxprocs)
 	for _, c := range clients {
@@ -111,7 +110,6 @@ func throughputSend(b *testing.B, nWorkers int, sampleSend func(c client.Client)
 	wg.Wait()
 
 	// stop service (and wait for all the messages to be processed during the given grace period)
-	service.StopGracePeriod = 10 * time.Second
 	err := service.Stop()
 	a.Nil(err)
 

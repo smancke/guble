@@ -19,10 +19,10 @@ type DummyMessageStore struct {
 	topicSequencesLock sync.RWMutex
 	kvStore            KVStore
 	isSyncStarted      bool
-	// used to send the stop request to the syc goroutine
-	stopC chan bool
-	// answer from the syc goroutine, when it is stopped
-	stoppedC       chan bool
+
+	stopC    chan bool // used to send the stop request to the syc goroutine
+	stoppedC chan bool // answer from the syc goroutine, when it is stopped
+
 	idSyncDuration time.Duration
 }
 
@@ -36,79 +36,78 @@ func NewDummyMessageStore(kvStore KVStore) *DummyMessageStore {
 	}
 }
 
-func (fms *DummyMessageStore) Start() error {
-	go fms.startSequenceSync()
-	fms.isSyncStarted = true
+func (dms *DummyMessageStore) Start() error {
+	go dms.startSequenceSync()
+	dms.isSyncStarted = true
 
 	return nil
 }
 
-func (fms *DummyMessageStore) Stop() error {
-	if !fms.isSyncStarted {
+func (dms *DummyMessageStore) Stop() error {
+	if !dms.isSyncStarted {
 		return nil
 	}
-	fms.stopC <- true
-	<-fms.stoppedC
+	dms.stopC <- true
+	<-dms.stoppedC
 	return nil
 }
 
-func (fms *DummyMessageStore) StoreTx(partition string,
+func (dms *DummyMessageStore) StoreTx(partition string,
 	callback func(msgId uint64) (msg []byte)) error {
 
-	fms.topicSequencesLock.Lock()
-	defer fms.topicSequencesLock.Unlock()
+	dms.topicSequencesLock.Lock()
+	defer dms.topicSequencesLock.Unlock()
 
-	msgId, err := fms.maxMessageId(partition)
+	msgId, err := dms.maxMessageId(partition)
 	if err != nil {
 		return err
 	}
 	msgId++
-	return fms.store(partition, msgId, callback(msgId))
+	return dms.store(partition, msgId, callback(msgId))
 }
 
-func (fms *DummyMessageStore) Store(partition string, msgId uint64, msg []byte) error {
-	fms.topicSequencesLock.Lock()
-	defer fms.topicSequencesLock.Unlock()
-	return fms.store(partition, msgId, msg)
+func (dms *DummyMessageStore) Store(partition string, msgId uint64, msg []byte) error {
+	dms.topicSequencesLock.Lock()
+	defer dms.topicSequencesLock.Unlock()
+	return dms.store(partition, msgId, msg)
 }
 
-func (fms *DummyMessageStore) store(partition string, msgId uint64, msg []byte) error {
-	maxId, err := fms.maxMessageId(partition)
+func (dms *DummyMessageStore) store(partition string, msgId uint64, msg []byte) error {
+	maxId, err := dms.maxMessageId(partition)
 	if err != nil {
 		return err
 	}
 	if msgId > 1+maxId {
 		return fmt.Errorf("Invalid message id for partition %v. Next id should be %v, but was %q", partition, 1+maxId, msgId)
 	}
-	fms.setId(partition, msgId)
+	dms.setId(partition, msgId)
 	return nil
 }
 
 // Fetch does nothing in this dummy implementation
-func (fms *DummyMessageStore) Fetch(req FetchRequest) {
+func (dms *DummyMessageStore) Fetch(req FetchRequest) {
 }
 
-func (fms *DummyMessageStore) MaxMessageId(partition string) (uint64, error) {
-	fms.topicSequencesLock.Lock()
-	defer fms.topicSequencesLock.Unlock()
-	return fms.maxMessageId(partition)
+func (dms *DummyMessageStore) MaxMessageId(partition string) (uint64, error) {
+	dms.topicSequencesLock.Lock()
+	defer dms.topicSequencesLock.Unlock()
+	return dms.maxMessageId(partition)
 }
 
-func (fms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error {
-	fms.topicSequencesLock.Lock()
-	defer fms.topicSequencesLock.Unlock()
-	maxId, err := fms.maxMessageId(partition)
+func (dms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error {
+	dms.topicSequencesLock.Lock()
+	defer dms.topicSequencesLock.Unlock()
+	maxId, err := dms.maxMessageId(partition)
 	if err != nil {
 		return err
 	}
 	return fnToExecute(maxId)
 }
 
-func (fms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
-
-	sequenceValue, exist := fms.topicSequences[partition]
+func (dms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
+	sequenceValue, exist := dms.topicSequences[partition]
 	if !exist {
-		val, existInKVStore, err := fms.kvStore.Get(TOPIC_SCHEMA, partition)
+		val, existInKVStore, err := dms.kvStore.Get(TOPIC_SCHEMA, partition)
 		if err != nil {
 			return 0, err
 		}
@@ -118,50 +117,48 @@ func (fms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
 			sequenceValue = uint64(0)
 		}
 	}
-	fms.topicSequences[partition] = sequenceValue
+	dms.topicSequences[partition] = sequenceValue
 	return sequenceValue, nil
 }
 
 // the the id to a new value
-func (fms *DummyMessageStore) setId(partition string, id uint64) {
-	fms.topicSequencesLock.Lock()
-	defer fms.topicSequencesLock.Unlock()
-	fms.topicSequences[partition] = id
+func (dms *DummyMessageStore) setId(partition string, id uint64) {
+	dms.topicSequences[partition] = id
 }
 
-func (fms *DummyMessageStore) startSequenceSync() {
+func (dms *DummyMessageStore) startSequenceSync() {
 	lastSyncValues := make(map[string]uint64)
 	topicsToUpdate := []string{}
 
 	shouldStop := false
 	for !shouldStop {
 		select {
-		case <-time.After(fms.idSyncDuration):
-		case <-fms.stopC:
+		case <-time.After(dms.idSyncDuration):
+		case <-dms.stopC:
 			shouldStop = true
 		}
 
-		fms.topicSequencesLock.Lock()
+		dms.topicSequencesLock.Lock()
 		topicsToUpdate = topicsToUpdate[:0]
-		for topic, seq := range fms.topicSequences {
+		for topic, seq := range dms.topicSequences {
 			if lastSyncValues[topic] != seq {
 				topicsToUpdate = append(topicsToUpdate, topic)
 			}
 		}
-		fms.topicSequencesLock.Unlock()
+		dms.topicSequencesLock.Unlock()
 
 		for _, topic := range topicsToUpdate {
-			fms.topicSequencesLock.Lock()
-			latestValue := fms.topicSequences[topic]
-			fms.topicSequencesLock.Unlock()
+			dms.topicSequencesLock.Lock()
+			latestValue := dms.topicSequences[topic]
+			dms.topicSequencesLock.Unlock()
 
 			lastSyncValues[topic] = latestValue
-			fms.kvStore.Put(TOPIC_SCHEMA, topic, []byte(strconv.FormatUint(latestValue, 10)))
+			dms.kvStore.Put(TOPIC_SCHEMA, topic, []byte(strconv.FormatUint(latestValue, 10)))
 		}
 	}
-	fms.stoppedC <- true
+	dms.stoppedC <- true
 }
 
-func (fms *DummyMessageStore) Check() error {
+func (dms *DummyMessageStore) Check() error {
 	return nil
 }

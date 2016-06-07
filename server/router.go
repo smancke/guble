@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/store"
@@ -8,6 +9,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+)
+
+const (
+	overloadedChannelRatio = 0.9
 )
 
 // Router interface provides mechanism for PubSub messaging
@@ -28,22 +33,14 @@ type subRequest struct {
 }
 
 type router struct {
-	// mapping the path to the route slice
-	routes       map[protocol.Path][]*Route
+	routes       map[protocol.Path][]*Route // mapping the path to the route slice
 	handleC      chan *protocol.Message
 	subscribeC   chan subRequest
 	unsubscribeC chan subRequest
+	stopC        chan bool      // Channel that signals stop of the router
+	stopping     bool           // Flag: the router is in stopping process and no incoming messages are accepted
+	wg           sync.WaitGroup // Add any operation that we need to wait upon here
 
-	// Channel that signals stop of the router
-	stop chan bool
-	// marks that the router is in stopping process
-	// no incoming messages are accepted
-	stopping bool
-
-	// Add any operation that we need to wait upon here
-	wg sync.WaitGroup
-
-	// external 'services'
 	accessManager auth.AccessManager
 	messageStore  store.MessageStore
 	kvStore       store.KVStore
@@ -52,12 +49,12 @@ type router struct {
 // NewRouter returns a pointer to Router
 func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore) Router {
 	return &router{
-		routes:       make(map[protocol.Path][]*Route),
+		routes: make(map[protocol.Path][]*Route),
+
 		handleC:      make(chan *protocol.Message, 500),
 		subscribeC:   make(chan subRequest, 10),
 		unsubscribeC: make(chan subRequest, 10),
-
-		stop: make(chan bool, 1),
+		stopC:        make(chan bool, 1),
 
 		accessManager: accessManager,
 		messageStore:  messageStore,
@@ -66,10 +63,7 @@ func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore
 }
 
 func (router *router) Start() error {
-	if router.accessManager == nil {
-		panic("AccessManager not set. Cannot start.")
-	}
-
+	router.panicIfInternalDependenciesAreNil()
 	go func() {
 		router.wg.Add(1)
 		for {
@@ -84,7 +78,7 @@ func (router *router) Start() error {
 
 				select {
 				case message := <-router.handleC:
-					router.handleMessage(message)
+					router.routeMessage(message)
 					runtime.Gosched()
 				case subscriber := <-router.subscribeC:
 					router.subscribe(subscriber.route)
@@ -92,7 +86,7 @@ func (router *router) Start() error {
 				case unsubscriber := <-router.unsubscribeC:
 					router.unsubscribe(unsubscriber.route)
 					unsubscriber.doneNotify <- true
-				case <-router.stop:
+				case <-router.stopC:
 					router.stopping = true
 				}
 			}()
@@ -105,13 +99,13 @@ func (router *router) Start() error {
 // Stop stops the router by closing the stop channel
 func (router *router) Stop() error {
 	protocol.Debug("router: stopping")
-	router.stop <- true
+	router.stopC <- true
 	router.wg.Wait()
 	return nil
 }
 
 func (router *router) Check() error {
-	if router.messageStore == nil || router.kvStore == nil {
+	if router.accessManager == nil || router.messageStore == nil || router.kvStore == nil {
 		return ErrServiceNotProvided
 	}
 
@@ -144,7 +138,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 // Subscribe adds a route to the subscribers.
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Subscribe(r *Route) (*Route, error) {
-	protocol.Debug("router: subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
+	protocol.Debug("router: Subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
 
 	if err := router.isStopping(); err != nil {
 		return nil, err
@@ -164,6 +158,8 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 }
 
 func (router *router) Unsubscribe(r *Route) {
+	protocol.Debug("router: Unsubscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
+
 	req := subRequest{
 		route:      r,
 		doneNotify: make(chan bool),
@@ -199,6 +195,14 @@ func (router *router) unsubscribe(r *Route) {
 		delete(router.routes, r.Path)
 	}
 }
+
+func (router *router) panicIfInternalDependenciesAreNil() {
+	if router.accessManager == nil || router.kvStore == nil || router.messageStore == nil {
+		panic(fmt.Sprintf("router: some internal dependencies are not set: AccessManager=%v, KVStore=%v, MessageStore=%v",
+			router.accessManager == nil, router.kvStore == nil, router.messageStore == nil))
+	}
+}
+
 func (router *router) channelsAreEmpty() bool {
 	return len(router.handleC) == 0 && len(router.subscribeC) == 0 && len(router.unsubscribeC) == 0
 }
@@ -210,7 +214,7 @@ func (router *router) isStopping() error {
 	return nil
 }
 
-// Assign the new message id and store it and handle by passing the stored message
+// Assign the new message id, store message and handle it by passing the stored message
 // to the messageIn channel
 func (router *router) storeMessage(msg *protocol.Message) error {
 	txCallback := func(msgId uint64) []byte {
@@ -224,9 +228,10 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 		return err
 	}
 
-	if float32(len(router.handleC))/float32(cap(router.handleC)) > 0.9 {
-		protocol.Warn("router: messageIn channel almost full: current length=%v, max. capacity=%v\n",
+	if float32(len(router.handleC))/float32(cap(router.handleC)) > overloadedChannelRatio {
+		protocol.Warn("router: handleC channel almost full: current length=%v, max. capacity=%v",
 			len(router.handleC), cap(router.handleC))
+		// TODO Cosmin: noticed this, it seems weird to try handling contention like this
 		time.Sleep(time.Millisecond)
 	}
 
@@ -234,8 +239,8 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 	return nil
 }
 
-func (router *router) handleMessage(message *protocol.Message) {
-	protocol.Debug("router: routing message: %v", message.Metadata())
+func (router *router) routeMessage(message *protocol.Message) {
+	protocol.Debug("router: routeMessage: %v", message.Metadata())
 
 	for path, list := range router.routes {
 		if matchesTopic(message.Path, path) {
@@ -253,17 +258,19 @@ func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 	case route.MessagesChannel() <- &MessageForRoute{Message: message, Route: route}:
 	// fine, we could send the message
 	default:
-		protocol.Warn("router: queue was full, closing delivery for route=%v to applicationID=%v", route.Path, route.ApplicationID)
-		route.Close()
+		protocol.Warn("router: deliverMessage: queue was full, unsubscribing and closing delivery channel for route: %v", route)
 		router.unsubscribe(route)
+		route.Close()
 	}
 }
 
 func (router *router) closeRoutes() {
+	protocol.Debug("router: closeRoutes()")
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
-			route.Close()
 			router.unsubscribe(route)
+			protocol.Debug("router: closing route %v", route)
+			route.Close()
 		}
 	}
 }
