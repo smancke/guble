@@ -110,7 +110,6 @@ func throughputSend(b *testing.B, nWorkers int, sampleSend func(c client.Client)
 	wg.Wait()
 
 	// stop service (and wait for all the messages to be processed during the given grace period)
-	service.StopGracePeriod = 10 * time.Second
 	err := service.Stop()
 	a.Nil(err)
 

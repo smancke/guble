@@ -1,7 +1,6 @@
 package server
 
 import (
-	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
@@ -32,29 +31,6 @@ func TestStopingOfModules(t *testing.T) {
 	// when i stop the service, the Stop() is called
 	stopable.EXPECT().Stop()
 	service.Stop()
-}
-
-func TestStopingOfModulesTimeout(t *testing.T) {
-	ctrl, finish := testutil.NewMockCtrl(t)
-	defer finish()
-	defer testutil.ResetDefaultRegistryHealthCheck()
-	a := assert.New(t)
-
-	// given:
-	service, _, _, _ := aMockedService()
-	service.StopGracePeriod = time.Millisecond * 5
-
-	// with a registered Stopable, which blocks too long on stop
-	stopable := NewMockStopable(ctrl)
-	service.registerModule(stopable)
-	stopable.EXPECT().Stop().Do(func() {
-		time.Sleep(time.Millisecond * 10)
-	})
-
-	// then the Stop returns with an error
-	err := service.Stop()
-	a.Error(err)
-	protocol.Err(err.Error())
 }
 
 func TestEndpointRegisterAndServing(t *testing.T) {

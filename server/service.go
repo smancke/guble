@@ -13,7 +13,6 @@ import (
 
 const (
 	healthEndpointPrefix        = "/health"
-	defaultStopGracePeriod      = time.Second * 5
 	defaultHealthCheckFrequency = time.Second * 60
 	defaultHealthCheckThreshold = 1
 )
@@ -39,7 +38,6 @@ type Service struct {
 	webserver            *webserver.WebServer
 	router               Router
 	modules              []interface{}
-	StopGracePeriod      time.Duration // The timeout given to each Module on Stop()
 	healthCheckFrequency time.Duration
 	healthCheckThreshold int
 }
@@ -49,7 +47,6 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 	service := &Service{
 		webserver:            webserver,
 		router:               router,
-		StopGracePeriod:      defaultStopGracePeriod,
 		healthCheckFrequency: defaultHealthCheckFrequency,
 		healthCheckThreshold: defaultHealthCheckThreshold,
 	}
@@ -101,33 +98,35 @@ func (s *Service) Start() error {
 // Stop stops the registered modules in the required order
 func (s *Service) Stop() error {
 	var stopables []Stopable
+
 	for _, module := range s.modules {
-		name := reflect.TypeOf(module).String()
 		if stopable, ok := module.(Stopable); ok {
-			protocol.Info("service: %v is Stopable", name)
 			stopables = append(stopables, stopable)
 		}
 	}
-	// stopOrder allows the customized stopping of the modules
-	// (not necessarily in the exact reverse order of their registrations).
-	// Router is first to stop, then the rest of the modules are stopped in reverse-registration-order.
+
 	stopOrder := make([]int, len(stopables))
 	for i := 1; i < len(stopables); i++ {
 		stopOrder[i] = len(stopables) - i
 	}
 
-	protocol.Debug("service: stopping %d modules with a %v timeout, in this order relative to registration: %v",
-		len(stopOrder), s.StopGracePeriod, stopOrder)
-	errors := make(map[string]error)
+	protocol.Debug("service: stopping %d modules in this order relative to registration: %v", len(stopOrder), stopOrder)
+
+	errors := protocol.NewErrorList("stopping errors: ")
 	for _, order := range stopOrder {
-		err := stopModule(stopables[order])
-		if err != nil {
-			errors[name] = err
+		module := stopables[order]
+		name := reflect.TypeOf(module).String()
+
+		protocol.Info("service: stopping [%d] %v", order, name)
+		if err := module.Stop(); err != nil {
+			errors.Add(err)
 		}
 	}
-	if len(errors) > 0 {
-		return fmt.Errorf("service: errors while stopping modules: %q", errors)
+
+	if err := errors.ErrorOrNil(); err != nil {
+		return fmt.Errorf("service: errors while stopping modules: %s", err)
 	}
+
 	return nil
 }
 
@@ -139,45 +138,4 @@ func (s *Service) Modules() []interface{} {
 // WebServer returns the service *webserver.WebServer instance
 func (s *Service) WebServer() *webserver.WebServer {
 	return s.webserver
-}
-
-func stopModule(stopable Stopable) error {
-	name := reflect.TypeOf(stopable).String()
-	protocol.Info("service: stopping [%d] %v", order, name)
-
-	if _, ok := stopable.(Router); ok {
-		protocol.Debug("service: %v is a Router and requires a blocking stop", name)
-		return stopable.Stop()
-	}
-	return stopModuleWithTimeout(stopable, name, s.StopGracePeriod)
-}
-
-// stopWithTimeout waits for channel to respond with an error, or until time expires - and returns an error.
-// If Stopable stopped correctly, it returns nil.
-func stopModuleWithTimeout(stopable Stopable, name string, timeout time.Duration) error {
-	select {
-	case err := <-stopChannel(stopable):
-		if err != nil {
-			protocol.Err("service: error while stopping %v: %v", name, err.Error)
-			return err
-		}
-	case <-time.After(timeout):
-		errTimeout := fmt.Errorf("service: error while stopping %v: did not stop after timeout %v", name, timeout)
-		protocol.Err(errTimeout.Error())
-		return errTimeout
-	}
-	protocol.Info("service: stopped %v", name)
-	return nil
-}
-
-func stopChannel(stopable Stopable) chan error {
-	errorC := make(chan error)
-	go func() {
-		err := stopable.Stop()
-		if err != nil {
-			errorC <- err
-		}
-		close(errorC)
-	}()
-	return errorC
 }
