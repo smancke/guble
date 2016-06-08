@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/smancke/guble/protocol"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -62,10 +63,28 @@ func (r *Route) SetQueueSize(size int) *Route {
 }
 
 // IsInvalid returns true if the route is invalid, has been closed previously
-func (r *Route) IsInvalid() bool {
+func (r *Route) isInvalid() bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.invalid
+}
+
+func (r *Route) setInvalid(invalid bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.invalid = invalid
+}
+
+func (r *Route) isConsuming() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.consuming
+}
+
+func (r *Route) setConsuming(consuming bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.consuming = consuming
 }
 
 func (r *Route) String() string {
@@ -88,26 +107,33 @@ func (r *Route) MessagesC() chan *MessageForRoute {
 // channel
 func (r *Route) Deliver(m *protocol.Message) error {
 	protocol.Debug("Delivering message %s", m)
-	r.mu.RLock()
-	defer r.mu.RUnlock()
 
-	if r.invalid {
+	if r.isInvalid() {
+		protocol.Debug("Cannot deliver cause route is invalid")
 		return ErrInvalidRoute
 	}
 
 	// if size is zero the sending is direct
-	if r.queueSize == 0 {
-		return r.sendDirect(m)
+	if r.queueSize > -1 {
+		// not an infinite queue
+		if r.queueSize == 0 {
+			return r.sendDirect(m)
+		} else if r.queue.len() >= r.queueSize {
+			protocol.Debug("Closing route cause of full queue")
+			r.Close()
+			return ErrQueueFull
+		}
 	}
 
-	if r.queue.Len() >= r.queueSize {
-		return r.Close()
-	}
+	r.queue.push(m)
+	protocol.Debug("Queue size: %d", r.queue.len())
 
-	r.queue.Push(m)
-	if !r.consuming {
+	if !r.isConsuming() {
+		protocol.Debug("Starting consuming")
 		go r.consume()
 	}
+
+	runtime.Gosched()
 	return nil
 }
 
@@ -115,23 +141,21 @@ func (r *Route) Deliver(m *protocol.Message) error {
 // channel. The go routine stops if there are no items in the queue.
 func (r *Route) consume() {
 	protocol.Debug("Consuming route %s queue", r)
-	defer func() {
-		r.mu.Lock()
-		defer r.mu.Unlock()
-		r.consuming = false
-	}()
+	r.setConsuming(true)
+	defer r.setConsuming(false)
 
 	var (
 		m   *protocol.Message
 		err error
 	)
 
-	r.mu.Lock()
-	r.consuming = true
-	r.mu.Unlock()
-
 	for {
-		m, err = r.queue.Pop()
+		if r.isInvalid() {
+			protocol.Debug("Stopping consuming cause of invalid route.")
+			return
+		}
+
+		m, err = r.queue.get()
 
 		if err != nil {
 			if err == errEmptyQueue {
@@ -145,34 +169,53 @@ func (r *Route) consume() {
 		// send next message throught the channel
 		if err = r.send(m); err != nil {
 			protocol.Err("Error sending message %s through route %s", m, r)
-			if err == errTimeout {
-				r.Close()
+			if err == errTimeout || err == ErrInvalidRoute {
 				// channel been closed, ending the consumer
 				return
 			}
 		}
+		// all good shift the first item out of the queue
+		r.queue.shift()
 	}
 }
 
 func (r *Route) send(m *protocol.Message) error {
+	defer r.invalidRecover()
 	protocol.Debug("Sending message %s through route %s channel", m, r)
 
 	// no timeout, means we dont close the channel
-	mr := &MessageForRoute{Message: m, Route: r}
 	if r.timeout == -1 {
-		r.messagesC <- mr
+		r.messagesC <- r.format(m)
+		protocol.Debug("Channel size: %d", len(r.messagesC))
 		return nil
 	}
 
 	select {
-	case r.messagesC <- mr:
+	case r.messagesC <- r.format(m):
 		return nil
 	case <-r.closeC:
 		return ErrInvalidRoute
 	case <-time.After(r.timeout):
+		protocol.Debug("Closing route cause of timeout")
 		r.Close()
 		return errTimeout
 	}
+}
+
+// recover function to use when sending on closed channel
+func (r *Route) invalidRecover() error {
+	if rc := recover(); rc != nil && r.isInvalid() {
+		protocol.Debug("Recovered closed router err: %s", rc)
+		return ErrInvalidRoute
+	}
+	return nil
+}
+
+// format message according to the channel format
+// TODO: this will be dropped cause it's used only in GCM and after implementing
+// separated subscriptions wont be required anymore
+func (r *Route) format(m *protocol.Message) *MessageForRoute {
+	return &MessageForRoute{Message: m, Route: r}
 }
 
 // sendDirect sends the message directly in the channel
@@ -182,6 +225,7 @@ func (r *Route) sendDirect(m *protocol.Message) error {
 	case r.messagesC <- mr:
 		return nil
 	default:
+		protocol.Debug("Closing route cause of fullchannel")
 		r.Close()
 		return ErrChannelFull
 	}
@@ -189,11 +233,9 @@ func (r *Route) sendDirect(m *protocol.Message) error {
 
 // Close closes the route channel.
 func (r *Route) Close() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	protocol.Debug("Closing route: %s", r)
-
-	// closing channel makes the route invalid
-	r.mu.RLock()
-	defer r.mu.RUnlock()
 
 	// route already closed
 	if r.invalid {
@@ -203,9 +245,6 @@ func (r *Route) Close() error {
 	r.invalid = true
 	close(r.messagesC)
 	close(r.closeC)
-
-	// release the queue
-	r.queue = nil
 
 	return ErrInvalidRoute
 }
@@ -221,25 +260,38 @@ type queue struct {
 	queue []*protocol.Message
 }
 
-func (q *queue) Push(m *protocol.Message) {
+func (q *queue) push(m *protocol.Message) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	q.queue = append(q.queue, m)
 }
 
-func (q *queue) Pop() (*protocol.Message, error) {
+// Remove the first item from the queue if exists
+func (q *queue) shift() {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
+	if len(q.queue) == 0 {
+		return
+	}
+	q.queue = q.queue[1:]
+}
+
+// return the first item from the queue without removing it
+func (q *queue) get() (*protocol.Message, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
 	if len(q.queue) == 0 {
 		return nil, errEmptyQueue
 	}
 
-	m := q.queue[0]
-	q.queue = q.queue[1:]
-	return m, nil
+	return q.queue[0], nil
 }
 
-func (q *queue) Len() int {
+func (q *queue) len() int {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 	return len(q.queue)
 }

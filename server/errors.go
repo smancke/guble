@@ -18,6 +18,9 @@ var (
 	// ErrChannelFull is returned when trying to `Deliver` a message with a queue size of zero
 	// and the channel is full
 	ErrChannelFull = errors.New("Route channel is full. Route is closed.")
+
+	// ErrQueueFull is returned when trying to `Deliver` a mesasge in a full queued route
+	ErrQueueFull = errors.New("Route queue is full. Route is closed.")
 )
 
 // PermissionDeniedError is returned when AccessManager denies a user request for a topic

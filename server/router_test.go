@@ -13,7 +13,6 @@ import (
 )
 
 var aTestByteMessage = []byte("Hello World!")
-var chanSize = 10
 
 func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 	a := assert.New(t)
@@ -209,7 +208,6 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	a := assert.New(t)
-	defer testutil.EnableDebugForMethod()()
 
 	// Given a Router with route
 	router, r := aRouterRoute(chanSize)
