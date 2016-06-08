@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	overloadedChannelRatio = 0.9
+	overloadedHandleChannelRatio = 0.9
 )
 
 // Router interface provides mechanism for PubSub messaging
@@ -64,6 +64,7 @@ func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore
 
 func (router *router) Start() error {
 	router.panicIfInternalDependenciesAreNil()
+	resetMetricsRouter()
 	go func() {
 		router.wg.Add(1)
 		for {
@@ -124,6 +125,8 @@ func (router *router) Check() error {
 
 func (router *router) HandleMessage(message *protocol.Message) error {
 	protocol.Debug("router: HandleMessage: %v %v", message.UserID, message.Path)
+	mTotalMessagesIncoming.Add(1)
+
 	if err := router.isStopping(); err != nil {
 		return err
 	}
@@ -132,7 +135,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
 	}
 
-	return router.storeMessage(message)
+	return router.storeAndChannelMessage(message)
 }
 
 // Subscribe adds a route to the subscribers.
@@ -170,35 +173,54 @@ func (router *router) Unsubscribe(r *Route) {
 
 func (router *router) subscribe(r *Route) {
 	protocol.Debug("router: subscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
+	mTotalSubscriptionAttempts.Add(1)
 
-	list, present := router.routes[r.Path]
+	slice, present := router.routes[r.Path]
+	var removed bool
 	if present {
 		// Try to remove, to avoid double subscriptions of the same app
-		list = remove(list, r)
+		slice, removed = removeIfMatching(slice, r)
 	} else {
 		// Path not present yet. Initialize the slice
-		list = make([]*Route, 0, 1)
-		router.routes[r.Path] = list
+		slice = make([]*Route, 0, 1)
+		router.routes[r.Path] = slice
+		mCurrentRoutes.Add(1)
 	}
-	router.routes[r.Path] = append(list, r)
+	router.routes[r.Path] = append(slice, r)
+	if removed {
+		mTotalDuplicateSubscriptionsAttempts.Add(1)
+	} else {
+		mTotalSubscriptions.Add(1)
+		mCurrentSubscriptions.Add(1)
+	}
 }
 
 func (router *router) unsubscribe(r *Route) {
 	protocol.Debug("router: unsubscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
+	mTotalUnsubscriptionAttempts.Add(1)
 
-	list, present := router.routes[r.Path]
+	slice, present := router.routes[r.Path]
 	if !present {
+		mTotalInvalidTopicOnUnsubscriptionAttempts.Add(1)
 		return
 	}
-	router.routes[r.Path] = remove(list, r)
+	var removed bool
+	router.routes[r.Path], removed = removeIfMatching(slice, r)
+	if removed {
+		mTotalUnsubscriptions.Add(1)
+		mCurrentSubscriptions.Add(-1)
+	} else {
+		mTotalInvalidUnsubscriptionAttempts.Add(1)
+	}
 	if len(router.routes[r.Path]) == 0 {
 		delete(router.routes, r.Path)
+		mCurrentRoutes.Add(-1)
 	}
 }
 
 func (router *router) panicIfInternalDependenciesAreNil() {
 	if router.accessManager == nil || router.kvStore == nil || router.messageStore == nil {
-		panic(fmt.Sprintf("router: some internal dependencies are not set: AccessManager=%v, KVStore=%v, MessageStore=%v",
+		panic(fmt.Sprintf("router: the internal dependencies marked with `true` are not set: AccessManager=%v, KVStore=%v, MessageStore=%v",
 			router.accessManager == nil, router.kvStore == nil, router.messageStore == nil))
 	}
 }
@@ -214,9 +236,9 @@ func (router *router) isStopping() error {
 	return nil
 }
 
-// Assign the new message id, store message and handle it by passing the stored message
-// to the messageIn channel
-func (router *router) storeMessage(msg *protocol.Message) error {
+// storeAndChannelMessage assigns the new message id, stores message
+// and handle it by passing the stored message to the handleC channel
+func (router *router) storeAndChannelMessage(msg *protocol.Message) error {
 	txCallback := func(msgId uint64) []byte {
 		msg.ID = msgId
 		msg.Time = time.Now().Unix()
@@ -225,14 +247,14 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 
 	if err := router.messageStore.StoreTx(msg.Path.Partition(), txCallback); err != nil {
 		protocol.Err("router: error storing message in partition %v: %v", msg.Path.Partition(), err)
+		mTotalMessageStoreErrors.Add(1)
 		return err
 	}
 
-	if float32(len(router.handleC))/float32(cap(router.handleC)) > overloadedChannelRatio {
+	if float32(len(router.handleC))/float32(cap(router.handleC)) > overloadedHandleChannelRatio {
 		protocol.Warn("router: handleC channel almost full: current length=%v, max. capacity=%v",
 			len(router.handleC), cap(router.handleC))
-		// TODO Cosmin: noticed this, it seems weird to try handling contention like this
-		time.Sleep(time.Millisecond)
+		mTotalOverloadedHandleChannel.Add(1)
 	}
 
 	router.handleC <- msg
@@ -241,12 +263,15 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 
 func (router *router) routeMessage(message *protocol.Message) {
 	protocol.Debug("router: routeMessage: %v", message.Metadata())
+	mTotalMessagesRouted.Add(1)
 
 	for path, list := range router.routes {
 		if matchesTopic(message.Path, path) {
 			for _, route := range list {
 				router.deliverMessage(route, message)
 			}
+		} else {
+			mTotalMessagesNotMatchingTopic.Add(1)
 		}
 	}
 }
@@ -258,9 +283,10 @@ func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 	case route.MessagesChannel() <- &MessageForRoute{Message: message, Route: route}:
 	// fine, we could send the message
 	default:
-		protocol.Warn("router: deliverMessage: queue was full, unsubscribing and closing delivery channel for route: %v", route)
+		protocol.Warn("router: deliverMessage: route's channel was full, unsubscribing and closing delivery channel for route: %v", route)
 		router.unsubscribe(route)
 		route.Close()
+		mTotalDeliverMessageErrors.Add(1)
 	}
 }
 
@@ -281,7 +307,7 @@ func copyOf(message []byte) []byte {
 	return messageCopy
 }
 
-// Test whether the supplied routePath matches the message topic
+// matchesTopic checks whether the supplied routePath matches the message topic
 func matchesTopic(messagePath, routePath protocol.Path) bool {
 	messagePathLen := len(string(messagePath))
 	routePathLen := len(string(routePath))
@@ -290,9 +316,9 @@ func matchesTopic(messagePath, routePath protocol.Path) bool {
 			(messagePathLen > routePathLen && string(messagePath)[routePathLen] == '/'))
 }
 
-// remove a route from the supplied list,
-// based on same ApplicationID id and same path
-func remove(slice []*Route, route *Route) []*Route {
+// remove removes a route from the supplied list, based on same ApplicationID id and same path (if existing)
+// returns: the (possibly updated) slide, and a boolean value (true if route was removed, false otherwise)
+func removeIfMatching(slice []*Route, route *Route) ([]*Route, bool) {
 	position := -1
 	for p, r := range slice {
 		if r.ApplicationID == route.ApplicationID && r.Path == route.Path {
@@ -300,9 +326,9 @@ func remove(slice []*Route, route *Route) []*Route {
 		}
 	}
 	if position == -1 {
-		return slice
+		return slice, false
 	}
-	return append(slice[:position], slice[position+1:]...)
+	return append(slice[:position], slice[position+1:]...), true
 }
 
 // AccessManager returns the `accessManager` provided for the router

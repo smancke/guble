@@ -4,15 +4,17 @@ import (
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/webserver"
 
-	"fmt"
 	"github.com/docker/distribution/health"
+
+	"fmt"
 	"net/http"
 	"reflect"
 	"time"
 )
 
 const (
-	healthEndpointPrefix        = "/health"
+	healthEndpointPrefix        = "/_health"
+	metricsEndpointPrefix       = "/_metrics"
 	defaultHealthCheckFrequency = time.Second * 60
 	defaultHealthCheckThreshold = 1
 )
@@ -55,7 +57,7 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 }
 
 func (s *Service) RegisterModules(modules ...interface{}) {
-	protocol.Debug("service: RegisterModules: adding %d modules after existing %d modules", len(s.modules), len(modules))
+	protocol.Debug("service: RegisterModules: adding %d modules after existing %d modules", len(modules), len(s.modules))
 	s.modules = append(s.modules, modules...)
 }
 
@@ -65,7 +67,13 @@ func (s *Service) RegisterModules(modules ...interface{}) {
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
 func (s *Service) Start() error {
 	el := protocol.NewErrorList("service: errors occured while starting: ")
+
+	// Health-check setup
 	s.webserver.Handle(healthEndpointPrefix, http.HandlerFunc(health.StatusHandler))
+
+	// Metrics setup
+	s.webserver.Handle(metricsEndpointPrefix, http.HandlerFunc(expvarHandler))
+
 	for _, module := range s.modules {
 		name := reflect.TypeOf(module).String()
 		if startable, ok := module.(Startable); ok {

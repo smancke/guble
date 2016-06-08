@@ -72,7 +72,7 @@ func TestHealthUp(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// and when I call the health URL
-	url := fmt.Sprintf("http://%s/health", service.WebServer().GetAddr())
+	url := fmt.Sprintf("http://%s/_health", service.WebServer().GetAddr())
 	result, err := http.Get(url)
 
 	// then I get status 200 and JSON: {}
@@ -101,7 +101,7 @@ func TestHealthDown(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// and when I can call the health URL
-	url := fmt.Sprintf("http://%s/health", service.WebServer().GetAddr())
+	url := fmt.Sprintf("http://%s/_health", service.WebServer().GetAddr())
 	result, err := http.Get(url)
 	// then I receive status 503 and a JSON error message
 	a.NoError(err)
