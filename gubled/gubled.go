@@ -12,6 +12,7 @@ import (
 	"github.com/smancke/guble/server/websocket"
 	"github.com/smancke/guble/store"
 
+	"expvar"
 	"fmt"
 	"os"
 	"os/signal"
@@ -154,6 +155,7 @@ func StartService(args Args) *server.Service {
 		}
 		os.Exit(1)
 	}
+	expvar.Publish("guble.gubled.args", expvar.Func(func() interface{} { return args }))
 
 	return service
 }
