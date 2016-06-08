@@ -64,12 +64,11 @@ func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string, nWor
 
 // Start opens the connector, creates more goroutines / workers to handle messages coming from the router
 func (conn *GCMConnector) Start() error {
-	broadcastRoute := conn.router.NewRoute(
+	broadcastRoute := server.NewRoute(
 		conn.broadcastPath,
 		"gcm_connector",
 		"gcm_connector",
 		conn.routerC,
-		-1, // no timeout
 	)
 	conn.router.Subscribe(broadcastRoute)
 	go func() {
@@ -272,7 +271,8 @@ func (conn *GCMConnector) parseParams(path string) (userID, gcmID, topic string,
 func (conn *GCMConnector) subscribe(topic string, userID string, gcmID string) {
 	protocol.Info("gcm: GCM connector registration to userID=%q, gcmID=%q: %q", userID, gcmID, topic)
 
-	route := conn.router.NewRoute(topic, gcmID, userID, conn.routerC, -1)
+	route := server.NewRoute(topic, gcmID, userID, conn.routerC)
+
 	conn.router.Subscribe(route)
 	conn.saveSubscription(userID, topic, gcmID)
 }
@@ -302,7 +302,7 @@ func (conn *GCMConnector) loadSubscriptions() {
 			topic := splitValue[1]
 
 			protocol.Debug("gcm: renewing GCM subscription: userID=%v, topic=%v, gcmID=%v", userID, topic, gcmID)
-			route := conn.router.NewRoute(topic, gcmID, userID, conn.routerC, -1)
+			route := server.NewRoute(topic, gcmID, userID, conn.routerC)
 			conn.router.Subscribe(route)
 			count++
 		}

@@ -2,7 +2,6 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
@@ -214,6 +213,7 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 
 	// Given a Router with route
 	router, r := aRouterRoute(chanSize)
+	r.SetTimeout(5 * time.Millisecond)
 
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
@@ -255,7 +255,7 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 	case _, open := <-r.MessagesC():
 		a.False(open)
 	default:
-		fmt.Printf("len(r.C): %v", len(r.MessagesC()))
+		protocol.Debug("len(r.C): %v", len(r.MessagesC()))
 		a.Fail("channel was not closed")
 	}
 }

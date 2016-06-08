@@ -20,7 +20,7 @@ func NewRoute(path, applicationID, userID string, c chan *MessageForRoute) *Rout
 	route := &Route{
 		messagesC:     c,
 		queue:         newQueue(),
-		queueSize:     1, // Default behaviour, allow only one element at once, not recommended
+		queueSize:     0,
 		timeout:       -1,
 		closeC:        make(chan bool),
 		Path:          protocol.Path(path),
@@ -95,22 +95,26 @@ func (r *Route) Deliver(m *protocol.Message) error {
 		return ErrInvalidRoute
 	}
 
+	// if size is zero the sending is direct
+	if r.queueSize == 0 {
+		return r.sendDirect(m)
+	}
+
 	if r.queue.Len() >= r.queueSize {
-		r.Close()
-		return ErrInvalidRoute
+		return r.Close()
 	}
 
 	r.queue.Push(m)
 	if !r.consuming {
 		go r.consume()
 	}
-
 	return nil
 }
 
 // consume starts a goroutine to consume the queue and pass the messages to route
 // channel. The go routine stops if there are no items in the queue.
 func (r *Route) consume() {
+	protocol.Debug("Consuming route %s queue", r)
 	defer func() {
 		r.mu.Lock()
 		defer r.mu.Unlock()
@@ -128,8 +132,10 @@ func (r *Route) consume() {
 
 	for {
 		m, err = r.queue.Pop()
+
 		if err != nil {
 			if err == errEmptyQueue {
+				protocol.Debug("Empty queue")
 				return
 			}
 			protocol.Err("Error fetching queue message %s", err)
@@ -139,7 +145,6 @@ func (r *Route) consume() {
 		// send next message throught the channel
 		if err = r.send(m); err != nil {
 			protocol.Err("Error sending message %s through route %s", m, r)
-
 			if err == errTimeout {
 				r.Close()
 				// channel been closed, ending the consumer
@@ -150,6 +155,8 @@ func (r *Route) consume() {
 }
 
 func (r *Route) send(m *protocol.Message) error {
+	protocol.Debug("Sending message %s through route %s channel", m, r)
+
 	// no timeout, means we dont close the channel
 	mr := &MessageForRoute{Message: m, Route: r}
 	if r.timeout == -1 {
@@ -168,15 +175,29 @@ func (r *Route) send(m *protocol.Message) error {
 	}
 }
 
+// sendDirect sends the message directly in the channel
+func (r *Route) sendDirect(m *protocol.Message) error {
+	mr := &MessageForRoute{Message: m, Route: r}
+	select {
+	case r.messagesC <- mr:
+		return nil
+	default:
+		r.Close()
+		return ErrChannelFull
+	}
+}
+
 // Close closes the route channel.
-func (r *Route) Close() {
+func (r *Route) Close() error {
 	protocol.Debug("Closing route: %s", r)
+
 	// closing channel makes the route invalid
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	// route already closed
 	if r.invalid {
-		return
+		return ErrInvalidRoute
 	}
 
 	r.invalid = true
@@ -185,6 +206,8 @@ func (r *Route) Close() {
 
 	// release the queue
 	r.queue = nil
+
+	return ErrInvalidRoute
 }
 
 func newQueue() *queue {
