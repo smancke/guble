@@ -2,7 +2,6 @@ package server
 
 import (
 	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -72,8 +71,6 @@ func TestRouteDeliver_Invalid(t *testing.T) {
 }
 
 func TestRouteDeliver_QueueSize(t *testing.T) {
-	defer testutil.EnableDebugForMethod()()
-
 	a := assert.New(t)
 	// create a route with a queue size
 	r := testRoute().SetQueueSize(queueSize)
@@ -96,8 +93,59 @@ func TestRouteDeliver_QueueSize(t *testing.T) {
 	case <-time.After(40 * time.Millisecond):
 		a.Fail("Message not delivering.")
 	}
+	time.Sleep(10 * time.Millisecond)
+	a.True(r.invalid)
+	a.False(r.consuming)
+}
 
-	time.Sleep(50 * time.Millisecond)
+func TestRouteDeliver_WithTimeout(t *testing.T) {
+	a := assert.New(t)
+
+	// create a route with timeout and infinite queue size
+	r := testRoute().
+		SetTimeout(10 * time.Millisecond).
+		SetQueueSize(-1) // infinite queue size
+
+	// fill the channel buffer
+	for i := 0; i < chanSize; i++ {
+		r.Deliver(dummyMessageWithID)
+	}
+
+	// delivering one more message should result in a closed route
+	done := make(chan bool)
+	go func() {
+		err := r.Deliver(dummyMessageWithID)
+		a.NoError(err)
+		done <- true
+	}()
+	select {
+	case <-done:
+	case <-time.After(40 * time.Millisecond):
+		a.Fail("Message not delivering.")
+	}
+
+	time.Sleep(30 * time.Millisecond)
+	err := r.Deliver(dummyMessageWithID)
+	a.Equal(ErrInvalidRoute, err)
+	a.True(r.invalid)
+	a.False(r.consuming)
+}
+
+func TestRoute_CloseTwice(t *testing.T) {
+	a := assert.New(t)
+
+	r := testRoute()
+	err := r.Close()
+	a.Equal(ErrInvalidRoute, err)
+
+	err = r.Close()
+	a.Equal(ErrInvalidRoute, err)
+}
+
+func TestQueue_ShiftEmpty(t *testing.T) {
+	q := newQueue()
+	q.shift()
+	assert.Equal(t, 0, q.len())
 }
 
 func testRoute() *Route {

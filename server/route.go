@@ -220,12 +220,11 @@ func (r *Route) format(m *protocol.Message) *MessageForRoute {
 
 // sendDirect sends the message directly in the channel
 func (r *Route) sendDirect(m *protocol.Message) error {
-	mr := &MessageForRoute{Message: m, Route: r}
 	select {
-	case r.messagesC <- mr:
+	case r.messagesC <- r.format(m):
 		return nil
 	default:
-		protocol.Debug("Closing route cause of fullchannel")
+		protocol.Debug("Closing route cause of full channel")
 		r.Close()
 		return ErrChannelFull
 	}
