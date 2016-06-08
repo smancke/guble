@@ -2,6 +2,8 @@ package client
 
 import (
 	"github.com/gorilla/websocket"
+	//"github.com/smancke/guble/protocol"
+	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"net/http"
 	"sync"
@@ -15,13 +17,21 @@ type WSConnection interface {
 }
 
 func DefaultConnectionFactory(url string, origin string) (WSConnection, error) {
-	protocol.Info("connecting to %v", url)
+	log.WithFields(log.Fields{
+		"module": "client",
+		"url":    url,
+	}).Info("Connecting to ")
+
 	header := http.Header{"Origin": []string{origin}}
 	conn, _, err := websocket.DefaultDialer.Dial(url, header)
 	if err != nil {
 		return nil, err
 	}
-	protocol.Info("connected to %v", url)
+	log.WithFields(log.Fields{
+		"module": "client",
+		"url":    url,
+	}).Info("connected to")
+
 	return conn, nil
 }
 
@@ -132,11 +142,17 @@ func (c *client) startWithReconnect() {
 		c.ws, err = c.wSConnectionFactory(c.url, c.origin)
 		if err != nil {
 			c.setIsConnected(false)
-			protocol.Err("error on connect, retry in 50ms: %v", err)
+			log.WithFields(log.Fields{
+				"module": "client",
+				"err":    err,
+			}).Error("Error on connect, retry in 50ms")
 			time.Sleep(time.Millisecond * 50)
 		} else {
 			c.setIsConnected(true)
-			protocol.Err("connected again")
+			log.WithFields(log.Fields{
+				"module": "client",
+				"err":    "Reconnected",
+			}).Error("Connected again")
 		}
 	}
 }
@@ -150,11 +166,19 @@ func (c *client) readLoop() error {
 				return nil
 			}
 
-			protocol.Err("read error: %v", err.Error())
+			log.WithFields(log.Fields{
+				"module": "client",
+				"err":    err,
+			}).Error("read error")
+
 			c.errors <- clientErrorMessage(err.Error())
 			return err
 		}
-		protocol.Debug("raw> %s", msg)
+
+		log.WithFields(log.Fields{
+			"module": "client",
+			"msg":    msg,
+		}).Debug("Raw> ")
 		c.handleIncomingMessage(msg)
 	}
 }
@@ -175,7 +199,11 @@ func (c *client) shouldStop() bool {
 func (c *client) handleIncomingMessage(msg []byte) {
 	parsed, err := protocol.ParseMessage(msg)
 	if err != nil {
-		protocol.Err("parsing message failed %v", err)
+
+		log.WithFields(log.Fields{
+			"module": "client",
+			"err":    err,
+		}).Error("Parsing message failed")
 		c.errors <- clientErrorMessage(err.Error())
 		return
 	}

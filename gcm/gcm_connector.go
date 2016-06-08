@@ -316,7 +316,7 @@ func (conn *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"module": "GCM",
 			"method": r.Method,
 			"err":    http.StatusBadRequest,
-		}).Error("Invalid Parameters in reques")
+		}).Error("Invalid Parameters in request")
 
 		http.Error(w, "Invalid Parameters in request", http.StatusBadRequest)
 		return
