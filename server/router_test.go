@@ -2,7 +2,6 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
@@ -154,7 +153,7 @@ func TestRouter_SimpleMessageSending(t *testing.T) {
 	router.HandleMessage(&protocol.Message{Path: r.Path, Body: aTestByteMessage})
 
 	// then I can receive it a short time later
-	assertChannelContainsMessage(a, r.MessagesChannel(), aTestByteMessage)
+	assertChannelContainsMessage(a, r.MessagesC(), aTestByteMessage)
 }
 
 func TestRouter_RoutingWithSubTopics(t *testing.T) {
@@ -178,13 +177,13 @@ func TestRouter_RoutingWithSubTopics(t *testing.T) {
 	router.HandleMessage(&protocol.Message{Path: "/blah/blub", Body: aTestByteMessage})
 
 	// then I can receive the message
-	assertChannelContainsMessage(a, r.MessagesChannel(), aTestByteMessage)
+	assertChannelContainsMessage(a, r.MessagesC(), aTestByteMessage)
 
 	// but, when i send a message to a resource, which is just a substring
 	router.HandleMessage(&protocol.Message{Path: "/blahblub", Body: aTestByteMessage})
 
 	// then the message gets not delivered
-	a.Equal(0, len(r.MessagesChannel()))
+	a.Equal(0, len(r.MessagesC()))
 }
 
 func TestMatchesTopic(t *testing.T) {
@@ -210,9 +209,11 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	a := assert.New(t)
+	defer testutil.EnableDebugForMethod()()
 
 	// Given a Router with route
 	router, r := aRouterRoute(chanSize)
+	r.SetTimeout(5 * time.Millisecond)
 
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
@@ -224,7 +225,7 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 	}
 
 	// when I send one more message
-	done := make(chan bool, 1)
+	done := make(chan bool)
 	go func() {
 		router.HandleMessage(&protocol.Message{Path: r.Path, Body: aTestByteMessage})
 		done <- true
@@ -242,7 +243,7 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 	// fetch messages from the channel
 	for i := 0; i < chanSize; i++ {
 		select {
-		case _, open := <-r.MessagesChannel():
+		case _, open := <-r.MessagesC():
 			a.True(open)
 		case <-time.After(time.Millisecond * 10):
 			a.Fail("error not enough messages in channel")
@@ -251,10 +252,10 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 
 	// and the channel is closed
 	select {
-	case _, open := <-r.MessagesChannel():
+	case _, open := <-r.MessagesC():
 		a.False(open)
 	default:
-		fmt.Printf("len(r.C): %v", len(r.MessagesChannel()))
+		protocol.Debug("len(r.C): %v", len(r.MessagesC()))
 		a.Fail("channel was not closed")
 	}
 }
@@ -325,7 +326,7 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	// read the messages until done is closed
 	go func() {
 		for {
-			_, ok := <-route.MessagesChannel()
+			_, ok := <-route.MessagesC()
 			select {
 			case <-doneC:
 				return
