@@ -255,7 +255,7 @@ func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 	defer protocol.PanicLogger()
 
 	select {
-	case route.MessagesChannel() <- &MessageForRoute{Message: message, Route: route}:
+	case route.MessagesChannel() <- message:
 	// fine, we could send the message
 	default:
 		protocol.Warn("router: deliverMessage: queue was full, unsubscribing and closing delivery channel for route: %v", route)

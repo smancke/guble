@@ -141,7 +141,7 @@ func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) e
 }
 
 func (rec *Receiver) subscribe() {
-	routeC := make(chan *server.MessageForRoute, 3)
+	routeC := make(chan *protocol.Message, 3)
 	rec.route = server.NewRoute(string(rec.path), rec.applicationId, rec.userId, routeC)
 	_, err := rec.router.Subscribe(rec.route)
 	if err != nil {
@@ -154,20 +154,20 @@ func (rec *Receiver) subscribe() {
 func (rec *Receiver) receiveFromSubscription() {
 	for {
 		select {
-		case msgAndRoute, ok := <-rec.route.MessagesChannel():
+		case m, ok := <-rec.route.MessagesChannel():
 			if !ok {
 				protocol.Debug("Router closed the channel returning from subscription", rec.applicationId)
 				return
 			}
 
 			if protocol.DebugEnabled() {
-				protocol.Debug("Deliver message to applicationId=%v: %v", rec.applicationId, msgAndRoute.Message.Metadata())
+				protocol.Debug("Deliver message to applicationId=%v: %v", rec.applicationId, m.Metadata())
 			}
-			if msgAndRoute.Message.ID > rec.lastSendId {
-				rec.lastSendId = msgAndRoute.Message.ID
-				rec.sendChannel <- msgAndRoute.Message.Bytes()
+			if m.ID > rec.lastSendId {
+				rec.lastSendId = m.ID
+				rec.sendChannel <- m.Bytes()
 			} else {
-				protocol.Debug("Dropping message %v, because it was already sent to client", msgAndRoute.Message.ID)
+				protocol.Debug("Dropping message %v, because it was already sent to client", m.ID)
 			}
 		case <-rec.cancelChannel:
 			rec.shouldStop = true

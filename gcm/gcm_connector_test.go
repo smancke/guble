@@ -276,25 +276,25 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	gcm.Sender = mockSender
 
 	// put a broadcast message with no recipients and expect to be dropped by
-	broadcastMsgWithNoRecipients := &server.MessageForRoute{
+	broadcastMsgWithNoRecipients := &protocol.Message{
 		Message: &protocol.Message{
 			ID:   uint64(4),
 			Body: []byte("{id:id}"),
 			Time: 1405544146,
 			Path: "/gcm/broadcast"}}
-	gcm.routerC <- broadcastMsgWithNoRecipients
+	gcm.pipelineC <- broadcastMsgWithNoRecipients
 	time.Sleep(50 * time.Millisecond)
 	// expect that the HTTP Dummy Server to not handle any requests
 
 	// put a dummy gcm message with minimum information
-	msgWithNoRecipients := &server.MessageForRoute{
+	msgWithNoRecipients := &protocol.Message{
 		Message: &protocol.Message{
 			ID:   uint64(4),
 			Body: []byte("{id:id}"),
 			Time: 1405544146,
 			Path: "/gcm/marvin/gcm124/subscribe/stuff"},
 		Route: &server.Route{ApplicationID: "id"}}
-	gcm.routerC <- msgWithNoRecipients
+	gcm.pipelineC <- msgWithNoRecipients
 	// expect that the Http Server to give us a malformed message
 	<-done
 
@@ -341,7 +341,7 @@ func TestGCMConnector_BroadcastMessage(t *testing.T) {
 	gcm.Sender = mockSender
 
 	// put a broadcast message with no recipients and expect to be dropped by
-	broadcastMessage := &server.MessageForRoute{
+	broadcastMessage := &protocol.Message{
 		Message: &protocol.Message{
 			ID:   uint64(4),
 			Body: []byte("{id:id}"),
@@ -397,7 +397,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	gcm.Sender = mockSender
 
 	// put a dummy gcm message with minimum information
-	msg := &server.MessageForRoute{
+	msg := &protocol.Message{
 		Message: &protocol.Message{
 			ID:   uint64(4),
 			Body: []byte("{id:id}"),
@@ -408,7 +408,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 			Path:          "/path",
 			UserID:        "marvin"}}
 
-	gcm.routerC <- msg
+	gcm.pipelineC <- msg
 	// expect that the Http Server gives us a malformed message
 	<-done
 	//wait before closing the gcm connector

@@ -23,12 +23,11 @@ func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 	router, _, _, _ := aStartedRouter()
 
 	// when i add two routes in the same path
-	channel := make(chan *MessageForRoute, chanSize)
-	routeBlah1, _ := router.Subscribe(NewRoute("/blah", "appid01", "user01", channel))
-	routeBlah2, _ := router.Subscribe(NewRoute("/blah", "appid02", "user01", channel))
+	routeBlah1, _ := router.Subscribe(NewRoute("/blah", "appid01", "user01", chanSize))
+	routeBlah2, _ := router.Subscribe(NewRoute("/blah", "appid02", "user01", chanSize))
 
 	// and one route in another path
-	routeFoo, _ := router.Subscribe(NewRoute("/foo", "appid01", "user01", channel))
+	routeFoo, _ := router.Subscribe(NewRoute("/foo", "appid01", "user01", chanSize))
 
 	// then
 
@@ -65,8 +64,7 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 	router := NewRouter(am, msMock, kvsMock).(*router)
 	router.Start()
 
-	channel := make(chan *MessageForRoute, chanSize)
-	_, e := router.Subscribe(NewRoute("/blah", "appid01", "user01", channel))
+	_, e := router.Subscribe(NewRoute("/blah", "appid01", "user01", chanSize))
 
 	// default TestAccessManager denies all
 	a.NotNil(e)
@@ -75,7 +73,7 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 	am.EXPECT().IsAllowed(auth.READ, "user01", protocol.Path("/blah")).Return(true)
 
 	// and user shall be allowed to subscribe
-	_, e = router.Subscribe(NewRoute("/blah", "appid01", "user01", channel))
+	_, e = router.Subscribe(NewRoute("/blah", "appid01", "user01", chanSize))
 
 	a.Nil(e)
 }
@@ -128,10 +126,10 @@ func TestRouter_ReplacingOfRoutes(t *testing.T) {
 	// Given a Router with a route
 	router, _, _, _ := aStartedRouter()
 
-	router.Subscribe(NewRoute("/blah", "appid01", "user01", nil))
+	router.Subscribe(NewRoute("/blah", "appid01", "user01", 0))
 
 	// when: i add another route with the same Application Id and Same Path
-	router.Subscribe(NewRoute("/blah", "appid01", "newUserId", nil))
+	router.Subscribe(NewRoute("/blah", "appid01", "newUserId", 0))
 
 	// then: the router only contains the new route
 	a.Equal(1, len(router.routes))
@@ -171,8 +169,7 @@ func TestRouter_RoutingWithSubTopics(t *testing.T) {
 	msMock.EXPECT().StoreTx("blah", gomock.Any()).Return(nil)
 	msMock.EXPECT().StoreTx("blahblub", gomock.Any()).Return(nil)
 
-	channel := make(chan *MessageForRoute, chanSize)
-	r, _ := router.Subscribe(NewRoute("/blah", "appid01", "user01", channel))
+	r, _ := router.Subscribe(NewRoute("/blah", "appid01", "user01", chanSize))
 
 	// when i send a message to a subroute
 	router.HandleMessage(&protocol.Message{Path: "/blah/blub", Body: aTestByteMessage})
@@ -317,7 +314,7 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	router, _, _, _ := aStartedRouter()
 	router.messageStore = msMock
 
-	route, err := router.Subscribe(NewRoute("/blah", "appid01", "user01", make(chan *MessageForRoute, 3)))
+	route, err := router.Subscribe(NewRoute("/blah", "appid01", "user01", 3))
 	assert.Nil(err)
 
 	doneC := make(chan bool)
@@ -438,15 +435,15 @@ func aStartedRouter() (*router, auth.AccessManager, store.MessageStore, store.KV
 func aRouterRoute(chSize int) (*router, *Route) {
 	router, _, _, _ := aStartedRouter()
 	route, _ := router.Subscribe(
-		NewRoute("/blah", "appid01", "user01", make(chan *MessageForRoute, chSize)),
+		NewRoute("/blah", "appid01", "user01", chanSize),
 	)
 	return router, route
 }
 
-func assertChannelContainsMessage(a *assert.Assertions, c chan *MessageForRoute, msg []byte) {
+func assertChannelContainsMessage(a *assert.Assertions, c chan *protocol.Message, msg []byte) {
 	select {
-	case msgBack := <-c:
-		a.Equal(string(msg), string(msgBack.Message.Body))
+	case m := <-c:
+		a.Equal(string(msg), string(m.Body))
 	case <-time.After(time.Millisecond * 5):
 		a.Fail("No message received")
 	}

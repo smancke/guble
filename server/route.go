@@ -6,10 +6,11 @@ import (
 )
 
 // NewRoute creates a new route pointer
-func NewRoute(path, applicationID, userID string, channel chan *MessageForRoute) *Route {
+// 	- `size` is the channel buffer size
+func NewRoute(path, applicationID, userID string, size int) *Route {
 	return &Route{
 		Path:          protocol.Path(path),
-		messagesC:     channel,
+		messagesC:     make(chan *protocol.Message, size),
 		UserID:        userID,
 		ApplicationID: applicationID,
 	}
@@ -18,7 +19,7 @@ func NewRoute(path, applicationID, userID string, channel chan *MessageForRoute)
 // Route represents a topic for subscription that has a channel to receive messages.
 type Route struct {
 	Path          protocol.Path
-	messagesC     chan *MessageForRoute
+	messagesC     chan *protocol.Message
 	UserID        string // UserID that subscribed or pushes messages to the router
 	ApplicationID string
 }
@@ -39,6 +40,6 @@ func (r *Route) Close() {
 }
 
 // Messages returns the route channel to send or receive messages.
-func (r *Route) MessagesChannel() chan *MessageForRoute {
+func (r *Route) MessagesChannel() chan *protocol.Message {
 	return r.messagesC
 }
