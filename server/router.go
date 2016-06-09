@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/store"
@@ -98,7 +99,10 @@ func (router *router) Start() error {
 
 // Stop stops the router by closing the stop channel
 func (router *router) Stop() error {
-	protocol.Debug("router: stopping")
+	log.WithFields(log.Fields{
+		"module": "router",
+	}).Debug("Stopping router")
+
 	router.stopC <- true
 	router.wg.Wait()
 	return nil
@@ -106,16 +110,28 @@ func (router *router) Stop() error {
 
 func (router *router) Check() error {
 	if router.accessManager == nil || router.messageStore == nil || router.kvStore == nil {
+		log.WithFields(log.Fields{
+			"module": "router",
+			"err":    ErrServiceNotProvided,
+		}).Error("Some services are not provided")
 		return ErrServiceNotProvided
 	}
 
 	err := router.messageStore.Check()
 	if err != nil {
+		log.WithFields(log.Fields{
+			"module": "router",
+			"err":    err,
+		}).Error("MessageStore check failed")
 		return err
 	}
 
 	err = router.kvStore.Check()
 	if err != nil {
+		log.WithFields(log.Fields{
+			"module": "router",
+			"err":    err,
+		}).Error("KvStore check failed")
 		return err
 	}
 
@@ -123,8 +139,17 @@ func (router *router) Check() error {
 }
 
 func (router *router) HandleMessage(message *protocol.Message) error {
-	protocol.Debug("router: HandleMessage: %v %v", message.UserID, message.Path)
+	log.WithFields(log.Fields{
+		"module": "router",
+		"userID": message.UserID,
+		"path":   message.Path,
+	}).Debug("HandleMessage:")
+
 	if err := router.isStopping(); err != nil {
+		log.WithFields(log.Fields{
+			"module": "router",
+			"err":    err,
+		}).Error("Router is stopping")
 		return err
 	}
 
@@ -138,7 +163,13 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 // Subscribe adds a route to the subscribers.
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Subscribe(r *Route) (*Route, error) {
-	protocol.Debug("router: Subscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
+
+	log.WithFields(log.Fields{
+		"module":        "router",
+		"accessManager": router.accessManager,
+		"userID":        r.UserID,
+		"path":          r.Path,
+	}).Debug("Subscribe:")
 
 	if err := router.isStopping(); err != nil {
 		return nil, err
@@ -146,7 +177,7 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 
 	accessAllowed := router.accessManager.IsAllowed(auth.READ, r.UserID, r.Path)
 	if !accessAllowed {
-		return r, &PermissionDeniedError{r.UserID, auth.READ, r.Path}
+		return r, &PermissionDeniedError{UserID: r.UserID, AccessType: auth.READ, Path: r.Path}
 	}
 	req := subRequest{
 		route:      r,
@@ -158,7 +189,12 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 }
 
 func (router *router) Unsubscribe(r *Route) {
-	protocol.Debug("router: Unsubscribe %v, %v, %v", router.accessManager, r.UserID, r.Path)
+	log.WithFields(log.Fields{
+		"module":        "router",
+		"accessManager": router.accessManager,
+		"userID":        r.UserID,
+		"path":          r.Path,
+	}).Debug("Unsubscribe:")
 
 	req := subRequest{
 		route:      r,
@@ -169,7 +205,11 @@ func (router *router) Unsubscribe(r *Route) {
 }
 
 func (router *router) subscribe(r *Route) {
-	protocol.Debug("router: subscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
+	log.WithFields(log.Fields{
+		"module": "router",
+		"userID": r.UserID,
+		"path":   r.Path,
+	}).Debug("Intenal subscribe for :")
 
 	list, present := router.routes[r.Path]
 	if present {
@@ -184,7 +224,12 @@ func (router *router) subscribe(r *Route) {
 }
 
 func (router *router) unsubscribe(r *Route) {
-	protocol.Debug("router: unsubscribe applicationID=%v, path=%v", r.ApplicationID, r.Path)
+
+	log.WithFields(log.Fields{
+		"module": "router",
+		"userID": r.UserID,
+		"path":   r.Path,
+	}).Debug("Intenal unsubscribe for :")
 
 	list, present := router.routes[r.Path]
 	if !present {
@@ -224,13 +269,22 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 	}
 
 	if err := router.messageStore.StoreTx(msg.Path.Partition(), txCallback); err != nil {
-		protocol.Err("router: error storing message in partition %v: %v", msg.Path.Partition(), err)
+		log.WithFields(log.Fields{
+			"module":        "router",
+			"err":           err,
+			"msg_partition": msg.Path.Partition(),
+		}).Error("Error storing message in partition")
+
 		return err
 	}
 
 	if float32(len(router.handleC))/float32(cap(router.handleC)) > overloadedChannelRatio {
-		protocol.Warn("router: handleC channel almost full: current length=%v, max. capacity=%v",
-			len(router.handleC), cap(router.handleC))
+		log.WithFields(log.Fields{
+			"module":         "router",
+			"current_length": len(router.handleC),
+			"max_capacity":   cap(router.handleC),
+		}).Warn("Warning handleC channel almost full")
+
 		// TODO Cosmin: noticed this, it seems weird to try handling contention like this
 		time.Sleep(time.Millisecond)
 	}
@@ -240,7 +294,11 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 }
 
 func (router *router) routeMessage(message *protocol.Message) {
-	protocol.Debug("router: routeMessage: %v", message.Metadata())
+
+	log.WithFields(log.Fields{
+		"module":       "router",
+		"msg_metadata": message.Metadata(),
+	}).Debug("Called routeMessage for data")
 
 	for path, list := range router.routes {
 		if matchesTopic(message.Path, path) {
@@ -258,18 +316,27 @@ func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 	case route.MessagesChannel() <- &MessageForRoute{Message: message, Route: route}:
 	// fine, we could send the message
 	default:
-		protocol.Warn("router: deliverMessage: queue was full, unsubscribing and closing delivery channel for route: %v", route)
+
+		log.WithFields(log.Fields{
+			"module": "router",
+			"route":  route.String(),
+		}).Warn(" deliverMessage: queue was full, unsubscribing and closing delivery channel for route")
 		router.unsubscribe(route)
 		route.Close()
 	}
 }
 
 func (router *router) closeRoutes() {
-	protocol.Debug("router: closeRoutes()")
+	log.WithFields(log.Fields{
+		"module": "router",
+	}).Debug("Called closeRoutes")
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
 			router.unsubscribe(route)
-			protocol.Debug("router: closing route %v", route)
+			log.WithFields(log.Fields{
+				"module": "router",
+				"route":  route.String(),
+			}).Debug("CLosing route for ")
 			route.Close()
 		}
 	}

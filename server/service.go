@@ -1,11 +1,11 @@
 package server
 
 import (
+	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"github.com/docker/distribution/health"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/webserver"
-
-	"fmt"
-	"github.com/docker/distribution/health"
 	"net/http"
 	"reflect"
 	"time"
@@ -55,7 +55,12 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 }
 
 func (s *Service) RegisterModules(modules ...interface{}) {
-	protocol.Debug("service: RegisterModules: adding %d modules after existing %d modules", len(s.modules), len(modules))
+	log.WithFields(log.Fields{
+		"module":                 "service",
+		"no_of_new_modules":      len(s.modules),
+		"no of_existing_modules": len(modules),
+	}).Debug(" RegisterModules: adding")
+
 	s.modules = append(s.modules, modules...)
 }
 
@@ -69,19 +74,37 @@ func (s *Service) Start() error {
 	for _, module := range s.modules {
 		name := reflect.TypeOf(module).String()
 		if startable, ok := module.(Startable); ok {
-			protocol.Info("service: starting module %v", name)
+			log.WithFields(log.Fields{
+				"module": "service",
+				"name":   name,
+			}).Info("Starting module")
+
 			if err := startable.Start(); err != nil {
-				protocol.Err("service: error while starting module %v", name)
+
+				log.WithFields(log.Fields{
+					"module": "service",
+					"name":   name,
+					"err":    err,
+				}).Error("Error while starting module")
+
 				el.Add(err)
 			}
 		}
 		if checker, ok := module.(health.Checker); ok {
-			protocol.Info("service: registering module %v as HealthChecker", name)
+
+			log.WithFields(log.Fields{
+				"module": "service",
+				"name":   name,
+			}).Info("Resgistering HealthChecker  module with name")
 			health.RegisterPeriodicThresholdFunc(name, s.healthCheckFrequency, s.healthCheckThreshold, health.CheckFunc(checker.Check))
 		}
 		if endpoint, ok := module.(Endpoint); ok {
 			prefix := endpoint.GetPrefix()
-			protocol.Info("service: registering module %v as Endpoint to %v", name, prefix)
+			log.WithFields(log.Fields{
+				"module": "service",
+				"name":   name,
+				"prefix": prefix,
+			}).Info("Resgistering Endpoint  module with name")
 			s.webserver.Handle(prefix, endpoint)
 		}
 	}
@@ -102,15 +125,22 @@ func (s *Service) Stop() error {
 	for i := 1; i < len(stopables); i++ {
 		stopOrder[i] = len(stopables) - i
 	}
-
-	protocol.Debug("service: stopping %d modules in this order relative to registration: %v", len(stopOrder), stopOrder)
+	log.WithFields(log.Fields{
+		"module":        "service",
+		"no_of_modules": len(stopOrder),
+		"stop_order":    stopOrder,
+	}).Debug(" Stopping modules in this order relative to registration")
 
 	errors := protocol.NewErrorList("stopping errors: ")
 	for _, order := range stopOrder {
 		module := stopables[order]
 		name := reflect.TypeOf(module).String()
 
-		protocol.Info("service: stopping [%d] %v", order, name)
+		log.WithFields(log.Fields{
+			"module": "service",
+			"name":   name,
+			"order":  order,
+		}).Info("Stopping module with name")
 		if err := module.Stop(); err != nil {
 			errors.Add(err)
 		}
