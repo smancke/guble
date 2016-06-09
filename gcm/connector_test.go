@@ -337,7 +337,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	a.NoError(err)
 }
 
-func testGCMResponse(t *testing.T, jsonResponse string) (*GCMConnector, *MockRouter, chan bool) {
+func testGCMResponse(t *testing.T, jsonResponse string) (*Connector, *MockRouter, chan bool) {
 	routerMock := NewMockRouter(testutil.MockCtrl)
 	kvStore := store.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
@@ -349,7 +349,7 @@ func testGCMResponse(t *testing.T, jsonResponse string) (*GCMConnector, *MockRou
 	// 	a.Equal("gcm_connector", route.ApplicationID)
 	// })
 
-	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi", 1)
+	gcm, err := New(routerMock, "/gcm/", "testApi", 1)
 	assert.NoError(t, err)
 
 	done := make(chan bool)

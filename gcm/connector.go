@@ -33,8 +33,8 @@ const (
 
 var logger = log.WithField("module", "gcm")
 
-// GCMConnector is the structure for handling the communication with Google Cloud Messaging
-type GCMConnector struct {
+// Connector is the structure for handling the communication with Google Cloud Messaging
+type Connector struct {
 	Sender        *gcm.Sender
 	router        server.Router
 	kvStore       store.KVStore
@@ -46,14 +46,14 @@ type GCMConnector struct {
 	broadcastPath string
 }
 
-// NewGCMConnector creates a new GCMConnector without starting it
-func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string, nWorkers int) (*GCMConnector, error) {
+// New creates a new *Connector without starting it
+func New(router server.Router, prefix string, gcmAPIKey string, nWorkers int) (*Connector, error) {
 	kvStore, err := router.KVStore()
 	if err != nil {
 		return nil, err
 	}
 
-	return &GCMConnector{
+	return &Connector{
 		Sender:        &gcm.Sender{ApiKey: gcmAPIKey},
 		router:        router,
 		kvStore:       kvStore,
@@ -66,7 +66,7 @@ func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string, nWor
 }
 
 // Start opens the connector, creates more goroutines / workers to handle messages coming from the router
-func (conn *GCMConnector) Start() error {
+func (conn *Connector) Start() error {
 	// broadcast route will be a custom subscription
 	// broadcastRoute := server.NewRoute(conn.broadcastPath, "gcm_connector", "gcm_connector", bufferSize)
 	// conn.router.Subscribe(broadcastRoute)
@@ -84,7 +84,7 @@ func (conn *GCMConnector) Start() error {
 }
 
 // Stop signals the closing of GCMConnector
-func (conn *GCMConnector) Stop() error {
+func (conn *Connector) Stop() error {
 	logger.Debug("Stopping ...")
 	close(conn.stopC)
 	conn.wg.Wait()
@@ -95,7 +95,7 @@ func (conn *GCMConnector) Stop() error {
 // Check returns nil if health-check succeeds, or an error if health-check fails
 // by sending a request with only apikey. If the response is processed by the GCM endpoint
 // the gcmStatus will be UP, otherwise the error from sending the message will be returned.
-func (conn *GCMConnector) Check() error {
+func (conn *Connector) Check() error {
 	payload := messageMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
 	_, err := conn.Sender.Send(gcm.NewMessage(payload, ""), sendRetries)
 	if err != nil {
@@ -107,7 +107,7 @@ func (conn *GCMConnector) Check() error {
 
 // loopPipeline awaits in a loop for messages subscriptions to be forwarded to GCM,
 // until the stop-channel is closed
-func (conn *GCMConnector) loopPipeline(id int) {
+func (conn *Connector) loopPipeline(id int) {
 	defer func() {
 		logger.WithField("id", id).Debug("Worker stopped")
 		conn.wg.Done()
@@ -126,7 +126,7 @@ func (conn *GCMConnector) loopPipeline(id int) {
 	}
 }
 
-func (conn *GCMConnector) sendMessage(pm *pipeMessage) {
+func (conn *Connector) sendMessage(pm *pipeMessage) {
 	gcmID := pm.sub.route.ApplicationID
 	payload := pm.payload()
 
@@ -175,11 +175,11 @@ func (conn *GCMConnector) sendMessage(pm *pipeMessage) {
 // }
 
 // GetPrefix is used to satisfy the HTTP handler interface
-func (conn *GCMConnector) GetPrefix() string {
+func (conn *Connector) GetPrefix() string {
 	return conn.prefix
 }
 
-func (conn *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		logger.WithField("method", r.Method).Error("Only HTTP post method supported.")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -197,7 +197,7 @@ func (conn *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // parseParams will parse the HTTP URL with format /gcm/:userid/:gcmid/subscribe/*topic
 // returning the parsed Params, or error if the request is not in the correct format
-func (conn *GCMConnector) parseParams(path string) (userID, gcmID, topic string, err error) {
+func (conn *Connector) parseParams(path string) (userID, gcmID, topic string, err error) {
 	currentURLPath := removeTrailingSlash(path)
 
 	if strings.HasPrefix(currentURLPath, conn.prefix) != true {
@@ -222,7 +222,7 @@ func (conn *GCMConnector) parseParams(path string) (userID, gcmID, topic string,
 	return userID, gcmID, topic, nil
 }
 
-func (conn *GCMConnector) loadSubs() {
+func (conn *Connector) loadSubs() {
 	subscriptions := conn.kvStore.Iterate(schema, "")
 	count := 0
 	for {
@@ -238,7 +238,7 @@ func (conn *GCMConnector) loadSubs() {
 	}
 }
 
-func (conn *GCMConnector) loadSub(entry [2]string) {
+func (conn *Connector) loadSub(entry [2]string) {
 	gcmID := entry[0]
 	values := strings.Split(entry[1], ":")
 	userID := values[0]

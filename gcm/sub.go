@@ -29,7 +29,7 @@ func (e *jsonError) Error() string {
 }
 
 // Creates a subscription and returns the pointer
-func newSub(gcm *GCMConnector, route *server.Route, lastID uint64) *sub {
+func newSub(gcm *Connector, route *server.Route, lastID uint64) *sub {
 	return &sub{
 		gcm:    gcm,
 		route:  route,
@@ -43,7 +43,7 @@ func newSub(gcm *GCMConnector, route *server.Route, lastID uint64) *sub {
 }
 
 // creates a subscription and adds it in router/kvstore then starts listening for messages
-func initSub(gcm *GCMConnector, topic, userID, gcmID string, lastID uint64) (*sub, error) {
+func initSub(gcm *Connector, topic, userID, gcmID string, lastID uint64) (*sub, error) {
 	route := server.NewRoute(topic, gcmID, userID, subBufferSize)
 	s := newSub(gcm, route, 0)
 	if err := s.store(); err != nil {
@@ -55,7 +55,7 @@ func initSub(gcm *GCMConnector, topic, userID, gcmID string, lastID uint64) (*su
 
 // sub represent a GCM subscription
 type sub struct {
-	gcm    *GCMConnector
+	gcm    *Connector
 	route  *server.Route
 	lastID uint64 // Last sent message id
 

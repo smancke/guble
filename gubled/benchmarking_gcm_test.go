@@ -69,7 +69,7 @@ func throughputSend(b *testing.B, nWorkers int, sampleSend func(c client.Client)
 	service := StartService(args)
 
 	protocol.Debug("Overwriting the GCM Sender with a Mock")
-	gcmConnector, ok := service.Modules()[4].(*gcm.GCMConnector)
+	gcmConnector, ok := service.Modules()[4].(*gcm.Connector)
 	a.True(ok, "Modules[4] should be of type GCMConnector")
 	gcmConnector.Sender = testutil.CreateGcmSender(
 		testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.CorrectGcmResponseMessageJSON, nil))
