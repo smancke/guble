@@ -6,6 +6,7 @@ import (
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
+	"strconv"
 
 	"errors"
 	"fmt"
@@ -61,7 +62,6 @@ func NewGCMConnector(router server.Router, prefix string, gcmAPIKey string, nWor
 		stopC:         make(chan bool),
 		nWorkers:      nWorkers,
 		broadcastPath: removeTrailingSlash(prefix) + "/broadcast",
-		subs:          make(map[string]*sub),
 	}, nil
 }
 
@@ -97,7 +97,7 @@ func (conn *GCMConnector) Stop() error {
 // by sending a request with only apikey. If the response is processed by the GCM endpoint
 // the gcmStatus will be UP, otherwise the error from sending the message will be returned.
 func (conn *GCMConnector) Check() error {
-	payload := parseMessageToMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
+	payload := messageMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
 	_, err := conn.Sender.Send(gcm.NewMessage(payload, ""), sendRetries)
 	if err != nil {
 		protocol.Err("gcm: error sending ping message %v", err.Error())
@@ -114,21 +114,26 @@ func (conn *GCMConnector) loopPipeline(id int) {
 
 	for {
 		select {
-		case pm, opened := <-conn.pipelineC:
-			conn.sendMessage(pm)
+		case pm := <-conn.pipelineC:
+			if pm != nil {
+				conn.sendMessage(pm)
+			}
 		case <-conn.stopC:
-			logger.WithFields("id", id).Debug("Stopping worker")
+			logger.WithField("id", id).Debug("Stopping worker")
 			return
 		}
 	}
 }
 
 func (conn *GCMConnector) sendMessage(pm *pipeMessage) {
-	gcmID := pm.route.ApplicationID
+	gcmID := pm.sub.route.ApplicationID
 	payload := pm.payload()
 
 	gcmMessage := gcm.NewMessage(payload, gcmID)
-	protocol.Debug("gcm: sending message to: %v ; channel length: ", gcmID, len(conn.pipelineC))
+	logger.WithFields(log.Fields{
+		"gcm_id":      gcmID,
+		"pipe_length": len(conn.pipelineC),
+	}).Debug("Sending message")
 
 	result, err := conn.Sender.Send(gcmMessage, sendRetries)
 	if err != nil {
@@ -136,12 +141,11 @@ func (conn *GCMConnector) sendMessage(pm *pipeMessage) {
 		return
 	}
 	pm.resultC <- result
-
 }
 
 // func (conn *GCMConnector) broadcastMessage(m *protocol.Message) {
 // 	topic := m.Path
-// 	payload := parseMessageToMap(m)
+// 	payload := messageMap(m)
 // 	protocol.Debug("gcm: broadcasting message with topic: %v ; channel length: %v", string(topic), len(conn.pipelineC))
 
 // 	subscriptions := conn.kvStore.Iterate(schema, "")
@@ -186,7 +190,7 @@ func (conn *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid Parameters in request", http.StatusBadRequest)
 		return
 	}
-	newSub(conn, topic, userID, gcmID)
+	newSub(conn, topic, userID, gcmID, 0)
 	fmt.Fprintf(w, "registered: %v\n", topic)
 }
 
@@ -229,8 +233,6 @@ func (conn *GCMConnector) loadSubs() {
 				return
 			}
 			conn.loadSub(entry)
-			route := server.NewRoute(topic, gcmID, userID, conn.pipelineC)
-			conn.router.Subscribe(route)
 			count++
 		}
 	}
@@ -241,14 +243,17 @@ func (conn *GCMConnector) loadSub(entry [2]string) {
 	values := strings.Split(entry[1], ":")
 	userID := values[0]
 	topic := values[1]
-	lastID := values[2]
+	lastID, err := strconv.ParseUint(values[2], 10, 64)
+	if err != nil {
+		lastID = 0
+	}
 
-	newSub(conn, topic, userID, gcmID)
+	newSub(conn, topic, userID, gcmID, lastID)
 
 	logger.WithFields(log.Fields{
-		"gcmID":  gcmID,
-		"userID": userID,
-		"topic":  topic,
+		"gcm_id":  gcmID,
+		"user_id": userID,
+		"topic":   topic,
 	}).Debug("loaded GCM subscription")
 }
 
