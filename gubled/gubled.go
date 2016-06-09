@@ -21,6 +21,11 @@ import (
 	"syscall"
 )
 
+const (
+	healthEndpointPrefix  = "/_health"
+	metricsEndpointPrefix = "/_metrics"
+)
+
 type Args struct {
 	Listen      string `arg:"-l,help: [Host:]Port the address to listen on (:8080)" env:"GUBLE_LISTEN"`
 	LogInfo     bool   `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
@@ -144,7 +149,7 @@ func StartService(args Args) *server.Service {
 	router := server.NewRouter(accessManager, messageStore, kvStore)
 	webserver := webserver.New(args.Listen)
 
-	service := server.NewService(router, webserver)
+	service := server.NewService(router, webserver).HealthEndpointPrefix(healthEndpointPrefix).MetricsEndpointPrefix(metricsEndpointPrefix)
 
 	service.RegisterModules(CreateModules(router, args)...)
 
