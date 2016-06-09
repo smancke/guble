@@ -321,9 +321,8 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 		Path: "/gcm/marvin/gcm124/subscribe/stuff",
 	}
 
-	// pipe the message from subscription, cause that's where the result gets handled
-	s.pipe(message)
-
+	// send the message into the subscription route channel
+	s.route.MessagesChannel() <- message
 	// expect that the Http Server gives us a malformed message
 	<-done
 
