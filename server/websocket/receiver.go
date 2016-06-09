@@ -7,6 +7,7 @@ import (
 
 	"errors"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"math"
 	"strconv"
 	"strings"
@@ -99,7 +100,12 @@ func (rec *Receiver) subscriptionLoop() {
 		if rec.doFetch {
 
 			if err := rec.fetch(); err != nil {
-				protocol.Err("error while fetching: %v, %+v", err.Error(), rec)
+
+				log.WithFields(log.Fields{
+					"module": "websocket",
+					"rec":    rec,
+					"err":    err,
+				}).Error("Error while fetching subscription  ")
 				rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
 				return
 			}
@@ -110,7 +116,13 @@ func (rec *Receiver) subscriptionLoop() {
 					rec.startId = int64(rec.lastSendId + 1)
 					continue // fetch again
 				} else {
-					protocol.Err("error while subscribeIfNoUnreadMessagesAvailable: %v, %+v", err.Error(), rec)
+
+					log.WithFields(log.Fields{
+						"module": "websocket",
+						"rec":    rec,
+						"err":    err,
+					}).Error("Error while subscribeIfNoUnreadMessagesAvailable")
+
 					rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
 					return
 				}
@@ -156,18 +168,29 @@ func (rec *Receiver) receiveFromSubscription() {
 		select {
 		case msgAndRoute, ok := <-rec.route.MessagesChannel():
 			if !ok {
-				protocol.Debug("Router closed the channel returning from subscription", rec.applicationId)
+
+				log.WithFields(log.Fields{
+					"module":        "websocket",
+					"applicationId": rec.applicationId,
+				}).Debug("Router closed the channel returning from subscription for ")
 				return
 			}
 
-			if protocol.DebugEnabled() {
-				protocol.Debug("Deliver message to applicationId=%v: %v", rec.applicationId, msgAndRoute.Message.Metadata())
-			}
+			log.WithFields(log.Fields{
+				"module":        "websocket",
+				"applicationId": rec.applicationId,
+				"msg_metadata":  msgAndRoute.Message.Metadata(),
+			}).Debug("Deliver message to")
+
 			if msgAndRoute.Message.ID > rec.lastSendId {
 				rec.lastSendId = msgAndRoute.Message.ID
 				rec.sendChannel <- msgAndRoute.Message.Bytes()
 			} else {
-				protocol.Debug("Dropping message %v, because it was already sent to client", msgAndRoute.Message.ID)
+				log.WithFields(log.Fields{
+					"module": "websocket",
+					"msg_id": msgAndRoute.Message.ID,
+				}).Debug("Message already sent to client Dropping message with id")
+
 			}
 		case <-rec.cancelChannel:
 			rec.shouldStop = true
@@ -182,7 +205,12 @@ func (rec *Receiver) receiveFromSubscription() {
 func (rec *Receiver) fetchOnlyLoop() {
 	err := rec.fetch()
 	if err != nil {
-		protocol.Err("error while fetching: %v, %+v", err.Error(), rec)
+
+		log.WithFields(log.Fields{
+			"module": "websocket",
+			"rec":    rec,
+			"err":    err,
+		}).Error("Error while fetching")
 		rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
 	}
 }
@@ -226,7 +254,13 @@ func (rec *Receiver) fetch() error {
 				rec.sendOK(protocol.SUCCESS_FETCH_END, string(rec.path))
 				return nil
 			}
-			protocol.Debug("replay send %v, %v", msgAndId.Id, string(msgAndId.Message))
+
+			log.WithFields(log.Fields{
+				"module": "websocket",
+				"msg_id": msgAndId.Id,
+				"msg":    string(msgAndId.Message),
+			}).Debug("Replay send to")
+
 			rec.lastSendId = msgAndId.Id
 			rec.sendChannel <- msgAndId.Message
 		case err := <-fetch.ErrorCallback:

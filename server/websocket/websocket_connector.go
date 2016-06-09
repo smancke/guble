@@ -8,6 +8,7 @@ import (
 	"github.com/rs/xid"
 
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/server/auth"
 	"net/http"
 	"strings"
@@ -44,7 +45,12 @@ func (handle *WSHandler) GetPrefix() string {
 func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := webSocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		protocol.Warn("error on upgrading %v", err.Error())
+
+		log.WithFields(log.Fields{
+			"module": "websocket",
+			"err":    err,
+		}).Error("Error on upgrading ")
+
 		return
 	}
 	defer c.Close()
@@ -117,18 +123,36 @@ func (ws *WebSocket) sendLoop() {
 		case raw := <-ws.sendChannel:
 
 			if ws.checkAccess(raw) {
-				if protocol.DebugEnabled() {
-					if len(raw) < 80 {
-						protocol.Debug("websocket: send to client (userId=%v, applicationId=%v, totalSize=%v): %v",
-							ws.userID, ws.applicationID, len(raw), string(raw))
-					} else {
-						protocol.Debug("websocket: send to client (userId=%v, applicationId=%v, totalSize=%v): %v...",
-							ws.userID, ws.applicationID, len(raw), string(raw[0:79]))
-					}
+				//if protocol.DebugEnabled() {
+				if len(raw) < 80 {
+
+					log.WithFields(log.Fields{
+						"module":         "websocket",
+						"userId":         ws.userID,
+						"applicationID":  ws.applicationID,
+						"totalSize":      len(raw),
+						"actual_content": string(raw),
+					}).Debug("Send to client ")
+
+				} else {
+
+					log.WithFields(log.Fields{
+						"module":         "websocket",
+						"userId":         ws.userID,
+						"applicationID":  ws.applicationID,
+						"totalSize":      len(raw),
+						"actual_content": string(raw[0:79]),
+					}).Debug("Send to client ")
 				}
+				//}
 
 				if err := ws.Send(raw); err != nil {
-					protocol.Debug("websocket: applicationId=%v closed the connection", ws.applicationID)
+
+					log.WithFields(log.Fields{
+						"module":        "websocket",
+						"applicationID": ws.applicationID,
+					}).Debug("Closed connnection with")
+
 					ws.cleanAndClose()
 					break
 				}
@@ -138,10 +162,20 @@ func (ws *WebSocket) sendLoop() {
 }
 
 func (ws *WebSocket) checkAccess(raw []byte) bool {
-	protocol.Debug("websocket: raw message: %v", string(raw))
+	log.WithFields(log.Fields{
+		"module":  "websocket",
+		"raw_msg": string(raw),
+	}).Debug("Raw message")
+
 	if raw[0] == byte('/') {
 		path := getPathFromRawMessage(raw)
-		protocol.Debug("websocket: Received msg %v %v", ws.userID, path)
+
+		log.WithFields(log.Fields{
+			"module": "websocket",
+			"userID": ws.userID,
+			"path":   path,
+		}).Debug("Received msg")
+
 		return len(path) == 0 || ws.accessManager.IsAllowed(auth.READ, ws.userID, path)
 
 	}
@@ -158,7 +192,12 @@ func (ws *WebSocket) receiveLoop() {
 	for {
 		err := ws.Receive(&message)
 		if err != nil {
-			protocol.Debug("websocket: applicationId=%v closed the connection", ws.applicationID)
+
+			log.WithFields(log.Fields{
+				"module":        "websocket",
+				"applicationID": ws.applicationID,
+			}).Debug("Closed connnection by application")
+
 			ws.cleanAndClose()
 			break
 		}
@@ -200,7 +239,12 @@ func (ws *WebSocket) handleReceiveCmd(cmd *protocol.Cmd) {
 		ws.userID,
 	)
 	if err != nil {
-		protocol.Err("websocket: client error in handleReceiveCmd: %v", err.Error())
+
+		log.WithFields(log.Fields{
+			"module": "websocket",
+			"err":    err,
+		}).Error("Client error in handleReceiveCmd")
+
 		ws.sendError(protocol.ERROR_BAD_REQUEST, err.Error())
 		return
 	}
@@ -222,7 +266,11 @@ func (ws *WebSocket) handleCancelCmd(cmd *protocol.Cmd) {
 }
 
 func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
-	protocol.Debug("websocket: sending %v", string(cmd.Bytes()))
+	log.WithFields(log.Fields{
+		"module": "websocket",
+		"cmd":    string(cmd.Bytes()),
+	}).Debug("Sending ")
+
 	if len(cmd.Arg) == 0 {
 		ws.sendError(protocol.ERROR_BAD_REQUEST, "send command requires a path argument, but none given")
 		return
@@ -246,7 +294,11 @@ func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
 }
 
 func (ws *WebSocket) cleanAndClose() {
-	protocol.Debug("websocket: closing applicationId=%v", ws.applicationID)
+
+	log.WithFields(log.Fields{
+		"module":        "websocket",
+		"applicationID": ws.applicationID,
+	}).Debug("Closing applicationId")
 
 	for path, rec := range ws.receivers {
 		rec.Stop()
