@@ -12,13 +12,6 @@ import (
 
 var Enabled = len(os.Getenv("GUBLE_METRICS")) > 0
 
-func NewInt(name string) IntVar {
-	if Enabled {
-		return expvar.NewInt(name)
-	}
-	return &emptyInt{}
-}
-
 type IntVar interface {
 	Add(int64)
 	Set(int64)
@@ -27,13 +20,16 @@ type IntVar interface {
 type emptyInt struct{}
 
 // Dummy functions on EmptyInt
-func (v *emptyInt) String() string {
-	return "0"
-}
-
 func (v *emptyInt) Add(delta int64) {}
 
 func (v *emptyInt) Set(value int64) {}
+
+func NewInt(name string) IntVar {
+	if Enabled {
+		return expvar.NewInt(name)
+	}
+	return &emptyInt{}
+}
 
 func HttpHandler(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
