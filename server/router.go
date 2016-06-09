@@ -13,6 +13,9 @@ import (
 
 const (
 	overloadedHandleChannelRatio = 0.9
+	handleChannelCapacity        = 500
+	subscribeChannelCapacity     = 10
+	unsubscribeChannelCapacity   = 10
 )
 
 // Router interface provides mechanism for PubSub messaging
@@ -51,9 +54,9 @@ func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore
 	return &router{
 		routes: make(map[protocol.Path][]*Route),
 
-		handleC:      make(chan *protocol.Message, 500),
-		subscribeC:   make(chan subRequest, 10),
-		unsubscribeC: make(chan subRequest, 10),
+		handleC:      make(chan *protocol.Message, handleChannelCapacity),
+		subscribeC:   make(chan subRequest, subscribeChannelCapacity),
+		unsubscribeC: make(chan subRequest, unsubscribeChannelCapacity),
 		stopC:        make(chan bool, 1),
 
 		accessManager: accessManager,
@@ -97,7 +100,7 @@ func (router *router) Start() error {
 	return nil
 }
 
-// Stop stops the router by closing the stop channel
+// Stop stops the router by closing the stop channel, and waiting on the WaitGroup
 func (router *router) Stop() error {
 	protocol.Debug("router: stopping")
 	router.stopC <- true
@@ -245,11 +248,15 @@ func (router *router) storeAndChannelMessage(msg *protocol.Message) error {
 		msg.Time = time.Now().Unix()
 		return msg.Bytes()
 	}
+	lenMsg := int64(len(msg.Bytes()))
+	mTotalMessagesIncomingBytes.Add(lenMsg)
 
 	if err := router.messageStore.StoreTx(msg.Path.Partition(), txCallback); err != nil {
 		protocol.Err("router: error storing message in partition %v: %v", msg.Path.Partition(), err)
 		mTotalMessageStoreErrors.Add(1)
 		return err
+	} else {
+		mTotalMessagesStoredBytes.Add(lenMsg)
 	}
 
 	if float32(len(router.handleC))/float32(cap(router.handleC)) > overloadedHandleChannelRatio {

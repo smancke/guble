@@ -20,6 +20,8 @@ var (
 	mCurrentSubscriptions                      = expvar.NewInt("guble.router.current_subscriptions")
 	mCurrentRoutes                             = expvar.NewInt("guble.router.current_routes")
 	mTotalMessagesIncoming                     = expvar.NewInt("guble.router.total_messages_incoming")
+	mTotalMessagesIncomingBytes                = expvar.NewInt("guble.router.total_messages_bytes_incoming")
+	mTotalMessagesStoredBytes                  = expvar.NewInt("guble.router.total_messages_bytes_stored")
 	mTotalMessagesRouted                       = expvar.NewInt("guble.router.total_messages_routed")
 	mTotalOverloadedHandleChannel              = expvar.NewInt("guble.router.total_overloaded_handle_channel")
 	mTotalMessagesNotMatchingTopic             = expvar.NewInt("guble.router.total_messages_not_matching_topic")
@@ -43,6 +45,8 @@ func resetRouterMetrics() {
 	mTotalMessagesNotMatchingTopic.Set(0)
 	mTotalDeliverMessageErrors.Set(0)
 	mTotalMessageStoreErrors.Set(0)
+	mTotalMessagesIncomingBytes.Set(0)
+	mTotalMessagesStoredBytes.Set(0)
 }
 
 func logRouterMetrics() {
