@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 
 	"github.com/alexjlockwood/gcm"
@@ -40,8 +41,13 @@ func NewMockCtrl(t *testing.T) (*gomock.Controller, func()) {
 //		test_util.EnableDebugForMethod()()
 func EnableDebugForMethod() func() {
 	reset := protocol.LogLevel
+	logReset := log.GetLevel()
 	protocol.LogLevel = protocol.LEVEL_DEBUG
-	return func() { protocol.LogLevel = reset }
+	log.SetLevel(log.DebugLevel)
+	return func() {
+		protocol.LogLevel = reset
+		log.SetLevel(logReset)
+	}
 }
 
 // ExpectDone waits to receive a value in the doneChannel for at least a second
@@ -96,20 +102,20 @@ const (
 type RoundTripperFunc func(req *http.Request) *http.Response
 
 func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	protocol.Debug("Served request for %v", req.URL.Path)
+	log.WithField("url", req.URL.Path).Debug("Served request")
 	return rt(req), nil
 }
 
 func CreateGcmSender(rt RoundTripperFunc) *gcm.Sender {
-	protocol.Debug("CreateGcmSender")
+	log.Debug("Creating GCM sender mock")
 	httpClient := &http.Client{Transport: rt}
 	return &gcm.Sender{ApiKey: "124", Http: httpClient}
 }
 
 func CreateRoundTripperWithJsonResponse(httpStatusCode int, messageBodyAsJSON string, doneC chan bool) RoundTripperFunc {
-	protocol.Debug("CreateRoundTripperWithJsonResponse")
+	log.Debug("CreateRoundTripperWithJSONResponse")
 	return RoundTripperFunc(func(req *http.Request) *http.Response {
-		protocol.Debug("RoundTripperFunc")
+		log.WithField("url", req.URL.String()).Debug("RoundTripperFunc")
 		if doneC != nil {
 			defer func() {
 				close(doneC)

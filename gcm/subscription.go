@@ -28,7 +28,8 @@ func (e *jsonError) Error() string {
 	return e.json
 }
 
-func createSub(gcm *GCMConnector, route *server.Route, lastID uint64) *sub {
+// Creates a subscription and returns the pointer
+func newSub(gcm *GCMConnector, route *server.Route, lastID uint64) *sub {
 	return &sub{
 		gcm:    gcm,
 		route:  route,
@@ -41,9 +42,10 @@ func createSub(gcm *GCMConnector, route *server.Route, lastID uint64) *sub {
 	}
 }
 
-func newSub(gcm *GCMConnector, topic, userID, gcmID string, lastID uint64) *sub {
+// creates a subscription and adds it in router/kvstore then starts listening for messages
+func initSub(gcm *GCMConnector, topic, userID, gcmID string, lastID uint64) *sub {
 	route := server.NewRoute(topic, gcmID, userID, subBufferSize)
-	return createSub(gcm, route, 0).add().start()
+	return newSub(gcm, route, 0).add().start()
 }
 
 // sub represent a GCM subscription
@@ -55,11 +57,6 @@ type sub struct {
 	logger *log.Entry
 }
 
-// save subscription in KV
-// delete subscription from KV
-// loop (receive messages from router and send them to gcm pipeline)
-// replace subscription with cannoical id (this remains in the gcm as it will remove the subscription)
-
 // subscribe to router and add the subscription to GCM subs list
 func (s *sub) add() *sub {
 	s.logger.Debug("Subscribed")
@@ -69,7 +66,7 @@ func (s *sub) add() *sub {
 	return s
 }
 
-// unsubscribe from router and remove from GCM subs list
+// unsubscribe from router and remove KVStore
 func (s *sub) remove() *sub {
 	s.gcm.router.Unsubscribe(s.route)
 	s.gcm.kvStore.Delete(schema, s.route.ApplicationID)
@@ -83,9 +80,15 @@ func (s *sub) start() *sub {
 }
 
 // loop that will run in a goroutine and pipe messages from route to gcm
+// Attention: in order for this loop to finish the route channel must be closed
 func (s *sub) loop() {
+	s.logger.Debug("Starting subscription loop")
+
 	s.gcm.wg.Add(1)
-	defer func() { s.gcm.wg.Done() }()
+	defer func() {
+		s.logger.Debug("Subscription loop ended")
+		s.gcm.wg.Done()
+	}()
 
 	// no need to wait for `*gcm.stopC` the channel will be closed by the router anyway
 	for m := range s.route.MessagesChannel() {
@@ -149,7 +152,7 @@ func (s *sub) pipe(m *protocol.Message) error {
 }
 
 func (s *sub) handleGCMResponse(response *gcm.Response) error {
-	if err := s.jsonError(response); err != nil {
+	if err := s.handleJSONError(response); err != nil {
 		return err
 	}
 
@@ -162,7 +165,7 @@ func (s *sub) handleGCMResponse(response *gcm.Response) error {
 	return nil
 }
 
-func (s *sub) jsonError(response *gcm.Response) error {
+func (s *sub) handleJSONError(response *gcm.Response) error {
 	errText := response.Results[0].Error
 	if errText != "" {
 		if errText == "NotRegistered" {
@@ -179,6 +182,8 @@ func (s *sub) jsonError(response *gcm.Response) error {
 	return nil
 }
 
+// replace subscription with cannoical id, creates a new subscription but alters the route to
+// have the new ApplicationID
 func (s *sub) replaceCanonical(newGCMID string) error {
 	s.logger.WithField("new_gcm_id", newGCMID).Info("Replacing with canonicalID")
 
@@ -188,13 +193,14 @@ func (s *sub) replaceCanonical(newGCMID string) error {
 	// reuse the route but change the ApplicationID
 	route := s.route
 	route.ApplicationID = newGCMID
-	newS := createSub(s.gcm, route, s.lastID)
+	newS := newSub(s.gcm, route, s.lastID)
+
 	newS.add().start()
 	return errSubReplaced
 }
 
 func newPipeMessage(s *sub, m *protocol.Message) *pipeMessage {
-	return &pipeMessage{s, m, make(chan *gcm.Response), make(chan error)}
+	return &pipeMessage{s, m, make(chan *gcm.Response, 1), make(chan error, 1)}
 }
 
 // Pipeline message

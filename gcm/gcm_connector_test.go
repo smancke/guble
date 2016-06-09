@@ -53,15 +53,15 @@ func TestServeHTTPSuccess(t *testing.T) {
 func TestGCMConnector_Check(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-	testutil.EnableDebugForMethod()
 
 	assert := assert.New(t)
 	routerMock := NewMockRouter(ctrl)
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
-		assert.Equal("/gcm/broadcast", string(route.Path))
-		assert.Equal("gcm_connector", route.UserID)
-		assert.Equal("gcm_connector", route.ApplicationID)
-	})
+	// TEMP: There will be no broadcast atm
+	// routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
+	// 	assert.Equal("/gcm/broadcast", string(route.Path))
+	// 	assert.Equal("gcm_connector", route.UserID)
+	// 	assert.Equal("gcm_connector", route.ApplicationID)
+	// })
 
 	kvStore := store.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
@@ -72,13 +72,13 @@ func TestGCMConnector_Check(t *testing.T) {
 	err = gcm.Start()
 	assert.Nil(err)
 
-	done := make(chan bool, 1)
+	done := make(chan bool)
 	mockSender := testutil.CreateGcmSender(testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.CorrectGcmResponseMessageJSON, done))
 	gcm.Sender = mockSender
 	err = gcm.Check()
 	fmt.Println(err)
 
-	done2 := make(chan bool, 1)
+	done2 := make(chan bool)
 	mockSender2 := testutil.CreateGcmSender(testutil.CreateRoundTripperWithJsonResponse(http.StatusUnauthorized, "", done2))
 	gcm.Sender = mockSender2
 	err = gcm.Check()
@@ -109,7 +109,7 @@ func TestServeHTTPWithErrorCases(t *testing.T) {
 	gcm.ServeHTTP(w, req)
 
 	// check the result
-	a.Equal("Permission Denied\n", string(w.Body.Bytes()))
+	a.Equal("Method not allowed\n", string(w.Body.Bytes()))
 	a.Equal(w.Code, http.StatusMethodNotAllowed)
 
 	// send a new request with wrong parameters encoding
@@ -123,7 +123,7 @@ func TestServeHTTPWithErrorCases(t *testing.T) {
 	a.Equal(w2.Code, http.StatusBadRequest)
 }
 
-func TestSaveAndLoadSubscriptions(t *testing.T) {
+func TestGCM_SaveAndLoadSubs(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
@@ -155,11 +155,11 @@ func TestSaveAndLoadSubscriptions(t *testing.T) {
 		userID := splitKey[0]
 		topic := splitKey[1]
 		gcmID := splitKey[2]
-		gcm.saveSubscription(userID, topic, gcmID)
+		initSub(gcm, topic, userID, gcmID, 0)
 	}
 
 	// and reload the routes
-	gcm.loadSubscriptions()
+	gcm.loadSubs()
 
 	time.Sleep(50 * time.Millisecond)
 
@@ -255,11 +255,12 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 
 	a := assert.New(t)
 	routerMock := NewMockRouter(ctrl)
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
-		a.Equal("/gcm/broadcast", string(route.Path))
-		a.Equal("gcm_connector", route.UserID)
-		a.Equal("gcm_connector", route.ApplicationID)
-	})
+	// TEMP: There will be no broadcast atm
+	// routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
+	// 	a.Equal("/gcm/broadcast", string(route.Path))
+	// 	a.Equal("gcm_connector", route.UserID)
+	// 	a.Equal("gcm_connector", route.ApplicationID)
+	// })
 
 	kvStore := store.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
@@ -270,30 +271,32 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	err = gcm.Start()
 	a.Nil(err)
 
-	done := make(chan bool, 1)
+	done := make(chan bool)
 	mockSender := testutil.CreateGcmSender(
 		testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.CorrectGcmResponseMessageJSON, done))
 	gcm.Sender = mockSender
 
+	// TEMP: There will be no broadcast atm
 	// put a broadcast message with no recipients and expect to be dropped by
-	broadcastMsgWithNoRecipients := &protocol.Message{
-		Message: &protocol.Message{
-			ID:   uint64(4),
-			Body: []byte("{id:id}"),
-			Time: 1405544146,
-			Path: "/gcm/broadcast"}}
-	gcm.pipelineC <- broadcastMsgWithNoRecipients
-	time.Sleep(50 * time.Millisecond)
+	// broadcastMsgWithNoRecipients := &protocol.Message{
+	// 	ID:   uint64(4),
+	// 	Body: []byte("{id:id}"),
+	// 	Time: 1405544146,
+	// 	Path: "/gcm/broadcast"}
+	// gcm.pipelineC <- broadcastMsgWithNoRecipients
+	// time.Sleep(50 * time.Millisecond)
 	// expect that the HTTP Dummy Server to not handle any requests
 
 	// put a dummy gcm message with minimum information
-	msgWithNoRecipients := &protocol.Message{
-		Message: &protocol.Message{
-			ID:   uint64(4),
-			Body: []byte("{id:id}"),
-			Time: 1405544146,
-			Path: "/gcm/marvin/gcm124/subscribe/stuff"},
-		Route: &server.Route{ApplicationID: "id"}}
+	route := &server.Route{ApplicationID: "id"}
+	s := newSub(gcm, route, 0)
+
+	msgWithNoRecipients := newPipeMessage(s, &protocol.Message{
+		ID:   uint64(4),
+		Body: []byte("{id:id}"),
+		Time: 1405544146,
+		Path: "/gcm/marvin/gcm124/subscribe/stuff"})
+
 	gcm.pipelineC <- msgWithNoRecipients
 	// expect that the Http Server to give us a malformed message
 	<-done
@@ -304,70 +307,70 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	a.NoError(err)
 }
 
-func TestGCMConnector_BroadcastMessage(t *testing.T) {
-	ctrl, finish := testutil.NewMockCtrl(t)
-	defer finish()
+// func TestGCMConnector_BroadcastMessage(t *testing.T) {
+// 	ctrl, finish := testutil.NewMockCtrl(t)
+// 	defer finish()
 
-	a := assert.New(t)
+// 	a := assert.New(t)
 
-	routerMock := NewMockRouter(ctrl)
+// 	routerMock := NewMockRouter(ctrl)
 
-	kvStore := store.NewMemoryKVStore()
-	routerMock.EXPECT().KVStore().Return(kvStore, nil)
+// 	kvStore := store.NewMemoryKVStore()
+// 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
 
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
-		a.Equal("/notifications", string(route.Path))
-		a.Equal("marvin", route.UserID)
-		a.Equal("gcmId123", route.ApplicationID)
-	})
+// 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
+// 		a.Equal("/notifications", string(route.Path))
+// 		a.Equal("marvin", route.UserID)
+// 		a.Equal("gcmId123", route.ApplicationID)
+// 	})
 
-	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi", 1)
-	a.Nil(err)
+// 	gcm, err := NewGCMConnector(routerMock, "/gcm/", "testApi", 1)
+// 	a.Nil(err)
 
-	url, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe/notifications")
-	// and a http context
-	req := &http.Request{URL: url, Method: "POST"}
-	w := httptest.NewRecorder()
+// 	url, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe/notifications")
+// 	// and a http context
+// 	req := &http.Request{URL: url, Method: "POST"}
+// 	w := httptest.NewRecorder()
 
-	// when: I POST a message
-	gcm.ServeHTTP(w, req)
+// 	// when: I POST a message
+// 	gcm.ServeHTTP(w, req)
 
-	// then
-	a.Equal("registered: /notifications\n", string(w.Body.Bytes()))
+// 	// then
+// 	a.Equal("registered: /notifications\n", string(w.Body.Bytes()))
 
-	done := make(chan bool, 1)
-	mockSender := testutil.CreateGcmSender(
-		testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.CorrectGcmResponseMessageJSON, done))
-	gcm.Sender = mockSender
+// 	done := make(chan bool)
+// 	mockSender := testutil.CreateGcmSender(
+// 		testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.CorrectGcmResponseMessageJSON, done))
+// 	gcm.Sender = mockSender
 
-	// put a broadcast message with no recipients and expect to be dropped by
-	broadcastMessage := &protocol.Message{
-		Message: &protocol.Message{
-			ID:   uint64(4),
-			Body: []byte("{id:id}"),
-			Time: 1405544146,
-			Path: "/gcm/broadcast"}}
-	gcm.broadcastMessage(broadcastMessage)
-	// wait for the message to be processed by http server
-	<-done
-	//wait before closing the gcm connector
-	time.Sleep(50 * time.Millisecond)
-	err = gcm.Stop()
-	a.Nil(err)
-}
+// 	// put a broadcast message with no recipients and expect to be dropped by
+// 	broadcastMessage := &protocol.Message{
+// 		Message: &protocol.Message{
+// 			ID:   uint64(4),
+// 			Body: []byte("{id:id}"),
+// 			Time: 1405544146,
+// 			Path: "/gcm/broadcast"}}
+// 	gcm.broadcastMessage(broadcastMessage)
+// 	// wait for the message to be processed by http server
+// 	<-done
+// 	//wait before closing the gcm connector
+// 	time.Sleep(50 * time.Millisecond)
+// 	err = gcm.Stop()
+// 	a.Nil(err)
+// }
 
 func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-	// defer testutil.EnableDebugForMethod()()
 
 	a := assert.New(t)
 	routerMock := NewMockRouter(ctrl)
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
-		a.Equal("/gcm/broadcast", string(route.Path))
-		a.Equal("gcm_connector", route.UserID)
-		a.Equal("gcm_connector", route.ApplicationID)
-	})
+	// TEMP: There will be no broadcast atm
+	// routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
+	// 	a.Equal("/gcm/broadcast", string(route.Path))
+	// 	a.Equal("gcm_connector", route.UserID)
+	// 	a.Equal("gcm_connector", route.ApplicationID)
+	// })
 
 	// expect the route unsubscribed from removeSubscription
 	routerMock.EXPECT().Unsubscribe(gomock.Any()).Do(func(route *server.Route) {
@@ -376,6 +379,11 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	})
 
 	// expect the route subscribe with the new canonicalId from replaceSubscriptionWithCanonicalID
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
+		a.Equal("/path", string(route.Path))
+		a.Equal("marvin", route.UserID)
+		a.Equal("id", route.ApplicationID)
+	})
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
 		a.Equal("/path", string(route.Path))
 		a.Equal("marvin", route.UserID)
@@ -391,28 +399,32 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	err = gcm.Start()
 	a.Nil(err)
 
-	done := make(chan bool, 1)
+	done := make(chan bool)
 	mockSender := testutil.CreateGcmSender(
 		testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.ErrorResponseMessageJSON, done))
 	gcm.Sender = mockSender
 
 	// put a dummy gcm message with minimum information
-	msg := &protocol.Message{
-		Message: &protocol.Message{
-			ID:   uint64(4),
-			Body: []byte("{id:id}"),
-			Time: 1405544146,
-			Path: "/gcm/marvin/gcm124/subscribe/stuff"},
-		Route: &server.Route{
-			ApplicationID: "id",
-			Path:          "/path",
-			UserID:        "marvin"}}
+	s := initSub(gcm, "/path", "marvin", "id", 0)
+	message := &protocol.Message{
+		ID:   uint64(4),
+		Body: []byte("{id:id}"),
+		Time: 1405544146,
+		Path: "/gcm/marvin/gcm124/subscribe/stuff",
+	}
 
-	gcm.pipelineC <- msg
+	// pipe the message from subscription, cause that's where the result gets handled
+	s.pipe(message)
+
 	// expect that the Http Server gives us a malformed message
 	<-done
+
 	//wait before closing the gcm connector
 	time.Sleep(50 * time.Millisecond)
+
+	// stop the channel of the subscription
+	s.route.Close()
+
 	err = gcm.Stop()
 	a.NoError(err)
 }

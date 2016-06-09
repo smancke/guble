@@ -71,11 +71,10 @@ func (conn *GCMConnector) Start() error {
 	// broadcastRoute := server.NewRoute(conn.broadcastPath, "gcm_connector", "gcm_connector", bufferSize)
 	// conn.router.Subscribe(broadcastRoute)
 
-	go func() {
-		//TODO Cosmin: should loadSubscriptions() be taken out of this goroutine, and executed before ?
-		// (even if startup-time is longer, the routes are guaranteed to be there right after Start() returns)
-		conn.loadSubs()
+	// blocking until current subs are loaded
+	conn.loadSubs()
 
+	go func() {
 		conn.wg.Add(conn.nWorkers)
 		for id := 1; id <= conn.nWorkers; id++ {
 			go conn.loopPipeline(id)
@@ -86,10 +85,10 @@ func (conn *GCMConnector) Start() error {
 
 // Stop signals the closing of GCMConnector
 func (conn *GCMConnector) Stop() error {
-	protocol.Debug("gcm: stopping")
+	logger.Debug("Stopping ...")
 	close(conn.stopC)
 	conn.wg.Wait()
-	protocol.Debug("gcm: stopped")
+	logger.Debug("Stopped")
 	return nil
 }
 
@@ -100,7 +99,7 @@ func (conn *GCMConnector) Check() error {
 	payload := messageMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
 	_, err := conn.Sender.Send(gcm.NewMessage(payload, ""), sendRetries)
 	if err != nil {
-		protocol.Err("gcm: error sending ping message %v", err.Error())
+		logger.WithField("err", err).Error("Error sending ping message")
 		return err
 	}
 	return nil
@@ -109,8 +108,11 @@ func (conn *GCMConnector) Check() error {
 // loopPipeline awaits in a loop for messages subscriptions to be forwarded to GCM,
 // until the stop-channel is closed
 func (conn *GCMConnector) loopPipeline(id int) {
-	defer conn.wg.Done()
-	logger.WithField("id", id).Debug("starting worker")
+	defer func() {
+		logger.WithField("id", id).Debug("Worker stopped")
+		conn.wg.Done()
+	}()
+	logger.WithField("id", id).Debug("Worker started")
 
 	for {
 		select {
@@ -119,7 +121,6 @@ func (conn *GCMConnector) loopPipeline(id int) {
 				conn.sendMessage(pm)
 			}
 		case <-conn.stopC:
-			logger.WithField("id", id).Debug("Stopping worker")
 			return
 		}
 	}
@@ -181,7 +182,7 @@ func (conn *GCMConnector) GetPrefix() string {
 func (conn *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		logger.WithField("method", r.Method).Error("Only HTTP post method supported.")
-		http.Error(w, "Method not allowed.", http.StatusMethodNotAllowed)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -190,7 +191,7 @@ func (conn *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid Parameters in request", http.StatusBadRequest)
 		return
 	}
-	newSub(conn, topic, userID, gcmID, 0)
+	initSub(conn, topic, userID, gcmID, 0)
 	fmt.Fprintf(w, "registered: %v\n", topic)
 }
 
@@ -228,8 +229,7 @@ func (conn *GCMConnector) loadSubs() {
 		select {
 		case entry, ok := <-subscriptions:
 			if !ok {
-				logger.WithField("count", count).Info("")
-				protocol.Info("gcm: renewed %v GCM subscriptions", count)
+				logger.WithField("count", count).Info("Loaded GCM subscriptions")
 				return
 			}
 			conn.loadSub(entry)
@@ -248,13 +248,13 @@ func (conn *GCMConnector) loadSub(entry [2]string) {
 		lastID = 0
 	}
 
-	newSub(conn, topic, userID, gcmID, lastID)
+	initSub(conn, topic, userID, gcmID, lastID)
 
 	logger.WithFields(log.Fields{
 		"gcm_id":  gcmID,
 		"user_id": userID,
 		"topic":   topic,
-	}).Debug("loaded GCM subscription")
+	}).Debug("Loaded GCM subscription")
 }
 
 func removeTrailingSlash(path string) string {
