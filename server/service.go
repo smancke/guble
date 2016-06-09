@@ -7,6 +7,7 @@ import (
 	"github.com/docker/distribution/health"
 
 	"fmt"
+	"github.com/smancke/guble/metrics"
 	"net/http"
 	"reflect"
 	"time"
@@ -95,7 +96,7 @@ func (s *Service) Start() error {
 
 	if s.metricsEndpointPrefix != "" {
 		protocol.Info("service: metrics endpoint: %v", s.metricsEndpointPrefix)
-		s.webserver.Handle(s.metricsEndpointPrefix, http.HandlerFunc(expvarHandler))
+		s.webserver.Handle(s.metricsEndpointPrefix, http.HandlerFunc(metrics.HttpHandler))
 	}
 
 	for _, module := range s.modules {

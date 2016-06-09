@@ -14,6 +14,7 @@ import (
 
 	"expvar"
 	"fmt"
+	"github.com/smancke/guble/metrics"
 	"os"
 	"os/signal"
 	"path"
@@ -36,8 +37,8 @@ type Args struct {
 	GcmEnable   bool   `arg:"--gcm-enable: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
 	GcmApiKey   string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
 	GcmWorkers  int    `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
-	Health      string `arg:"--health: The path of the health endpoint (default: /_health; value for disabling it: \"\" )" env:"GUBLE_HEALTH"`
-	Metrics     string `arg:"--metrics: The path of the metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )" env:"GUBLE_METRICS"`
+	Health      string `arg:"--health: The health endpoint (default: /_health; value for disabling it: \"\" )" env:"GUBLE_HEALTH_ENDPOINT"`
+	Metrics     string `arg:"--metrics: The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )" env:"GUBLE_METRICS_ENDPOINT"`
 }
 
 var ValidateStoragePath = func(args Args) error {
@@ -99,15 +100,15 @@ var CreateModules = func(router server.Router, args Args) []interface{} {
 		if args.GcmApiKey == "" {
 			panic("GCM API Key has to be provided, if GCM is enabled")
 		}
-		protocol.Info("google cloud messaging: enabled")
+		protocol.Info("Google Cloud Messaging: enabled")
 		protocol.Debug("gcm: %v workers", args.GcmWorkers)
 		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey, args.GcmWorkers); err != nil {
-			protocol.Err("Error loading GCMConnector: ", err)
+			protocol.Err("Error loading GCM Connector: ", err)
 		} else {
 			modules = append(modules, gcm)
 		}
 	} else {
-		protocol.Info("google cloud messaging: disabled")
+		protocol.Info("Google Cloud Messaging: disabled")
 	}
 
 	return modules
@@ -162,7 +163,9 @@ func StartService(args Args) *server.Service {
 		}
 		os.Exit(1)
 	}
-	expvar.Publish("guble.gubled.args", expvar.Func(func() interface{} { return args }))
+	expvar.Publish("guble.args", expvar.Func(func() interface{} {
+		return args
+	}))
 
 	return service
 }
@@ -185,8 +188,9 @@ func loadArgs() Args {
 func waitForTermination(callback func()) {
 	signalC := make(chan os.Signal)
 	signal.Notify(signalC, syscall.SIGINT, syscall.SIGTERM)
-	protocol.Info("Got signal '%v' .. exiting gracefully now", <-signalC)
+	protocol.Info("Got signal '%v' .. trying to stop and exit", <-signalC)
 	callback()
-	protocol.Info("exit now")
+	metrics.LogOnDebugLevel()
+	protocol.Info("Exiting...")
 	os.Exit(0)
 }

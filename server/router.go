@@ -105,7 +105,6 @@ func (router *router) Stop() error {
 	protocol.Debug("router: stopping")
 	router.stopC <- true
 	router.wg.Wait()
-	logRouterMetrics()
 	return nil
 }
 
