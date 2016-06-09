@@ -1,7 +1,7 @@
 package webserver
 
 import (
-	"github.com/smancke/guble/protocol"
+	log "github.com/Sirupsen/logrus"
 	"net"
 	"net/http"
 	"strings"
@@ -23,7 +23,11 @@ func New(addr string) *WebServer {
 }
 
 func (ws *WebServer) Start() (err error) {
-	protocol.Info("webserver: starting up at %v", ws.addr)
+	log.WithFields(log.Fields{
+		"module":  "webserver",
+		"address": ws.addr,
+	}).Info("Http is starting up on address")
+
 	ws.server = &http.Server{Addr: ws.addr, Handler: ws.mux}
 	ws.ln, err = net.Listen("tcp", ws.addr)
 	if err != nil {
@@ -31,12 +35,21 @@ func (ws *WebServer) Start() (err error) {
 	}
 
 	go func() {
-		err = ws.server.Serve(tcpKeepAliveListener{ws.ln.(*net.TCPListener)})
+		err = ws.server.Serve(tcpKeepAliveListener{TCPListener: ws.ln.(*net.TCPListener)})
 
 		if err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
-			protocol.Err("ListenAndServe %s", err.Error())
+
+			log.WithFields(log.Fields{
+				"module": "webserver",
+				"err":    err,
+			}).Error("ListenAndServe")
+
 		}
-		protocol.Info("webserver: http server stopped")
+
+		log.WithFields(log.Fields{
+			"module":  "webserver",
+			"address": ws.addr,
+		}).Info("Http server stopped")
 	}()
 	return
 }
