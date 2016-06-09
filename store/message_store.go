@@ -35,12 +35,13 @@ func (fms *FileMessageStore) MaxMessageId(partition string) (uint64, error) {
 func (fms *FileMessageStore) Stop() error {
 	fms.mutex.Lock()
 	defer fms.mutex.Unlock()
+	protocol.Debug("FileMessageStore: Stop")
 
 	var returnError error
 	for key, partition := range fms.partitions {
 		if err := partition.Close(); err != nil {
 			returnError = err
-			protocol.Err("error on closing message store partition %q: %v", key, err)
+			protocol.Err("FileMessageStore: Stop: error on closing message store partition %q: %v", key, err)
 		}
 		delete(fms.partitions, key)
 	}
@@ -114,7 +115,7 @@ func (fms *FileMessageStore) Check() error {
 	var stat syscall.Statfs_t
 	wd, err := os.Getwd()
 	if err != nil {
-		protocol.Err("FileMessageStore Check() returned error", err)
+		protocol.Err("FileMessageStore: Check() could not get current working directory", err)
 		return err
 	}
 	syscall.Statfs(wd, &stat)
