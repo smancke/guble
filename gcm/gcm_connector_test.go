@@ -313,7 +313,8 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	})
 
 	// put a dummy gcm message with minimum information
-	s := initSub(gcm, "/path", "marvin", "id", 0)
+	s, err := initSub(gcm, "/path", "marvin", "id", 0)
+	a.NoError(err)
 	message := &protocol.Message{
 		ID:   uint64(4),
 		Body: []byte("{id:id}"),
@@ -332,7 +333,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	// stop the channel of the subscription
 	s.route.Close()
 
-	err := gcm.Stop()
+	err = gcm.Stop()
 	a.NoError(err)
 }
 

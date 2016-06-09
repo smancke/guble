@@ -43,9 +43,14 @@ func newSub(gcm *GCMConnector, route *server.Route, lastID uint64) *sub {
 }
 
 // creates a subscription and adds it in router/kvstore then starts listening for messages
-func initSub(gcm *GCMConnector, topic, userID, gcmID string, lastID uint64) *sub {
+func initSub(gcm *GCMConnector, topic, userID, gcmID string, lastID uint64) (*sub, error) {
 	route := server.NewRoute(topic, gcmID, userID, subBufferSize)
-	return newSub(gcm, route, 0).add().start()
+	s := newSub(gcm, route, 0)
+	if err := s.store(); err != nil {
+		return nil, err
+	}
+	s.start()
+	return s, nil
 }
 
 // sub represent a GCM subscription
@@ -57,13 +62,14 @@ type sub struct {
 	logger *log.Entry
 }
 
-// subscribe to router and add the subscription to GCM subs list
-func (s *sub) add() *sub {
-	s.logger.Debug("Subscribed")
+func (s *sub) subscribe() error {
+	if _, err := s.gcm.router.Subscribe(s.route); err != nil {
+		s.logger.WithField("err", err).Error("Error subscribing")
+		return err
+	}
 
-	s.gcm.router.Subscribe(s.route)
-	s.store()
-	return s
+	s.logger.Debug("Subscribed")
+	return nil
 }
 
 // unsubscribe from router and remove KVStore
@@ -74,19 +80,40 @@ func (s *sub) remove() *sub {
 }
 
 // start loop to receive messages from route
-func (s *sub) start() *sub {
-	go s.loop()
-	return s
+func (s *sub) start() error {
+	if err := s.subscribe(); err != nil {
+		return err
+	}
+	go s.subscriptionLoop()
+	return nil
 }
 
-// loop that will run in a goroutine and pipe messages from route to gcm
+// recreate the route and resubscribe
+func (s *sub) restart() error {
+	s.route = server.NewRoute(string(s.route.Path), s.route.ApplicationID, s.route.UserID, subBufferSize)
+
+	// fetch from last id if applicable
+	if err := s.fetch(); err != nil {
+		return err
+	}
+
+	// subscribe to the router and start
+	if err := s.subscribe(); err != nil {
+		return err
+	}
+
+	s.start()
+	return nil
+}
+
+// subscriptionLoop that will run in a goroutine and pipe messages from route to gcm
 // Attention: in order for this loop to finish the route channel must be closed
-func (s *sub) loop() {
+func (s *sub) subscriptionLoop() {
 	s.logger.Debug("Starting subscription loop")
 
 	s.gcm.wg.Add(1)
 	defer func() {
-		s.logger.Debug("Subscription loop ended")
+		s.logger.Debug("Stopped subscription loop")
 		s.gcm.wg.Done()
 	}()
 
@@ -106,6 +133,29 @@ func (s *sub) loop() {
 			s.logger.WithField("err", err).Error("Error pipelining message")
 		}
 	}
+	// if route is closed and we are actually stopping then return
+	if s.isStopping() {
+		return
+	}
+
+	// assume that the route channel has been closed cause of slow processing
+	// reconnect
+
+}
+
+func (s *sub) fetch() error {
+	return nil
+}
+
+// returns true if we are actually stopping the service
+func (s *sub) isStopping() bool {
+	select {
+	case <-s.gcm.stopC:
+		return true
+	default:
+	}
+
+	return false
 }
 
 // return bytes data to store in kvStore
@@ -118,15 +168,18 @@ func (s *sub) bytes() []byte {
 }
 
 // store data in kvstore
-func (s *sub) store() {
-	s.gcm.kvStore.Put(schema, s.route.ApplicationID, s.bytes())
+func (s *sub) store() error {
+	err := s.gcm.kvStore.Put(schema, s.route.ApplicationID, s.bytes())
+	if err != nil {
+		s.logger.WithField("err", err).Error("Error storing in KVStore")
+	}
+	return err
 }
 
-func (s *sub) setLastID(ID uint64) {
+func (s *sub) setLastID(ID uint64) error {
 	s.lastID = ID
-
 	// update KV when last id is set
-	s.store()
+	return s.store()
 }
 
 // sends a message into the pipeline and waits for response saving the last id
@@ -141,7 +194,10 @@ func (s *sub) pipe(m *protocol.Message) error {
 	// wait for response
 	select {
 	case response := <-pm.resultC:
-		s.setLastID(pm.message.ID)
+		if err := s.setLastID(pm.message.ID); err != nil {
+			return err
+		}
+
 		return s.handleGCMResponse(response)
 	case err := <-pm.errC:
 		s.logger.WithField("err", err).Error("Error sending message to GCM")
@@ -195,7 +251,10 @@ func (s *sub) replaceCanonical(newGCMID string) error {
 	route.ApplicationID = newGCMID
 	newS := newSub(s.gcm, route, s.lastID)
 
-	newS.add().start()
+	if err := newS.store(); err != nil {
+		return err
+	}
+	newS.start()
 	return errSubReplaced
 }
 
@@ -230,5 +289,4 @@ func messageMap(m *protocol.Message) map[string]interface{} {
 	}
 
 	return payload
-
 }
