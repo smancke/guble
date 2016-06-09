@@ -36,13 +36,13 @@ type Endpoint interface {
 
 // Service is the main class for simple control of a server
 type Service struct {
-	webserver             *webserver.WebServer
-	router                Router
-	modules               []interface{}
-	healthEndpointPrefix  string
-	healthFrequency       time.Duration
-	healthThreshold       int
-	metricsEndpointPrefix string
+	webserver       *webserver.WebServer
+	router          Router
+	modules         []interface{}
+	healthEndpoint  string
+	healthFrequency time.Duration
+	healthThreshold int
+	metricsEndpoint string
 }
 
 // NewService registers the Main Router, where other modules can subscribe for messages
@@ -63,7 +63,7 @@ func (s *Service) RegisterModules(modules ...interface{}) {
 }
 
 func (s *Service) HealthEndpointPrefix(value string) *Service {
-	s.healthEndpointPrefix = value
+	s.healthEndpoint = value
 	return s
 }
 
@@ -78,7 +78,7 @@ func (s *Service) HealthThreshold(value int) *Service {
 }
 
 func (s *Service) MetricsEndpointPrefix(value string) *Service {
-	s.metricsEndpointPrefix = value
+	s.metricsEndpoint = value
 	return s
 }
 
@@ -89,14 +89,14 @@ func (s *Service) MetricsEndpointPrefix(value string) *Service {
 func (s *Service) Start() error {
 	el := protocol.NewErrorList("service: errors occured while starting: ")
 
-	if s.healthEndpointPrefix != "" {
-		protocol.Info("service: health endpoint: %v", s.healthEndpointPrefix)
-		s.webserver.Handle(s.healthEndpointPrefix, http.HandlerFunc(health.StatusHandler))
+	if s.healthEndpoint != "" {
+		protocol.Info("service: health endpoint: %v", s.healthEndpoint)
+		s.webserver.Handle(s.healthEndpoint, http.HandlerFunc(health.StatusHandler))
 	}
 
-	if s.metricsEndpointPrefix != "" {
-		protocol.Info("service: metrics endpoint: %v", s.metricsEndpointPrefix)
-		s.webserver.Handle(s.metricsEndpointPrefix, http.HandlerFunc(metrics.HttpHandler))
+	if s.metricsEndpoint != "" {
+		protocol.Info("service: metrics endpoint: %v", s.metricsEndpoint)
+		s.webserver.Handle(s.metricsEndpoint, http.HandlerFunc(metrics.HttpHandler))
 	}
 
 	for _, module := range s.modules {
@@ -108,7 +108,7 @@ func (s *Service) Start() error {
 				el.Add(err)
 			}
 		}
-		if checker, ok := module.(health.Checker); ok && s.healthEndpointPrefix != "" {
+		if checker, ok := module.(health.Checker); ok && s.healthEndpoint != "" {
 			protocol.Info("service: registering module %v as HealthChecker", name)
 			health.RegisterPeriodicThresholdFunc(name, s.healthFrequency, s.healthThreshold, health.CheckFunc(checker.Check))
 		}
