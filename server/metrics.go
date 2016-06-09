@@ -1,8 +1,11 @@
 package server
 
 import (
+	log "github.com/Sirupsen/logrus"
+
 	"expvar"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -24,7 +27,7 @@ var (
 	mTotalDeliverMessageErrors                 = expvar.NewInt("guble.router.total_errors_deliver_message")
 )
 
-func resetMetricsRouter() {
+func resetRouterMetrics() {
 	mTotalSubscriptionAttempts.Set(0)
 	mTotalDuplicateSubscriptionsAttempts.Set(0)
 	mTotalSubscriptions.Set(0)
@@ -42,8 +45,20 @@ func resetMetricsRouter() {
 	mTotalMessageStoreErrors.Set(0)
 }
 
-func expvarHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+func logRouterMetrics() {
+	fields := log.Fields{}
+	expvar.Do(func(kv expvar.KeyValue) {
+		fields[kv.Key] = kv.Value
+	})
+	log.WithFields(fields).Debug("current router metrics")
+}
+
+func expvarHandler(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writeMetrics(rw)
+}
+
+func writeMetrics(w io.Writer) {
 	fmt.Fprintf(w, "{\n")
 	first := true
 	expvar.Do(func(kv expvar.KeyValue) {

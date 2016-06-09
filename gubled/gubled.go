@@ -35,7 +35,9 @@ type Args struct {
 	MSBackend   string `arg:"--ms-backend,help: The message storage backend : file|memory (file)" env:"GUBLE_MS_BACKEND"`
 	GcmEnable   bool   `arg:"--gcm-enable: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
 	GcmApiKey   string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
-	GcmWorkers  int    `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default is GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
+	GcmWorkers  int    `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
+	Health      string `arg:"--health: The path of the health endpoint (default: /_health; value for disabling it: \"\" )" env:"GUBLE_HEALTH"`
+	Metrics     string `arg:"--metrics: The path of the metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )" env:"GUBLE_METRICS"`
 }
 
 var ValidateStoragePath = func(args Args) error {
@@ -149,7 +151,7 @@ func StartService(args Args) *server.Service {
 	router := server.NewRouter(accessManager, messageStore, kvStore)
 	webserver := webserver.New(args.Listen)
 
-	service := server.NewService(router, webserver).HealthEndpointPrefix(healthEndpointPrefix).MetricsEndpointPrefix(metricsEndpointPrefix)
+	service := server.NewService(router, webserver).HealthEndpointPrefix(args.Health).MetricsEndpointPrefix(args.Metrics)
 
 	service.RegisterModules(CreateModules(router, args)...)
 
@@ -172,6 +174,7 @@ func loadArgs() Args {
 		MSBackend:   "file",
 		StoragePath: "/var/lib/guble",
 		GcmWorkers:  runtime.GOMAXPROCS(0),
+		Health:      healthEndpointPrefix,
 	}
 
 	env.Parse(&args)

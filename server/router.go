@@ -64,7 +64,7 @@ func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore
 
 func (router *router) Start() error {
 	router.panicIfInternalDependenciesAreNil()
-	resetMetricsRouter()
+	resetRouterMetrics()
 	go func() {
 		router.wg.Add(1)
 		for {
@@ -102,6 +102,7 @@ func (router *router) Stop() error {
 	protocol.Debug("router: stopping")
 	router.stopC <- true
 	router.wg.Wait()
+	logRouterMetrics()
 	return nil
 }
 
