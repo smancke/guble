@@ -66,7 +66,7 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 			"module":      "testing",
 			"name":        name,
 			"lastReadMsg": lastReadMessage + 1,
-		}).Debug("Start fetching at:")
+		}).Debug("Start fetching at")
 
 		store.Fetch(FetchRequest{
 			Partition:     "myMessages",
@@ -89,7 +89,7 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 						"module":      "testing",
 						"name":        name,
 						"lastReadMsg": lastReadMessage,
-					}).Debug("Stop fetching at:")
+					}).Debug("Stop fetching at")
 
 					break fetch
 				}
@@ -107,7 +107,7 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 		"module":      "testing",
 		"name":        name,
 		"lastReadMsg": lastReadMessage,
-	}).Debug("Ready got id :")
+	}).Debug("Ready got id")
 
 	done <- true
 }

@@ -9,6 +9,11 @@ import (
 	"syscall"
 )
 
+var messageStoreLogger = log.WithFields(log.Fields{
+	"app":    "guble",
+	"module": "messageStore",
+	"env":    "TBD"})
+
 // FileMessageStore is an implementation of the MessageStore interface based on files
 type FileMessageStore struct {
 	partitions map[string]*MessagePartition
@@ -40,11 +45,10 @@ func (fms *FileMessageStore) Stop() error {
 		if err := partition.Close(); err != nil {
 			returnError = err
 
-			log.WithFields(log.Fields{
-				"module": "message-store",
-				"key":    key,
-				"err":    err,
-			}).Error("Error on closing message store partition for ")
+			messageStoreLogger.WithFields(log.Fields{
+				"key": key,
+				"err": err,
+			}).Error("Error on closing message store partition for")
 		}
 		delete(fms.partitions, key)
 	}
@@ -118,9 +122,8 @@ func (fms *FileMessageStore) Check() error {
 	var stat syscall.Statfs_t
 	wd, err := os.Getwd()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"module": "message-store",
-			"err":    err,
+		messageStoreLogger.WithFields(log.Fields{
+			"err": err,
 		}).Error("FileMessageStore Check() failed")
 
 		return err
@@ -135,8 +138,7 @@ func (fms *FileMessageStore) Check() error {
 	usedSpacePercentage := 1 - (float64(freeSpace) / float64(totalSpace))
 
 	if usedSpacePercentage > 0.95 {
-		log.WithFields(log.Fields{
-			"module":                  "message-store",
+		messageStoreLogger.WithFields(log.Fields{
 			"usedDiskSpacePercentage": usedSpacePercentage,
 		}).Warn("Disk space is used more than 95 percent")
 
