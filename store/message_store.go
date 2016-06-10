@@ -1,8 +1,6 @@
 package store
 
 import (
-	"github.com/smancke/guble/protocol"
-
 	"errors"
 	log "github.com/Sirupsen/logrus"
 	"os"
