@@ -113,6 +113,32 @@ func TestHealthDown(t *testing.T) {
 	a.Equal("{\"*server.MockChecker\":\"sick\"}", string(body))
 }
 
+func TestMetricsEnabled(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	defer testutil.ResetDefaultRegistryHealthCheck()
+	a := assert.New(t)
+
+	// given:
+	service, _, _, _ := aMockedService()
+	service = service.MetricsEndpointPrefix("/metrics_url")
+
+	// when starting the service
+	defer service.Stop()
+	service.Start()
+	time.Sleep(time.Millisecond * 10)
+
+	// and when I call the health URL
+	url := fmt.Sprintf("http://%s/metrics_url", service.WebServer().GetAddr())
+	result, err := http.Get(url)
+
+	// then I get status 200 and JSON: {}
+	a.NoError(err)
+	body, err := ioutil.ReadAll(result.Body)
+	a.NoError(err)
+	a.True(len(body) > 0)
+}
+
 func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockRouter) {
 	kvStore := store.NewMemoryKVStore()
 	messageStore := store.NewDummyMessageStore(kvStore)

@@ -92,11 +92,15 @@ func (s *Service) Start() error {
 	if s.healthEndpoint != "" {
 		protocol.Info("service: health endpoint: %v", s.healthEndpoint)
 		s.webserver.Handle(s.healthEndpoint, http.HandlerFunc(health.StatusHandler))
+	} else {
+		protocol.Debug("service: health endpoint disabled")
 	}
 
 	if s.metricsEndpoint != "" {
 		protocol.Info("service: metrics endpoint: %v", s.metricsEndpoint)
 		s.webserver.Handle(s.metricsEndpoint, http.HandlerFunc(metrics.HttpHandler))
+	} else {
+		protocol.Debug("service: metrics endpoint disabled")
 	}
 
 	for _, module := range s.modules {

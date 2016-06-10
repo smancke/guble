@@ -4,6 +4,7 @@ import (
 	"github.com/alexflint/go-arg"
 	"github.com/caarlos0/env"
 	"github.com/smancke/guble/gcm"
+	"github.com/smancke/guble/metrics"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
@@ -14,7 +15,6 @@ import (
 
 	"expvar"
 	"fmt"
-	"github.com/smancke/guble/metrics"
 	"os"
 	"os/signal"
 	"path"
@@ -23,8 +23,7 @@ import (
 )
 
 const (
-	healthEndpointPrefix  = "/_health"
-	metricsEndpointPrefix = "/_metrics"
+	healthEndpointPrefix = "/_health"
 )
 
 type Args struct {
