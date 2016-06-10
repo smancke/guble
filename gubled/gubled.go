@@ -36,7 +36,7 @@ type Args struct {
 	GcmWorkers  int    `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default is GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
 }
 
-var ValidateStogit ragePath = func(args Args) error {
+var ValidateStoragePath = func(args Args) error {
 	if args.KVBackend == "file" || args.MSBackend == "file" {
 		testfile := path.Join(args.StoragePath, "write-test-file")
 		f, err := os.Create(testfile)
@@ -130,7 +130,6 @@ func Main() {
 	}()
 
 	args := loadArgs()
-	args = loadArgs()
 	if args.LogInfo {
 		log.SetLevel(log.InfoLevel)
 	}
