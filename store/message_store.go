@@ -4,6 +4,7 @@ import (
 	"github.com/smancke/guble/protocol"
 
 	"errors"
+	log "github.com/Sirupsen/logrus"
 	"os"
 	"path"
 	"sync"
@@ -40,7 +41,12 @@ func (fms *FileMessageStore) Stop() error {
 	for key, partition := range fms.partitions {
 		if err := partition.Close(); err != nil {
 			returnError = err
-			protocol.Err("error on closing message store partition %q: %v", key, err)
+
+			log.WithFields(log.Fields{
+				"module": "message-store",
+				"key":    key,
+				"err":    err,
+			}).Error("Error on closing message store partition for ")
 		}
 		delete(fms.partitions, key)
 	}
@@ -114,7 +120,11 @@ func (fms *FileMessageStore) Check() error {
 	var stat syscall.Statfs_t
 	wd, err := os.Getwd()
 	if err != nil {
-		protocol.Err("FileMessageStore Check() returned error", err)
+		log.WithFields(log.Fields{
+			"module": "message-store",
+			"err":    err,
+		}).Error("FileMessageStore Check() failed")
+
 		return err
 	}
 	syscall.Statfs(wd, &stat)
@@ -127,7 +137,11 @@ func (fms *FileMessageStore) Check() error {
 	usedSpacePercentage := 1 - (float64(freeSpace) / float64(totalSpace))
 
 	if usedSpacePercentage > 0.95 {
-		protocol.Err("Disk space is used more than 95 percent: %.2f", usedSpacePercentage)
+		log.WithFields(log.Fields{
+			"module":                  "message-store",
+			"usedDiskSpacePercentage": usedSpacePercentage,
+		}).Warn("Disk space is used more than 95 percent")
+
 		return errors.New("Disk is almost full.")
 	}
 
