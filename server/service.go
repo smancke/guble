@@ -67,16 +67,6 @@ func (s *Service) HealthEndpointPrefix(value string) *Service {
 	return s
 }
 
-func (s *Service) HealthFrequency(value time.Duration) *Service {
-	s.healthFrequency = value
-	return s
-}
-
-func (s *Service) HealthThreshold(value int) *Service {
-	s.healthThreshold = value
-	return s
-}
-
 func (s *Service) MetricsEndpointPrefix(value string) *Service {
 	s.metricsEndpoint = value
 	return s
