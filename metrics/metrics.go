@@ -50,6 +50,10 @@ func writeMetrics(w io.Writer) {
 }
 
 func LogOnDebugLevel() {
+	if !Enabled {
+		log.Debug("metrics: not enabled")
+		return
+	}
 	if log.GetLevel() == log.DebugLevel {
 		fields := log.Fields{}
 		expvar.Do(func(kv expvar.KeyValue) {
