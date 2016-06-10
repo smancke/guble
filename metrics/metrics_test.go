@@ -8,7 +8,7 @@ import (
 	//"bytes"
 	"bytes"
 	"expvar"
-	"fmt"
+	"github.com/smancke/guble/protocol"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -36,7 +36,7 @@ func TestHttpHandler_MetricsNotEnabled(t *testing.T) {
 	b, err := ioutil.ReadAll(w.Body)
 	a.NoError(err)
 	a.True(len(b) > 0)
-	fmt.Printf("%s", b)
+	protocol.Debug("%s", b)
 }
 
 func TestLogOnDebugLevel_DebugAndEnabled(t *testing.T) {
