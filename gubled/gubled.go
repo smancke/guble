@@ -4,6 +4,7 @@ import (
 	"github.com/alexflint/go-arg"
 	"github.com/caarlos0/env"
 	"github.com/smancke/guble/gcm"
+	"github.com/smancke/guble/metrics"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
@@ -12,12 +13,17 @@ import (
 	"github.com/smancke/guble/server/websocket"
 	"github.com/smancke/guble/store"
 
+	"expvar"
 	"fmt"
 	"os"
 	"os/signal"
 	"path"
 	"runtime"
 	"syscall"
+)
+
+const (
+	healthEndpointPrefix = "/_health"
 )
 
 type Args struct {
@@ -29,7 +35,9 @@ type Args struct {
 	MSBackend   string `arg:"--ms-backend,help: The message storage backend : file|memory (file)" env:"GUBLE_MS_BACKEND"`
 	GcmEnable   bool   `arg:"--gcm-enable: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
 	GcmApiKey   string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
-	GcmWorkers  int    `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default is GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
+	GcmWorkers  int    `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
+	Health      string `arg:"--health: The health endpoint (default: /_health; value for disabling it: \"\" )" env:"GUBLE_HEALTH_ENDPOINT"`
+	Metrics     string `arg:"--metrics: The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )" env:"GUBLE_METRICS_ENDPOINT"`
 }
 
 var ValidateStoragePath = func(args Args) error {
@@ -91,15 +99,15 @@ var CreateModules = func(router server.Router, args Args) []interface{} {
 		if args.GcmApiKey == "" {
 			panic("GCM API Key has to be provided, if GCM is enabled")
 		}
-		protocol.Info("google cloud messaging: enabled")
+		protocol.Info("Google Cloud Messaging: enabled")
 		protocol.Debug("gcm: %v workers", args.GcmWorkers)
 		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey, args.GcmWorkers); err != nil {
-			protocol.Err("Error loading GCMConnector: ", err)
+			protocol.Err("Error loading GCM Connector: ", err)
 		} else {
 			modules = append(modules, gcm)
 		}
 	} else {
-		protocol.Info("google cloud messaging: disabled")
+		protocol.Info("Google Cloud Messaging: disabled")
 	}
 
 	return modules
@@ -143,7 +151,7 @@ func StartService(args Args) *server.Service {
 	router := server.NewRouter(accessManager, messageStore, kvStore)
 	webserver := webserver.New(args.Listen)
 
-	service := server.NewService(router, webserver)
+	service := server.NewService(router, webserver).HealthEndpointPrefix(args.Health).MetricsEndpointPrefix(args.Metrics)
 
 	service.RegisterModules(CreateModules(router, args)...)
 
@@ -154,6 +162,9 @@ func StartService(args Args) *server.Service {
 		}
 		os.Exit(1)
 	}
+	expvar.Publish("guble.args", expvar.Func(func() interface{} {
+		return args
+	}))
 
 	return service
 }
@@ -165,6 +176,7 @@ func loadArgs() Args {
 		MSBackend:   "file",
 		StoragePath: "/var/lib/guble",
 		GcmWorkers:  runtime.GOMAXPROCS(0),
+		Health:      healthEndpointPrefix,
 	}
 
 	env.Parse(&args)
@@ -175,8 +187,9 @@ func loadArgs() Args {
 func waitForTermination(callback func()) {
 	signalC := make(chan os.Signal)
 	signal.Notify(signalC, syscall.SIGINT, syscall.SIGTERM)
-	protocol.Info("Got signal '%v' .. exiting gracefully now", <-signalC)
+	protocol.Info("Got signal '%v' .. trying to stop and exit", <-signalC)
 	callback()
-	protocol.Info("exit now")
+	metrics.LogOnDebugLevel()
+	protocol.Info("Exiting...")
 	os.Exit(0)
 }

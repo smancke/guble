@@ -4,17 +4,18 @@ import (
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/webserver"
 
-	"fmt"
 	"github.com/docker/distribution/health"
+
+	"fmt"
+	"github.com/smancke/guble/metrics"
 	"net/http"
 	"reflect"
 	"time"
 )
 
 const (
-	healthEndpointPrefix        = "/health"
-	defaultHealthCheckFrequency = time.Second * 60
-	defaultHealthCheckThreshold = 1
+	defaultHealthFrequency = time.Second * 60
+	defaultHealthThreshold = 1
 )
 
 // Startable interface for modules which provide a start mechanism
@@ -35,28 +36,40 @@ type Endpoint interface {
 
 // Service is the main class for simple control of a server
 type Service struct {
-	webserver            *webserver.WebServer
-	router               Router
-	modules              []interface{}
-	healthCheckFrequency time.Duration
-	healthCheckThreshold int
+	webserver       *webserver.WebServer
+	router          Router
+	modules         []interface{}
+	healthEndpoint  string
+	healthFrequency time.Duration
+	healthThreshold int
+	metricsEndpoint string
 }
 
 // NewService registers the Main Router, where other modules can subscribe for messages
 func NewService(router Router, webserver *webserver.WebServer) *Service {
 	service := &Service{
-		webserver:            webserver,
-		router:               router,
-		healthCheckFrequency: defaultHealthCheckFrequency,
-		healthCheckThreshold: defaultHealthCheckThreshold,
+		webserver:       webserver,
+		router:          router,
+		healthFrequency: defaultHealthFrequency,
+		healthThreshold: defaultHealthThreshold,
 	}
 	service.RegisterModules(service.router, service.webserver)
 	return service
 }
 
 func (s *Service) RegisterModules(modules ...interface{}) {
-	protocol.Debug("service: RegisterModules: adding %d modules after existing %d modules", len(s.modules), len(modules))
+	protocol.Debug("service: RegisterModules: adding %d modules after existing %d modules", len(modules), len(s.modules))
 	s.modules = append(s.modules, modules...)
+}
+
+func (s *Service) HealthEndpointPrefix(value string) *Service {
+	s.healthEndpoint = value
+	return s
+}
+
+func (s *Service) MetricsEndpointPrefix(value string) *Service {
+	s.metricsEndpoint = value
+	return s
 }
 
 // Start checks the modules for the following interfaces and registers and/or starts:
@@ -65,7 +78,21 @@ func (s *Service) RegisterModules(modules ...interface{}) {
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
 func (s *Service) Start() error {
 	el := protocol.NewErrorList("service: errors occured while starting: ")
-	s.webserver.Handle(healthEndpointPrefix, http.HandlerFunc(health.StatusHandler))
+
+	if s.healthEndpoint != "" {
+		protocol.Info("service: health endpoint: %v", s.healthEndpoint)
+		s.webserver.Handle(s.healthEndpoint, http.HandlerFunc(health.StatusHandler))
+	} else {
+		protocol.Debug("service: health endpoint disabled")
+	}
+
+	if s.metricsEndpoint != "" {
+		protocol.Info("service: metrics endpoint: %v", s.metricsEndpoint)
+		s.webserver.Handle(s.metricsEndpoint, http.HandlerFunc(metrics.HttpHandler))
+	} else {
+		protocol.Debug("service: metrics endpoint disabled")
+	}
+
 	for _, module := range s.modules {
 		name := reflect.TypeOf(module).String()
 		if startable, ok := module.(Startable); ok {
@@ -75,9 +102,9 @@ func (s *Service) Start() error {
 				el.Add(err)
 			}
 		}
-		if checker, ok := module.(health.Checker); ok {
+		if checker, ok := module.(health.Checker); ok && s.healthEndpoint != "" {
 			protocol.Info("service: registering module %v as HealthChecker", name)
-			health.RegisterPeriodicThresholdFunc(name, s.healthCheckFrequency, s.healthCheckThreshold, health.CheckFunc(checker.Check))
+			health.RegisterPeriodicThresholdFunc(name, s.healthFrequency, s.healthThreshold, health.CheckFunc(checker.Check))
 		}
 		if endpoint, ok := module.(Endpoint); ok {
 			prefix := endpoint.GetPrefix()
