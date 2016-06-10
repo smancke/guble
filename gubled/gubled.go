@@ -6,7 +6,6 @@ import (
 	"github.com/alexflint/go-arg"
 	"github.com/caarlos0/env"
 	"github.com/smancke/guble/gcm"
-	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/rest"
@@ -192,7 +191,6 @@ func StartService(args Args) *server.Service {
 	service.RegisterModules(CreateModules(router, args)...)
 
 	if err := service.Start(); err != nil {
-		protocol.Err(err.Error())
 		if err := service.Stop(); err != nil {
 			log.WithFields(log.Fields{
 				"module": "gubled",

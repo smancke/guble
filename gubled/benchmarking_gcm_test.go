@@ -3,13 +3,13 @@ package gubled
 import (
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gcm"
-	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/testutil"
 
 	"github.com/stretchr/testify/assert"
 
 	"bytes"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -52,7 +52,10 @@ func throughputSend(b *testing.B, nWorkers int, sampleSend func(c client.Client)
 	defer func() {
 		errRemove := os.RemoveAll(dir)
 		if errRemove != nil {
-			protocol.Err("Could not remove directory", errRemove)
+			log.WithFields(log.Fields{
+				"module": "testing",
+				"err":    errRemove,
+			}).Error("Could not remove directory")
 		}
 	}()
 	a.NoError(errTempDir)
@@ -68,7 +71,10 @@ func throughputSend(b *testing.B, nWorkers int, sampleSend func(c client.Client)
 
 	service := StartService(args)
 
-	protocol.Debug("Overwriting the GCM Sender with a Mock")
+	log.WithFields(log.Fields{
+		"module": "testing",
+	}).Debug("Overwriting the GCM Sender with a MocK")
+
 	gcmConnector, ok := service.Modules()[4].(*gcm.GCMConnector)
 	a.True(ok, "Modules[4] should be of type GCMConnector")
 	gcmConnector.Sender = testutil.CreateGcmSender(
@@ -92,11 +98,17 @@ func throughputSend(b *testing.B, nWorkers int, sampleSend func(c client.Client)
 	a.NoError(errReadAll)
 	a.Equal("registered: /topic\n", string(body))
 
-	protocol.Debug("starting the benchmark timer")
+	log.WithFields(log.Fields{
+		"module": "testing",
+	}).Debug("Overwriting the GCM Sender with a MocK")
+
 	start := time.Now()
 	b.ResetTimer()
 
-	protocol.Debug("sending multiple messages from each client in separate goroutines")
+	log.WithFields(log.Fields{
+		"module": "testing",
+	}).Debug("Sending multiple messages from each client in separate goroutines")
+
 	var wg sync.WaitGroup
 	wg.Add(gomaxprocs)
 	for _, c := range clients {
