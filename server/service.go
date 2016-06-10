@@ -17,6 +17,11 @@ const (
 	defaultHealthCheckThreshold = 1
 )
 
+var loggerService = log.WithFields(log.Fields{
+	"app":    "guble",
+	"module": "service",
+	"env":    "TBD"})
+
 // Startable interface for modules which provide a start mechanism
 type Startable interface {
 	Start() error
@@ -55,10 +60,9 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 }
 
 func (s *Service) RegisterModules(modules ...interface{}) {
-	log.WithFields(log.Fields{
-		"module":                 "service",
-		"no_of_new_modules":      len(s.modules),
-		"no of_existing_modules": len(modules),
+	loggerService.WithFields(log.Fields{
+		"numberOfNewModules":       len(s.modules),
+		"numberOfExsistingModules": len(modules),
 	}).Debug(" RegisterModules: adding")
 
 	s.modules = append(s.modules, modules...)
@@ -74,17 +78,15 @@ func (s *Service) Start() error {
 	for _, module := range s.modules {
 		name := reflect.TypeOf(module).String()
 		if startable, ok := module.(Startable); ok {
-			log.WithFields(log.Fields{
-				"module": "service",
-				"name":   name,
+			loggerService.WithFields(log.Fields{
+				"name": name,
 			}).Info("Starting module")
 
 			if err := startable.Start(); err != nil {
 
-				log.WithFields(log.Fields{
-					"module": "service",
-					"name":   name,
-					"err":    err,
+				loggerService.WithFields(log.Fields{
+					"name": name,
+					"err":  err,
 				}).Error("Error while starting module")
 
 				el.Add(err)
@@ -92,16 +94,14 @@ func (s *Service) Start() error {
 		}
 		if checker, ok := module.(health.Checker); ok {
 
-			log.WithFields(log.Fields{
-				"module": "service",
-				"name":   name,
-			}).Info("Resgistering HealthChecker  module with name")
+			loggerService.WithFields(log.Fields{
+				"name": name,
+			}).Info("Registering HealthChecker  module with name")
 			health.RegisterPeriodicThresholdFunc(name, s.healthCheckFrequency, s.healthCheckThreshold, health.CheckFunc(checker.Check))
 		}
 		if endpoint, ok := module.(Endpoint); ok {
 			prefix := endpoint.GetPrefix()
-			log.WithFields(log.Fields{
-				"module": "service",
+			loggerService.WithFields(log.Fields{
 				"name":   name,
 				"prefix": prefix,
 			}).Info("Resgistering Endpoint  module with name")
@@ -125,21 +125,19 @@ func (s *Service) Stop() error {
 	for i := 1; i < len(stopables); i++ {
 		stopOrder[i] = len(stopables) - i
 	}
-	log.WithFields(log.Fields{
-		"module":        "service",
-		"no_of_modules": len(stopOrder),
-		"stop_order":    stopOrder,
-	}).Debug(" Stopping modules in this order relative to registration")
+	loggerService.WithFields(log.Fields{
+		"numberOfNewModules":       len(stopOrder),
+		"numberOfExsistingModules": stopOrder,
+	}).Debug("Stopping modules in this order relative to registration")
 
 	errors := protocol.NewErrorList("stopping errors: ")
 	for _, order := range stopOrder {
 		module := stopables[order]
 		name := reflect.TypeOf(module).String()
 
-		log.WithFields(log.Fields{
-			"module": "service",
-			"name":   name,
-			"order":  order,
+		loggerService.WithFields(log.Fields{
+			"name":  name,
+			"order": order,
 		}).Info("Stopping module with name")
 		if err := module.Stop(); err != nil {
 			errors.Add(err)

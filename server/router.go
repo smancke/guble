@@ -16,6 +16,11 @@ const (
 	overloadedChannelRatio = 0.9
 )
 
+var logger = log.WithFields(log.Fields{
+	"app":    "guble",
+	"module": "router",
+	"env":    "TBD"})
+
 // Router interface provides mechanism for PubSub messaging
 type Router interface {
 	KVStore() (store.KVStore, error)
@@ -99,9 +104,7 @@ func (router *router) Start() error {
 
 // Stop stops the router by closing the stop channel
 func (router *router) Stop() error {
-	log.WithFields(log.Fields{
-		"module": "router",
-	}).Debug("Stopping router")
+	logger.Debug("Stopping router")
 
 	router.stopC <- true
 	router.wg.Wait()
@@ -110,18 +113,16 @@ func (router *router) Stop() error {
 
 func (router *router) Check() error {
 	if router.accessManager == nil || router.messageStore == nil || router.kvStore == nil {
-		log.WithFields(log.Fields{
-			"module": "router",
-			"err":    ErrServiceNotProvided,
+		logger.WithFields(log.Fields{
+			"err": ErrServiceNotProvided,
 		}).Error("Some services are not provided")
 		return ErrServiceNotProvided
 	}
 
 	err := router.messageStore.Check()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"module": "router",
-			"err":    err,
+		logger.WithFields(log.Fields{
+			"err": err,
 		}).Error("MessageStore check failed")
 		return err
 	}
@@ -139,16 +140,14 @@ func (router *router) Check() error {
 }
 
 func (router *router) HandleMessage(message *protocol.Message) error {
-	log.WithFields(log.Fields{
-		"module": "router",
+	logger.WithFields(log.Fields{
 		"userID": message.UserID,
 		"path":   message.Path,
-	}).Debug("HandleMessage:")
+	}).Debug("HandleMessage")
 
 	if err := router.isStopping(); err != nil {
-		log.WithFields(log.Fields{
-			"module": "router",
-			"err":    err,
+		logger.WithFields(log.Fields{
+			"err": err,
 		}).Error("Router is stopping")
 		return err
 	}
@@ -164,12 +163,11 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 // If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Subscribe(r *Route) (*Route, error) {
 
-	log.WithFields(log.Fields{
-		"module":        "router",
+	logger.WithFields(log.Fields{
 		"accessManager": router.accessManager,
 		"userID":        r.UserID,
 		"path":          r.Path,
-	}).Debug("Subscribe:")
+	}).Debug("Subscribe")
 
 	if err := router.isStopping(); err != nil {
 		return nil, err
@@ -189,12 +187,11 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 }
 
 func (router *router) Unsubscribe(r *Route) {
-	log.WithFields(log.Fields{
-		"module":        "router",
+	logger.WithFields(log.Fields{
 		"accessManager": router.accessManager,
 		"userID":        r.UserID,
 		"path":          r.Path,
-	}).Debug("Unsubscribe:")
+	}).Debug("Unsubscribe")
 
 	req := subRequest{
 		route:      r,
@@ -205,11 +202,10 @@ func (router *router) Unsubscribe(r *Route) {
 }
 
 func (router *router) subscribe(r *Route) {
-	log.WithFields(log.Fields{
-		"module": "router",
+	logger.WithFields(log.Fields{
 		"userID": r.UserID,
 		"path":   r.Path,
-	}).Debug("Intenal subscribe for :")
+	}).Debug("Intenal subscribe for")
 
 	list, present := router.routes[r.Path]
 	if present {
@@ -225,8 +221,7 @@ func (router *router) subscribe(r *Route) {
 
 func (router *router) unsubscribe(r *Route) {
 
-	log.WithFields(log.Fields{
-		"module": "router",
+	logger.WithFields(log.Fields{
 		"userID": r.UserID,
 		"path":   r.Path,
 	}).Debug("Intenal unsubscribe for :")
@@ -269,20 +264,18 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 	}
 
 	if err := router.messageStore.StoreTx(msg.Path.Partition(), txCallback); err != nil {
-		log.WithFields(log.Fields{
-			"module":        "router",
-			"err":           err,
-			"msg_partition": msg.Path.Partition(),
+		logger.WithFields(log.Fields{
+			"err":          err,
+			"msgPartition": msg.Path.Partition(),
 		}).Error("Error storing message in partition")
 
 		return err
 	}
 
 	if float32(len(router.handleC))/float32(cap(router.handleC)) > overloadedChannelRatio {
-		log.WithFields(log.Fields{
-			"module":         "router",
-			"current_length": len(router.handleC),
-			"max_capacity":   cap(router.handleC),
+		logger.WithFields(log.Fields{
+			"currentLength": len(router.handleC),
+			"maxCapacity":   cap(router.handleC),
 		}).Warn("Warning handleC channel almost full")
 
 		// TODO Cosmin: noticed this, it seems weird to try handling contention like this
@@ -295,9 +288,8 @@ func (router *router) storeMessage(msg *protocol.Message) error {
 
 func (router *router) routeMessage(message *protocol.Message) {
 
-	log.WithFields(log.Fields{
-		"module":       "router",
-		"msg_metadata": message.Metadata(),
+	logger.WithFields(log.Fields{
+		"msgMetadata": message.Metadata(),
 	}).Debug("Called routeMessage for data")
 
 	for path, list := range router.routes {
@@ -317,9 +309,8 @@ func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 	// fine, we could send the message
 	default:
 
-		log.WithFields(log.Fields{
-			"module": "router",
-			"route":  route.String(),
+		logger.WithFields(log.Fields{
+			"route": route.String(),
 		}).Warn(" deliverMessage: queue was full, unsubscribing and closing delivery channel for route")
 		router.unsubscribe(route)
 		route.Close()
@@ -327,9 +318,8 @@ func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 }
 
 func (router *router) closeRoutes() {
-	log.WithFields(log.Fields{
-		"module": "router",
-	}).Debug("Called closeRoutes")
+	logger.Debug("Called closeRoutes")
+
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
 			router.unsubscribe(route)

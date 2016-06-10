@@ -46,9 +46,8 @@ func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := webSocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 
-		log.WithFields(log.Fields{
-			"module": "websocket",
-			"err":    err,
+		logger.WithFields(log.Fields{
+			"err": err,
 		}).Error("Error on upgrading ")
 
 		return
@@ -126,30 +125,27 @@ func (ws *WebSocket) sendLoop() {
 				//if protocol.DebugEnabled() {
 				if len(raw) < 80 {
 
-					log.WithFields(log.Fields{
-						"module":         "websocket",
-						"userId":         ws.userID,
-						"applicationID":  ws.applicationID,
-						"totalSize":      len(raw),
-						"actual_content": string(raw),
-					}).Debug("Send to client ")
+					logger.WithFields(log.Fields{
+						"userId":        ws.userID,
+						"applicationID": ws.applicationID,
+						"totalSize":     len(raw),
+						"actualContent": string(raw),
+					}).Debug("Send to client")
 
 				} else {
 
-					log.WithFields(log.Fields{
-						"module":         "websocket",
-						"userId":         ws.userID,
-						"applicationID":  ws.applicationID,
-						"totalSize":      len(raw),
-						"actual_content": string(raw[0:79]),
-					}).Debug("Send to client ")
+					logger.WithFields(log.Fields{
+						"userId":        ws.userID,
+						"applicationID": ws.applicationID,
+						"totalSize":     len(raw),
+						"actualContent": string(raw[0:79]),
+					}).Debug("Send to client")
 				}
 				//}
 
 				if err := ws.Send(raw); err != nil {
 
-					log.WithFields(log.Fields{
-						"module":        "websocket",
+					logger.WithFields(log.Fields{
 						"applicationID": ws.applicationID,
 					}).Debug("Closed connnection with")
 
@@ -162,16 +158,14 @@ func (ws *WebSocket) sendLoop() {
 }
 
 func (ws *WebSocket) checkAccess(raw []byte) bool {
-	log.WithFields(log.Fields{
-		"module":  "websocket",
-		"raw_msg": string(raw),
+	logger.WithFields(log.Fields{
+		"rawMsg": string(raw),
 	}).Debug("Raw message")
 
 	if raw[0] == byte('/') {
 		path := getPathFromRawMessage(raw)
 
-		log.WithFields(log.Fields{
-			"module": "websocket",
+		logger.WithFields(log.Fields{
 			"userID": ws.userID,
 			"path":   path,
 		}).Debug("Received msg")
@@ -193,8 +187,7 @@ func (ws *WebSocket) receiveLoop() {
 		err := ws.Receive(&message)
 		if err != nil {
 
-			log.WithFields(log.Fields{
-				"module":        "websocket",
+			logger.WithFields(log.Fields{
 				"applicationID": ws.applicationID,
 			}).Debug("Closed connnection by application")
 
@@ -240,9 +233,8 @@ func (ws *WebSocket) handleReceiveCmd(cmd *protocol.Cmd) {
 	)
 	if err != nil {
 
-		log.WithFields(log.Fields{
-			"module": "websocket",
-			"err":    err,
+		logger.WithFields(log.Fields{
+			"err": err,
 		}).Error("Client error in handleReceiveCmd")
 
 		ws.sendError(protocol.ERROR_BAD_REQUEST, err.Error())
@@ -266,9 +258,8 @@ func (ws *WebSocket) handleCancelCmd(cmd *protocol.Cmd) {
 }
 
 func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
-	log.WithFields(log.Fields{
-		"module": "websocket",
-		"cmd":    string(cmd.Bytes()),
+	logger.WithFields(log.Fields{
+		"cmd": string(cmd.Bytes()),
 	}).Debug("Sending ")
 
 	if len(cmd.Arg) == 0 {
@@ -295,8 +286,7 @@ func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
 
 func (ws *WebSocket) cleanAndClose() {
 
-	log.WithFields(log.Fields{
-		"module":        "websocket",
+	logger.WithFields(log.Fields{
 		"applicationID": ws.applicationID,
 	}).Debug("Closing applicationId")
 

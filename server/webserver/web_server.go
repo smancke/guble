@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+var logger = log.WithFields(log.Fields{
+	"app":    "guble",
+	"module": "webserver",
+	"env":    "TBD"})
+
 type WebServer struct {
 	server *http.Server
 	ln     net.Listener
@@ -23,8 +28,7 @@ func New(addr string) *WebServer {
 }
 
 func (ws *WebServer) Start() (err error) {
-	log.WithFields(log.Fields{
-		"module":  "webserver",
+	logger.WithFields(log.Fields{
 		"address": ws.addr,
 	}).Info("Http is starting up on address")
 
@@ -39,15 +43,13 @@ func (ws *WebServer) Start() (err error) {
 
 		if err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
 
-			log.WithFields(log.Fields{
-				"module": "webserver",
-				"err":    err,
+			logger.WithFields(log.Fields{
+				"err": err,
 			}).Error("ListenAndServe")
 
 		}
 
-		log.WithFields(log.Fields{
-			"module":  "webserver",
+		logger.WithFields(log.Fields{
 			"address": ws.addr,
 		}).Info("Http server stopped")
 	}()

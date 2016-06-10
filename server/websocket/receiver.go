@@ -13,6 +13,11 @@ import (
 	"strings"
 )
 
+var logger = log.WithFields(log.Fields{
+	"app":    "guble",
+	"module": "websocket",
+	"env":    "TBD"})
+
 var errUnreadMsgsAvailable = errors.New("unread messages available")
 
 // Receiver is a helper class, for managing a combined pull push on a topic.
@@ -101,11 +106,10 @@ func (rec *Receiver) subscriptionLoop() {
 
 			if err := rec.fetch(); err != nil {
 
-				log.WithFields(log.Fields{
-					"module": "websocket",
-					"rec":    rec,
-					"err":    err,
-				}).Error("Error while fetching subscription  ")
+				logger.WithFields(log.Fields{
+					"rec": rec,
+					"err": err,
+				}).Error("Error while fetching subscription")
 				rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
 				return
 			}
@@ -117,10 +121,9 @@ func (rec *Receiver) subscriptionLoop() {
 					continue // fetch again
 				} else {
 
-					log.WithFields(log.Fields{
-						"module": "websocket",
-						"rec":    rec,
-						"err":    err,
+					logger.WithFields(log.Fields{
+						"rec": rec.startId,
+						"err": err,
 					}).Error("Error while subscribeIfNoUnreadMessagesAvailable")
 
 					rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
@@ -169,26 +172,23 @@ func (rec *Receiver) receiveFromSubscription() {
 		case msgAndRoute, ok := <-rec.route.MessagesChannel():
 			if !ok {
 
-				log.WithFields(log.Fields{
-					"module":        "websocket",
+				logger.WithFields(log.Fields{
 					"applicationId": rec.applicationId,
-				}).Debug("Router closed the channel returning from subscription for ")
+				}).Debug("Router closed the channel returning from subscription for")
 				return
 			}
 
-			log.WithFields(log.Fields{
-				"module":        "websocket",
-				"applicationId": rec.applicationId,
-				"msg_metadata":  msgAndRoute.Message.Metadata(),
+			logger.WithFields(log.Fields{
+				"applicationId":   rec.applicationId,
+				"messageMetadata": msgAndRoute.Message.Metadata(),
 			}).Debug("Deliver message to")
 
 			if msgAndRoute.Message.ID > rec.lastSendId {
 				rec.lastSendId = msgAndRoute.Message.ID
 				rec.sendChannel <- msgAndRoute.Message.Bytes()
 			} else {
-				log.WithFields(log.Fields{
-					"module": "websocket",
-					"msg_id": msgAndRoute.Message.ID,
+				logger.WithFields(log.Fields{
+					"msgId": msgAndRoute.Message.ID,
 				}).Debug("Message already sent to client Dropping message with id")
 
 			}
@@ -206,10 +206,9 @@ func (rec *Receiver) fetchOnlyLoop() {
 	err := rec.fetch()
 	if err != nil {
 
-		log.WithFields(log.Fields{
-			"module": "websocket",
-			"rec":    rec,
-			"err":    err,
+		logger.WithFields(log.Fields{
+			"rec": rec,
+			"err": err,
 		}).Error("Error while fetching")
 		rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
 	}
@@ -255,10 +254,9 @@ func (rec *Receiver) fetch() error {
 				return nil
 			}
 
-			log.WithFields(log.Fields{
-				"module": "websocket",
-				"msg_id": msgAndId.Id,
-				"msg":    string(msgAndId.Message),
+			logger.WithFields(log.Fields{
+				"msgId": msgAndId.Id,
+				"msg":   string(msgAndId.Message),
 			}).Debug("Replay send to")
 
 			rec.lastSendId = msgAndId.Id

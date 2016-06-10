@@ -19,6 +19,11 @@ const (
 	WRITE
 )
 
+var logger = log.WithFields(log.Fields{
+	"app":    "guble",
+	"module": "accessManager",
+	"env":    "TBD"})
+
 // AccessManager interface allows to provide a custom authentication mechanism
 type AccessManager interface {
 	IsAllowed(accessType AccessType, userId string, path protocol.Path) bool
@@ -57,10 +62,10 @@ func (am RestAccessManager) IsAllowed(accessType AccessType, userId string, path
 	resp, err := http.DefaultClient.Get(u.String())
 
 	if err != nil {
-		log.WithFields(log.Fields{
+		logger.WithFields(log.Fields{
 			"module": "RestAccessManager",
 			"err":    err,
-		}).Warn("Write message failed:")
+		}).Warn("Write message failed")
 
 		return false
 	}
@@ -69,26 +74,24 @@ func (am RestAccessManager) IsAllowed(accessType AccessType, userId string, path
 
 	if err != nil || resp.StatusCode != 200 {
 
-		log.WithFields(log.Fields{
-			"module": "RestAccessManager",
-			"err":    err,
-		}).Info("Error getting permission:")
+		logger.WithFields(log.Fields{
+			"err":      err,
+			"httpCode": resp.StatusCode,
+		}).Info("Error getting permission")
 
-		log.WithFields(log.Fields{
-			"module":       "RestAccessManager",
+		logger.WithFields(log.Fields{
 			"responseBody": responseBody,
 		}).Debug("HTTP Response  MSG Body")
 
 		return false
 	}
 
-	log.WithFields(log.Fields{
-		"module":       "RestAccessManager",
+	logger.WithFields(log.Fields{
 		"access_type":  accessType,
 		"userId":       userId,
 		"path":         path,
 		"responseBody": string(responseBody),
-	}).Debug("Is allowed for ")
+	}).Debug("Is allowed for")
 
 	return "true" == string(responseBody)
 
