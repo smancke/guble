@@ -427,7 +427,7 @@ func TestRouter_Check(t *testing.T) {
 }
 
 func TestPanicOnInternalDependencies(t *testing.T) {
-	defer expectPanic(t)
+	defer testutil.ExpectPanic(t)
 	router := NewRouter(nil, nil, nil).(*router)
 	router.panicIfInternalDependenciesAreNil()
 }
@@ -455,11 +455,5 @@ func assertChannelContainsMessage(a *assert.Assertions, c chan *MessageForRoute,
 		a.Equal(string(msg), string(msgBack.Message.Body))
 	case <-time.After(time.Millisecond * 5):
 		a.Fail("No message received")
-	}
-}
-
-func expectPanic(t *testing.T) {
-	if r := recover(); r == nil {
-		assert.Fail(t, "Expecting a panic but unfortunately it did not happen")
 	}
 }
