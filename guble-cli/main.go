@@ -27,6 +27,8 @@ type arguments struct {
 
 var args arguments
 
+var logger = log.WithField("app", "guble-cli")
+
 // This is a minimal commandline client to connect through a websocket
 func main() {
 
@@ -119,10 +121,7 @@ func writeLoop(client client.Client) {
 			if err := client.WriteRawMessage([]byte(text)); err != nil {
 				shouldStop = true
 
-				log.WithFields(log.Fields{
-					"module": "guble-cli",
-					"err":    err,
-				}).Error("Write message failed:")
+				logger.WithField("err", err).Error("Error on Writing  message")
 			}
 		}()
 	}

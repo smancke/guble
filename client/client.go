@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+var logger = log.WithFields(log.Fields{
+	"app":    "guble-cli",
+	"module": "client",
+	"env":    "TBD"})
+
 type WSConnection interface {
 	WriteMessage(messageType int, data []byte) error
 	ReadMessage() (messageType int, p []byte, err error)
@@ -16,20 +21,14 @@ type WSConnection interface {
 }
 
 func DefaultConnectionFactory(url string, origin string) (WSConnection, error) {
-	log.WithFields(log.Fields{
-		"module": "client",
-		"url":    url,
-	}).Info("Connecting to ")
+	logger.WithField("url", url).Info("Connecting to")
 
 	header := http.Header{"Origin": []string{origin}}
 	conn, _, err := websocket.DefaultDialer.Dial(url, header)
 	if err != nil {
 		return nil, err
 	}
-	log.WithFields(log.Fields{
-		"module": "client",
-		"url":    url,
-	}).Info("connected to")
+	logger.WithField("url", url).Info("Connected to")
 
 	return conn, nil
 }
@@ -141,17 +140,13 @@ func (c *client) startWithReconnect() {
 		c.ws, err = c.wSConnectionFactory(c.url, c.origin)
 		if err != nil {
 			c.setIsConnected(false)
-			log.WithFields(log.Fields{
-				"module": "client",
-				"err":    err,
-			}).Error("Error on connect, retry in 50ms")
+
+			logger.WithField("err", err).Error("Error on connect, retry in 50 ms")
+
 			time.Sleep(time.Millisecond * 50)
 		} else {
 			c.setIsConnected(true)
-			log.WithFields(log.Fields{
-				"module": "client",
-				"err":    "Reconnected",
-			}).Error("Connected again")
+			logger.WithField("err", "Reconnected").Warn("Reconnected again")
 		}
 	}
 }
@@ -165,19 +160,13 @@ func (c *client) readLoop() error {
 				return nil
 			}
 
-			log.WithFields(log.Fields{
-				"module": "client",
-				"err":    err,
-			}).Error("read error")
+			logger.WithField("err", err).Error("Reading error from ws")
 
 			c.errors <- clientErrorMessage(err.Error())
 			return err
 		}
 
-		log.WithFields(log.Fields{
-			"module": "client",
-			"msg":    msg,
-		}).Debug("Raw> ")
+		logger.WithField("msg", msg).Debug("Raw >")
 		c.handleIncomingMessage(msg)
 	}
 }
@@ -199,10 +188,8 @@ func (c *client) handleIncomingMessage(msg []byte) {
 	parsed, err := protocol.ParseMessage(msg)
 	if err != nil {
 
-		log.WithFields(log.Fields{
-			"module": "client",
-			"err":    err,
-		}).Error("Parsing message failed")
+		logger.WithField("err", err).Error("Error on parsing of incomming message")
+
 		c.errors <- clientErrorMessage(err.Error())
 		return
 	}
