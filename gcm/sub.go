@@ -35,9 +35,9 @@ func newSub(gcm *Connector, route *server.Route, lastID uint64) *sub {
 		route:  route,
 		lastID: lastID,
 		logger: logger.WithFields(log.Fields{
-			"gcm_id":  route.ApplicationID,
-			"user_id": route.UserID,
-			"topic":   string(route.Path),
+			"gcmID":  route.ApplicationID,
+			"userID": route.UserID,
+			"topic":  string(route.Path),
 		}),
 	}
 }
@@ -64,7 +64,7 @@ type sub struct {
 
 func (s *sub) subscribe() error {
 	if _, err := s.gcm.router.Subscribe(s.route); err != nil {
-		s.logger.WithField("err", err).Error("Error subscribing")
+		s.logger.WithField("error", err).Error("Error subscribing")
 		return err
 	}
 
@@ -130,7 +130,7 @@ func (s *sub) subscriptionLoop() {
 				return
 			}
 
-			s.logger.WithField("err", err).Error("Error pipelining message")
+			s.logger.WithField("error", err).Error("Error pipelining message")
 		}
 	}
 	// if route is closed and we are actually stopping then return
@@ -139,12 +139,13 @@ func (s *sub) subscriptionLoop() {
 	}
 
 	// assume that the route channel has been closed cause of slow processing
-	// reconnect
+	// reconnect. try restarting
 
 }
 
+// fetch messages from store starting with lastID
 func (s *sub) fetch() error {
-	return nil
+
 }
 
 // returns true if we are actually stopping the service
@@ -171,7 +172,7 @@ func (s *sub) bytes() []byte {
 func (s *sub) store() error {
 	err := s.gcm.kvStore.Put(schema, s.route.ApplicationID, s.bytes())
 	if err != nil {
-		s.logger.WithField("err", err).Error("Error storing in KVStore")
+		s.logger.WithField("error", err).Error("Error storing in KVStore")
 	}
 	return err
 }
@@ -200,7 +201,7 @@ func (s *sub) pipe(m *protocol.Message) error {
 
 		return s.handleGCMResponse(response)
 	case err := <-pm.errC:
-		s.logger.WithField("err", err).Error("Error sending message to GCM")
+		s.logger.WithField("error", err).Error("Error sending message to GCM")
 		return err
 	}
 
@@ -229,9 +230,9 @@ func (s *sub) handleJSONError(response *gcm.Response) error {
 			s.remove()
 			return &jsonError{errText}
 		} else if errText == "InvalidRegistration" {
-			s.logger.WithField("json_error", errText).Error("Subscription is not registered")
+			s.logger.WithField("jsonError", errText).Error("Subscription is not registered")
 		} else {
-			s.logger.WithField("json_error", errText).Error("Unexpected error while sending to GCM")
+			s.logger.WithField("jsonError", errText).Error("Unexpected error while sending to GCM")
 		}
 	}
 
@@ -241,7 +242,7 @@ func (s *sub) handleJSONError(response *gcm.Response) error {
 // replace subscription with cannoical id, creates a new subscription but alters the route to
 // have the new ApplicationID
 func (s *sub) replaceCanonical(newGCMID string) error {
-	s.logger.WithField("new_gcm_id", newGCMID).Info("Replacing with canonicalID")
+	s.logger.WithField("newGCMID", newGCMID).Info("Replacing with canonicalID")
 
 	// delete current route from kvstore
 	s.remove()
