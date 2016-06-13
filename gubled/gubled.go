@@ -4,7 +4,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/alexflint/go-arg"
 	"github.com/caarlos0/env"
-	"github.com/hashicorp/memberlist"
 
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/metrics"
@@ -23,8 +22,6 @@ import (
 	"runtime"
 	"syscall"
 	"time"
-	//logoriginal "log"
-	"io/ioutil"
 )
 
 var logger = log.WithFields(log.Fields{
@@ -155,7 +152,7 @@ func Main() {
 		logger.Fatal("Fatal error in gubled in validation for storage path")
 	}
 
-	startClusterBenchmark(40, 30*time.Second, 17000)
+	BenchmarkCluster(40, 30*time.Second, 17000)
 
 	service := StartService(args)
 
@@ -165,140 +162,6 @@ func Main() {
 			logger.WithField("err", err).Error("Error when stopping service")
 		}
 	})
-}
-
-type GubleDelegate struct {
-}
-
-func (*GubleDelegate) NodeMeta(limit int) []byte {
-	return nil
-}
-
-func (*GubleDelegate) NotifyMsg(message []byte) {
-	log.WithField("message", message).Info("NotifyMsg")
-}
-
-func (*GubleDelegate) GetBroadcasts(overhead, limit int) [][]byte {
-	return nil
-}
-
-func (*GubleDelegate) LocalState(join bool) []byte {
-	return nil
-}
-
-func (*GubleDelegate) MergeRemoteState(buf []byte, join bool) {
-
-}
-
-func newGubleDelegate() *GubleDelegate {
-	return &GubleDelegate{}
-}
-
-func startClusterBenchmark(num int, timeoutForAllJoins time.Duration, lowestPort int) {
-	startTime := time.Now()
-	var nodes []*memberlist.Memberlist
-	eventC := make(chan memberlist.NodeEvent, num)
-	addr := "127.0.0.1"
-	var firstMemberName string
-	for i := 0; i < num; i++ {
-		c := memberlist.DefaultLANConfig()
-		port := lowestPort + i
-		c.Name = fmt.Sprintf("%s:%d", addr, port)
-		c.BindAddr = addr
-		c.BindPort = port
-		c.ProbeInterval = 20 * time.Millisecond
-		c.ProbeTimeout = 100 * time.Millisecond
-		c.GossipInterval = 20 * time.Millisecond
-		c.PushPullInterval = 200 * time.Millisecond
-		c.Delegate = newGubleDelegate()
-
-		//TODO Cosmin temporarily disabling any logging from memberlist
-		c.LogOutput = ioutil.Discard
-
-		if i == 0 {
-			c.Events = &memberlist.ChannelEventDelegate{eventC}
-			firstMemberName = c.Name
-		}
-
-		newMemberList, err := memberlist.Create(c)
-		if err != nil {
-			log.WithField("error", err).Fatal("Unexpected error when creating the memberlist")
-		}
-		nodes = append(nodes, newMemberList)
-		defer newMemberList.Shutdown()
-
-		if i >= 0 {
-			num, err := newMemberList.Join([]string{firstMemberName})
-			if num == 0 || err != nil {
-				log.WithField("error", err).Fatal("Unexpected fatal error when node wanted to join the cluster")
-			}
-		}
-	}
-
-	breakTimer := time.After(timeoutForAllJoins)
-	joinCounter := 0
-WAIT:
-	for {
-		select {
-		case e := <-eventC:
-			lwf := log.WithFields(log.Fields{
-				"node":         *e.Node,
-				"eventCounter": joinCounter,
-				"numMembers":   nodes[0].NumMembers(),
-			})
-			if e.Event == memberlist.NodeJoin {
-				lwf.Info("Node join")
-				joinCounter++
-				if joinCounter == num {
-					lwf.Info("All nodes joined")
-					break WAIT
-				}
-			} else {
-				lwf.Info("Node leave")
-			}
-		case <-breakTimer:
-			break WAIT
-		}
-	}
-
-	if joinCounter == num {
-		log.WithFields(log.Fields{
-			"joinCounter": joinCounter,
-			"num":         num,
-		}).Error("Timeout reached before all joins / convergence")
-	}
-
-	for {
-		convergence := true
-		for idx, node := range nodes {
-			actualNumSeenByNode := node.NumMembers()
-			if actualNumSeenByNode != num {
-				log.WithFields(log.Fields{
-					"index":    idx,
-					"expected": num,
-					"actual":   actualNumSeenByNode,
-				}).Error("Wrong number of nodes")
-				convergence = false
-				break
-			}
-		}
-		if convergence {
-			break
-		}
-	}
-	endTime := time.Now()
-	if joinCounter == num {
-		log.WithField("durationSeconds", endTime.Sub(startTime).Seconds()).Info("Correct number of nodes")
-	}
-
-	for senderId, node := range nodes {
-		for receiverId, member := range node.Members() {
-			message := fmt.Sprintf("Hello from %v to %v !", senderId, receiverId)
-			log.Info(message)
-			messageBytes := []byte(message)
-			node.SendToTCP(member, messageBytes)
-		}
-	}
 }
 
 func StartService(args Args) *server.Service {
