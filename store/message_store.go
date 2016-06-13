@@ -39,6 +39,7 @@ func (fms *FileMessageStore) MaxMessageId(partition string) (uint64, error) {
 func (fms *FileMessageStore) Stop() error {
 	fms.mutex.Lock()
 	defer fms.mutex.Unlock()
+	messageStoreLogger.Debug("Stop")
 
 	var returnError error
 	for key, partition := range fms.partitions {

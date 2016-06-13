@@ -6,12 +6,15 @@ import (
 	"github.com/alexflint/go-arg"
 	"github.com/caarlos0/env"
 	"github.com/smancke/guble/gcm"
+	"github.com/smancke/guble/metrics"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/rest"
 	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/server/websocket"
 	"github.com/smancke/guble/store"
+
+	"expvar"
 	"os"
 	"os/signal"
 	"path"
@@ -24,6 +27,10 @@ var logger = log.WithFields(log.Fields{
 	"module": "gubled",
 	"env":    "TBD"})
 
+const (
+	healthEndpointPrefix = "/_health"
+)
+
 type Args struct {
 	Listen      string `arg:"-l,help: [Host:]Port the address to listen on (:8080)" env:"GUBLE_LISTEN"`
 	LogInfo     bool   `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
@@ -33,7 +40,9 @@ type Args struct {
 	MSBackend   string `arg:"--ms-backend,help: The message storage backend : file|memory (file)" env:"GUBLE_MS_BACKEND"`
 	GcmEnable   bool   `arg:"--gcm-enable: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
 	GcmApiKey   string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
-	GcmWorkers  int    `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default is GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
+	GcmWorkers  int    `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
+	Health      string `arg:"--health: The health endpoint (default: /_health; value for disabling it: \"\" )" env:"GUBLE_HEALTH_ENDPOINT"`
+	Metrics     string `arg:"--metrics: The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )" env:"GUBLE_METRICS_ENDPOINT"`
 }
 
 var ValidateStoragePath = func(args Args) error {
@@ -159,7 +168,7 @@ func StartService(args Args) *server.Service {
 	router := server.NewRouter(accessManager, messageStore, kvStore)
 	webserver := webserver.New(args.Listen)
 
-	service := server.NewService(router, webserver)
+	service := server.NewService(router, webserver).HealthEndpointPrefix(args.Health).MetricsEndpointPrefix(args.Metrics)
 
 	service.RegisterModules(CreateModules(router, args)...)
 
@@ -169,6 +178,9 @@ func StartService(args Args) *server.Service {
 		}
 		logger.WithField("err", err).Fatal("Service could not be started")
 	}
+	expvar.Publish("guble.args", expvar.Func(func() interface{} {
+		return args
+	}))
 
 	return service
 }
@@ -180,6 +192,7 @@ func loadArgs() Args {
 		MSBackend:   "file",
 		StoragePath: "/var/lib/guble",
 		GcmWorkers:  runtime.GOMAXPROCS(0),
+		Health:      healthEndpointPrefix,
 	}
 
 	env.Parse(&args)
@@ -194,6 +207,7 @@ func waitForTermination(callback func()) {
 	logger.Infof("Got signal '%v' .. exiting gracefully now", <-signalC)
 
 	callback()
+	metrics.LogOnDebugLevel()
 	logger.Info("Exit gracefully now")
 	os.Exit(0)
 }

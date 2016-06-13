@@ -54,6 +54,12 @@ func ExpectDone(a *assert.Assertions, doneChannel chan bool) {
 	}
 }
 
+func ExpectPanic(t *testing.T) {
+	if r := recover(); r == nil {
+		assert.Fail(t, "Expecting a panic but unfortunately it did not happen")
+	}
+}
+
 // ResetDefaultRegistryHealthCheck resets the existing registry containing health-checks
 func ResetDefaultRegistryHealthCheck() {
 	health.DefaultRegistry = health.NewRegistry()
