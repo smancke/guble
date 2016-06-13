@@ -155,7 +155,7 @@ func Main() {
 		logger.Fatal("Fatal error in gubled in validation for storage path")
 	}
 
-	BenchmarkCluster(40, 30*time.Second, 17000)
+	BenchmarkCluster(3, 10*time.Second, 10000)
 
 	service := StartService(args)
 
