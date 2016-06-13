@@ -251,15 +251,15 @@ func (p *MessagePartition) Fetch(req FetchRequest) {
 	go func() {
 		fetchList, err := p.calculateFetchList(req)
 		if err != nil {
-			req.ErrorCallback <- err
+			req.ErrorC <- err
 			return
 		}
 
-		req.StartCallback <- len(fetchList)
+		req.StartC <- len(fetchList)
 
 		err = p.fetchByFetchlist(fetchList, req.MessageC)
 		if err != nil {
-			req.ErrorCallback <- err
+			req.ErrorC <- err
 			return
 		}
 		close(req.MessageC)
@@ -267,7 +267,7 @@ func (p *MessagePartition) Fetch(req FetchRequest) {
 }
 
 // fetch the messages in the supplied fetchlist and send them to the channel
-func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC chan MessageAndId) error {
+func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC chan MessageAndID) error {
 
 	var fileId uint64
 	var file *os.File
@@ -294,7 +294,7 @@ func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC cha
 		if err != nil {
 			return err
 		}
-		messageC <- MessageAndId{f.messageId, msg}
+		messageC <- MessageAndID{f.messageId, msg}
 	}
 	return nil
 }
@@ -304,7 +304,7 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 	if req.Direction == 0 {
 		req.Direction = 1
 	}
-	nextId := req.StartId
+	nextId := req.StartID
 	initialCap := req.Count
 	if initialCap > 100 {
 		initialCap = 100

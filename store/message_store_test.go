@@ -26,26 +26,26 @@ func Test_Fetch(t *testing.T) {
 		expectedResults []string
 	}{
 		{`match in partition 1`,
-			FetchRequest{Partition: "p1", StartId: 2, Count: 1},
+			FetchRequest{Partition: "p1", StartID: 2, Count: 1},
 			[]string{"bbbbbbbbbb"},
 		},
 		{`match in partition 2`,
-			FetchRequest{Partition: "p2", StartId: 2, Count: 1},
+			FetchRequest{Partition: "p2", StartID: 2, Count: 1},
 			[]string{"2222222222"},
 		},
 	}
 
 	for _, testcase := range testCases {
-		testcase.req.MessageC = make(chan MessageAndId)
-		testcase.req.ErrorCallback = make(chan error)
-		testcase.req.StartCallback = make(chan int)
+		testcase.req.MessageC = make(chan MessageAndID)
+		testcase.req.ErrorC = make(chan error)
+		testcase.req.StartC = make(chan int)
 
 		messages := []string{}
 
 		store.Fetch(testcase.req)
 
 		select {
-		case numberOfResults := <-testcase.req.StartCallback:
+		case numberOfResults := <-testcase.req.StartC:
 			a.Equal(len(testcase.expectedResults), numberOfResults)
 		case <-time.After(time.Second):
 			a.Fail("timeout")
@@ -60,7 +60,7 @@ func Test_Fetch(t *testing.T) {
 					break loop
 				}
 				messages = append(messages, string(msg.Message))
-			case err := <-testcase.req.ErrorCallback:
+			case err := <-testcase.req.ErrorC:
 				a.Fail(err.Error())
 				break loop
 			case <-time.After(time.Second):
@@ -131,9 +131,9 @@ func Test_FetchWithError(t *testing.T) {
 	store := NewFileMessageStore("/TestDir")
 
 	chanCallBack := make(chan error, 1)
-	aFetchRequest := FetchRequest{Partition: "p1", StartId: 2, Count: 1, ErrorCallback: chanCallBack}
+	aFetchRequest := FetchRequest{Partition: "p1", StartID: 2, Count: 1, ErrorC: chanCallBack}
 	store.Fetch(aFetchRequest)
-	err := <-aFetchRequest.ErrorCallback
+	err := <-aFetchRequest.ErrorC
 	a.NotNil(err)
 }
 

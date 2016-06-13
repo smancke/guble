@@ -21,6 +21,8 @@ type Router interface {
 	AccessManager() (auth.AccessManager, error)
 	MessageStore() (store.MessageStore, error)
 
+	Fetch(store.FetchRequest)
+
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
 	HandleMessage(message *protocol.Message) error
@@ -327,4 +329,8 @@ func (router *router) KVStore() (store.KVStore, error) {
 		return nil, ErrServiceNotProvided
 	}
 	return router.kvStore, nil
+}
+
+func (router *router) Fetch(req store.FetchRequest) {
+	router.messageStore.Fetch(req)
 }

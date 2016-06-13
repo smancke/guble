@@ -7,6 +7,7 @@ import (
 	"github.com/alexjlockwood/gcm"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/store"
 	"strconv"
 	"strings"
 )
@@ -98,12 +99,7 @@ func (s *sub) restart() error {
 	}
 
 	// subscribe to the router and start
-	if err := s.subscribe(); err != nil {
-		return err
-	}
-
-	s.start()
-	return nil
+	return s.start()
 }
 
 // subscriptionLoop that will run in a goroutine and pipe messages from route to gcm
@@ -139,13 +135,64 @@ func (s *sub) subscriptionLoop() {
 	}
 
 	// assume that the route channel has been closed cause of slow processing
-	// reconnect. try restarting
-
+	// try restarting, by fetching from lastId and then subscribing again
+	s.restart()
 }
 
 // fetch messages from store starting with lastID
 func (s *sub) fetch() error {
+	if s.lastID == 0 {
+		s.logger.WithField("lastID", s.lastID).Debug("Nothing to fetch")
+		return nil
+	}
 
+	s.logger.Debug("Fetching from store")
+	s.gcm.wg.Add(1)
+	defer func() {
+		s.logger.WithField("lastID", s.lastID).Debug("Stop fetching")
+		s.gcm.wg.Done()
+	}()
+
+	req := s.createFetchRequest()
+	s.gcm.router.Fetch(req)
+	for {
+		select {
+		case results := <-req.StartC:
+			s.logger.WithField("numberResults", results).Debug("Receiving count")
+		case msgAndID, open := <-req.MessageC:
+			if !open {
+				s.logger.Debug("Fetch channel closed.")
+				return nil
+			}
+			message, err := protocol.ParseMessage(msgAndID.Message)
+			if err != nil {
+				return err
+			}
+			if message, ok := message.(*protocol.Message); ok {
+				s.pipe(message)
+			} else {
+				s.logger.WithField("messageID", msgAndID.ID).Warn("Message is not a *protocol.Message.")
+			}
+		case err := <-req.ErrorC:
+			return err
+		case <-s.gcm.stopC:
+			s.logger.Debug("Stopping fetch cause service is shutting down")
+			return nil
+		}
+	}
+	return nil
+}
+
+func (s *sub) createFetchRequest() store.FetchRequest {
+	return store.FetchRequest{
+		Partition: s.route.Path.Partition(),
+		StartID:   s.lastID,
+		Direction: 1,
+		// Count:     0,
+		MessageC: make(chan store.MessageAndID, 5),
+		ErrorC:   make(chan error),
+		StartC:   make(chan int),
+	}
 }
 
 // returns true if we are actually stopping the service

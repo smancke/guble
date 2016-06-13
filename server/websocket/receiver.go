@@ -188,17 +188,17 @@ func (rec *Receiver) fetchOnlyLoop() {
 
 func (rec *Receiver) fetch() error {
 	fetch := store.FetchRequest{
-		Partition:     rec.path.Partition(),
-		MessageC:      make(chan store.MessageAndId, 3),
-		ErrorCallback: make(chan error),
-		StartCallback: make(chan int),
-		Prefix:        []byte(rec.path),
-		Count:         rec.maxCount,
+		Partition: rec.path.Partition(),
+		MessageC:  make(chan store.MessageAndID, 3),
+		ErrorC:    make(chan error),
+		StartC:    make(chan int),
+		Prefix:    []byte(rec.path),
+		Count:     rec.maxCount,
 	}
 
 	if rec.startId >= 0 {
 		fetch.Direction = 1
-		fetch.StartId = uint64(rec.startId)
+		fetch.StartID = uint64(rec.startId)
 		if rec.maxCount == 0 {
 			fetch.Count = math.MaxInt32
 		}
@@ -207,7 +207,7 @@ func (rec *Receiver) fetch() error {
 		if maxId, err := rec.messageStore.MaxMessageId(rec.path.Partition()); err != nil {
 			return err
 		} else {
-			fetch.StartId = maxId + 1 + uint64(rec.startId)
+			fetch.StartID = maxId + 1 + uint64(rec.startId)
 		}
 		if rec.maxCount == 0 {
 			fetch.Count = -1 * int(rec.startId)
@@ -218,17 +218,17 @@ func (rec *Receiver) fetch() error {
 
 	for {
 		select {
-		case numberOfResults := <-fetch.StartCallback:
+		case numberOfResults := <-fetch.StartC:
 			rec.sendOK(protocol.SUCCESS_FETCH_START, fmt.Sprintf("%v %v", rec.path, numberOfResults))
 		case msgAndId, open := <-fetch.MessageC:
 			if !open {
 				rec.sendOK(protocol.SUCCESS_FETCH_END, string(rec.path))
 				return nil
 			}
-			protocol.Debug("replay send %v, %v", msgAndId.Id, string(msgAndId.Message))
-			rec.lastSendId = msgAndId.Id
+			protocol.Debug("replay send %v, %v", msgAndId.ID, string(msgAndId.Message))
+			rec.lastSendId = msgAndId.ID
 			rec.sendChannel <- msgAndId.Message
-		case err := <-fetch.ErrorCallback:
+		case err := <-fetch.ErrorC:
 			return err
 		case <-rec.cancelChannel:
 			rec.shouldStop = true

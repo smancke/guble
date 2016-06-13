@@ -29,7 +29,7 @@ func Test_MessagePartition_forConcurrentWriteAndReads(t *testing.T) {
 
 	readerDone := make(chan bool)
 	for i := 1; i <= nReaders; i++ {
-		go messagePartitionReader("reader" + strconv.Itoa(i), a, store, n, readerDone)
+		go messagePartitionReader("reader"+strconv.Itoa(i), a, store, n, readerDone)
 	}
 
 	select {
@@ -60,18 +60,18 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 	lastReadMessage := 0
 	for lastReadMessage < n {
 
-		msgC := make(chan MessageAndId)
+		msgC := make(chan MessageAndID)
 		errorC := make(chan error)
 
 		protocol.Debug("[%v] start fetching at: %v", name, lastReadMessage+1)
 		store.Fetch(FetchRequest{
-			Partition:     "myMessages",
-			StartId:       uint64(lastReadMessage + 1),
-			Direction:     1,
-			Count:         math.MaxInt32,
-			MessageC:      msgC,
-			ErrorCallback: errorC,
-			StartCallback: make(chan int, 1),
+			Partition: "myMessages",
+			StartID:   uint64(lastReadMessage + 1),
+			Direction: 1,
+			Count:     math.MaxInt32,
+			MessageC:  msgC,
+			ErrorC:    errorC,
+			StartC:    make(chan int, 1),
 		})
 
 	fetch:
@@ -83,8 +83,8 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 					protocol.Debug("[%v] stop fetching at %v", name, lastReadMessage)
 					break fetch
 				}
-				a.Equal(lastReadMessage+1, int(msgAndId.Id))
-				lastReadMessage = int(msgAndId.Id)
+				a.Equal(lastReadMessage+1, int(msgAndId.ID))
+				lastReadMessage = int(msgAndId.ID)
 			case err := <-errorC:
 				a.Fail("received error", err.Error())
 				<-done
