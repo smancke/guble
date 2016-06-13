@@ -167,9 +167,36 @@ func Main() {
 	})
 }
 
+type GubleDelegate struct {
+}
+
+func (*GubleDelegate) NodeMeta(limit int) []byte {
+	return nil
+}
+
+func (*GubleDelegate) NotifyMsg(message []byte) {
+	log.WithField("message", message).Info("NotifyMsg")
+}
+
+func (*GubleDelegate) GetBroadcasts(overhead, limit int) [][]byte {
+	return nil
+}
+
+func (*GubleDelegate) LocalState(join bool) []byte {
+	return nil
+}
+
+func (*GubleDelegate) MergeRemoteState(buf []byte, join bool) {
+
+}
+
+func newGubleDelegate() *GubleDelegate {
+	return &GubleDelegate{}
+}
+
 func startClusterBenchmark(num int, timeoutForAllJoins time.Duration, lowestPort int) {
 	startTime := time.Now()
-	var members []*memberlist.Memberlist
+	var nodes []*memberlist.Memberlist
 	eventC := make(chan memberlist.NodeEvent, num)
 	addr := "127.0.0.1"
 	var firstMemberName string
@@ -183,6 +210,7 @@ func startClusterBenchmark(num int, timeoutForAllJoins time.Duration, lowestPort
 		c.ProbeTimeout = 100 * time.Millisecond
 		c.GossipInterval = 20 * time.Millisecond
 		c.PushPullInterval = 200 * time.Millisecond
+		c.Delegate = newGubleDelegate()
 
 		//TODO Cosmin temporarily disabling any logging from memberlist
 		c.LogOutput = ioutil.Discard
@@ -196,7 +224,7 @@ func startClusterBenchmark(num int, timeoutForAllJoins time.Duration, lowestPort
 		if err != nil {
 			log.WithField("error", err).Fatal("Unexpected error when creating the memberlist")
 		}
-		members = append(members, newMemberList)
+		nodes = append(nodes, newMemberList)
 		defer newMemberList.Shutdown()
 
 		if i >= 0 {
@@ -216,7 +244,7 @@ WAIT:
 			lwf := log.WithFields(log.Fields{
 				"node":         *e.Node,
 				"eventCounter": joinCounter,
-				"numMembers":   members[0].NumMembers(),
+				"numMembers":   nodes[0].NumMembers(),
 			})
 			if e.Event == memberlist.NodeJoin {
 				lwf.Info("Node join")
@@ -242,13 +270,13 @@ WAIT:
 
 	for {
 		convergence := true
-		for idx, m := range members {
-			actualNum := m.NumMembers()
-			if actualNum != num {
+		for idx, node := range nodes {
+			actualNumSeenByNode := node.NumMembers()
+			if actualNumSeenByNode != num {
 				log.WithFields(log.Fields{
 					"index":    idx,
 					"expected": num,
-					"actual":   actualNum,
+					"actual":   actualNumSeenByNode,
 				}).Error("Wrong number of nodes")
 				convergence = false
 				break
@@ -261,6 +289,15 @@ WAIT:
 	endTime := time.Now()
 	if joinCounter == num {
 		log.WithField("durationSeconds", endTime.Sub(startTime).Seconds()).Info("Correct number of nodes")
+	}
+
+	for senderId, node := range nodes {
+		for receiverId, member := range node.Members() {
+			message := fmt.Sprintf("Hello from %v to %v !", senderId, receiverId)
+			log.Info(message)
+			messageBytes := []byte(message)
+			node.SendToTCP(member, messageBytes)
+		}
 	}
 }
 
