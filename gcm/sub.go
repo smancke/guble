@@ -8,6 +8,7 @@ import (
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -158,7 +159,7 @@ func (s *sub) fetch() error {
 	for {
 		select {
 		case results := <-req.StartC:
-			s.logger.WithField("numberResults", results).Debug("Receiving count")
+			s.logger.WithField("count", results).Debug("Receiving count")
 		case msgAndID, open := <-req.MessageC:
 			if !open {
 				s.logger.Debug("Fetch channel closed.")
@@ -168,7 +169,12 @@ func (s *sub) fetch() error {
 			if err != nil {
 				return err
 			}
+
 			if message, ok := message.(*protocol.Message); ok {
+				s.logger.WithFields(log.Fields{
+					"ID":       msgAndID.ID,
+					"parsedID": message.ID,
+				}).Debug("Fetched message")
 				s.pipe(message)
 			} else {
 				s.logger.WithField("messageID", msgAndID.ID).Warn("Message is not a *protocol.Message.")
@@ -188,10 +194,10 @@ func (s *sub) createFetchRequest() store.FetchRequest {
 		Partition: s.route.Path.Partition(),
 		StartID:   s.lastID,
 		Direction: 1,
-		// Count:     0,
-		MessageC: make(chan store.MessageAndID, 5),
-		ErrorC:   make(chan error),
-		StartC:   make(chan int),
+		Count:     math.MaxInt32,
+		MessageC:  make(chan store.MessageAndID, 5),
+		ErrorC:    make(chan error),
+		StartC:    make(chan int),
 	}
 }
 
@@ -260,7 +266,8 @@ func (s *sub) handleGCMResponse(response *gcm.Response) error {
 		return err
 	}
 
-	s.logger.Debug("Delivered message to GCM")
+	s.logger.WithField("count", response.Success).Debug("Delivered messages to GCM")
+
 	if response.CanonicalIDs != 0 {
 		// we only send to one receiver,
 		// so we know that we can replace the old id with the first registration id (=canonical id)

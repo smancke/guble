@@ -338,6 +338,20 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 }
 
 func testGCMResponse(t *testing.T, jsonResponse string) (*Connector, *MockRouter, chan bool) {
+	gcm, routerMock := testSimpleGCM(t)
+
+	err := gcm.Start()
+	assert.NoError(t, err)
+
+	done := make(chan bool)
+	// return err
+	mockSender := testutil.CreateGcmSender(
+		testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, jsonResponse, done))
+	gcm.Sender = mockSender
+	return gcm, routerMock, done
+}
+
+func testSimpleGCM(t *testing.T) (*Connector, *MockRouter) {
 	routerMock := NewMockRouter(testutil.MockCtrl)
 	kvStore := store.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
@@ -352,14 +366,5 @@ func testGCMResponse(t *testing.T, jsonResponse string) (*Connector, *MockRouter
 	gcm, err := New(routerMock, "/gcm/", "testApi", 1)
 	assert.NoError(t, err)
 
-	done := make(chan bool)
-	// return err
-	mockSender := testutil.CreateGcmSender(
-		testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, jsonResponse, done))
-	gcm.Sender = mockSender
-
-	err = gcm.Start()
-	assert.NoError(t, err)
-
-	return gcm, routerMock, done
+	return gcm, routerMock
 }
