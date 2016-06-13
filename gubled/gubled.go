@@ -15,6 +15,7 @@ import (
 	"github.com/smancke/guble/store"
 
 	"expvar"
+	"fmt"
 	"net/url"
 	"os"
 	"os/signal"

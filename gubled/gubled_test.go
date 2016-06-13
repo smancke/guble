@@ -132,7 +132,9 @@ func TestValidateUrl(t *testing.T) {
 
 	originalArgs := os.Args
 
-	defer func() { os.Args = originalArgs }()
+	defer func() {
+		os.Args = originalArgs
+	}()
 
 	// given: a command line
 	os.Args = []string{os.Args[0],
