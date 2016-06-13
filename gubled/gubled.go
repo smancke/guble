@@ -27,19 +27,19 @@ const (
 )
 
 type Args struct {
-	Listen      string `arg:"-l,help: [Host:]Port the address to listen on (:8080)" env:"GUBLE_LISTEN"`
-	LogInfo     bool   `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
-	LogDebug    bool   `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
-	StoragePath string `arg:"--storage-path,help: The path for storing messages and key value data if 'file' is enabled (/var/lib/guble)" env:"GUBLE_STORAGE_PATH"`
-	KVBackend   string `arg:"--kv-backend,help: The storage backend for the key value store to use: file|memory (file)" env:"GUBLE_KV_BACKEND"`
-	MSBackend   string `arg:"--ms-backend,help: The message storage backend : file|memory (file)" env:"GUBLE_MS_BACKEND"`
-	GcmEnable   bool   `arg:"--gcm-enable: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
-	GcmApiKey   string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
-	GcmWorkers  int    `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
-	Health      string `arg:"--health: The health endpoint (default: /_health; value for disabling it: \"\" )" env:"GUBLE_HEALTH_ENDPOINT"`
-	Metrics     string `arg:"--metrics: The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )" env:"GUBLE_METRICS_ENDPOINT"`
-	NodeId      string `arg:"--node-id: The metrics endpoint (node id for guble node in cluster mode)" env:"GUBLE_NODE_ID"`
-	NodeUrls[]  string `arg:"positional,help: The list of urls for other guble nodes"`
+	Listen      string   `arg:"-l,help: [Host:]Port the address to listen on (:8080)" env:"GUBLE_LISTEN"`
+	LogInfo     bool     `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
+	LogDebug    bool     `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
+	StoragePath string   `arg:"--storage-path,help: The path for storing messages and key value data if 'file' is enabled (/var/lib/guble)" env:"GUBLE_STORAGE_PATH"`
+	KVBackend   string   `arg:"--kv-backend,help: The storage backend for the key value store to use: file|memory (file)" env:"GUBLE_KV_BACKEND"`
+	MSBackend   string   `arg:"--ms-backend,help: The message storage backend : file|memory (file)" env:"GUBLE_MS_BACKEND"`
+	GcmEnable   bool     `arg:"--gcm-enable: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
+	GcmApiKey   string   `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
+	GcmWorkers  int      `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
+	Health      string   `arg:"--health: The health endpoint (default: /_health; value for disabling it: \"\" )" env:"GUBLE_HEALTH_ENDPOINT"`
+	Metrics     string   `arg:"--metrics: The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )" env:"GUBLE_METRICS_ENDPOINT"`
+	NodeId      string   `arg:"--node-id: The metrics endpoint (node id for guble node in cluster mode)" env:"GUBLE_NODE_ID"`
+	NodeUrls    []string `arg:"positional, help: The list of urls for other guble nodes"`
 }
 
 var ValidateStoragePath = func(args Args) error {
@@ -153,7 +153,11 @@ func StartService(args Args) *server.Service {
 	router := server.NewRouter(accessManager, messageStore, kvStore)
 	webserver := webserver.New(args.Listen)
 
-	service := server.NewService(router, webserver).HealthEndpointPrefix(args.Health).MetricsEndpointPrefix(args.Metrics)
+	service := server.NewService(router, webserver).
+		HealthEndpointPrefix(args.Health).
+		MetricsEndpointPrefix(args.Metrics).
+		GubleNodeID(args.NodeId).
+		GubleNodesURLs(args.NodeUrls)
 
 	service.RegisterModules(CreateModules(router, args)...)
 
