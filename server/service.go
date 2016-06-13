@@ -84,12 +84,16 @@ func (s *Service) MetricsEndpointPrefix(value string) *Service {
 }
 
 func (s *Service) GubleNodeID(value string) *Service {
+	logger.WithField("NodeID", value).Info("Setting node-id")
 	s.gubleNodeID = value
 	return s
 }
 
 func (s *Service) GubleNodesURLs(values []string) *Service {
-	s.gubleNodesURLs = values
+	if s.gubleNodeID != "" {
+		logger.WithField("peers", values).Info("Setting peer nodes")
+		s.gubleNodesURLs = values
+	}
 	return s
 }
 

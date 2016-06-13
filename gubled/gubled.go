@@ -15,6 +15,7 @@ import (
 	"github.com/smancke/guble/store"
 
 	"expvar"
+	"net/url"
 	"os"
 	"os/signal"
 	"path"
@@ -44,7 +45,7 @@ type Args struct {
 	Health      string   `arg:"--health: The health endpoint (default: /_health; value for disabling it: \"\" )" env:"GUBLE_HEALTH_ENDPOINT"`
 	Metrics     string   `arg:"--metrics: The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )" env:"GUBLE_METRICS_ENDPOINT"`
 	NodeId      string   `arg:"--node-id: The metrics endpoint (node id for guble node in cluster mode)" env:"GUBLE_NODE_ID"`
-	NodeUrls    []string `arg:"positional,help: The list of urls for other guble nodes"`
+	NodeUrls    []string `arg:"positional,help: The list of urls in absolute form for other guble nodes in cluster mode"`
 }
 
 var ValidateStoragePath = func(args Args) error {
@@ -162,6 +163,18 @@ func Main() {
 	})
 }
 
+func validateURLs(values []string) []string {
+	correctURLs := make([]string, 0)
+	for _, posibleUrl := range values {
+
+		u, err := url.Parse(posibleUrl)
+		if err == nil && u.IsAbs() {
+			correctURLs = append(correctURLs, posibleUrl)
+		}
+	}
+	return correctURLs
+}
+
 func StartService(args Args) *server.Service {
 	accessManager := auth.NewAllowAllAccessManager(true)
 	messageStore := CreateMessageStore(args)
@@ -174,7 +187,7 @@ func StartService(args Args) *server.Service {
 		HealthEndpointPrefix(args.Health).
 		MetricsEndpointPrefix(args.Metrics).
 		GubleNodeID(args.NodeId).
-		GubleNodesURLs(args.NodeUrls)
+		GubleNodesURLs(validateURLs(args.NodeUrls))
 
 	service.RegisterModules(CreateModules(router, args)...)
 
