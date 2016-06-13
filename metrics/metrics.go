@@ -10,8 +10,11 @@ import (
 	"os"
 )
 
+// Enabled is a global flag for enabling/disabling the collection of metrics.
+// Metrics are enabled if a specific environment variable is defined with any value.
 var Enabled = len(os.Getenv("GUBLE_METRICS")) > 0
 
+// IntVar is an interface for the operations defined on expvar.Int
 type IntVar interface {
 	Add(int64)
 	Set(int64)
@@ -24,6 +27,7 @@ func (v *emptyInt) Add(delta int64) {}
 
 func (v *emptyInt) Set(value int64) {}
 
+// NewInt returns an expvar.Int or a dummy emptyInt, depending on the Enabled flag
 func NewInt(name string) IntVar {
 	if Enabled {
 		return expvar.NewInt(name)
@@ -31,6 +35,7 @@ func NewInt(name string) IntVar {
 	return &emptyInt{}
 }
 
+// HttpHandler is a HTTP handler writing the current metrics to the http.ResponseWriter
 func HttpHandler(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
 	writeMetrics(rw)
@@ -49,6 +54,7 @@ func writeMetrics(w io.Writer) {
 	fmt.Fprintf(w, "\n}\n")
 }
 
+// LogOnDebugLevel logs all the current metrics, if logging is on Debug level.
 func LogOnDebugLevel() {
 	if !Enabled {
 		log.Debug("metrics: not enabled")
