@@ -5,10 +5,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	//"bytes"
 	"bytes"
 	"expvar"
-	"github.com/smancke/guble/protocol"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -36,7 +34,7 @@ func TestHttpHandler_MetricsNotEnabled(t *testing.T) {
 	b, err := ioutil.ReadAll(w.Body)
 	a.NoError(err)
 	a.True(len(b) > 0)
-	protocol.Debug("%s", b)
+	log.Debugf("%s", b)
 }
 
 func TestLogOnDebugLevel_DebugAndEnabled(t *testing.T) {

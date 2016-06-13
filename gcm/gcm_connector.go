@@ -6,6 +6,8 @@ import (
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 
+	log "github.com/Sirupsen/logrus"
+
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -86,10 +88,15 @@ func (conn *GCMConnector) Start() error {
 
 // Stop signals the closing of GCMConnector
 func (conn *GCMConnector) Stop() error {
-	protocol.Debug("gcm: stopping")
+	log.WithFields(log.Fields{
+		"module": "GCM",
+	}).Debug("Stopping connector")
+
 	close(conn.stopC)
 	conn.wg.Wait()
-	protocol.Debug("gcm: stopped")
+	log.WithFields(log.Fields{
+		"module": "GCM",
+	}).Debug("Stopped connector")
 	return nil
 }
 
@@ -100,7 +107,12 @@ func (conn *GCMConnector) Check() error {
 	payload := conn.parseMessageToMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
 	_, err := conn.Sender.Send(gcm.NewMessage(payload, ""), sendRetries)
 	if err != nil {
-		protocol.Err("gcm: error sending ping message %v", err.Error())
+
+		log.WithFields(log.Fields{
+			"module": "GCM",
+			"err":    err,
+		}).Error("Error sending ping message")
+
 		return err
 	}
 	return nil
@@ -110,7 +122,12 @@ func (conn *GCMConnector) Check() error {
 // until the stop-channel is closed
 func (conn *GCMConnector) loopSendOrBroadcastMessage(id int) {
 	defer conn.wg.Done()
-	protocol.Debug("gcm: starting worker %v", id)
+
+	log.WithFields(log.Fields{
+		"module": "GCM",
+		"id":     id,
+	}).Debug("Starting worker with ")
+
 	for {
 		select {
 		case msg, opened := <-conn.routerC:
@@ -122,7 +139,11 @@ func (conn *GCMConnector) loopSendOrBroadcastMessage(id int) {
 				}
 			}
 		case <-conn.stopC:
-			protocol.Debug("gcm: stopping worker %v", id)
+
+			log.WithFields(log.Fields{
+				"module": "GCM",
+				"id":     id,
+			}).Debug("Stopping worker with")
 			return
 		}
 	}
@@ -134,11 +155,21 @@ func (conn *GCMConnector) sendMessage(msg *server.MessageForRoute) {
 	payload := conn.parseMessageToMap(msg.Message)
 
 	var messageToGcm = gcm.NewMessage(payload, gcmID)
-	protocol.Debug("gcm: sending message to: %v ; channel length: ", gcmID, len(conn.routerC))
+
+	log.WithFields(log.Fields{
+		"module":         "GCM",
+		"gcmID":          gcmID,
+		"channel_length": len(conn.routerC),
+	}).Debug("Sending message to ")
 
 	result, err := conn.Sender.Send(messageToGcm, sendRetries)
 	if err != nil {
-		protocol.Err("gcm: error sending message to GCM gcmID=%v: %v", gcmID, err.Error())
+		log.WithFields(log.Fields{
+			"module": "GCM",
+			"gcmID":  gcmID,
+			"err":    err,
+		}).Error("Error sending message to")
+
 		return
 	}
 
@@ -146,7 +177,11 @@ func (conn *GCMConnector) sendMessage(msg *server.MessageForRoute) {
 	if errorJSON != "" {
 		conn.handleJSONError(errorJSON, gcmID, msg.Route)
 	} else {
-		protocol.Debug("gcm: delivered message to GCM gcmID=%v: %v", gcmID, errorJSON)
+		log.WithFields(log.Fields{
+			"module":    "GCM",
+			"gcmID":     gcmID,
+			"errorJSON": errorJSON,
+		}).Debug("Delivered message to ")
 	}
 
 	// we only send to one receiver,
@@ -159,7 +194,11 @@ func (conn *GCMConnector) sendMessage(msg *server.MessageForRoute) {
 func (conn *GCMConnector) broadcastMessage(msg *server.MessageForRoute) {
 	topic := msg.Message.Path
 	payload := conn.parseMessageToMap(msg.Message)
-	protocol.Debug("gcm: broadcasting message with topic: %v ; channel length: %v", string(topic), len(conn.routerC))
+	log.WithFields(log.Fields{
+		"module":         "GCM",
+		"topic":          string(topic),
+		"channel_length": len(conn.routerC),
+	}).Debug("Broadcasting message with ")
 
 	subscriptions := conn.kvStore.Iterate(registrationsSchema, "")
 	count := 0
@@ -167,7 +206,10 @@ func (conn *GCMConnector) broadcastMessage(msg *server.MessageForRoute) {
 		select {
 		case entry, ok := <-subscriptions:
 			if !ok {
-				protocol.Info("gcm: sent message to %v receivers", count)
+				log.WithFields(log.Fields{
+					"module":          "GCM",
+					"receivers_count": count,
+				}).Info("Sent to message to ")
 				return
 			}
 			gcmID := entry[0]
@@ -176,9 +218,17 @@ func (conn *GCMConnector) broadcastMessage(msg *server.MessageForRoute) {
 			go func() {
 				//TODO error handling of response!
 				_, err := conn.Sender.Send(broadcastMessage, broadcastRetries)
-				protocol.Debug("gcm: sent broadcast message to gcmID=%v", gcmID)
+				log.WithFields(log.Fields{
+					"module": "GCM",
+					"gcmID":  gcmID,
+				}).Debug("Sent broadcast message to")
 				if err != nil {
-					protocol.Err("gcm: error sending broadcast message to gcmID=%v: %v", gcmID, err.Error())
+
+					log.WithFields(log.Fields{
+						"module": "GCM",
+						"gmcId":  gcmID,
+						"err":    err,
+					}).Error("Error sending broadcast message to")
 				}
 			}()
 			count++
@@ -193,7 +243,10 @@ func (conn *GCMConnector) parseMessageToMap(msg *protocol.Message) map[string]in
 	} else {
 		payload["message"] = msg.BodyAsString()
 	}
-	protocol.Debug("gcm: parsed message is: %v", payload)
+	log.WithFields(log.Fields{
+		"module":  "GCM",
+		"payload": payload,
+	}).Debug("Parsed message is:")
 	return payload
 }
 
@@ -202,7 +255,12 @@ func (conn *GCMConnector) replaceSubscriptionWithCanonicalID(route *server.Route
 	topic := string(route.Path)
 	userID := route.UserID
 
-	protocol.Info("gcm: replacing old gcmID %v with canonicalId %v", oldGcmID, newGcmID)
+	log.WithFields(log.Fields{
+		"module":      "GCM",
+		"oldGcmId":    oldGcmID,
+		"with":        "",
+		"canonicalID": newGcmID,
+	}).Info("Replacing ")
 
 	conn.removeSubscription(route, oldGcmID)
 	conn.subscribe(topic, userID, newGcmID)
@@ -210,12 +268,27 @@ func (conn *GCMConnector) replaceSubscriptionWithCanonicalID(route *server.Route
 
 func (conn *GCMConnector) handleJSONError(jsonError string, gcmID string, route *server.Route) {
 	if jsonError == "NotRegistered" {
-		protocol.Debug("gcm: removing not registered GCM registration gcmID=%v", gcmID)
+
+		log.WithFields(log.Fields{
+			"module": "GCM",
+			"gmcId":  gcmID,
+		}).Debug("Removing not registered GCM registration for ")
+
 		conn.removeSubscription(route, gcmID)
 	} else if jsonError == "InvalidRegistration" {
-		protocol.Err("gcm: the gcmID=%v is not registered. %v", gcmID, jsonError)
+
+		log.WithFields(log.Fields{
+			"module": "GCM",
+			"gmcId":  gcmID,
+			"err":    "InvalidRegistration",
+		}).Error("Not registered:")
+
 	} else {
-		protocol.Err("gcm: unexpected error while sending to GCM gcmID=%v: %v", gcmID, jsonError)
+		log.WithFields(log.Fields{
+			"module": "GCM",
+			"gmcId":  gcmID,
+			"err":    jsonError,
+		}).Error("unexpected error while sending to GCM ")
 	}
 }
 
@@ -226,13 +299,25 @@ func (conn *GCMConnector) GetPrefix() string {
 
 func (conn *GCMConnector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		protocol.Err("gcm: Only HTTP POST METHOD SUPPORTED but received type=[%s]", r.Method)
+
+		log.WithFields(log.Fields{
+			"module": "GCM",
+			"method": r.Method,
+		}).Error("Only HTTP POST METHOD SUPPORTED but received type ")
+
 		http.Error(w, "Permission Denied", http.StatusMethodNotAllowed)
 		return
 	}
 
 	userID, gcmID, topic, err := conn.parseParams(r.URL.Path)
 	if err != nil {
+
+		log.WithFields(log.Fields{
+			"module": "GCM",
+			"method": r.Method,
+			"err":    http.StatusBadRequest,
+		}).Error("Invalid Parameters in request")
+
 		http.Error(w, "Invalid Parameters in request", http.StatusBadRequest)
 		return
 	}
@@ -269,7 +354,13 @@ func (conn *GCMConnector) parseParams(path string) (userID, gcmID, topic string,
 }
 
 func (conn *GCMConnector) subscribe(topic string, userID string, gcmID string) {
-	protocol.Info("gcm: GCM connector registration to userID=%q, gcmID=%q: %q", userID, gcmID, topic)
+
+	log.WithFields(log.Fields{
+		"module": "GCM",
+		"userID": userID,
+		"gcmId":  gcmID,
+		"topic":  string(topic),
+	}).Info("GCM connector registration to")
 
 	route := server.NewRoute(topic, gcmID, userID, conn.routerC)
 
@@ -293,7 +384,10 @@ func (conn *GCMConnector) loadSubscriptions() {
 		select {
 		case entry, ok := <-subscriptions:
 			if !ok {
-				protocol.Info("gcm: renewed %v GCM subscriptions", count)
+				log.WithFields(log.Fields{
+					"module":                 "GCM",
+					"gcm_subscription_count": count,
+				}).Info("Renewed ")
 				return
 			}
 			gcmID := entry[0]
@@ -301,7 +395,13 @@ func (conn *GCMConnector) loadSubscriptions() {
 			userID := splitValue[0]
 			topic := splitValue[1]
 
-			protocol.Debug("gcm: renewing GCM subscription: userID=%v, topic=%v, gcmID=%v", userID, topic, gcmID)
+			log.WithFields(log.Fields{
+				"module": "GCM",
+				"userID": userID,
+				"gcmId":  gcmID,
+				"topic":  string(topic),
+			}).Debug("renewing GCM subscription")
+
 			route := server.NewRoute(topic, gcmID, userID, conn.routerC)
 			conn.router.Subscribe(route)
 			count++

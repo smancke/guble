@@ -1,14 +1,18 @@
 package store
 
 import (
-	"github.com/smancke/guble/protocol"
-
 	"errors"
+	log "github.com/Sirupsen/logrus"
 	"os"
 	"path"
 	"sync"
 	"syscall"
 )
+
+var messageStoreLogger = log.WithFields(log.Fields{
+	"app":    "guble",
+	"module": "messageStore",
+	"env":    "TBD"})
 
 // FileMessageStore is an implementation of the MessageStore interface based on files
 type FileMessageStore struct {
@@ -35,13 +39,17 @@ func (fms *FileMessageStore) MaxMessageId(partition string) (uint64, error) {
 func (fms *FileMessageStore) Stop() error {
 	fms.mutex.Lock()
 	defer fms.mutex.Unlock()
-	protocol.Debug("FileMessageStore: Stop")
+	messageStoreLogger.Debug("Stop")
 
 	var returnError error
 	for key, partition := range fms.partitions {
 		if err := partition.Close(); err != nil {
 			returnError = err
-			protocol.Err("FileMessageStore: Stop: error on closing message store partition %q: %v", key, err)
+
+			messageStoreLogger.WithFields(log.Fields{
+				"key": key,
+				"err": err,
+			}).Error("Error on closing message store partition for")
 		}
 		delete(fms.partitions, key)
 	}
@@ -115,7 +123,10 @@ func (fms *FileMessageStore) Check() error {
 	var stat syscall.Statfs_t
 	wd, err := os.Getwd()
 	if err != nil {
-		protocol.Err("FileMessageStore: Check() could not get current working directory", err)
+		messageStoreLogger.WithFields(log.Fields{
+			"err": err,
+		}).Error("FileMessageStore Check() failed")
+
 		return err
 	}
 	syscall.Statfs(wd, &stat)
@@ -128,7 +139,10 @@ func (fms *FileMessageStore) Check() error {
 	usedSpacePercentage := 1 - (float64(freeSpace) / float64(totalSpace))
 
 	if usedSpacePercentage > 0.95 {
-		protocol.Err("Disk space is used more than 95 percent: %.2f", usedSpacePercentage)
+		messageStoreLogger.WithFields(log.Fields{
+			"usedDiskSpacePercentage": usedSpacePercentage,
+		}).Warn("Disk space is used more than 95 percent")
+
 		return errors.New("Disk is almost full.")
 	}
 

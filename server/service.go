@@ -1,12 +1,12 @@
 package server
 
 import (
+	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/webserver"
 
 	"github.com/docker/distribution/health"
-
-	"fmt"
 	"github.com/smancke/guble/metrics"
 	"net/http"
 	"reflect"
@@ -17,6 +17,11 @@ const (
 	defaultHealthFrequency = time.Second * 60
 	defaultHealthThreshold = 1
 )
+
+var loggerService = log.WithFields(log.Fields{
+	"app":    "guble",
+	"module": "service",
+	"env":    "TBD"})
 
 // Startable interface for modules which provide a start mechanism
 type Startable interface {
@@ -60,7 +65,11 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 }
 
 func (s *Service) RegisterModules(modules ...interface{}) {
-	protocol.Debug("service: RegisterModules: adding %d modules after existing %d modules", len(modules), len(s.modules))
+	loggerService.WithFields(log.Fields{
+		"numberOfNewModules":       len(s.modules),
+		"numberOfExsistingModules": len(modules),
+	}).Debug(" RegisterModules: adding")
+
 	s.modules = append(s.modules, modules...)
 }
 
@@ -92,35 +101,47 @@ func (s *Service) Start() error {
 	el := protocol.NewErrorList("service: errors occured while starting: ")
 
 	if s.healthEndpoint != "" {
-		protocol.Info("service: health endpoint: %v", s.healthEndpoint)
+		logger.WithField("healthEndpoint",s.healthEndpoint).Info("Health endpoint")
 		s.webserver.Handle(s.healthEndpoint, http.HandlerFunc(health.StatusHandler))
 	} else {
-		protocol.Debug("service: health endpoint disabled")
+		logger.Debug("Health endpoint disabled")
 	}
 
 	if s.metricsEndpoint != "" {
-		protocol.Info("service: metrics endpoint: %v", s.metricsEndpoint)
+		logger.WithField("metricsEndpoint",s.metricsEndpoint).Info("Metrics Endpoint")
 		s.webserver.Handle(s.metricsEndpoint, http.HandlerFunc(metrics.HttpHandler))
 	} else {
-		protocol.Debug("service: metrics endpoint disabled")
+		logger.Debug("Metrics endpoint disabled")
 	}
 
 	for _, module := range s.modules {
 		name := reflect.TypeOf(module).String()
 		if startable, ok := module.(Startable); ok {
-			protocol.Info("service: starting module %v", name)
+			loggerService.WithFields(log.Fields{
+				"name": name,
+			}).Info("Starting module")
+
 			if err := startable.Start(); err != nil {
-				protocol.Err("service: error while starting module %v", name)
+
+				loggerService.WithFields(log.Fields{
+					"name": name,
+					"err":  err,
+				}).Error("Error while starting module")
+
 				el.Add(err)
 			}
 		}
 		if checker, ok := module.(health.Checker); ok && s.healthEndpoint != "" {
-			protocol.Info("service: registering module %v as HealthChecker", name)
+
+			logger.WithField("name",name).Info("Registering module as HealthChecker")
 			health.RegisterPeriodicThresholdFunc(name, s.healthFrequency, s.healthThreshold, health.CheckFunc(checker.Check))
 		}
 		if endpoint, ok := module.(Endpoint); ok {
 			prefix := endpoint.GetPrefix()
-			protocol.Info("service: registering module %v as Endpoint to %v", name, prefix)
+			loggerService.WithFields(log.Fields{
+				"name":   name,
+				"prefix": prefix,
+			}).Info("Resgistering Endpoint  module with name")
 			s.webserver.Handle(prefix, endpoint)
 		}
 	}
@@ -141,15 +162,20 @@ func (s *Service) Stop() error {
 	for i := 1; i < len(stopables); i++ {
 		stopOrder[i] = len(stopables) - i
 	}
-
-	protocol.Debug("service: stopping %d modules in this order relative to registration: %v", len(stopOrder), stopOrder)
+	loggerService.WithFields(log.Fields{
+		"numberOfNewModules":       len(stopOrder),
+		"numberOfExsistingModules": stopOrder,
+	}).Debug("Stopping modules in this order relative to registration")
 
 	errors := protocol.NewErrorList("stopping errors: ")
 	for _, order := range stopOrder {
 		module := stopables[order]
 		name := reflect.TypeOf(module).String()
 
-		protocol.Info("service: stopping [%d] %v", order, name)
+		loggerService.WithFields(log.Fields{
+			"name":  name,
+			"order": order,
+		}).Info("Stopping module with name")
 		if err := module.Stop(); err != nil {
 			errors.Add(err)
 		}

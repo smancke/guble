@@ -1,13 +1,12 @@
 package store
 
 import (
-	"github.com/smancke/guble/protocol"
-
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
 
 	"errors"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"path"
@@ -21,6 +20,11 @@ const (
 	maxIdleConns = 2
 	maxOpenConns = 5
 )
+
+var logger = log.WithFields(log.Fields{
+	"app":    "guble",
+	"module": "kv-sqlite",
+	"env":    "TBD"})
 
 type kvEntry struct {
 	Schema    string    `gorm:"primary_key"sql:"type:varchar(200)"`
@@ -79,7 +83,10 @@ func (kvStore *SqliteKVStore) Iterate(schema string, keyPrefix string) (entries 
 			Rows()
 
 		if err != nil {
-			protocol.Err("kv-sqlite: error fetching keys from db %v", err)
+			logger.WithFields(log.Fields{
+				"err": err,
+			}).Error("Error fetching keys from db")
+
 		} else {
 			defer rows.Close()
 			for rows.Next() {
@@ -102,7 +109,9 @@ func (kvStore *SqliteKVStore) IterateKeys(schema string, keyPrefix string) chan 
 			Rows()
 
 		if err != nil {
-			protocol.Err("kv-sqlite: error fetching keys from db %v", err)
+			logger.WithFields(log.Fields{
+				"err": err,
+			}).Error("Error fetching keys from db")
 		} else {
 			defer rows.Close()
 			for rows.Next() {
@@ -125,21 +134,40 @@ func (kvStore *SqliteKVStore) Delete(schema, key string) error {
 func (kvStore *SqliteKVStore) Open() error {
 	directoryPath := filepath.Dir(kvStore.filename)
 	if err := ensureWriteableDirectory(directoryPath); err != nil {
-		protocol.Err("kv-sqlite: error db directory not writeable %q: %q", kvStore.filename, err)
+
+		logger.WithFields(log.Fields{
+			"dbFilename": kvStore.filename,
+			"err":        err,
+		}).Error("Error directory not writeable")
 		return err
 	}
 
-	protocol.Info("opening sqldb %v", kvStore.filename)
+	logger.WithFields(log.Fields{
+		"dbFilename": kvStore.filename,
+	}).Info("Opening sqldb")
+
 	gormdb, err := gorm.Open("sqlite3", kvStore.filename)
 	if err != nil {
-		protocol.Err("error opening sqlite3 db %q: %q", kvStore.filename, err)
+		log.WithFields(log.Fields{
+			"module":     "kv-sqlite",
+			"dbFilename": kvStore.filename,
+			"err":        err,
+		}).Error("Error opening sqlite3 db")
 		return err
 	}
 
 	if err := gormdb.DB().Ping(); err != nil {
-		protocol.Err("kv-sqlite: error pinging database %q: %q", kvStore.filename, err.Error())
+		log.WithFields(log.Fields{
+			"module":      "kv-sqlite",
+			"db_filename": kvStore.filename,
+			"err":         err,
+		}).Error("Error  pinging database")
+
 	} else {
-		protocol.Debug("kv-sqlite: can ping database %q", kvStore.filename)
+		log.WithFields(log.Fields{
+			"module":      "kv-sqlite",
+			"db_filename": kvStore.filename,
+		}).Debug("Ping reply from database")
 	}
 
 	//gormdb.LogMode(true)
@@ -148,15 +176,25 @@ func (kvStore *SqliteKVStore) Open() error {
 	gormdb.DB().SetMaxOpenConns(maxOpenConns)
 
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
-		protocol.Err("kv-sqlite: error in schema migration: %q", err)
+		log.WithFields(log.Fields{
+			"module": "kv-sqlite",
+			"err":    err,
+		}).Error("Error  in schema migration:")
+
 		return err
 	}
-	protocol.Debug("kv-sqlite: ensured db schema")
+
+	log.WithFields(log.Fields{
+		"module": "kv-sqlite",
+	}).Debug("Ensured db schema")
 
 	if !kvStore.syncOnWrite {
-		protocol.Info("kv-sqlite: setting db: PRAGMA synchronous = OFF")
+		logger.Info("Setting db: PRAGMA synchronous = OFF")
 		if err := gormdb.Exec("PRAGMA synchronous = OFF").Error; err != nil {
-			protocol.Err("kv-sqlite: error setting PRAGMA synchronous = OFF: %v", err)
+
+			logger.WithFields(log.Fields{
+				"err": err,
+			}).Error("Error setting PRAGMA synchronous = OFF")
 			return err
 		}
 	}
@@ -166,12 +204,19 @@ func (kvStore *SqliteKVStore) Open() error {
 
 func (kvStore *SqliteKVStore) Check() error {
 	if kvStore.db == nil {
-		protocol.Err("Db pointer is not initialized")
+		logger.WithFields(log.Fields{
+			"err": "Db service is null.",
+		}).Error("Error Db pointer is not initialized")
+
 		return errors.New("Db service is null.")
 	}
 
 	if err := kvStore.db.DB().Ping(); err != nil {
-		protocol.Err("error pinging database %q: %q", kvStore.filename, err.Error())
+		logger.WithFields(log.Fields{
+			"db_filename": kvStore.filename,
+			"err":         err,
+		}).Error("Error pinging database")
+
 		return err
 	}
 
