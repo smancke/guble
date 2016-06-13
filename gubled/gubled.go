@@ -169,7 +169,7 @@ func validateURLs(values []string) []string {
 
 		u, err := url.Parse(posibleUrl)
 		if err == nil && u.IsAbs() {
-			correctURLs = append(correctURLs, posibleUrl)
+			correctURLs = append(correctURLs, u.Host)
 		}
 	}
 	return correctURLs
