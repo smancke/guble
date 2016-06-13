@@ -1,10 +1,11 @@
 package gubled
 
 import (
-	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/alexflint/go-arg"
 	"github.com/caarlos0/env"
+	"github.com/hashicorp/memberlist"
+
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/metrics"
 	"github.com/smancke/guble/server"
@@ -15,11 +16,13 @@ import (
 	"github.com/smancke/guble/store"
 
 	"expvar"
+	"fmt"
 	"os"
 	"os/signal"
 	"path"
 	"runtime"
 	"syscall"
+	"time"
 )
 
 var logger = log.WithFields(log.Fields{
@@ -150,6 +153,8 @@ func Main() {
 		logger.Fatal("Fatal error in gubled in validation for storage path")
 	}
 
+	startClusterBenchmark(32, 2*time.Second)
+
 	service := StartService(args)
 
 	waitForTermination(func() {
@@ -158,6 +163,85 @@ func Main() {
 			logger.WithField("err", err).Error("Error when stopping service")
 		}
 	})
+}
+
+func startClusterBenchmark(num int, timeoutForCheck time.Duration) {
+	var members []*memberlist.Memberlist
+
+	eventC := make(chan memberlist.NodeEvent, num)
+
+	addr := "127.0.0.1"
+	var firstMemberName string
+	for i := 0; i < num; i++ {
+		c := memberlist.DefaultLANConfig()
+		c.Name = fmt.Sprintf("%s:%d", addr, 12345+i)
+		c.BindAddr = addr
+		c.BindPort = 12345 + i
+		c.ProbeInterval = 20 * time.Millisecond
+		c.ProbeTimeout = 100 * time.Millisecond
+		c.GossipInterval = 20 * time.Millisecond
+		c.PushPullInterval = 200 * time.Millisecond
+		c.LogOutput = logger.Logger.Out
+		c.Logger = nil
+
+		if i == 0 {
+			c.Events = &memberlist.ChannelEventDelegate{eventC}
+		}
+
+		newMemberList, err := memberlist.Create(c)
+		if err != nil {
+			//TODO Cosmin log properly
+			//t.Fatalf("unexpected err: %s", err)
+		}
+		members = append(members, newMemberList)
+		defer newMemberList.Shutdown()
+
+		if i == 0 {
+			firstMemberName = c.Name
+		} else {
+			num, err := newMemberList.Join([]string{firstMemberName})
+			if num == 0 || err != nil {
+				log.WithField("error", err).Fatal("Unexpected fatal error when joining the cluster")
+			}
+		}
+	}
+
+	// Wait and print debug info
+	breakTimer := time.After(timeoutForCheck)
+WAIT:
+	for {
+		select {
+		case e := <-eventC:
+			lwf := log.WithFields(log.Fields{
+				"node":       *e.Node,
+				"numMembers": members[0].NumMembers(),
+			})
+			if e.Event == memberlist.NodeJoin {
+				lwf.Debug("Node join")
+			} else {
+				lwf.Debug("Node leave")
+			}
+		case <-breakTimer:
+			break WAIT
+		}
+	}
+
+	convergence := true
+	for idx, m := range members {
+		actualNum := m.NumMembers()
+		if actualNum != num {
+			convergence = false
+			log.WithFields(log.Fields{
+				"index":    idx,
+				"expected": num,
+				"actual":   actualNum,
+			}).Error("wrong number of members")
+		}
+	}
+	if convergence {
+		log.Info("correct number of members")
+	}
+
 }
 
 func StartService(args Args) *server.Service {
