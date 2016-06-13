@@ -51,14 +51,14 @@ var ValidateStoragePath = func(args Args) error {
 		f, err := os.Create(testfile)
 		if err != nil {
 			logger.WithFields(log.Fields{
-				"storage_Path": args.StoragePath,
-				"err":          err,
+				"storagePath": args.StoragePath,
+				"err":         err,
 			}).Error("Storage path not present/writeable.")
 
 			if args.StoragePath == "/var/lib/guble" {
 				logger.WithFields(log.Fields{
-					"storage_Path": args.StoragePath,
-					"err":          err,
+					"storagePath": args.StoragePath,
+					"err":         err,
 				}).Error("Use --storage-path=<path> to override the default location, or create the directory with RW rights.")
 			}
 			return err
@@ -90,7 +90,7 @@ var CreateMessageStore = func(args Args) store.MessageStore {
 	case "none", "":
 		return store.NewDummyMessageStore(store.NewMemoryKVStore())
 	case "file":
-		logger.WithField("storage_Path", args.StoragePath).Info("Using FileMessageStore in directory")
+		logger.WithField("storagePath", args.StoragePath).Info("Using FileMessageStore in directory")
 
 		return store.NewFileMessageStore(args.StoragePath)
 	default:
