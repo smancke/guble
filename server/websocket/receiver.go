@@ -7,10 +7,16 @@ import (
 
 	"errors"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"math"
 	"strconv"
 	"strings"
 )
+
+var logger = log.WithFields(log.Fields{
+	"app":    "guble",
+	"module": "websocket",
+	"env":    "TBD"})
 
 var errUnreadMsgsAvailable = errors.New("unread messages available")
 
@@ -99,7 +105,11 @@ func (rec *Receiver) subscriptionLoop() {
 		if rec.doFetch {
 
 			if err := rec.fetch(); err != nil {
-				protocol.Err("error while fetching: %v, %+v", err.Error(), rec)
+
+				logger.WithFields(log.Fields{
+					"rec": rec,
+					"err": err,
+				}).Error("Error while fetching subscription")
 				rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
 				return
 			}
@@ -110,7 +120,12 @@ func (rec *Receiver) subscriptionLoop() {
 					rec.startId = int64(rec.lastSendId + 1)
 					continue // fetch again
 				} else {
-					protocol.Err("error while subscribeIfNoUnreadMessagesAvailable: %v, %+v", err.Error(), rec)
+
+					logger.WithFields(log.Fields{
+						"rec": rec.startId,
+						"err": err,
+					}).Error("Error while subscribeIfNoUnreadMessagesAvailable")
+
 					rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
 					return
 				}
@@ -156,18 +171,26 @@ func (rec *Receiver) receiveFromSubscription() {
 		select {
 		case msgAndRoute, ok := <-rec.route.MessagesChannel():
 			if !ok {
-				protocol.Debug("Router closed the channel returning from subscription", rec.applicationId)
+
+				logger.WithFields(log.Fields{
+					"applicationId": rec.applicationId,
+				}).Debug("Router closed the channel returning from subscription for")
 				return
 			}
 
-			if protocol.DebugEnabled() {
-				protocol.Debug("Deliver message to applicationId=%v: %v", rec.applicationId, msgAndRoute.Message.Metadata())
-			}
+			logger.WithFields(log.Fields{
+				"applicationId":   rec.applicationId,
+				"messageMetadata": msgAndRoute.Message.Metadata(),
+			}).Debug("Deliver message to")
+
 			if msgAndRoute.Message.ID > rec.lastSendId {
 				rec.lastSendId = msgAndRoute.Message.ID
 				rec.sendChannel <- msgAndRoute.Message.Bytes()
 			} else {
-				protocol.Debug("Dropping message %v, because it was already sent to client", msgAndRoute.Message.ID)
+				logger.WithFields(log.Fields{
+					"msgId": msgAndRoute.Message.ID,
+				}).Debug("Message already sent to client Dropping message with id")
+
 			}
 		case <-rec.cancelChannel:
 			rec.shouldStop = true
@@ -182,7 +205,11 @@ func (rec *Receiver) receiveFromSubscription() {
 func (rec *Receiver) fetchOnlyLoop() {
 	err := rec.fetch()
 	if err != nil {
-		protocol.Err("error while fetching: %v, %+v", err.Error(), rec)
+
+		logger.WithFields(log.Fields{
+			"rec": rec,
+			"err": err,
+		}).Error("Error while fetching")
 		rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
 	}
 }
@@ -226,7 +253,12 @@ func (rec *Receiver) fetch() error {
 				rec.sendOK(protocol.SUCCESS_FETCH_END, string(rec.path))
 				return nil
 			}
-			protocol.Debug("replay send %v, %v", msgAndId.Id, string(msgAndId.Message))
+
+			logger.WithFields(log.Fields{
+				"msgId": msgAndId.Id,
+				"msg":   string(msgAndId.Message),
+			}).Debug("Reply sen to")
+
 			rec.lastSendId = msgAndId.Id
 			rec.sendChannel <- msgAndId.Message
 		case err := <-fetch.ErrorCallback:

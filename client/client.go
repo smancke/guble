@@ -1,12 +1,18 @@
 package client
 
 import (
+	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
 	"github.com/smancke/guble/protocol"
 	"net/http"
 	"sync"
 	"time"
 )
+
+var logger = log.WithFields(log.Fields{
+	"app":    "guble-cli",
+	"module": "client",
+	"env":    "TBD"})
 
 type WSConnection interface {
 	WriteMessage(messageType int, data []byte) error
@@ -15,13 +21,15 @@ type WSConnection interface {
 }
 
 func DefaultConnectionFactory(url string, origin string) (WSConnection, error) {
-	protocol.Info("connecting to %v", url)
+	logger.WithField("url", url).Info("Connecting to")
+
 	header := http.Header{"Origin": []string{origin}}
 	conn, _, err := websocket.DefaultDialer.Dial(url, header)
 	if err != nil {
 		return nil, err
 	}
-	protocol.Info("connected to %v", url)
+	logger.WithField("url", url).Info("Connected to")
+
 	return conn, nil
 }
 
@@ -132,11 +140,13 @@ func (c *client) startWithReconnect() {
 		c.ws, err = c.wSConnectionFactory(c.url, c.origin)
 		if err != nil {
 			c.setIsConnected(false)
-			protocol.Err("error on connect, retry in 50ms: %v", err)
+
+			logger.WithField("err", err).Error("Error on connect, retry in 50 ms")
+
 			time.Sleep(time.Millisecond * 50)
 		} else {
 			c.setIsConnected(true)
-			protocol.Err("connected again")
+			logger.WithField("err", "Reconnected").Warn("Reconnected again")
 		}
 	}
 }
@@ -150,11 +160,13 @@ func (c *client) readLoop() error {
 				return nil
 			}
 
-			protocol.Err("read error: %v", err.Error())
+			logger.WithField("err", err).Error("Reading error from ws")
+
 			c.errors <- clientErrorMessage(err.Error())
 			return err
 		}
-		protocol.Debug("raw> %s", msg)
+
+		logger.WithField("msg", msg).Debug("Raw >")
 		c.handleIncomingMessage(msg)
 	}
 }
@@ -175,7 +187,9 @@ func (c *client) shouldStop() bool {
 func (c *client) handleIncomingMessage(msg []byte) {
 	parsed, err := protocol.ParseMessage(msg)
 	if err != nil {
-		protocol.Err("parsing message failed %v", err)
+
+		logger.WithField("err", err).Error("Error on parsing of incomming message")
+
 		c.errors <- clientErrorMessage(err.Error())
 		return
 	}

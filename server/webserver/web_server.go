@@ -1,12 +1,17 @@
 package webserver
 
 import (
-	"github.com/smancke/guble/protocol"
+	log "github.com/Sirupsen/logrus"
 	"net"
 	"net/http"
 	"strings"
 	"time"
 )
+
+var logger = log.WithFields(log.Fields{
+	"app":    "guble",
+	"module": "webserver",
+	"env":    "TBD"})
 
 type WebServer struct {
 	server *http.Server
@@ -23,7 +28,10 @@ func New(addr string) *WebServer {
 }
 
 func (ws *WebServer) Start() (err error) {
-	protocol.Info("webserver: starting up at %v", ws.addr)
+	logger.WithFields(log.Fields{
+		"address": ws.addr,
+	}).Info("Http is starting up on address")
+
 	ws.server = &http.Server{Addr: ws.addr, Handler: ws.mux}
 	ws.ln, err = net.Listen("tcp", ws.addr)
 	if err != nil {
@@ -31,12 +39,19 @@ func (ws *WebServer) Start() (err error) {
 	}
 
 	go func() {
-		err = ws.server.Serve(tcpKeepAliveListener{ws.ln.(*net.TCPListener)})
+		err = ws.server.Serve(tcpKeepAliveListener{TCPListener: ws.ln.(*net.TCPListener)})
 
 		if err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
-			protocol.Err("ListenAndServe %s", err.Error())
+
+			logger.WithFields(log.Fields{
+				"err": err,
+			}).Error("ListenAndServe")
+
 		}
-		protocol.Info("webserver: http server stopped")
+
+		logger.WithFields(log.Fields{
+			"address": ws.addr,
+		}).Info("Http server stopped")
 	}()
 	return
 }
