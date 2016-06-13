@@ -48,7 +48,7 @@ func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		logger.WithFields(log.Fields{
 			"err": err,
-		}).Error("Error on upgrading ")
+		}).Error("Error on upgrading")
 
 		return
 	}

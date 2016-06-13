@@ -300,13 +300,12 @@ func (router *router) storeAndChannelMessage(msg *protocol.Message) error {
 		mTotalMessagesStoredBytes.Add(lenMsg)
 	}
 
-
 	if float32(len(router.handleC))/float32(cap(router.handleC)) > overloadedHandleChannelRatio {
 		logger.WithFields(log.Fields{
 			"currentLength": len(router.handleC),
 			"maxCapacity":   cap(router.handleC),
 		}).Warn("Warning handleC channel almost full")
-	mTotalOverloadedHandleChannel.Add(1)
+		mTotalOverloadedHandleChannel.Add(1)
 	}
 
 	router.handleC <- msg
