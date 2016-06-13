@@ -23,6 +23,8 @@ import (
 	"runtime"
 	"syscall"
 	"time"
+	//logoriginal "log"
+	"io/ioutil"
 )
 
 var logger = log.WithFields(log.Fields{
@@ -153,7 +155,7 @@ func Main() {
 		logger.Fatal("Fatal error in gubled in validation for storage path")
 	}
 
-	startClusterBenchmark(32, 2*time.Second)
+	startClusterBenchmark(40, 30*time.Second, 17000)
 
 	service := StartService(args)
 
@@ -165,83 +167,101 @@ func Main() {
 	})
 }
 
-func startClusterBenchmark(num int, timeoutForCheck time.Duration) {
+func startClusterBenchmark(num int, timeoutForAllJoins time.Duration, lowestPort int) {
+	startTime := time.Now()
 	var members []*memberlist.Memberlist
-
 	eventC := make(chan memberlist.NodeEvent, num)
-
 	addr := "127.0.0.1"
 	var firstMemberName string
 	for i := 0; i < num; i++ {
 		c := memberlist.DefaultLANConfig()
-		c.Name = fmt.Sprintf("%s:%d", addr, 12345+i)
+		port := lowestPort + i
+		c.Name = fmt.Sprintf("%s:%d", addr, port)
 		c.BindAddr = addr
-		c.BindPort = 12345 + i
+		c.BindPort = port
 		c.ProbeInterval = 20 * time.Millisecond
 		c.ProbeTimeout = 100 * time.Millisecond
 		c.GossipInterval = 20 * time.Millisecond
 		c.PushPullInterval = 200 * time.Millisecond
-		c.LogOutput = logger.Logger.Out
-		c.Logger = nil
+
+		//TODO Cosmin temporarily disabling any logging from memberlist
+		c.LogOutput = ioutil.Discard
 
 		if i == 0 {
 			c.Events = &memberlist.ChannelEventDelegate{eventC}
+			firstMemberName = c.Name
 		}
 
 		newMemberList, err := memberlist.Create(c)
 		if err != nil {
-			//TODO Cosmin log properly
-			//t.Fatalf("unexpected err: %s", err)
+			log.WithField("error", err).Fatal("Unexpected error when creating the memberlist")
 		}
 		members = append(members, newMemberList)
 		defer newMemberList.Shutdown()
 
-		if i == 0 {
-			firstMemberName = c.Name
-		} else {
+		if i >= 0 {
 			num, err := newMemberList.Join([]string{firstMemberName})
 			if num == 0 || err != nil {
-				log.WithField("error", err).Fatal("Unexpected fatal error when joining the cluster")
+				log.WithField("error", err).Fatal("Unexpected fatal error when node wanted to join the cluster")
 			}
 		}
 	}
 
-	// Wait and print debug info
-	breakTimer := time.After(timeoutForCheck)
+	breakTimer := time.After(timeoutForAllJoins)
+	joinCounter := 0
 WAIT:
 	for {
 		select {
 		case e := <-eventC:
 			lwf := log.WithFields(log.Fields{
-				"node":       *e.Node,
-				"numMembers": members[0].NumMembers(),
+				"node":         *e.Node,
+				"eventCounter": joinCounter,
+				"numMembers":   members[0].NumMembers(),
 			})
 			if e.Event == memberlist.NodeJoin {
-				lwf.Debug("Node join")
+				lwf.Info("Node join")
+				joinCounter++
+				if joinCounter == num {
+					lwf.Info("All nodes joined")
+					break WAIT
+				}
 			} else {
-				lwf.Debug("Node leave")
+				lwf.Info("Node leave")
 			}
 		case <-breakTimer:
 			break WAIT
 		}
 	}
 
-	convergence := true
-	for idx, m := range members {
-		actualNum := m.NumMembers()
-		if actualNum != num {
-			convergence = false
-			log.WithFields(log.Fields{
-				"index":    idx,
-				"expected": num,
-				"actual":   actualNum,
-			}).Error("wrong number of members")
-		}
-	}
-	if convergence {
-		log.Info("correct number of members")
+	if joinCounter == num {
+		log.WithFields(log.Fields{
+			"joinCounter": joinCounter,
+			"num":         num,
+		}).Error("Timeout reached before all joins / convergence")
 	}
 
+	for {
+		convergence := true
+		for idx, m := range members {
+			actualNum := m.NumMembers()
+			if actualNum != num {
+				log.WithFields(log.Fields{
+					"index":    idx,
+					"expected": num,
+					"actual":   actualNum,
+				}).Error("Wrong number of nodes")
+				convergence = false
+				break
+			}
+		}
+		if convergence {
+			break
+		}
+	}
+	endTime := time.Now()
+	if joinCounter == num {
+		log.WithField("durationSeconds", endTime.Sub(startTime).Seconds()).Info("Correct number of nodes")
+	}
 }
 
 func StartService(args Args) *server.Service {
