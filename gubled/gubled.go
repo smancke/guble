@@ -44,7 +44,7 @@ type Args struct {
 	Health      string   `arg:"--health: The health endpoint (default: /_health; value for disabling it: \"\" )" env:"GUBLE_HEALTH_ENDPOINT"`
 	Metrics     string   `arg:"--metrics: The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )" env:"GUBLE_METRICS_ENDPOINT"`
 	NodeId      string   `arg:"--node-id: The metrics endpoint (node id for guble node in cluster mode)" env:"GUBLE_NODE_ID"`
-	NodeUrls    []string `arg:"positional, help: The list of urls for other guble nodes"`
+	NodeUrls    []string `arg:"positional,help: The list of urls for other guble nodes"`
 }
 
 var ValidateStoragePath = func(args Args) error {
