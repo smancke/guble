@@ -48,6 +48,8 @@ type Service struct {
 	healthFrequency time.Duration
 	healthThreshold int
 	metricsEndpoint string
+	gubleNodeID     string
+	gubleNodesURLs  []string
 }
 
 // NewService registers the Main Router, where other modules can subscribe for messages
@@ -78,6 +80,20 @@ func (s *Service) HealthEndpointPrefix(value string) *Service {
 
 func (s *Service) MetricsEndpointPrefix(value string) *Service {
 	s.metricsEndpoint = value
+	return s
+}
+
+func (s *Service) GubleNodeID(value string) *Service {
+	logger.WithField("NodeID", value).Info("Setting node-id")
+	s.gubleNodeID = value
+	return s
+}
+
+func (s *Service) GubleNodesURLs(values []string) *Service {
+	if s.gubleNodeID != "" {
+		logger.WithField("peers", values).Info("Setting peer nodes")
+		s.gubleNodesURLs = values
+	}
 	return s
 }
 

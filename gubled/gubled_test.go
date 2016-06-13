@@ -68,11 +68,14 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_GCM_ENABLE", "true")
 	defer os.Unsetenv("GUBLE_GCM_ENABLE")
 
+	os.Setenv("GUBLE_NODE_ID", "node-id")
+	defer os.Unsetenv("GUBLE_NODE_ID")
+
 	// when we parse the arguments
 	args := loadArgs()
 
 	// the the arg parameters are set
-	assertArguments(a, args)
+	assertArguments(a, args, false)
 }
 
 func TestParsingArgs(t *testing.T) {
@@ -91,16 +94,17 @@ func TestParsingArgs(t *testing.T) {
 		"--storage-path", "storage-path",
 		"--ms-backend", "ms-backend",
 		"--gcm-api-key", "gcm-api-key",
-		"--gcm-enable"}
+		"--node-id", "node-id",
+		"--gcm-enable", "http://example.com:8080", "https://example.com:8908"}
 
 	// when we parse the arguments
 	args := loadArgs()
 
 	// the the arg parameters are set
-	assertArguments(a, args)
+	assertArguments(a, args, true)
 }
 
-func assertArguments(a *assert.Assertions, args Args) {
+func assertArguments(a *assert.Assertions, args Args, useNodeUrls bool) {
 	a.Equal("listen", args.Listen)
 	a.Equal(true, args.LogInfo)
 	a.Equal(true, args.LogDebug)
@@ -108,7 +112,45 @@ func assertArguments(a *assert.Assertions, args Args) {
 	a.Equal("storage-path", args.StoragePath)
 	a.Equal("ms-backend", args.MSBackend)
 	a.Equal("gcm-api-key", args.GcmApiKey)
+	a.Equal("node-id", args.NodeId)
 	a.Equal(true, args.GcmEnable)
+
+	if useNodeUrls == true {
+		a.Equal(createTestSlice("http://example.com:8080", "https://example.com:8908"), args.NodeUrls)
+	}
+}
+
+func createTestSlice(s1, s2 string) []string {
+	sliceString := make([]string, 0)
+	sliceString = append(sliceString, s1)
+	sliceString = append(sliceString, s2)
+	return sliceString
+}
+
+func TestValidateUrl(t *testing.T) {
+	a := assert.New(t)
+
+	originalArgs := os.Args
+
+	defer func() { os.Args = originalArgs }()
+
+	// given: a command line
+	os.Args = []string{os.Args[0],
+		"--listen", "listen",
+		"--log-info",
+		"--log-debug",
+		"--kv-backend", "kv-backend",
+		"--storage-path", "storage-path",
+		"--ms-backend", "ms-backend",
+		"--gcm-api-key", "gcm-api-key",
+		"--node-id", "node-id",
+		"--gcm-enable", "http://example.com:8080", "https://example.com:8908"}
+
+	// when we parse the arguments
+	args := loadArgs()
+	parsedHosts := validateURLs(args.NodeUrls)
+
+	a.Equal(parsedHosts, createTestSlice("example.com:8080", "example.com:8908"))
 }
 
 func TestArgDefaultValues(t *testing.T) {
