@@ -357,7 +357,7 @@ func (router *router) closeRoutes() {
 			log.WithFields(log.Fields{
 				"module": "router",
 				"route":  route.String(),
-			}).Debug("CLosing route for ")
+			}).Debug("Closing route for ")
 			route.Close()
 		}
 	}
