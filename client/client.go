@@ -188,7 +188,7 @@ func (c *client) handleIncomingMessage(msg []byte) {
 	parsed, err := protocol.ParseMessage(msg)
 	if err != nil {
 
-		logger.WithField("err", err).Error("Error on parsing of incomming message")
+		logger.WithField("err", err).Error("Error on parsing of incoming message")
 
 		c.errors <- clientErrorMessage(err.Error())
 		return
