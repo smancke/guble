@@ -121,27 +121,14 @@ func (ws *WebSocket) sendLoop() {
 		select {
 		case raw := <-ws.sendChannel:
 
+			logger.WithFields(log.Fields{
+				"userId":        ws.userID,
+				"applicationID": ws.applicationID,
+				"totalSize":     len(raw),
+				"actualContent": string(raw),
+			}).Debug("Received on websocket")
+
 			if ws.checkAccess(raw) {
-				//if protocol.DebugEnabled() {
-				if len(raw) < 80 {
-
-					logger.WithFields(log.Fields{
-						"userId":        ws.userID,
-						"applicationID": ws.applicationID,
-						"totalSize":     len(raw),
-						"actualContent": string(raw),
-					}).Debug("Send to client")
-
-				} else {
-
-					logger.WithFields(log.Fields{
-						"userId":        ws.userID,
-						"applicationID": ws.applicationID,
-						"totalSize":     len(raw),
-						"actualContent": string(raw[0:79]),
-					}).Debug("Send to client")
-				}
-				//}
 
 				if err := ws.Send(raw); err != nil {
 
@@ -158,10 +145,6 @@ func (ws *WebSocket) sendLoop() {
 }
 
 func (ws *WebSocket) checkAccess(raw []byte) bool {
-	logger.WithFields(log.Fields{
-		"rawMsg": string(raw),
-	}).Debug("Raw message")
-
 	if raw[0] == byte('/') {
 		path := getPathFromRawMessage(raw)
 

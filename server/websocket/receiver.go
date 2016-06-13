@@ -257,7 +257,7 @@ func (rec *Receiver) fetch() error {
 			logger.WithFields(log.Fields{
 				"msgId": msgAndId.Id,
 				"msg":   string(msgAndId.Message),
-			}).Debug("Replay send to")
+			}).Debug("Reply sen to")
 
 			rec.lastSendId = msgAndId.Id
 			rec.sendChannel <- msgAndId.Message
