@@ -210,7 +210,7 @@ func (router *router) subscribe(r *Route) {
 	logger.WithFields(log.Fields{
 		"userID": r.UserID,
 		"path":   r.Path,
-	}).Debug("Intenal subscribe for")
+	}).Debug("Intenal subscribe")
 	mTotalSubscriptionAttempts.Add(1)
 
 	slice, present := router.routes[r.Path]
@@ -238,7 +238,7 @@ func (router *router) unsubscribe(r *Route) {
 	logger.WithFields(log.Fields{
 		"userID": r.UserID,
 		"path":   r.Path,
-	}).Debug("Intenal unsubscribe for :")
+	}).Debug("Intenal unsubscribe")
 	mTotalUnsubscriptionAttempts.Add(1)
 
 	slice, present := router.routes[r.Path]
@@ -303,7 +303,7 @@ func (router *router) storeAndChannelMessage(msg *protocol.Message) error {
 		logger.WithFields(log.Fields{
 			"currentLength": len(router.handleC),
 			"maxCapacity":   cap(router.handleC),
-		}).Warn("Warning handleC channel almost full")
+		}).Warn("storeAndChannelMessage: handleC channel is almost full")
 		mTotalOverloadedHandleChannel.Add(1)
 	}
 
@@ -315,7 +315,7 @@ func (router *router) routeMessage(message *protocol.Message) {
 
 	logger.WithFields(log.Fields{
 		"msgMetadata": message.Metadata(),
-	}).Debug("Called routeMessage for data")
+	}).Debug("Called routeMessage")
 	mTotalMessagesRouted.Add(1)
 
 	for path, list := range router.routes {
@@ -336,10 +336,9 @@ func (router *router) deliverMessage(route *Route, message *protocol.Message) {
 	case route.MessagesChannel() <- &MessageForRoute{Message: message, Route: route}:
 	// fine, we could send the message
 	default:
-
 		logger.WithFields(log.Fields{
 			"route": route.String(),
-		}).Warn(" deliverMessage: queue was full, unsubscribing and closing delivery channel for route")
+		}).Warn("deliverMessage: queue was full, unsubscribing and closing delivery channel for route")
 		router.unsubscribe(route)
 		route.Close()
 		mTotalDeliverMessageErrors.Add(1)
@@ -376,7 +375,7 @@ func matchesTopic(messagePath, routePath protocol.Path) bool {
 			(messagePathLen > routePathLen && string(messagePath)[routePathLen] == '/'))
 }
 
-// remove removes a route from the supplied list, based on same ApplicationID id and same path (if existing)
+// removeIfMatching removes a route from the supplied list, based on same ApplicationID id and same path (if existing)
 // returns: the (possibly updated) slide, and a boolean value (true if route was removed, false otherwise)
 func removeIfMatching(slice []*Route, route *Route) ([]*Route, bool) {
 	position := -1
