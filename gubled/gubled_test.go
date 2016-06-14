@@ -68,13 +68,16 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_GCM_ENABLE", "true")
 	defer os.Unsetenv("GUBLE_GCM_ENABLE")
 
-	os.Setenv("GUBLE_NODE_ID", "node-id")
+	os.Setenv("GUBLE_GCM_WORKERS", "4")
+	defer os.Unsetenv("GUBLE_GCM_WORKERS")
+
+	os.Setenv("GUBLE_NODE_ID", "1")
 	defer os.Unsetenv("GUBLE_NODE_ID")
 
 	// when we parse the arguments
 	args := loadArgs()
 
-	// the the arg parameters are set
+	// then the args parameters are set
 	assertArguments(a, args, false)
 }
 
@@ -94,8 +97,10 @@ func TestParsingArgs(t *testing.T) {
 		"--storage-path", "storage-path",
 		"--ms-backend", "ms-backend",
 		"--gcm-api-key", "gcm-api-key",
-		"--node-id", "node-id",
-		"--gcm-enable", "http://example.com:8080", "https://example.com:8908"}
+		"--node-id", "1",
+		"--gcm-enable",
+		"--gcm-workers", "4",
+		"http://example.com:8080", "https://example.com:8908"}
 
 	// when we parse the arguments
 	args := loadArgs()
@@ -112,7 +117,8 @@ func assertArguments(a *assert.Assertions, args Args, useNodeUrls bool) {
 	a.Equal("storage-path", args.StoragePath)
 	a.Equal("ms-backend", args.MSBackend)
 	a.Equal("gcm-api-key", args.GcmApiKey)
-	a.Equal("node-id", args.NodeId)
+	a.Equal(4, args.GcmWorkers)
+	a.Equal(1, args.NodeId)
 	a.Equal(true, args.GcmEnable)
 
 	if useNodeUrls == true {
@@ -145,12 +151,14 @@ func TestValidateUrl(t *testing.T) {
 		"--storage-path", "storage-path",
 		"--ms-backend", "ms-backend",
 		"--gcm-api-key", "gcm-api-key",
-		"--node-id", "node-id",
-		"--gcm-enable", "http://example.com:8080", "https://example.com:8908"}
+		"--node-id", "1",
+		"--gcm-enable",
+		"--gcm-workers", "4",
+		"http://example.com:8080", "https://example.com:8908"}
 
 	// when we parse the arguments
 	args := loadArgs()
-	parsedHosts := validateURLs(args.NodeUrls)
+	parsedHosts := validateUrls(args.NodeUrls)
 
 	a.Equal(parsedHosts, createTestSlice("example.com:8080", "example.com:8908"))
 }

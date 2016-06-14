@@ -10,26 +10,36 @@ import (
 )
 
 type GubleDelegate struct {
+	msgs       [][]byte
+	broadcasts [][]byte
 }
 
-func (*GubleDelegate) NodeMeta(limit int) []byte {
+func (gd *GubleDelegate) NotifyMsg(msg []byte) {
+	log.WithField("message", string(msg)).Debug("NotifyMsg")
+	cp := make([]byte, len(msg))
+	copy(cp, msg)
+	gd.msgs = append(gd.msgs, cp)
+}
+
+func (gd *GubleDelegate) GetBroadcasts(overhead, limit int) [][]byte {
+	log.WithFields(log.Fields{
+		"overhead": overhead,
+		"limit":    limit,
+	}).Debug("NotifyMsg")
+	b := gd.broadcasts
+	gd.broadcasts = nil
+	return b
+}
+
+func (gd *GubleDelegate) NodeMeta(limit int) []byte {
 	return nil
 }
 
-func (*GubleDelegate) NotifyMsg(message []byte) {
-	log.WithField("message", message).Info("NotifyMsg")
-}
-
-func (*GubleDelegate) GetBroadcasts(overhead, limit int) [][]byte {
+func (gd *GubleDelegate) LocalState(join bool) []byte {
 	return nil
 }
 
-func (*GubleDelegate) LocalState(join bool) []byte {
-	return nil
-}
-
-func (*GubleDelegate) MergeRemoteState(buf []byte, join bool) {
-
+func (gd *GubleDelegate) MergeRemoteState(s []byte, join bool) {
 }
 
 func BenchmarkCluster(num int, timeoutForAllJoins time.Duration, lowestPort int) {
@@ -74,40 +84,41 @@ func BenchmarkCluster(num int, timeoutForAllJoins time.Duration, lowestPort int)
 	}
 
 	breakTimer := time.After(timeoutForAllJoins)
-	joinCounter := 0
+	numJoins := 0
 WAIT:
 	for {
 		select {
 		case e := <-eventC:
-			lwf := log.WithFields(log.Fields{
+			l := log.WithFields(log.Fields{
 				"node":         *e.Node,
-				"eventCounter": joinCounter,
+				"eventCounter": numJoins,
 				"numMembers":   nodes[0].NumMembers(),
 			})
 			if e.Event == memberlist.NodeJoin {
-				lwf.Info("Node join")
-				joinCounter++
-				if joinCounter == num {
-					lwf.Info("All nodes joined")
+				l.Info("Node join")
+				numJoins++
+				if numJoins == num {
+					l.Info("All nodes joined")
 					break WAIT
 				}
 			} else {
-				lwf.Info("Node leave")
+				l.Info("Node leave")
 			}
 		case <-breakTimer:
 			break WAIT
 		}
 	}
 
-	if joinCounter == num {
+	if numJoins != num {
 		log.WithFields(log.Fields{
-			"joinCounter": joinCounter,
+			"joinCounter": numJoins,
 			"num":         num,
-		}).Error("Timeout reached before all joins were finished")
+		}).Error("Timeout before completing all joins")
 	}
 
-	for {
-		convergence := true
+	convergence := false
+	for !convergence {
+		convergence = true
 		for idx, node := range nodes {
 			numSeenByNode := node.NumMembers()
 			if numSeenByNode != num {
@@ -115,26 +126,22 @@ WAIT:
 					"index":    idx,
 					"expected": num,
 					"actual":   numSeenByNode,
-				}).Error("Wrong number of nodes")
+				}).Debug("Wrong number of nodes")
 				convergence = false
 				break
 			}
 		}
-		if convergence {
-			break
-		}
 	}
 	endTime := time.Now()
-	if joinCounter == num {
-		log.WithField("durationSeconds", endTime.Sub(startTime).Seconds()).Info("Convergence reached")
+	if numJoins == num {
+		log.WithField("durationSeconds", endTime.Sub(startTime).Seconds()).Info("Cluster convergence reached")
 	}
 
 	for senderID, node := range nodes {
 		for receiverID, member := range node.Members() {
 			message := fmt.Sprintf("Hello from %v to %v !", senderID, receiverID)
-			log.Debug(message)
-			messageBytes := []byte(message)
-			node.SendToTCP(member, messageBytes)
+			log.WithField("message", message).Debug("SendToTCP")
+			node.SendToTCP(member, []byte(message))
 		}
 	}
 }

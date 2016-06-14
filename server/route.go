@@ -38,7 +38,7 @@ func (r *Route) Close() {
 	close(r.messagesC)
 }
 
-// Messages returns the route channel to send or receive messages.
+// MessagesChannel returns the route channel to send or receive messages.
 func (r *Route) MessagesChannel() chan *MessageForRoute {
 	return r.messagesC
 }

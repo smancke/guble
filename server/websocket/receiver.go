@@ -232,11 +232,11 @@ func (rec *Receiver) fetch() error {
 		}
 	} else {
 		fetch.Direction = 1
-		if maxId, err := rec.messageStore.MaxMessageId(rec.path.Partition()); err != nil {
+		maxId, err := rec.messageStore.MaxMessageId(rec.path.Partition())
+		if err != nil {
 			return err
-		} else {
-			fetch.StartId = maxId + 1 + uint64(rec.startId)
 		}
+		fetch.StartId = maxId + 1 + uint64(rec.startId)
 		if rec.maxCount == 0 {
 			fetch.Count = -1 * int(rec.startId)
 		}
