@@ -46,8 +46,8 @@ type Args struct {
 	GcmWorkers  int      `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
 	Health      string   `arg:"--health: The health endpoint (default: /_health; value for disabling it: \"\" )" env:"GUBLE_HEALTH_ENDPOINT"`
 	Metrics     string   `arg:"--metrics: The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )" env:"GUBLE_METRICS_ENDPOINT"`
-	NodeId      string   `arg:"--node-id: The metrics endpoint (node id for guble node in cluster mode)" env:"GUBLE_NODE_ID"`
-	NodeUrls    []string `arg:"positional,help: The list of urls in absolute form for other guble nodes in cluster mode"`
+	NodeId      int      `arg:"--node-id: This guble node's own ID (used in cluster mode): a strictly positive integer number which must be unique in cluster" env:"GUBLE_NODE_ID"`
+	NodeUrls    []string `arg:"positional,help: The list of URLs in absolute form of some other guble nodes (used in cluster mode)"`
 }
 
 var ValidateStoragePath = func(args Args) error {
@@ -57,13 +57,13 @@ var ValidateStoragePath = func(args Args) error {
 		if err != nil {
 			logger.WithFields(log.Fields{
 				"storagePath": args.StoragePath,
-				"err":         err,
+				"error":       err,
 			}).Error("Storage path not present/writeable.")
 
 			if args.StoragePath == "/var/lib/guble" {
 				logger.WithFields(log.Fields{
 					"storagePath": args.StoragePath,
-					"err":         err,
+					"error":       err,
 				}).Error("Use --storage-path=<path> to override the default location, or create the directory with RW rights.")
 			}
 			return err
@@ -81,8 +81,7 @@ var CreateKVStore = func(args Args) store.KVStore {
 	case "file":
 		db := store.NewSqliteKVStore(path.Join(args.StoragePath, "kv-store.db"), true)
 		if err := db.Open(); err != nil {
-			logger.WithField("err", err).Panic("Could not open db connection")
-
+			logger.WithField("error", err).Panic("Could not open database connection")
 		}
 		return db
 	default:
@@ -107,7 +106,7 @@ var CreateModules = func(router server.Router, args Args) []interface{} {
 	modules := make([]interface{}, 0, 3)
 
 	if wsHandler, err := websocket.NewWSHandler(router, "/stream/"); err != nil {
-		logger.WithField("err", err).Error("Error loading WSHandler module:")
+		logger.WithField("error", err).Error("Error loading WSHandler module:")
 	} else {
 		modules = append(modules, wsHandler)
 	}
@@ -120,11 +119,10 @@ var CreateModules = func(router server.Router, args Args) []interface{} {
 		}
 
 		logger.Info("Google cloud messaging: enabled")
-
-		logger.WithField("args.GcmWOrkers", args.GcmWorkers).Debug("Workers")
+		logger.WithField("args.GcmWorkers", args.GcmWorkers).Debug("GCM Workers")
 
 		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", args.GcmApiKey, args.GcmWorkers); err != nil {
-			logger.WithField("err", err).Error("Error loading GCMConnector:")
+			logger.WithField("error", err).Error("Error loading GCMConnector:")
 		} else {
 			modules = append(modules, gcm)
 		}
@@ -161,20 +159,9 @@ func Main() {
 	waitForTermination(func() {
 		err := service.Stop()
 		if err != nil {
-			logger.WithField("err", err).Error("Error when stopping service")
+			logger.WithField("error", err).Error("Error when stopping service")
 		}
 	})
-}
-
-func validateURLs(values []string) []string {
-	correctUrls := make([]string, 0)
-	for _, possibleUrl := range values {
-		u, err := url.Parse(possibleUrl)
-		if err == nil && u.IsAbs() {
-			correctUrls = append(correctUrls, u.Host)
-		}
-	}
-	return correctUrls
 }
 
 func StartService(args Args) *server.Service {
@@ -186,18 +173,17 @@ func StartService(args Args) *server.Service {
 	webserver := webserver.New(args.Listen)
 
 	service := server.NewService(router, webserver).
-		HealthEndpointPrefix(args.Health).
-		MetricsEndpointPrefix(args.Metrics).
-		GubleNodeID(args.NodeId).
-		GubleNodesURLs(validateURLs(args.NodeUrls))
+		HealthEndpoint(args.Health).
+		MetricsEndpoint(args.Metrics).
+		Cluster(validateCluster(args.NodeId, args.NodeUrls))
 
 	service.RegisterModules(CreateModules(router, args)...)
 
 	if err := service.Start(); err != nil {
 		if err := service.Stop(); err != nil {
-			logger.WithField("err", err).Error("Error when stopping service after Start() failed")
+			logger.WithField("error", err).Error("Error when stopping service after Start() failed")
 		}
-		logger.WithField("err", err).Fatal("Service could not be started")
+		logger.WithField("error", err).Fatal("Service could not be started")
 	}
 	expvar.Publish("guble.args", expvar.Func(func() interface{} {
 		return args
@@ -214,11 +200,35 @@ func loadArgs() Args {
 		StoragePath: "/var/lib/guble",
 		GcmWorkers:  runtime.GOMAXPROCS(0),
 		Health:      healthEndpointPrefix,
+		NodeId:      0,
 	}
 
 	env.Parse(&args)
 	arg.MustParse(&args)
 	return args
+}
+
+func validateCluster(nodeID int, potentialUrls []string) (int, []string) {
+	urls := validateUrls(potentialUrls)
+	if (nodeID > 0 && len(urls) == 0) || (nodeID == 0 && len(urls) > 0) {
+		logger.WithFields(log.Fields{
+			"nodeID":                nodeID,
+			"numberOfValidNodeURLs": len(urls),
+		}).Fatal("Could not start in cluster-mode: invalid/incomplete parameters")
+	}
+	return nodeID, urls
+}
+
+func validateUrls(potentialUrls []string) []string {
+	var validUrls []string
+	for _, potentialUrl := range potentialUrls {
+		url, err := url.Parse(potentialUrl)
+		if err == nil && url.IsAbs() {
+			validUrls = append(validUrls, url.Host)
+		}
+	}
+	logger.WithField("validUrls", validUrls).Debug("List of valid URLs")
+	return validUrls
 }
 
 func waitForTermination(callback func()) {

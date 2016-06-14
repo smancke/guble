@@ -65,7 +65,7 @@ func TestHealthUp(t *testing.T) {
 
 	// given:
 	service, _, _, _ := aMockedService()
-	service = service.HealthEndpointPrefix("/health_url")
+	service = service.HealthEndpoint("/health_url")
 
 	// when starting the service
 	defer service.Stop()
@@ -91,7 +91,7 @@ func TestHealthDown(t *testing.T) {
 
 	// given:
 	service, _, _, _ := aMockedService()
-	service = service.HealthEndpointPrefix("/health_url")
+	service = service.HealthEndpoint("/health_url")
 	mockChecker := NewMockChecker(ctrl)
 	mockChecker.EXPECT().Check().Return(errors.New("sick")).AnyTimes()
 
@@ -121,7 +121,7 @@ func TestMetricsEnabled(t *testing.T) {
 
 	// given:
 	service, _, _, _ := aMockedService()
-	service = service.MetricsEndpointPrefix("/metrics_url")
+	service = service.MetricsEndpoint("/metrics_url")
 
 	// when starting the service
 	defer service.Stop()

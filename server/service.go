@@ -48,8 +48,8 @@ type Service struct {
 	healthFrequency time.Duration
 	healthThreshold int
 	metricsEndpoint string
-	gubleNodeID     string
-	gubleNodesURLs  []string
+	nodeID          int
+	nodesUrls       []string
 }
 
 // NewService registers the Main Router, where other modules can subscribe for messages
@@ -73,27 +73,31 @@ func (s *Service) RegisterModules(modules ...interface{}) {
 	s.modules = append(s.modules, modules...)
 }
 
-func (s *Service) HealthEndpointPrefix(value string) *Service {
-	s.healthEndpoint = value
+// HealthEndpoint sets the endpoint used for health. Parameter for disabling the endpoint is: "". Returns the updated service.
+func (s *Service) HealthEndpoint(endpointPrefix string) *Service {
+	s.healthEndpoint = endpointPrefix
 	return s
 }
 
-func (s *Service) MetricsEndpointPrefix(value string) *Service {
-	s.metricsEndpoint = value
+// MetricsEndpoint sets the endpoint used for metrics. Parameter for disabling the endpoint is: "". Returns the updated service.
+func (s *Service) MetricsEndpoint(endpointPrefix string) *Service {
+	s.metricsEndpoint = endpointPrefix
 	return s
 }
 
-func (s *Service) GubleNodeID(value string) *Service {
-	logger.WithField("NodeID", value).Info("Setting node-id")
-	s.gubleNodeID = value
+func (s *Service) Cluster(nodeID int, nodesUrls []string) *Service {
+	return s.setNodeID(nodeID).setNodesUrls(nodesUrls)
+}
+
+func (s *Service) setNodeID(nodeID int) *Service {
+	logger.WithField("nodeID", nodeID).Info("Setting nodeID")
+	s.nodeID = nodeID
 	return s
 }
 
-func (s *Service) GubleNodesURLs(values []string) *Service {
-	if s.gubleNodeID != "" {
-		logger.WithField("peers", values).Info("Setting peer nodes")
-		s.gubleNodesURLs = values
-	}
+func (s *Service) setNodesUrls(nodesUrls []string) *Service {
+	logger.WithField("nodesUrls", nodesUrls).Info("Setting nodesUrls")
+	s.nodesUrls = nodesUrls
 	return s
 }
 
@@ -108,14 +112,14 @@ func (s *Service) Start() error {
 		logger.WithField("healthEndpoint", s.healthEndpoint).Info("Health endpoint")
 		s.webserver.Handle(s.healthEndpoint, http.HandlerFunc(health.StatusHandler))
 	} else {
-		logger.Debug("Health endpoint disabled")
+		logger.Info("Health endpoint disabled")
 	}
 
 	if s.metricsEndpoint != "" {
 		logger.WithField("metricsEndpoint", s.metricsEndpoint).Info("Metrics Endpoint")
 		s.webserver.Handle(s.metricsEndpoint, http.HandlerFunc(metrics.HttpHandler))
 	} else {
-		logger.Debug("Metrics endpoint disabled")
+		logger.Info("Metrics endpoint disabled")
 	}
 
 	for _, module := range s.modules {
@@ -126,17 +130,14 @@ func (s *Service) Start() error {
 			}).Info("Starting module")
 
 			if err := startable.Start(); err != nil {
-
 				loggerService.WithFields(log.Fields{
 					"name": name,
 					"err":  err,
 				}).Error("Error while starting module")
-
 				el.Add(err)
 			}
 		}
 		if checker, ok := module.(health.Checker); ok && s.healthEndpoint != "" {
-
 			logger.WithField("name", name).Info("Registering module as HealthChecker")
 			health.RegisterPeriodicThresholdFunc(name, s.healthFrequency, s.healthThreshold, health.CheckFunc(checker.Check))
 		}
@@ -145,7 +146,7 @@ func (s *Service) Start() error {
 			loggerService.WithFields(log.Fields{
 				"name":   name,
 				"prefix": prefix,
-			}).Info("Resgistering Endpoint  module with name")
+			}).Info("Registering module as Endpoint")
 			s.webserver.Handle(prefix, endpoint)
 		}
 	}
@@ -179,7 +180,7 @@ func (s *Service) Stop() error {
 		loggerService.WithFields(log.Fields{
 			"name":  name,
 			"order": order,
-		}).Info("Stopping module with name")
+		}).Info("Stopping module")
 		if err := module.Stop(); err != nil {
 			errors.Add(err)
 		}
