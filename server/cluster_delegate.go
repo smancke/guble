@@ -17,10 +17,13 @@ func (cd *ClusterDelegate) NotifyMsg(msg []byte) {
 }
 
 func (cd *ClusterDelegate) GetBroadcasts(overhead, limit int) [][]byte {
-	log.WithFields(log.Fields{
-		"overhead": overhead,
-		"limit":    limit,
-	}).Debug("GetBroadcasts")
+	//TODO Cosmin uncomment or remove
+
+	//log.WithFields(log.Fields{
+	//	"overhead": overhead,
+	//	"limit":    limit,
+	//}).Debug("GetBroadcasts")
+
 	b := cd.broadcasts
 	cd.broadcasts = nil
 	return b

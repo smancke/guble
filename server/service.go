@@ -109,6 +109,7 @@ func (s *Service) Start() error {
 		logger.Info("Starting in cluster-mode")
 		s.cluster = NewCluster(clusterConfig)
 		s.RegisterModules(s.cluster)
+		s.router.SetCluster(s.cluster)
 	} else {
 		logger.Info("Starting in standalone-mode")
 	}

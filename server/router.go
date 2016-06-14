@@ -30,6 +30,8 @@ type Router interface {
 	AccessManager() (auth.AccessManager, error)
 	MessageStore() (store.MessageStore, error)
 
+	SetCluster(*Cluster)
+
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
 	HandleMessage(message *protocol.Message) error
@@ -53,6 +55,7 @@ type router struct {
 	accessManager auth.AccessManager
 	messageStore  store.MessageStore
 	kvStore       store.KVStore
+	cluster       *Cluster
 }
 
 // NewRouter returns a pointer to Router
@@ -74,6 +77,15 @@ func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore
 func (router *router) Start() error {
 	router.panicIfInternalDependenciesAreNil()
 	resetRouterMetrics()
+
+	//TODO Cosmin remove this (just a test)
+	if router.cluster != nil {
+		time.Sleep(time.Second)
+		message := fmt.Sprintf("Hello from node %v !", router.cluster.config.id)
+		log.WithField("message", message).Debug("SendToTCP")
+		router.cluster.Broadcast([]byte(message))
+	}
+
 	go func() {
 		router.wg.Add(1)
 		for {
@@ -412,4 +424,8 @@ func (router *router) KVStore() (store.KVStore, error) {
 		return nil, ErrServiceNotProvided
 	}
 	return router.kvStore, nil
+}
+
+func (router *router) SetCluster(cluster *Cluster) {
+	router.cluster = cluster
 }

@@ -37,6 +37,8 @@ func NewCluster(config *ClusterConfig) *Cluster {
 	c.BindPort = config.port
 
 	c.Delegate = &ClusterDelegate{}
+
+	//TODO Cosmin we should read somewhere from this channel, in order not to block
 	c.Events = &memberlist.ChannelEventDelegate{cluster.eventC}
 
 	//TODO Cosmin temporarily disabling any logging from memberlist
