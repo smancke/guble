@@ -10,26 +10,32 @@ import (
 )
 
 type GubleDelegate struct {
+	msgs       [][]byte
+	broadcasts [][]byte
 }
 
-func (*GubleDelegate) NodeMeta(limit int) []byte {
+func (gd *GubleDelegate) NotifyMsg(msg []byte) {
+	log.WithField("message", string(msg)).Info("NotifyMsg")
+	cp := make([]byte, len(msg))
+	copy(cp, msg)
+	gd.msgs = append(gd.msgs, cp)
+}
+
+func (gd *GubleDelegate) GetBroadcasts(overhead, limit int) [][]byte {
+	b := gd.broadcasts
+	gd.broadcasts = nil
+	return b
+}
+
+func (gd *GubleDelegate) NodeMeta(limit int) []byte {
 	return nil
 }
 
-func (*GubleDelegate) NotifyMsg(message []byte) {
-	log.WithField("message", message).Info("NotifyMsg")
-}
-
-func (*GubleDelegate) GetBroadcasts(overhead, limit int) [][]byte {
+func (gd *GubleDelegate) LocalState(join bool) []byte {
 	return nil
 }
 
-func (*GubleDelegate) LocalState(join bool) []byte {
-	return nil
-}
-
-func (*GubleDelegate) MergeRemoteState(buf []byte, join bool) {
-
+func (gd *GubleDelegate) MergeRemoteState(s []byte, join bool) {
 }
 
 func BenchmarkCluster(num int, timeoutForAllJoins time.Duration, lowestPort int) {
@@ -106,8 +112,9 @@ WAIT:
 		}).Error("Timeout reached before all joins were finished")
 	}
 
-	for {
-		convergence := true
+	convergence := false
+	for !convergence {
+		convergence = true
 		for idx, node := range nodes {
 			numSeenByNode := node.NumMembers()
 			if numSeenByNode != num {
@@ -120,21 +127,17 @@ WAIT:
 				break
 			}
 		}
-		if convergence {
-			break
-		}
 	}
 	endTime := time.Now()
 	if joinCounter == num {
-		log.WithField("durationSeconds", endTime.Sub(startTime).Seconds()).Info("Convergence reached")
+		log.WithField("durationSeconds", endTime.Sub(startTime).Seconds()).Info("Cluster convergence reached")
 	}
 
 	for senderID, node := range nodes {
 		for receiverID, member := range node.Members() {
 			message := fmt.Sprintf("Hello from %v to %v !", senderID, receiverID)
-			log.Debug(message)
-			messageBytes := []byte(message)
-			node.SendToTCP(member, messageBytes)
+			log.WithField("message", message).Debug("SendToTCP")
+			node.SendToTCP(member, []byte(message))
 		}
 	}
 }
