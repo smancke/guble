@@ -48,7 +48,7 @@ type Service struct {
 	healthFrequency time.Duration
 	healthThreshold int
 	metricsEndpoint string
-	nodeID          int
+	nodeID          int // if > 0, then run in cluster-mode; if == 0, run standalone
 	nodesUrls       []string
 }
 
@@ -87,18 +87,6 @@ func (s *Service) MetricsEndpoint(endpointPrefix string) *Service {
 
 func (s *Service) Cluster(nodeID int, nodesUrls []string) *Service {
 	return s.setNodeID(nodeID).setNodesUrls(nodesUrls)
-}
-
-func (s *Service) setNodeID(nodeID int) *Service {
-	logger.WithField("nodeID", nodeID).Info("Setting nodeID")
-	s.nodeID = nodeID
-	return s
-}
-
-func (s *Service) setNodesUrls(nodesUrls []string) *Service {
-	logger.WithField("nodesUrls", nodesUrls).Info("Setting nodesUrls")
-	s.nodesUrls = nodesUrls
-	return s
 }
 
 // Start checks the modules for the following interfaces and registers and/or starts:
@@ -201,4 +189,16 @@ func (s *Service) Modules() []interface{} {
 // WebServer returns the service *webserver.WebServer instance
 func (s *Service) WebServer() *webserver.WebServer {
 	return s.webserver
+}
+
+func (s *Service) setNodeID(nodeID int) *Service {
+	logger.WithField("nodeID", nodeID).Info("Setting nodeID")
+	s.nodeID = nodeID
+	return s
+}
+
+func (s *Service) setNodesUrls(nodesUrls []string) *Service {
+	logger.WithField("nodesUrls", nodesUrls).Info("Setting nodesUrls")
+	s.nodesUrls = nodesUrls
+	return s
 }

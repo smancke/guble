@@ -210,7 +210,7 @@ func loadArgs() Args {
 
 func validateCluster(nodeID int, potentialUrls []string) (int, []string) {
 	urls := validateUrls(potentialUrls)
-	if (nodeID > 0 && len(urls) == 0) || (nodeID == 0 && len(urls) > 0) {
+	if (nodeID > 0 && len(urls) == 0) || (nodeID <= 0 && len(urls) > 0) {
 		logger.WithFields(log.Fields{
 			"nodeID":                nodeID,
 			"numberOfValidNodeURLs": len(urls),
