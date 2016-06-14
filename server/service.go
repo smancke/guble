@@ -68,7 +68,7 @@ func (s *Service) RegisterModules(modules ...interface{}) {
 	loggerService.WithFields(log.Fields{
 		"numberOfNewModules":      len(s.modules),
 		"numberOfExistingModules": len(modules),
-	}).Debug(" RegisterModules: adding")
+	}).Debug("RegisterModules: adding")
 
 	s.modules = append(s.modules, modules...)
 }

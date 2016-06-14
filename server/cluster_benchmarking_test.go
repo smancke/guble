@@ -1,4 +1,4 @@
-package gubled
+package server
 
 import (
 	log "github.com/Sirupsen/logrus"
@@ -6,44 +6,21 @@ import (
 
 	"fmt"
 	"io/ioutil"
+	"testing"
 	"time"
 )
 
-type GubleDelegate struct {
-	msgs       [][]byte
-	broadcasts [][]byte
+func BenchmarkMemberListCluster(b *testing.B) {
+	benchmarkCluster(b, 10*time.Second, 15000)
 }
 
-func (gd *GubleDelegate) NotifyMsg(msg []byte) {
-	log.WithField("message", string(msg)).Debug("NotifyMsg")
-	cp := make([]byte, len(msg))
-	copy(cp, msg)
-	gd.msgs = append(gd.msgs, cp)
-}
+func benchmarkCluster(b *testing.B, timeoutForAllJoins time.Duration, lowestPort int) {
+	log.WithField("num", b.N).Fatal("Unexpected error when creating the memberlist")
 
-func (gd *GubleDelegate) GetBroadcasts(overhead, limit int) [][]byte {
-	log.WithFields(log.Fields{
-		"overhead": overhead,
-		"limit":    limit,
-	}).Debug("NotifyMsg")
-	b := gd.broadcasts
-	gd.broadcasts = nil
-	return b
-}
-
-func (gd *GubleDelegate) NodeMeta(limit int) []byte {
-	return nil
-}
-
-func (gd *GubleDelegate) LocalState(join bool) []byte {
-	return nil
-}
-
-func (gd *GubleDelegate) MergeRemoteState(s []byte, join bool) {
-}
-
-func BenchmarkCluster(num int, timeoutForAllJoins time.Duration, lowestPort int) {
 	startTime := time.Now()
+	b.StartTimer()
+
+	num := b.N
 	var nodes []*memberlist.Memberlist
 	eventC := make(chan memberlist.NodeEvent, num)
 	addr := "127.0.0.1"
@@ -144,4 +121,6 @@ WAIT:
 			node.SendToTCP(member, []byte(message))
 		}
 	}
+
+	b.StopTimer()
 }

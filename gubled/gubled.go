@@ -22,7 +22,6 @@ import (
 	"path"
 	"runtime"
 	"syscall"
-	"time"
 )
 
 var logger = log.WithFields(log.Fields{
@@ -151,8 +150,6 @@ func Main() {
 	if err := ValidateStoragePath(args); err != nil {
 		logger.Fatal("Fatal error in gubled when validating the storage path")
 	}
-
-	BenchmarkCluster(3, 10*time.Second, 10000)
 
 	service := StartService(args)
 
