@@ -31,6 +31,7 @@ var logger = log.WithFields(log.Fields{
 
 const (
 	healthEndpointPrefix = "/_health"
+	defaultNodePort      = 10000
 )
 
 type Args struct {
@@ -46,6 +47,7 @@ type Args struct {
 	Health      string   `arg:"--health: The health endpoint (default: /_health; value for disabling it: \"\" )" env:"GUBLE_HEALTH_ENDPOINT"`
 	Metrics     string   `arg:"--metrics: The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )" env:"GUBLE_METRICS_ENDPOINT"`
 	NodeId      int      `arg:"--node-id: This guble node's own ID (used in cluster mode): a strictly positive integer number which must be unique in cluster" env:"GUBLE_NODE_ID"`
+	NodePort    int      `arg:"--node-port: This guble node's own local port (used in cluster mode): a strictly positive integer number" env:"GUBLE_NODE_PORT"`
 	NodeUrls    []string `arg:"positional,help: The list of URLs in absolute form of some other guble nodes (used in cluster mode)"`
 }
 
@@ -172,7 +174,7 @@ func StartService(args Args) *server.Service {
 	service := server.NewService(router, webserver).
 		HealthEndpoint(args.Health).
 		MetricsEndpoint(args.Metrics).
-		Cluster(validateCluster(args.NodeId, args.NodeUrls))
+		Cluster(validateCluster(args.NodeId, args.NodePort, args.NodeUrls))
 
 	service.RegisterModules(CreateModules(router, args)...)
 
@@ -198,6 +200,7 @@ func loadArgs() Args {
 		GcmWorkers:  runtime.GOMAXPROCS(0),
 		Health:      healthEndpointPrefix,
 		NodeId:      0,
+		NodePort:    defaultNodePort,
 	}
 
 	env.Parse(&args)
@@ -205,15 +208,16 @@ func loadArgs() Args {
 	return args
 }
 
-func validateCluster(nodeID int, potentialUrls []string) (int, []string) {
+func validateCluster(nodeID int, nodePort int, potentialUrls []string) (int, int, []string) {
 	urls := validateUrls(potentialUrls)
-	if (nodeID > 0 && len(urls) == 0) || (nodeID <= 0 && len(urls) > 0) {
+	if (nodeID > 0 && len(urls) == 0) || (nodeID <= 0 && len(urls) > 0) || (nodePort <= 0) {
 		logger.WithFields(log.Fields{
 			"nodeID":                nodeID,
+			"nodePort":              nodePort,
 			"numberOfValidNodeURLs": len(urls),
 		}).Fatal("Could not start in cluster-mode: invalid/incomplete parameters")
 	}
-	return nodeID, urls
+	return nodeID, nodePort, urls
 }
 
 func validateUrls(potentialUrls []string) []string {

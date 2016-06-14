@@ -16,6 +16,7 @@ import (
 const (
 	defaultHealthFrequency = time.Second * 60
 	defaultHealthThreshold = 1
+	defaultLocalAddress    = "127.0.0.1"
 )
 
 var loggerService = log.WithFields(log.Fields{
@@ -49,26 +50,28 @@ type Service struct {
 	healthThreshold int
 	metricsEndpoint string
 	nodeID          int // if > 0, then run in cluster-mode; if == 0, run standalone
+	nodePort        int
 	nodesUrls       []string
+	cluster         *Cluster
 }
 
 // NewService registers the Main Router, where other modules can subscribe for messages
 func NewService(router Router, webserver *webserver.WebServer) *Service {
-	service := &Service{
+	s := &Service{
 		webserver:       webserver,
 		router:          router,
 		healthFrequency: defaultHealthFrequency,
 		healthThreshold: defaultHealthThreshold,
 	}
-	service.RegisterModules(service.router, service.webserver)
-	return service
+	s.RegisterModules(s.router, s.webserver)
+	return s
 }
 
 func (s *Service) RegisterModules(modules ...interface{}) {
 	loggerService.WithFields(log.Fields{
-		"numberOfNewModules":      len(s.modules),
-		"numberOfExistingModules": len(modules),
-	}).Debug("RegisterModules: adding")
+		"numberOfNewModules":      len(modules),
+		"numberOfExistingModules": len(s.modules),
+	}).Info("RegisterModules: adding")
 
 	s.modules = append(s.modules, modules...)
 }
@@ -85,8 +88,8 @@ func (s *Service) MetricsEndpoint(endpointPrefix string) *Service {
 	return s
 }
 
-func (s *Service) Cluster(nodeID int, nodesUrls []string) *Service {
-	return s.setNodeID(nodeID).setNodesUrls(nodesUrls)
+func (s *Service) Cluster(nodeID int, nodePort int, nodesUrls []string) *Service {
+	return s.setNodeID(nodeID).setNodePort(nodePort).setNodesUrls(nodesUrls)
 }
 
 // Start checks the modules for the following interfaces and registers and/or starts:
@@ -95,6 +98,20 @@ func (s *Service) Cluster(nodeID int, nodesUrls []string) *Service {
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
 func (s *Service) Start() error {
 	el := protocol.NewErrorList("service: errors occured while starting: ")
+
+	if s.clusterMode() {
+		clusterConfig := &ClusterConfig{
+			nodeID:    s.nodeID,
+			addr:      defaultLocalAddress,
+			port:      s.nodePort,
+			nodesUrls: s.nodesUrls,
+		}
+		logger.Info("Starting in cluster-mode")
+		s.cluster = initCluster(clusterConfig)
+		s.RegisterModules(s.cluster)
+	} else {
+		logger.Info("Starting in standalone-mode")
+	}
 
 	if s.healthEndpoint != "" {
 		logger.WithField("healthEndpoint", s.healthEndpoint).Info("Health endpoint")
@@ -155,10 +172,7 @@ func (s *Service) Stop() error {
 	for i := 1; i < len(stopables); i++ {
 		stopOrder[i] = len(stopables) - i
 	}
-	loggerService.WithFields(log.Fields{
-		"numberOfNewModules":      len(stopOrder),
-		"numberOfExistingModules": stopOrder,
-	}).Debug("Stopping modules in this order relative to registration")
+	loggerService.WithField("stopOrder", stopOrder).Debug("Stopping modules in this order relative to registration")
 
 	errors := protocol.NewErrorList("stopping errors: ")
 	for _, order := range stopOrder {
@@ -197,8 +211,18 @@ func (s *Service) setNodeID(nodeID int) *Service {
 	return s
 }
 
+func (s *Service) setNodePort(nodePort int) *Service {
+	logger.WithField("nodePort", nodePort).Info("Setting nodePort")
+	s.nodePort = nodePort
+	return s
+}
+
 func (s *Service) setNodesUrls(nodesUrls []string) *Service {
 	logger.WithField("nodesUrls", nodesUrls).Info("Setting nodesUrls")
 	s.nodesUrls = nodesUrls
 	return s
+}
+
+func (s *Service) clusterMode() bool {
+	return s.nodeID > 0
 }

@@ -2,37 +2,60 @@ package server
 
 import (
 	log "github.com/Sirupsen/logrus"
+	"github.com/hashicorp/memberlist"
+
+	"fmt"
+	"io/ioutil"
 )
 
-type GubleDelegate struct {
-	msgs       [][]byte
-	broadcasts [][]byte
+const (
+	channelBuffer = 1 << 8
+)
+
+type ClusterConfig struct {
+	nodeID    int
+	addr      string
+	port      int
+	nodesUrls []string
 }
 
-func (gd *GubleDelegate) NotifyMsg(msg []byte) {
-	log.WithField("message", string(msg)).Debug("NotifyMsg")
-	cp := make([]byte, len(msg))
-	copy(cp, msg)
-	gd.msgs = append(gd.msgs, cp)
+type Cluster struct {
+	config     *ClusterConfig
+	memberlist *memberlist.Memberlist
+	eventC     chan memberlist.NodeEvent
 }
 
-func (gd *GubleDelegate) GetBroadcasts(overhead, limit int) [][]byte {
-	log.WithFields(log.Fields{
-		"overhead": overhead,
-		"limit":    limit,
-	}).Debug("NotifyMsg")
-	b := gd.broadcasts
-	gd.broadcasts = nil
-	return b
+func initCluster(config *ClusterConfig) *Cluster {
+	cluster := &Cluster{
+		config: config,
+		eventC: make(chan memberlist.NodeEvent, channelBuffer),
+	}
+
+	c := memberlist.DefaultLANConfig()
+	c.Name = fmt.Sprintf("%d:%s:%d", config.nodeID, config.addr, config.port)
+	c.BindAddr = config.addr
+	c.BindPort = config.port
+
+	c.Delegate = &ClusterDelegate{}
+	c.Events = &memberlist.ChannelEventDelegate{cluster.eventC}
+
+	//TODO Cosmin temporarily disabling any logging from memberlist
+	c.LogOutput = ioutil.Discard
+
+	logger.Info("Creating memberlist")
+	newMemberList, err := memberlist.Create(c)
+	if err != nil {
+		log.WithField("error", err).Fatal("Unexpected fatal error when creating the memberlist")
+	}
+
+	num, err := newMemberList.Join(config.nodesUrls)
+	if num == 0 || err != nil {
+		log.WithField("error", err).Fatal("Unexpected fatal error when node wanted to join the cluster")
+	}
+	cluster.memberlist = newMemberList
+	return cluster
 }
 
-func (gd *GubleDelegate) NodeMeta(limit int) []byte {
-	return nil
-}
-
-func (gd *GubleDelegate) LocalState(join bool) []byte {
-	return nil
-}
-
-func (gd *GubleDelegate) MergeRemoteState(s []byte, join bool) {
+func (cluster *Cluster) Stop() error {
+	return cluster.memberlist.Shutdown()
 }

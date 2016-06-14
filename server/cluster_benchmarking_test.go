@@ -11,16 +11,14 @@ import (
 )
 
 func BenchmarkMemberListCluster(b *testing.B) {
-	benchmarkCluster(b, 10*time.Second, 15000)
+	benchmarkCluster(b, 32, 10*time.Second, 15000)
 }
 
-func benchmarkCluster(b *testing.B, timeoutForAllJoins time.Duration, lowestPort int) {
+func benchmarkCluster(b *testing.B, num int, timeoutForAllJoins time.Duration, lowestPort int) {
 	log.WithField("num", b.N).Fatal("Unexpected error when creating the memberlist")
 
 	startTime := time.Now()
-	b.StartTimer()
 
-	num := b.N
 	var nodes []*memberlist.Memberlist
 	eventC := make(chan memberlist.NodeEvent, num)
 	addr := "127.0.0.1"
@@ -35,7 +33,7 @@ func benchmarkCluster(b *testing.B, timeoutForAllJoins time.Duration, lowestPort
 		c.ProbeTimeout = 100 * time.Millisecond
 		c.GossipInterval = 20 * time.Millisecond
 		c.PushPullInterval = 200 * time.Millisecond
-		c.Delegate = &GubleDelegate{}
+		c.Delegate = &ClusterDelegate{}
 
 		//TODO Cosmin temporarily disabling any logging from memberlist
 		c.LogOutput = ioutil.Discard
@@ -114,11 +112,15 @@ WAIT:
 		log.WithField("durationSeconds", endTime.Sub(startTime).Seconds()).Info("Cluster convergence reached")
 	}
 
+	b.StartTimer()
+
 	for senderID, node := range nodes {
 		for receiverID, member := range node.Members() {
-			message := fmt.Sprintf("Hello from %v to %v !", senderID, receiverID)
-			log.WithField("message", message).Debug("SendToTCP")
-			node.SendToTCP(member, []byte(message))
+			for i := 0; i < b.N; i++ {
+				message := fmt.Sprintf("Hello from %v to %v !", senderID, receiverID)
+				log.WithField("message", message).Debug("SendToTCP")
+				node.SendToTCP(member, []byte(message))
+			}
 		}
 	}
 
