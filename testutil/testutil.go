@@ -2,7 +2,6 @@ package testutil
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/protocol"
 
 	"github.com/alexjlockwood/gcm"
 	"github.com/docker/distribution/health"
@@ -22,7 +21,7 @@ var MockCtrl *gomock.Controller
 func init() {
 	// disable error output while testing
 	// because also negative tests are tested
-	protocol.LogLevel = protocol.LEVEL_ERR
+	log.SetLevel(log.ErrorLevel)
 }
 
 // NewMockCtrl initializes the `MockCtrl` package var and returns a method to
@@ -40,14 +39,9 @@ func NewMockCtrl(t *testing.T) (*gomock.Controller, func()) {
 // Usage:
 //		test_util.EnableDebugForMethod()()
 func EnableDebugForMethod() func() {
-	reset := protocol.LogLevel
-	logReset := log.GetLevel()
-	protocol.LogLevel = protocol.LEVEL_DEBUG
+	reset := log.GetLevel()
 	log.SetLevel(log.DebugLevel)
-	return func() {
-		protocol.LogLevel = reset
-		log.SetLevel(logReset)
-	}
+	return func() { log.SetLevel(reset) }
 }
 
 // ExpectDone waits to receive a value in the doneChannel for at least a second
@@ -58,6 +52,12 @@ func ExpectDone(a *assert.Assertions, doneChannel chan bool) {
 		return
 	case <-time.After(time.Second):
 		a.Fail("timeout in expectDone")
+	}
+}
+
+func ExpectPanic(t *testing.T) {
+	if r := recover(); r == nil {
+		assert.Fail(t, "Expecting a panic but unfortunately it did not happen")
 	}
 }
 
@@ -102,20 +102,31 @@ const (
 type RoundTripperFunc func(req *http.Request) *http.Response
 
 func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	log.WithField("url", req.URL.Path).Debug("Served request")
+	log.WithFields(log.Fields{
+		"module":   "testing",
+		"url_path": req.URL.Path,
+	}).Debug("Served request for")
 	return rt(req), nil
 }
 
 func CreateGcmSender(rt RoundTripperFunc) *gcm.Sender {
-	log.Debug("Creating GCM sender mock")
+	log.WithFields(log.Fields{
+		"module": "testing",
+	}).Debug("Create GCM sender")
 	httpClient := &http.Client{Transport: rt}
 	return &gcm.Sender{ApiKey: "124", Http: httpClient}
 }
 
 func CreateRoundTripperWithJsonResponse(httpStatusCode int, messageBodyAsJSON string, doneC chan bool) RoundTripperFunc {
-	log.Debug("CreateRoundTripperWithJSONResponse")
+	log.WithFields(log.Fields{
+		"module": "testing",
+	}).Debug("CreateRoundTripperWithJSONResponse")
 	return RoundTripperFunc(func(req *http.Request) *http.Response {
-		log.WithField("url", req.URL.String()).Debug("RoundTripperFunc")
+		log.WithFields(log.Fields{
+			"module": "testing",
+			"url":    req.URL.String(),
+		}).Debug("RoundTripperFunc")
+
 		if doneC != nil {
 			defer func() {
 				close(doneC)
