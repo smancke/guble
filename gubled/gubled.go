@@ -117,7 +117,6 @@ var CreateModules = func(router server.Router, args Args) []interface{} {
 	if args.GcmEnable {
 		if args.GcmApiKey == "" {
 			logger.Panic("GCM API Key has to be provided, if GCM is enabled")
-
 		}
 
 		logger.Info("Google cloud messaging: enabled")
@@ -152,7 +151,7 @@ func Main() {
 	}
 
 	if err := ValidateStoragePath(args); err != nil {
-		logger.Fatal("Fatal error in gubled in validation for storage path")
+		logger.Fatal("Fatal error in gubled when validating the storage path")
 	}
 
 	BenchmarkCluster(3, 10*time.Second, 10000)
@@ -168,15 +167,14 @@ func Main() {
 }
 
 func validateURLs(values []string) []string {
-	correctURLs := make([]string, 0)
-	for _, posibleUrl := range values {
-
-		u, err := url.Parse(posibleUrl)
+	correctUrls := make([]string, 0)
+	for _, possibleUrl := range values {
+		u, err := url.Parse(possibleUrl)
 		if err == nil && u.IsAbs() {
-			correctURLs = append(correctURLs, u.Host)
+			correctUrls = append(correctUrls, u.Host)
 		}
 	}
-	return correctURLs
+	return correctUrls
 }
 
 func StartService(args Args) *server.Service {
