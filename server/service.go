@@ -49,7 +49,7 @@ type Service struct {
 	healthFrequency time.Duration
 	healthThreshold int
 	metricsEndpoint string
-	nodeID          int // if > 0, then run in cluster-mode; if == 0, run standalone
+	nodeID          int
 	nodePort        int
 	nodesUrls       []string
 	cluster         *Cluster
@@ -101,13 +101,13 @@ func (s *Service) Start() error {
 
 	if s.clusterMode() {
 		clusterConfig := &ClusterConfig{
-			nodeID:    s.nodeID,
-			addr:      defaultLocalAddress,
-			port:      s.nodePort,
-			nodesUrls: s.nodesUrls,
+			id:                   s.nodeID,
+			host:                 defaultLocalAddress,
+			port:                 s.nodePort,
+			remoteHostsWithPorts: s.nodesUrls,
 		}
 		logger.Info("Starting in cluster-mode")
-		s.cluster = initCluster(clusterConfig)
+		s.cluster = NewCluster(clusterConfig)
 		s.RegisterModules(s.cluster)
 	} else {
 		logger.Info("Starting in standalone-mode")

@@ -65,9 +65,9 @@ WAIT:
 		select {
 		case e := <-eventC:
 			l := log.WithFields(log.Fields{
-				"node":         *e.Node,
-				"eventCounter": numJoins,
-				"numMembers":   nodes[0].NumMembers(),
+				"node":       *e.Node,
+				"numJoins":   numJoins,
+				"numMembers": nodes[0].NumMembers(),
 			})
 			if e.Event == memberlist.NodeJoin {
 				l.Info("Node join")

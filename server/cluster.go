@@ -9,14 +9,14 @@ import (
 )
 
 const (
-	channelBuffer = 1 << 8
+	eventChannelBuffer = 1 << 4
 )
 
 type ClusterConfig struct {
-	nodeID    int
-	addr      string
-	port      int
-	nodesUrls []string
+	id                   int
+	host                 string
+	port                 int
+	remoteHostsWithPorts []string
 }
 
 type Cluster struct {
@@ -25,15 +25,15 @@ type Cluster struct {
 	eventC     chan memberlist.NodeEvent
 }
 
-func initCluster(config *ClusterConfig) *Cluster {
+func NewCluster(config *ClusterConfig) *Cluster {
 	cluster := &Cluster{
 		config: config,
-		eventC: make(chan memberlist.NodeEvent, channelBuffer),
+		eventC: make(chan memberlist.NodeEvent, eventChannelBuffer),
 	}
 
 	c := memberlist.DefaultLANConfig()
-	c.Name = fmt.Sprintf("%d:%s:%d", config.nodeID, config.addr, config.port)
-	c.BindAddr = config.addr
+	c.Name = fmt.Sprintf("%d:%s:%d", config.id, config.host, config.port)
+	c.BindAddr = config.host
 	c.BindPort = config.port
 
 	c.Delegate = &ClusterDelegate{}
@@ -42,18 +42,27 @@ func initCluster(config *ClusterConfig) *Cluster {
 	//TODO Cosmin temporarily disabling any logging from memberlist
 	c.LogOutput = ioutil.Discard
 
-	logger.Info("Creating memberlist")
-	newMemberList, err := memberlist.Create(c)
+	memberlist, err := memberlist.Create(c)
 	if err != nil {
 		log.WithField("error", err).Fatal("Unexpected fatal error when creating the memberlist")
 	}
 
-	num, err := newMemberList.Join(config.nodesUrls)
+	num, err := memberlist.Join(config.remoteHostsWithPorts)
 	if num == 0 || err != nil {
-		log.WithField("error", err).Fatal("Unexpected fatal error when node wanted to join the cluster")
+		log.WithFields(log.Fields{
+			"error": err,
+			"num":   num,
+		}).Fatal("Unexpected fatal error when node wanted to join the cluster")
 	}
-	cluster.memberlist = newMemberList
+	cluster.memberlist = memberlist
 	return cluster
+}
+
+func (cluster *Cluster) Broadcast(msg []byte) {
+	log.WithField("msg", msg).Debug("Broadcasting message to cluster")
+	for _, node := range cluster.memberlist.Members() {
+		cluster.memberlist.SendToTCP(node, msg)
+	}
 }
 
 func (cluster *Cluster) Stop() error {
