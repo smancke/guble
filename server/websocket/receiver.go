@@ -182,7 +182,7 @@ func (rec *Receiver) receiveFromSubscription() {
 				"messageMetadata": m.Metadata(),
 			}).Debug("Delivering message")
 
-			if msgAndRoute.Message.ID > rec.lastSendId {
+			if m.ID > rec.lastSendId {
 				rec.lastSendId = m.ID
 				rec.sendChannel <- m.Bytes()
 			} else {
@@ -256,7 +256,7 @@ func (rec *Receiver) fetch() error {
 				"msg":   string(msgAndId.Message),
 			}).Debug("Reply sent")
 
-			rec.lastSendId = msgAndId.Id
+			rec.lastSendId = msgAndId.ID
 			rec.sendChannel <- msgAndId.Message
 		case err := <-fetch.ErrorC:
 			return err
