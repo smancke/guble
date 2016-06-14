@@ -3,6 +3,7 @@ package gcm
 import (
 	"github.com/alexjlockwood/gcm"
 	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
@@ -84,5 +85,65 @@ func dummyGCMResponse() *gcm.Response {
 // Test that if a route is closed, but no explicit shutdown the subscription will
 // try to refetch messages from store and then resubscribe
 func TestSub_Restart(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
+	a := assert.New(t)
+
+	gcm, routerMock := testSimpleGCM(t)
+
+	route := server.NewRoute("/foo/bar", "phone01", "user01", subBufferSize)
+	sub := newSub(gcm, route, 2)
+
+	// start goroutine that will take the messages from the pipeline
+	done := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case pm := <-gcm.pipelineC:
+				pm.resultC <- dummyGCMResponse()
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	routerMock.EXPECT().Subscribe(gomock.Eq(route))
+	// expect again for a subscription
+	routerMock.EXPECT().Subscribe(gomock.Any())
+	sub.start()
+
+	// pipe 2 messages to route and then close.
+	sub.route.MessagesChannel() <- &protocol.Message{Path: "/foo/bar", ID: 3, Body: []byte("dummy")}
+	sub.route.MessagesChannel() <- &protocol.Message{Path: "/foo/bar", ID: 4, Body: []byte("dummy")}
+
+	time.Sleep(10 * time.Millisecond)
+	a.Equal(uint64(4), sub.lastID)
+
+	route.Close()
+
+	// simulate the fetch
+	routerMock.EXPECT().Fetch(gomock.Any()).Do(func(req store.FetchRequest) {
+		go func() {
+			// send 2 messages from the store
+			req.StartC <- 2
+			var id uint64 = 3
+			for i := 0; i < 2; i++ {
+				req.MessageC <- store.MessageAndID{
+					ID:      id,
+					Message: []byte(strings.Replace(fetchMessage, "42", strconv.FormatUint(id, 10), 1)),
+				}
+				id++
+			}
+			close(req.MessageC)
+		}()
+	})
+
+	time.Sleep(10 * time.Millisecond)
+
+	// subscription route shouldn't be equal anymore
+	a.NotEqual(route, sub.route)
+
+	time.Sleep(10 * time.Millisecond)
+	close(done)
 }
