@@ -296,9 +296,8 @@ func (router *router) storeAndChannelMessage(msg *protocol.Message) error {
 		}).Error("Error storing message in partition")
 		mTotalMessageStoreErrors.Add(1)
 		return err
-	} else {
-		mTotalMessagesStoredBytes.Add(lenMsg)
 	}
+	mTotalMessagesStoredBytes.Add(lenMsg)
 
 	if float32(len(router.handleC))/float32(cap(router.handleC)) > overloadedHandleChannelRatio {
 		logger.WithFields(log.Fields{

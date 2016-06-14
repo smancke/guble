@@ -5,7 +5,7 @@ import (
 	"github.com/smancke/guble/protocol"
 )
 
-// MsgAndRoute is a wrapper that aggregates the message and the route.
+// MessageForRoute is a wrapper that aggregates the message and the route.
 // It is useful for sending both pieces of information over a channel.
 type MessageForRoute struct {
 	Message *protocol.Message
