@@ -117,11 +117,11 @@ func TestGCM_SaveAndLoadSubs(t *testing.T) {
 		userID := splitKey[0]
 		topic := splitKey[1]
 		gcmID := splitKey[2]
-		initSub(gcm, topic, userID, gcmID, 0)
+		initSubscription(gcm, topic, userID, gcmID, 0)
 	}
 
 	// and reload the routes
-	gcm.loadSubs()
+	gcm.loadSubscriptions()
 
 	time.Sleep(50 * time.Millisecond)
 
@@ -217,7 +217,7 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 
 	// put a dummy gcm message with minimum information
 	route := &server.Route{ApplicationID: "id"}
-	s := newSub(gcm, route, 0)
+	s := newSubscription(gcm, route, 0)
 
 	msgWithNoRecipients := newPipeMessage(s, &protocol.Message{
 		ID:   uint64(4),
@@ -313,7 +313,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	})
 
 	// put a dummy gcm message with minimum information
-	s, err := initSub(gcm, "/path", "marvin", "id", 0)
+	s, err := initSubscription(gcm, "/path", "marvin", "id", 0)
 	a.NoError(err)
 	message := &protocol.Message{
 		ID:   uint64(4),

@@ -30,8 +30,17 @@ func (e *jsonError) Error() string {
 	return e.json
 }
 
+// sub represent a GCM subscription
+type sub struct {
+	gcm    *Connector
+	route  *server.Route
+	lastID uint64 // Last sent message id
+
+	logger *log.Entry
+}
+
 // Creates a subscription and returns the pointer
-func newSub(gcm *Connector, route *server.Route, lastID uint64) *sub {
+func newSubscription(gcm *Connector, route *server.Route, lastID uint64) *sub {
 	return &sub{
 		gcm:    gcm,
 		route:  route,
@@ -45,9 +54,9 @@ func newSub(gcm *Connector, route *server.Route, lastID uint64) *sub {
 }
 
 // creates a subscription and adds it in router/kvstore then starts listening for messages
-func initSub(gcm *Connector, topic, userID, gcmID string, lastID uint64) (*sub, error) {
+func initSubscription(gcm *Connector, topic, userID, gcmID string, lastID uint64) (*sub, error) {
 	route := server.NewRoute(topic, gcmID, userID, subBufferSize)
-	s := newSub(gcm, route, 0)
+	s := newSubscription(gcm, route, 0)
 	if err := s.store(); err != nil {
 		return nil, err
 	}
@@ -55,18 +64,9 @@ func initSub(gcm *Connector, topic, userID, gcmID string, lastID uint64) (*sub, 
 	return s, nil
 }
 
-// sub represent a GCM subscription
-type sub struct {
-	gcm    *Connector
-	route  *server.Route
-	lastID uint64 // Last sent message id
-
-	logger *log.Entry
-}
-
 func (s *sub) subscribe() error {
 	if _, err := s.gcm.router.Subscribe(s.route); err != nil {
-		s.logger.WithField("error", err).Error("Error subscribing")
+		s.logger.WithField("err", err).Error("Error subscribing")
 		return err
 	}
 
@@ -127,7 +127,7 @@ func (s *sub) subscriptionLoop() {
 				return
 			}
 
-			s.logger.WithField("error", err).Error("Error pipelining message")
+			s.logger.WithField("err", err).Error("Error pipelining message")
 		}
 	}
 	// if route is closed and we are actually stopping then return
@@ -225,7 +225,7 @@ func (s *sub) bytes() []byte {
 func (s *sub) store() error {
 	err := s.gcm.kvStore.Put(schema, s.route.ApplicationID, s.bytes())
 	if err != nil {
-		s.logger.WithField("error", err).Error("Error storing in KVStore")
+		s.logger.WithField("err", err).Error("Error storing in KVStore")
 	}
 	return err
 }
@@ -254,7 +254,7 @@ func (s *sub) pipe(m *protocol.Message) error {
 
 		return s.handleGCMResponse(response)
 	case err := <-pm.errC:
-		s.logger.WithField("error", err).Error("Error sending message to GCM")
+		s.logger.WithField("err", err).Error("Error sending message to GCM")
 		return err
 	}
 
@@ -304,7 +304,7 @@ func (s *sub) replaceCanonical(newGCMID string) error {
 	// reuse the route but change the ApplicationID
 	route := s.route
 	route.ApplicationID = newGCMID
-	newS := newSub(s.gcm, route, s.lastID)
+	newS := newSubscription(s.gcm, route, s.lastID)
 
 	if err := newS.store(); err != nil {
 		return err

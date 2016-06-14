@@ -27,7 +27,7 @@ func TestSub_Fetch(t *testing.T) {
 	gcm, routerMock := testSimpleGCM(t)
 
 	route := server.NewRoute("/foo/bar", "phone01", "user01", subBufferSize)
-	sub := newSub(gcm, route, 2)
+	sub := newSubscription(gcm, route, 2)
 
 	// simulate the fetch
 	routerMock.EXPECT().Fetch(gomock.Any()).Do(func(req store.FetchRequest) {
@@ -93,7 +93,7 @@ func TestSub_Restart(t *testing.T) {
 	gcm, routerMock := testSimpleGCM(t)
 
 	route := server.NewRoute("/foo/bar", "phone01", "user01", subBufferSize)
-	sub := newSub(gcm, route, 2)
+	sub := newSubscription(gcm, route, 2)
 
 	// start goroutine that will take the messages from the pipeline
 	done := make(chan struct{})

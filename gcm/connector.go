@@ -22,9 +22,6 @@ const (
 	// sendRetries is the number of retries when sending a message
 	sendRetries = 5
 
-	// broadcastRetries is the number of retries when broadcasting a message
-	broadcastRetries = 3
-
 	subscribePrefixPath = "subscribe"
 
 	// default channel buffer size
@@ -72,7 +69,7 @@ func (conn *Connector) Start() error {
 	// conn.router.Subscribe(broadcastRoute)
 
 	// blocking until current subs are loaded
-	conn.loadSubs()
+	conn.loadSubscriptions()
 
 	go func() {
 		conn.wg.Add(conn.nWorkers)
@@ -132,8 +129,8 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 
 	gcmMessage := gcm.NewMessage(payload, gcmID)
 	logger.WithFields(log.Fields{
-		"gcm_id":      gcmID,
-		"pipe_length": len(conn.pipelineC),
+		"gcmID":      gcmID,
+		"pipeLength": len(conn.pipelineC),
 	}).Debug("Sending message")
 
 	result, err := conn.Sender.Send(gcmMessage, sendRetries)
@@ -143,36 +140,6 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 	}
 	pm.resultC <- result
 }
-
-// func (conn *GCMConnector) broadcastMessage(m *protocol.Message) {
-// 	topic := m.Path
-// 	payload := messageMap(m)
-// 	protocol.Debug("gcm: broadcasting message with topic: %v ; channel length: %v", string(topic), len(conn.pipelineC))
-
-// 	subscriptions := conn.kvStore.Iterate(schema, "")
-// 	count := 0
-// 	for {
-// 		select {
-// 		case entry, ok := <-subscriptions:
-// 			if !ok {
-// 				protocol.Info("gcm: sent message to %v receivers", count)
-// 				return
-// 			}
-// 			gcmID := entry[0]
-// 			//TODO collect 1000 gcmIds and send them in one request!
-// 			broadcastMessage := gcm.NewMessage(payload, gcmID)
-// 			go func() {
-// 				//TODO error handling of response!
-// 				_, err := conn.Sender.Send(broadcastMessage, broadcastRetries)
-// 				protocol.Debug("gcm: sent broadcast message to gcmID=%v", gcmID)
-// 				if err != nil {
-// 					protocol.Err("gcm: error sending broadcast message to gcmID=%v: %v", gcmID, err.Error())
-// 				}
-// 			}()
-// 			count++
-// 		}
-// 	}
-// }
 
 // GetPrefix is used to satisfy the HTTP handler interface
 func (conn *Connector) GetPrefix() string {
@@ -191,7 +158,7 @@ func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid Parameters in request", http.StatusBadRequest)
 		return
 	}
-	initSub(conn, topic, userID, gcmID, 0)
+	initSubscription(conn, topic, userID, gcmID, 0)
 	fmt.Fprintf(w, "registered: %v\n", topic)
 }
 
@@ -222,7 +189,7 @@ func (conn *Connector) parseParams(path string) (userID, gcmID, topic string, er
 	return userID, gcmID, topic, nil
 }
 
-func (conn *Connector) loadSubs() {
+func (conn *Connector) loadSubscriptions() {
 	subscriptions := conn.kvStore.Iterate(schema, "")
 	count := 0
 	for {
@@ -232,13 +199,14 @@ func (conn *Connector) loadSubs() {
 				logger.WithField("count", count).Info("Loaded GCM subscriptions")
 				return
 			}
-			conn.loadSub(entry)
+			conn.loadSubscription(entry)
 			count++
 		}
 	}
 }
 
-func (conn *Connector) loadSub(entry [2]string) {
+// loadSubscription loads a kvstore entry and creates a subscription from it
+func (conn *Connector) loadSubscription(entry [2]string) {
 	gcmID := entry[0]
 	values := strings.Split(entry[1], ":")
 	userID := values[0]
@@ -248,12 +216,12 @@ func (conn *Connector) loadSub(entry [2]string) {
 		lastID = 0
 	}
 
-	initSub(conn, topic, userID, gcmID, lastID)
+	initSubscription(conn, topic, userID, gcmID, lastID)
 
 	logger.WithFields(log.Fields{
-		"gcm_id":  gcmID,
-		"user_id": userID,
-		"topic":   topic,
+		"gcmID":  gcmID,
+		"userID": userID,
+		"topic":  topic,
 	}).Debug("Loaded GCM subscription")
 }
 
