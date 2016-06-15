@@ -39,8 +39,8 @@ type Router interface {
 
 // Helper struct to pass `Route` to subscription channel and provide a notification channel.
 type subRequest struct {
-	route      *Route
-	doneNotify chan bool
+	route *Route
+	doneC chan bool
 }
 
 type router struct {
@@ -81,9 +81,13 @@ func (router *router) Start() error {
 	//TODO Cosmin remove this (just a test)
 	if router.cluster != nil {
 		time.Sleep(time.Second)
-		message := fmt.Sprintf("Hello from node %v !", router.cluster.config.id)
-		log.WithField("message", message).Debug("SendToTCP")
-		router.cluster.Broadcast([]byte(message))
+
+		msgString := fmt.Sprintf("Hello from node %v !", router.cluster.config.id)
+		log.WithField("message", msgString).Debug("SendToTCP")
+		router.cluster.broadcast([]byte(msgString))
+
+		message := protocol.Message{}
+		router.cluster.BroadcastMessage(message)
 	}
 
 	go func() {
@@ -104,10 +108,10 @@ func (router *router) Start() error {
 					runtime.Gosched()
 				case subscriber := <-router.subscribeC:
 					router.subscribe(subscriber.route)
-					subscriber.doneNotify <- true
+					subscriber.doneC <- true
 				case unsubscriber := <-router.unsubscribeC:
 					router.unsubscribe(unsubscriber.route)
-					unsubscriber.doneNotify <- true
+					unsubscriber.doneC <- true
 				case <-router.stopC:
 					router.stopping = true
 				}
@@ -195,11 +199,11 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 		return r, &PermissionDeniedError{UserID: r.UserID, AccessType: auth.READ, Path: r.Path}
 	}
 	req := subRequest{
-		route:      r,
-		doneNotify: make(chan bool),
+		route: r,
+		doneC: make(chan bool),
 	}
 	router.subscribeC <- req
-	<-req.doneNotify
+	<-req.doneC
 	return r, nil
 }
 
@@ -211,18 +215,18 @@ func (router *router) Unsubscribe(r *Route) {
 	}).Debug("Unsubscribe")
 
 	req := subRequest{
-		route:      r,
-		doneNotify: make(chan bool),
+		route: r,
+		doneC: make(chan bool),
 	}
 	router.unsubscribeC <- req
-	<-req.doneNotify
+	<-req.doneC
 }
 
 func (router *router) subscribe(r *Route) {
 	logger.WithFields(log.Fields{
 		"userID": r.UserID,
 		"path":   r.Path,
-	}).Debug("Intenal subscribe")
+	}).Debug("Internal subscribe")
 	mTotalSubscriptionAttempts.Add(1)
 
 	slice, present := router.routes[r.Path]
@@ -250,7 +254,7 @@ func (router *router) unsubscribe(r *Route) {
 	logger.WithFields(log.Fields{
 		"userID": r.UserID,
 		"path":   r.Path,
-	}).Debug("Intenal unsubscribe")
+	}).Debug("Internal unsubscribe")
 	mTotalUnsubscriptionAttempts.Add(1)
 
 	slice, present := router.routes[r.Path]

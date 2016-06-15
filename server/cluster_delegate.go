@@ -11,6 +11,9 @@ type ClusterDelegate struct {
 
 func (cd *ClusterDelegate) NotifyMsg(msg []byte) {
 	log.WithField("msg", string(msg)).Debug("NotifyMsg")
+
+	//TODO Marian decode protocol.Message
+
 	cp := make([]byte, len(msg))
 	copy(cp, msg)
 	cd.messages = append(cd.messages, cp)

@@ -5,11 +5,12 @@ import (
 	"github.com/hashicorp/memberlist"
 
 	"fmt"
+	"github.com/smancke/guble/protocol"
 	"io/ioutil"
 )
 
 const (
-	eventChannelBuffer = 1 << 4
+	eventChannelBufferSize = 1 << 4
 )
 
 type ClusterConfig struct {
@@ -28,7 +29,7 @@ type Cluster struct {
 func NewCluster(config *ClusterConfig) *Cluster {
 	cluster := &Cluster{
 		config: config,
-		eventC: make(chan memberlist.NodeEvent, eventChannelBuffer),
+		eventC: make(chan memberlist.NodeEvent, eventChannelBufferSize),
 	}
 
 	c := memberlist.DefaultLANConfig()
@@ -60,13 +61,18 @@ func NewCluster(config *ClusterConfig) *Cluster {
 	return cluster
 }
 
-func (cluster *Cluster) Broadcast(msg []byte) {
-	log.WithField("msg", msg).Debug("Broadcasting message to cluster")
+func (cluster *Cluster) Stop() error {
+	return cluster.memberlist.Shutdown()
+}
+
+func (cluster *Cluster) BroadcastMessage(message protocol.Message) {
+	log.WithField("message", message).Debug("BroadcastMessage to cluster")
+	//TODO Marian convert to byte array and invoke "cluster.broadcast"
+}
+
+func (cluster *Cluster) broadcast(msg []byte) {
+	log.WithField("msg", msg).Debug("broadcast to cluster")
 	for _, node := range cluster.memberlist.Members() {
 		cluster.memberlist.SendToTCP(node, msg)
 	}
-}
-
-func (cluster *Cluster) Stop() error {
-	return cluster.memberlist.Shutdown()
 }
