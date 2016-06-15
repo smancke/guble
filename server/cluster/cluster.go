@@ -13,7 +13,7 @@ const (
 	eventChannelBufferSize = 1 << 4
 )
 
-type ClusterConfig struct {
+type Config struct {
 	ID      int
 	Host    string
 	Port    int
@@ -21,12 +21,12 @@ type ClusterConfig struct {
 }
 
 type Cluster struct {
-	Config     *ClusterConfig
+	Config     *Config
 	memberlist *memberlist.Memberlist
 	eventC     chan memberlist.NodeEvent
 }
 
-func NewCluster(config *ClusterConfig) *Cluster {
+func NewCluster(config *Config) *Cluster {
 	cluster := &Cluster{
 		Config: config,
 		eventC: make(chan memberlist.NodeEvent, eventChannelBufferSize),
