@@ -15,6 +15,8 @@ import (
 var (
 	errEmptyQueue = errors.New("Empty queue")
 	errTimeout    = errors.New("Channel sending timeout")
+
+	defaultQueueCap = 50
 )
 
 // Route represents a topic for subscription that has a channel to receive messages.
@@ -273,6 +275,9 @@ func (r *Route) Close() error {
 
 // newQueue creates a *queue that will have the capacity specified by size
 func newQueue(size int) *queue {
+	if size == -1 {
+		size = defaultQueueCap
+	}
 	return &queue{
 		queue: make([]*protocol.Message, 0, size),
 	}
@@ -317,8 +322,4 @@ func (q *queue) len() int {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return len(q.queue)
-}
-
-func (q *queue) size() int {
-	return cap(q.queue)
 }
