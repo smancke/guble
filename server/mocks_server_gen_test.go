@@ -4,12 +4,12 @@
 package server
 
 import (
-	gomock "github.com/golang/mock/gomock"
-	protocol "github.com/smancke/guble/protocol"
-	
-	auth "github.com/smancke/guble/server/auth"
-	store "github.com/smancke/guble/store"
-	http "net/http"
+	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/protocol"
+
+	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/store"
+	"net/http"
 )
 
 // Mock of Router interface
@@ -42,6 +42,16 @@ func (_m *MockRouter) AccessManager() (auth.AccessManager, error) {
 
 func (_mr *_MockRouterRecorder) AccessManager() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AccessManager")
+}
+
+func (_m *MockRouter) Cluster() *Cluster {
+	ret := _m.ctrl.Call(_m, "Cluster")
+	ret0, _ := ret[0].(*Cluster)
+	return ret0
+}
+
+func (_mr *_MockRouterRecorder) Cluster() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Cluster")
 }
 
 func (_m *MockRouter) HandleMessage(_param0 *protocol.Message) error {

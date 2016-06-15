@@ -154,7 +154,7 @@ func TestValidateUrl(t *testing.T) {
 		"--node-id", "1",
 		"--gcm-enable",
 		"--gcm-workers", "4",
-		"http://example.com:8080", "https://example.com:8908"}
+		"example.com:8080", "example.com:8908"}
 
 	// when we parse the arguments
 	args := loadArgs()
