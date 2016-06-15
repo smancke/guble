@@ -4,15 +4,13 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-type ClusterDelegate struct {
+type Delegate struct {
 	messages   [][]byte
 	broadcasts [][]byte
 }
 
-func (cd *ClusterDelegate) NotifyMsg(msg []byte) {
+func (d *Delegate) NotifyMsg(msg []byte) {
 	log.WithField("msgAsBytes", msg).Debug("NotifyMsg")
-
-	//TODO Marian decode protocol.Message
 
 	clusterMsg, err := ParseMessage(msg)
 	if err != nil {
@@ -27,29 +25,28 @@ func (cd *ClusterDelegate) NotifyMsg(msg []byte) {
 
 	cp := make([]byte, len(msg))
 	copy(cp, msg)
-	cd.messages = append(cd.messages, cp)
+	d.messages = append(d.messages, cp)
 }
 
-func (cd *ClusterDelegate) GetBroadcasts(overhead, limit int) [][]byte {
+func (d *Delegate) GetBroadcasts(overhead, limit int) [][]byte {
 	//TODO Cosmin uncomment or remove
 
 	//log.WithFields(log.Fields{
 	//	"overhead": overhead,
 	//	"limit":    limit,
 	//}).Debug("GetBroadcasts")
-
-	b := cd.broadcasts
-	cd.broadcasts = nil
+	b := d.broadcasts
+	d.broadcasts = nil
 	return b
 }
 
-func (cd *ClusterDelegate) NodeMeta(limit int) []byte {
+func (d *Delegate) NodeMeta(limit int) []byte {
 	return nil
 }
 
-func (cd *ClusterDelegate) LocalState(join bool) []byte {
+func (d *Delegate) LocalState(join bool) []byte {
 	return nil
 }
 
-func (cd *ClusterDelegate) MergeRemoteState(s []byte, join bool) {
+func (d *Delegate) MergeRemoteState(s []byte, join bool) {
 }

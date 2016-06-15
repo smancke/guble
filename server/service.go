@@ -96,17 +96,17 @@ func (s *Service) Start() error {
 	el := protocol.NewErrorList("service: errors occured while starting: ")
 
 	if s.healthEndpoint != "" {
-		logger.WithField("healthEndpoint", s.healthEndpoint).Info("Health endpoint")
+		loggerService.WithField("healthEndpoint", s.healthEndpoint).Info("Health endpoint")
 		s.webserver.Handle(s.healthEndpoint, http.HandlerFunc(health.StatusHandler))
 	} else {
-		logger.Info("Health endpoint disabled")
+		loggerService.Info("Health endpoint disabled")
 	}
 
 	if s.metricsEndpoint != "" {
-		logger.WithField("metricsEndpoint", s.metricsEndpoint).Info("Metrics Endpoint")
+		loggerService.WithField("metricsEndpoint", s.metricsEndpoint).Info("Metrics Endpoint")
 		s.webserver.Handle(s.metricsEndpoint, http.HandlerFunc(metrics.HttpHandler))
 	} else {
-		logger.Info("Metrics endpoint disabled")
+		loggerService.Info("Metrics endpoint disabled")
 	}
 
 	for _, module := range s.modules {
@@ -125,7 +125,7 @@ func (s *Service) Start() error {
 			}
 		}
 		if checker, ok := module.(health.Checker); ok && s.healthEndpoint != "" {
-			logger.WithField("name", name).Info("Registering module as HealthChecker")
+			loggerService.WithField("name", name).Info("Registering module as HealthChecker")
 			health.RegisterPeriodicThresholdFunc(name, s.healthFrequency, s.healthThreshold, health.CheckFunc(checker.Check))
 		}
 		if endpoint, ok := module.(Endpoint); ok {

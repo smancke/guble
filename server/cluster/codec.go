@@ -42,14 +42,14 @@ type ClusterMessage struct {
 	Body   []byte
 }
 
-func (msg *ClusterMessage) len() int {
-	return int(unsafe.Sizeof(msg.Type)) + int(unsafe.Sizeof(msg.NodeId)) + len(msg.Body)
+func (cmsg *ClusterMessage) len() int {
+	return int(unsafe.Sizeof(cmsg.Type)) + int(unsafe.Sizeof(cmsg.NodeId)) + len(cmsg.Body)
 }
 
-func (msg *ClusterMessage) EncodeMessage() (result []byte, err error) {
-	bytes := make([]byte, msg.len()+5)
+func (cmsg *ClusterMessage) EncodeMessage() (result []byte, err error) {
+	bytes := make([]byte, cmsg.len()+5)
 	enc := codec.NewEncoderBytes(&bytes, h)
-	err = enc.Encode(msg)
+	err = enc.Encode(cmsg)
 	if err != nil {
 		logger.WithField("err", err).Error("Encoding failde")
 		return
@@ -57,16 +57,15 @@ func (msg *ClusterMessage) EncodeMessage() (result []byte, err error) {
 	return bytes, nil
 }
 
-func ParseMessage(message []byte) (*ClusterMessage, error) {
+func ParseMessage(msg []byte) (*ClusterMessage, error) {
 	var recvMsg ClusterMessage
-	logger.WithField("bytesForDecoding", string(message)).Info("ParseMessage")
+	logger.WithField("bytesForDecoding", string(msg)).Info("ParseMessage")
 
-	dec := codec.NewDecoderBytes(message, h)
+	dec := codec.NewDecoderBytes(msg, h)
 	err := dec.Decode(&recvMsg)
 	if err != nil {
 		logger.WithField("err", err).Error("Decoding failed")
 		return nil, err
 	}
 	return &recvMsg, nil
-
 }

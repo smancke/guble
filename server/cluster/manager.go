@@ -37,8 +37,8 @@ func NewCluster(config *Config) *Cluster {
 	c.BindAddr = config.Host
 	c.BindPort = config.Port
 
-	c.Delegate = &ClusterDelegate{}
-	c.Events = &ClusterEventDelegate{}
+	c.Delegate = &Delegate{}
+	c.Events = &EventDelegate{}
 
 	//TODO Cosmin temporarily disabling any logging from memberlist
 	c.LogOutput = ioutil.Discard
@@ -72,7 +72,6 @@ func (cluster *Cluster) Stop() error {
 
 func (cluster *Cluster) BroadcastMessage(message *ClusterMessage) {
 	log.WithField("message", message).Debug("BroadcastMessage to cluster")
-	//TODO Marian convert to byte array and invoke "cluster.broadcast"
 	//encode the message and send it to
 	bytes, err := message.EncodeMessage()
 	if err != nil {
