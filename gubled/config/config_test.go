@@ -1,5 +1,14 @@
 package config
 
+import (
+	"os"
+	"testing"
+
+	"gopkg.in/alecthomas/kingpin.v2"
+
+	"github.com/stretchr/testify/assert"
+)
+
 func TestParsingOfEnviromentVariables(t *testing.T) {
 	a := assert.New(t)
 
@@ -23,20 +32,29 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_STORAGE_PATH", "storage-path")
 	defer os.Unsetenv("GUBLE_STORAGE_PATH")
 
+	os.Setenv("GUBLE_HEALTH_ENDPOINT", "health_endpoint")
+	defer os.Unsetenv("GUBLE_HEALTH_ENDPOINT")
+
+	os.Setenv("GUBLE_METRICS_ENDPOINT", "metrics_endpoint")
+	defer os.Unsetenv("GUBLE_METRICS_ENDPOINT")
+
 	os.Setenv("GUBLE_MS_BACKEND", "ms-backend")
 	defer os.Unsetenv("GUBLE_MS_BACKEND")
+
+	os.Setenv("GUBLE_GCM_ENABLED", "true")
+	defer os.Unsetenv("GUBLE_GCM_ENABLED")
 
 	os.Setenv("GUBLE_GCM_API_KEY", "gcm-api-key")
 	defer os.Unsetenv("GUBLE_GCM_API_KEY")
 
-	os.Setenv("GUBLE_GCM_ENABLE", "true")
-	defer os.Unsetenv("GUBLE_GCM_ENABLE")
+	os.Setenv("GUBLE_GCM_WORKERS", "3")
+	defer os.Unsetenv("GUBLE_GCM_WORKERS")
 
 	// when we parse the arguments
-	args := loadArgs()
+	kingpin.Parse()
 
 	// the the arg parameters are set
-	assertArguments(a, args)
+	assertArguments(a)
 }
 
 func TestParsingArgs(t *testing.T) {
@@ -54,12 +72,34 @@ func TestParsingArgs(t *testing.T) {
 		"--kv-backend", "kv-backend",
 		"--storage-path", "storage-path",
 		"--ms-backend", "ms-backend",
+		"--health", "health_endpoint",
+		"--metrics", "metrics_endpoint",
+		"--gcm-enabled",
 		"--gcm-api-key", "gcm-api-key",
-		"--gcm-enable"}
+		"--gcm-workers", "3",
+	}
 
 	// when we parse the arguments
-	args := loadArgs()
+	kingpin.Parse()
 
 	// the the arg parameters are set
-	assertArguments(a, args)
+	assertArguments(a)
+}
+
+func assertArguments(a *assert.Assertions) {
+	a.Equal("listen", *Listen)
+	a.Equal("kv-backend", *KVBackend)
+	a.Equal("storage-path", *StoragePath)
+	a.Equal("ms-backend", *MSBackend)
+
+	a.Equal("health_endpoint", *Health)
+	a.Equal("metrics_endpoint", *Metrics)
+
+	a.Equal(true, *GCM.Enabled)
+	a.Equal("gcm-api-key", *GCM.APIKey)
+	a.Equal(3, *GCM.Workers)
+
+	a.Equal(true, *Log.Info)
+	a.Equal(true, *Log.Debug)
+
 }

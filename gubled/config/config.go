@@ -1,61 +1,75 @@
 package config
 
+// Config package contains the public config vars required in guble
+
 import (
-	"github.com/alexflint/go-arg"
-	"github.com/caarlos0/env"
 	"runtime"
+	"strconv"
+
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (
 	healthEndpointPrefix = "/_health"
 )
 
-// Config contains the fields read from command line or env variables required in guble
 var (
-	Config *config
-)
+	Listen = kingpin.Flag("listen", "[Host:]Port the address to listen on (:8080)").
+		Default(":8080").
+		Short('l').
+		Envar("GUBLE_LISTEN").
+		String()
+	StoragePath = kingpin.Flag("storage-path", "The path for storing messages and key value data if 'file' is enabled (/var/lib/guble)").
+			Short('p').
+			Envar("GUBLE_STORAGE_PATH").
+			String()
+	KVBackend = kingpin.Flag("kv-backend", "The storage backend for the key value store to use: file|memory (file)").
+			Default("file").
+			Envar("GUBLE_KV_BACKEND").
+			String()
+	MSBackend = kingpin.Flag("ms-backend", "The message storage backend : file|memory (file)").
+			Default("file").
+			Envar("GUBLE_MS_BACKEND").
+			String()
+	Health = kingpin.Flag("health", `The health endpoint (default: /_health; value for disabling it: "")`).
+		Default(healthEndpointPrefix).
+		Envar("GUBLE_HEALTH_ENDPOINT").
+		String()
+	Metrics = kingpin.Flag("metrics", "The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )").
+		Envar("GUBLE_METRICS_ENDPOINT").
+		String()
 
-type config struct {
-	Listen string `arg:"-l,help: [Host:]Port the address to listen on (:8080)" env:"GUBLE_LISTEN"`
-
-	StoragePath string `arg:"--storage-path,help: The path for storing messages and key value data if 'file' is enabled (/var/lib/guble)" env:"GUBLE_STORAGE_PATH"`
-
-	KVBackend string `arg:"--kv-backend,help: The storage backend for the key value store to use: file|memory (file)" env:"GUBLE_KV_BACKEND"`
-	MSBackend string `arg:"--ms-backend,help: The message storage backend : file|memory (file)" env:"GUBLE_MS_BACKEND"`
-
-	Health  string `arg:"--health: The health endpoint (default: /_health; value for disabling it: \"\" )" env:"GUBLE_HEALTH_ENDPOINT"`
-	Metrics string `arg:"--metrics: The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )" env:"GUBLE_METRICS_ENDPOINT"`
-
-	GCM GCM
-
-	Log Log
-}
-
-type GCM struct {
-	Enabled bool   `arg:"--gcm-enable: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
-	APIKey  string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
-	Workers int    `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
-}
-
-type Log struct {
-	Info  bool `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
-	Debug bool `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
-}
-
-func init() {
-	Config := &config{
-		Listen:      ":8080",
-		KVBackend:   "file",
-		MSBackend:   "file",
-		StoragePath: "/var/lib/guble",
-
-		Health: healthEndpointPrefix,
-
-		GCM: GCM{
-			Workers: runtime.GOMAXPROCS(0),
-		},
+	GCM = struct {
+		Enabled *bool
+		APIKey  *string
+		Workers *int
+	}{
+		Enabled: kingpin.Flag("gcm-enabled", "Enable the Google Cloud Messaging Connector").
+			Envar("GUBLE_GCM_ENABLED").
+			Bool(),
+		APIKey: kingpin.Flag("gcm-api-key", "The Google API Key for Google Cloud Messaging").
+			Envar("GUBLE_GCM_API_KEY").
+			String(),
+		Workers: kingpin.Flag("gcm-workers", "The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)").
+			Default(strconv.Itoa(runtime.GOMAXPROCS(0))).
+			Envar("GUBLE_GCM_WORKERS").
+			Int(),
 	}
 
-	env.Parse(Config)
-	arg.MustParse(Config)
+	Log = struct {
+		Info, Debug *bool
+	}{
+		Info: kingpin.Flag("log-info", "Log on INFO level (false)").
+			Default("false").
+			Envar("GUBLE_LOG_INFO").
+			Bool(),
+		Debug: kingpin.Flag("log-debug", "Log on debug level (false)").
+			Default("false").
+			Envar("GUBLE_LOG_DEBUG").
+			Bool(),
+	}
+)
+
+func init() {
+	kingpin.Parse()
 }
