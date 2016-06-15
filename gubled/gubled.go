@@ -178,7 +178,7 @@ func StartService(args Args) *server.Service {
 		validRemotes := validateCluster(args.NodeID, args.NodePort, args.Remotes)
 		logger.Info("Starting in cluster-mode")
 		clusterConfig := &server.ClusterConfig{
-			Id:      args.NodeID,
+			ID:      args.NodeID,
 			Port:    args.NodePort,
 			Remotes: validRemotes,
 		}
