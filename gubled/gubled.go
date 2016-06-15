@@ -21,6 +21,7 @@ import (
 	"os/signal"
 	"path"
 	"runtime"
+	"strings"
 	"syscall"
 )
 
@@ -30,8 +31,12 @@ var logger = log.WithFields(log.Fields{
 	"env":    "TBD"})
 
 const (
-	healthEndpointPrefix = "/_health"
-	defaultNodePort      = 10000
+	defaultHttpListen     = ":8080"
+	defaultKVBackend      = "file"
+	defaultMSBackend      = "file"
+	defaultStoragePath    = "/var/lib/guble"
+	defaultHealthEndpoint = "/_health"
+	defaultNodePort       = 10000
 )
 
 type Args struct {
@@ -48,7 +53,7 @@ type Args struct {
 	Metrics     string   `arg:"--metrics: The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )" env:"GUBLE_METRICS_ENDPOINT"`
 	NodeId      int      `arg:"--node-id: This guble node's own ID (used in cluster mode): a strictly positive integer number which must be unique in cluster" env:"GUBLE_NODE_ID"`
 	NodePort    int      `arg:"--node-port: This guble node's own local port (used in cluster mode): a strictly positive integer number" env:"GUBLE_NODE_PORT"`
-	NodeUrls    []string `arg:"positional,help: The list of URLs in absolute form of some other guble nodes (used in cluster mode)"`
+	Remotes     []string `arg:"positional,help: The list of URLs in absolute form of some other guble nodes (used in cluster mode)"`
 }
 
 var ValidateStoragePath = func(args Args) error {
@@ -168,13 +173,26 @@ func StartService(args Args) *server.Service {
 	messageStore := CreateMessageStore(args)
 	kvStore := CreateKVStore(args)
 
-	router := server.NewRouter(accessManager, messageStore, kvStore)
+	var cluster *server.Cluster
+	if args.NodeId > 0 {
+		validRemotes := validateCluster(args.NodeId, args.NodePort, args.Remotes)
+		logger.Info("Starting in cluster-mode")
+		clusterConfig := &server.ClusterConfig{
+			Id:      args.NodeId,
+			Port:    args.NodePort,
+			Remotes: validRemotes,
+		}
+		cluster = server.NewCluster(clusterConfig)
+	} else {
+		logger.Info("Starting in standalone-mode")
+	}
+
+	router := server.NewRouter(accessManager, messageStore, kvStore, cluster)
 	webserver := webserver.New(args.Listen)
 
 	service := server.NewService(router, webserver).
 		HealthEndpoint(args.Health).
-		MetricsEndpoint(args.Metrics).
-		Cluster(validateCluster(args.NodeId, args.NodePort, args.NodeUrls))
+		MetricsEndpoint(args.Metrics)
 
 	service.RegisterModules(CreateModules(router, args)...)
 
@@ -193,13 +211,12 @@ func StartService(args Args) *server.Service {
 
 func loadArgs() Args {
 	args := Args{
-		Listen:      ":8080",
-		KVBackend:   "file",
-		MSBackend:   "file",
-		StoragePath: "/var/lib/guble",
+		Listen:      defaultHttpListen,
+		KVBackend:   defaultKVBackend,
+		MSBackend:   defaultMSBackend,
+		StoragePath: defaultStoragePath,
 		GcmWorkers:  runtime.GOMAXPROCS(0),
-		Health:      healthEndpointPrefix,
-		NodeId:      0,
+		Health:      defaultHealthEndpoint,
 		NodePort:    defaultNodePort,
 	}
 
@@ -208,28 +225,29 @@ func loadArgs() Args {
 	return args
 }
 
-func validateCluster(nodeID int, nodePort int, potentialUrls []string) (int, int, []string) {
-	urls := validateUrls(potentialUrls)
-	if (nodeID > 0 && len(urls) == 0) || (nodeID <= 0 && len(urls) > 0) || (nodePort <= 0) {
+func validateCluster(nodeId int, nodePort int, potentialRemotes []string) []string {
+	validRemotes := validateRemoteHostsWithPorts(potentialRemotes)
+	if (nodeId <= 0 && len(validRemotes) > 0) || (nodePort <= 0) {
+		errorMessage := "Could not start in cluster-mode: invalid/incomplete parameters"
 		logger.WithFields(log.Fields{
-			"nodeID":                nodeID,
-			"nodePort":              nodePort,
-			"numberOfValidNodeURLs": len(urls),
-		}).Fatal("Could not start in cluster-mode: invalid/incomplete parameters")
+			"nodeID":               nodeId,
+			"nodePort":             nodePort,
+			"numberOfValidRemotes": len(validRemotes),
+		}).Fatal(errorMessage)
 	}
-	return nodeID, nodePort, urls
+	return validRemotes
 }
 
-func validateUrls(potentialUrls []string) []string {
-	var validUrls []string
-	for _, potentialUrl := range potentialUrls {
-		url, err := url.Parse(potentialUrl)
-		if err == nil && url.IsAbs() {
-			validUrls = append(validUrls, url.Host)
+func validateRemoteHostsWithPorts(potentialRemotes []string) []string {
+	var validRemotes []string
+	for _, potentialRemote := range potentialRemotes {
+		url, err := url.Parse(strings.Join([]string{"http://", potentialRemote}, ""))
+		if err == nil {
+			validRemotes = append(validRemotes, url.Host)
 		}
 	}
-	logger.WithField("validUrls", validUrls).Debug("List of valid URLs")
-	return validUrls
+	logger.WithField("validRemotes", validRemotes).Debug("List of valid Remotes (hosts with ports)")
+	return validRemotes
 }
 
 func waitForTermination(callback func()) {

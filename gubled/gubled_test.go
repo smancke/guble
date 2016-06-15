@@ -122,7 +122,7 @@ func assertArguments(a *assert.Assertions, args Args, useNodeUrls bool) {
 	a.Equal(true, args.GcmEnable)
 
 	if useNodeUrls == true {
-		a.Equal(createTestSlice("http://example.com:8080", "https://example.com:8908"), args.NodeUrls)
+		a.Equal(createTestSlice("http://example.com:8080", "https://example.com:8908"), args.Remotes)
 	}
 }
 
@@ -158,7 +158,7 @@ func TestValidateUrl(t *testing.T) {
 
 	// when we parse the arguments
 	args := loadArgs()
-	parsedHosts := validateUrls(args.NodeUrls)
+	parsedHosts := validateRemoteHostsWithPorts(args.Remotes)
 
 	a.Equal(parsedHosts, createTestSlice("example.com:8080", "example.com:8908"))
 }
