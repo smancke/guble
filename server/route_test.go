@@ -1,10 +1,11 @@
 package server
 
 import (
-	"github.com/smancke/guble/protocol"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/smancke/guble/protocol"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -52,7 +53,7 @@ func TestRouteDeliver_sendDirect(t *testing.T) {
 	case _, open := <-r.MessagesC():
 		a.False(open)
 	default:
-		protocol.Debug("len(r.C): %v", len(r.MessagesC()))
+		logger.Debug("len(r.C): %v", len(r.MessagesC()))
 		a.Fail("channel was not closed")
 	}
 
@@ -143,7 +144,7 @@ func TestRoute_CloseTwice(t *testing.T) {
 }
 
 func TestQueue_ShiftEmpty(t *testing.T) {
-	q := newQueue()
+	q := newQueue(5)
 	q.shift()
 	assert.Equal(t, 0, q.len())
 }

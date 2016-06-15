@@ -3,10 +3,13 @@ package server
 import (
 	"errors"
 	"fmt"
-	"github.com/smancke/guble/protocol"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/smancke/guble/protocol"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 var (
@@ -21,11 +24,12 @@ type Route struct {
 	//
 	// The queue can have a settable size and if it reaches the capacity the
 	// route is closed
-	queue *queue
+	queue     *queue
+	queueSize int
 
 	// Timeout to define how long to wait for the message to be read on the channel
 	// if timeout is reached the route is closed
-	timeout time.Duration // timeout before closing channel
+	timeout time.Duration
 	closeC  chan struct{}
 
 	// Indicates if the consumer go routine is running
@@ -36,6 +40,7 @@ type Route struct {
 	Path          protocol.Path
 	UserID        string // UserID that subscribed or pushes messages to the router
 	ApplicationID string
+	logger        *log.Entry
 }
 
 // NewRoute creates a new route pointer
@@ -46,11 +51,18 @@ func NewRoute(path, applicationID, userID string, c chan *MessageForRoute) *Rout
 	route := &Route{
 		messagesC:     c,
 		queue:         newQueue(queueSize),
+		queueSize:     queueSize,
 		timeout:       -1,
-		closeC:        make(chan bool),
+		closeC:        make(chan struct{}),
 		Path:          protocol.Path(path),
 		UserID:        userID,
 		ApplicationID: applicationID,
+
+		logger: logger.WithFields(log.Fields{
+			"path":          path,
+			"applicationID": applicationID,
+			"userID":        userID,
+		}),
 	}
 	return route
 }
@@ -112,10 +124,11 @@ func (r *Route) MessagesC() chan *MessageForRoute {
 // Deliver takes a messages and adds it to the queue to be delivered in to the
 // channel
 func (r *Route) Deliver(m *protocol.Message) error {
-	protocol.Debug("Delivering message %s", m)
+	logger := r.logger.WithField("message", m)
+	logger.Debug("Delivering message")
 
 	if r.isInvalid() {
-		protocol.Debug("Cannot deliver cause route is invalid")
+		logger.Debug("Cannot deliver cause route is invalid")
 		mTotalDeliverMessageErrors.Add(1)
 		return ErrInvalidRoute
 	}
@@ -126,7 +139,7 @@ func (r *Route) Deliver(m *protocol.Message) error {
 		if r.queueSize == 0 {
 			return r.sendDirect(m)
 		} else if r.queue.len() >= r.queueSize {
-			protocol.Debug("Closing route cause of full queue")
+			logger.Debug("Closing route cause of full queue")
 			r.Close()
 			mTotalDeliverMessageErrors.Add(1)
 			return ErrQueueFull
@@ -134,10 +147,10 @@ func (r *Route) Deliver(m *protocol.Message) error {
 	}
 
 	r.queue.push(m)
-	protocol.Debug("Queue size: %d", r.queue.len())
+	logger.Debug("Queue size: %d", r.queue.len())
 
 	if !r.isConsuming() {
-		protocol.Debug("Starting consuming")
+		logger.Debug("Starting consuming")
 		go r.consume()
 	}
 
@@ -148,7 +161,8 @@ func (r *Route) Deliver(m *protocol.Message) error {
 // consume starts to consume the queue and pass the messages to route
 // channel. Stops if there are no items in the queue. Should be started as a goroutine.
 func (r *Route) consume() {
-	protocol.Debug("Consuming route %s queue", r)
+	r.logger.Debug("Consuming route queue")
+
 	r.setConsuming(true)
 	defer r.setConsuming(false)
 
@@ -159,7 +173,7 @@ func (r *Route) consume() {
 
 	for {
 		if r.isInvalid() {
-			protocol.Debug("Stopping consuming cause of invalid route.")
+			r.logger.Debug("Stopping consuming cause route is invalid.")
 			mTotalDeliverMessageErrors.Add(1)
 			return
 		}
@@ -168,16 +182,16 @@ func (r *Route) consume() {
 
 		if err != nil {
 			if err == errEmptyQueue {
-				protocol.Debug("Empty queue")
+				r.logger.Debug("Empty queue")
 				return
 			}
-			protocol.Err("Error fetching queue message %s", err)
+			r.logger.WithField("error", err).Error("Error fetching queue message")
 			continue
 		}
 
 		// send next message throught the channel
 		if err = r.send(m); err != nil {
-			protocol.Err("Error sending message %s through route %s", m, r)
+			r.logger.WithField("message", m).Error("Error sending message through route")
 			if err == errTimeout || err == ErrInvalidRoute {
 				// channel been closed, ending the consumer
 				return
@@ -190,12 +204,12 @@ func (r *Route) consume() {
 
 func (r *Route) send(m *protocol.Message) error {
 	defer r.invalidRecover()
-	protocol.Debug("Sending message %s through route %s channel", m, r)
+	r.logger.WithField("message", m).Debug("Sending message through route channel")
 
 	// no timeout, means we dont close the channel
 	if r.timeout == -1 {
 		r.messagesC <- r.format(m)
-		protocol.Debug("Channel size: %d", len(r.messagesC))
+		r.logger.WithField("size", len(r.messagesC)).Debug("Channel size")
 		return nil
 	}
 
@@ -205,7 +219,7 @@ func (r *Route) send(m *protocol.Message) error {
 	case <-r.closeC:
 		return ErrInvalidRoute
 	case <-time.After(r.timeout):
-		protocol.Debug("Closing route cause of timeout")
+		r.logger.Debug("Closing route cause of timeout")
 		r.Close()
 		return errTimeout
 	}
@@ -214,7 +228,7 @@ func (r *Route) send(m *protocol.Message) error {
 // recover function to use when sending on closed channel
 func (r *Route) invalidRecover() error {
 	if rc := recover(); rc != nil && r.isInvalid() {
-		protocol.Debug("Recovered closed router err: %s", rc)
+		r.logger.WithField("error", rc).Debug("Recovered closed router")
 		return ErrInvalidRoute
 	}
 	return nil
@@ -233,7 +247,7 @@ func (r *Route) sendDirect(m *protocol.Message) error {
 	case r.messagesC <- r.format(m):
 		return nil
 	default:
-		protocol.Debug("Closing route cause of full channel")
+		r.logger.Debug("Closing route cause of full channel")
 		r.Close()
 		return ErrChannelFull
 	}
@@ -243,7 +257,7 @@ func (r *Route) sendDirect(m *protocol.Message) error {
 func (r *Route) Close() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	protocol.Debug("Closing route: %s", r)
+	r.logger.Debug("Closing route")
 
 	// route already closed
 	if r.invalid {

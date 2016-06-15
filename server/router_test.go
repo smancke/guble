@@ -2,14 +2,15 @@ package server
 
 import (
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 var aTestByteMessage = []byte("Hello World!")
@@ -253,7 +254,7 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 	case _, open := <-r.MessagesC():
 		a.False(open)
 	default:
-		protocol.Debug("len(r.C): %v", len(r.MessagesC()))
+		logger.Debug("len(r.C): %v", len(r.MessagesC()))
 		a.Fail("channel was not closed")
 	}
 }
