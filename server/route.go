@@ -12,32 +12,21 @@ import (
 var (
 	errEmptyQueue = errors.New("Empty queue")
 	errTimeout    = errors.New("Channel sending timeout")
-
-	defaultQueueCap = 50
 )
-
-// NewRoute creates a new route pointer
-func NewRoute(path, applicationID, userID string, c chan *MessageForRoute) *Route {
-	route := &Route{
-		messagesC:     c,
-		queue:         newQueue(),
-		queueSize:     0,
-		timeout:       -1,
-		closeC:        make(chan bool),
-		Path:          protocol.Path(path),
-		UserID:        userID,
-		ApplicationID: applicationID,
-	}
-	return route
-}
 
 // Route represents a topic for subscription that has a channel to receive messages.
 type Route struct {
 	messagesC chan *MessageForRoute
-	queue     *queue
-	queueSize int           // Allowed queue size
-	timeout   time.Duration // timeout before closing channel
-	closeC    chan bool
+	// queue that will store the messages in correct order
+	//
+	// The queue can have a settable size and if it reaches the capacity the
+	// route is closed
+	queue *queue
+
+	// Timeout to define how long to wait for the message to be read on the channel
+	// if timeout is reached the route is closed
+	timeout time.Duration // timeout before closing channel
+	closeC  chan struct{}
 
 	// Indicates if the consumer go routine is running
 	consuming bool
@@ -47,6 +36,23 @@ type Route struct {
 	Path          protocol.Path
 	UserID        string // UserID that subscribed or pushes messages to the router
 	ApplicationID string
+}
+
+// NewRoute creates a new route pointer
+func NewRoute(path, applicationID, userID string, c chan *MessageForRoute) *Route {
+	// TODO: this will be received instead of external channel
+	queueSize := 0
+
+	route := &Route{
+		messagesC:     c,
+		queue:         newQueue(queueSize),
+		timeout:       -1,
+		closeC:        make(chan bool),
+		Path:          protocol.Path(path),
+		UserID:        userID,
+		ApplicationID: applicationID,
+	}
+	return route
 }
 
 // SetTimeout sets the timeout duration that the route will wait before it will close a
@@ -139,8 +145,8 @@ func (r *Route) Deliver(m *protocol.Message) error {
 	return nil
 }
 
-// consume starts a goroutine to consume the queue and pass the messages to route
-// channel. The go routine stops if there are no items in the queue.
+// consume starts to consume the queue and pass the messages to route
+// channel. Stops if there are no items in the queue. Should be started as a goroutine.
 func (r *Route) consume() {
 	protocol.Debug("Consuming route %s queue", r)
 	r.setConsuming(true)
@@ -251,9 +257,10 @@ func (r *Route) Close() error {
 	return ErrInvalidRoute
 }
 
-func newQueue() *queue {
+// newQueue creates a *queue that will have the capacity specified by size
+func newQueue(size int) *queue {
 	return &queue{
-		queue: make([]*protocol.Message, 0, defaultQueueCap),
+		queue: make([]*protocol.Message, 0, size),
 	}
 }
 
@@ -296,4 +303,8 @@ func (q *queue) len() int {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return len(q.queue)
+}
+
+func (q *queue) size() int {
+	return cap(q.queue)
 }
