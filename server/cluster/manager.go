@@ -9,10 +9,6 @@ import (
 	"io/ioutil"
 )
 
-const (
-	eventChannelBufferSize = 1 << 4
-)
-
 type Config struct {
 	ID      int
 	Host    string
@@ -23,32 +19,27 @@ type Config struct {
 type Cluster struct {
 	Config     *Config
 	memberlist *memberlist.Memberlist
-	eventC     chan memberlist.NodeEvent
 }
 
 func NewCluster(config *Config) *Cluster {
-	cluster := &Cluster{
-		Config: config,
-		eventC: make(chan memberlist.NodeEvent, eventChannelBufferSize),
-	}
+	c := &Cluster{Config: config}
 
-	c := memberlist.DefaultLANConfig()
-	c.Name = fmt.Sprintf("%d:%s:%d", config.ID, config.Host, config.Port)
-	c.BindAddr = config.Host
-	c.BindPort = config.Port
-
-	c.Delegate = &Delegate{}
-	c.Events = &EventDelegate{}
+	memberlistConfig := memberlist.DefaultLANConfig()
+	memberlistConfig.Name = fmt.Sprintf("%d:%s:%d", config.ID, config.Host, config.Port)
+	memberlistConfig.BindAddr = config.Host
+	memberlistConfig.BindPort = config.Port
+	memberlistConfig.Delegate = &Delegate{}
+	memberlistConfig.Events = &EventDelegate{}
 
 	//TODO Cosmin temporarily disabling any logging from memberlist
-	c.LogOutput = ioutil.Discard
+	memberlistConfig.LogOutput = ioutil.Discard
 
-	memberlist, err := memberlist.Create(c)
+	memberlist, err := memberlist.Create(memberlistConfig)
 	if err != nil {
 		log.WithField("error", err).Fatal("Fatal error when creating the internal memberlist of the cluster")
 	}
-	cluster.memberlist = memberlist
-	return cluster
+	c.memberlist = memberlist
+	return c
 }
 
 func (cluster *Cluster) Start() error {
