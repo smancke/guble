@@ -26,16 +26,20 @@ type config struct {
 	Health  string `arg:"--health: The health endpoint (default: /_health; value for disabling it: \"\" )" env:"GUBLE_HEALTH_ENDPOINT"`
 	Metrics string `arg:"--metrics: The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )" env:"GUBLE_METRICS_ENDPOINT"`
 
-	GCM struct {
-		Enabled bool   `arg:"--gcm-enable: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
-		APIKey  string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
-		Workers int    `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
-	}
+	GCM GCM
 
-	Log struct {
-		Info  bool `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
-		Debug bool `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
-	}
+	Log Log
+}
+
+type GCM struct {
+	Enabled bool   `arg:"--gcm-enable: Enable the Google Cloud Messaging Connector (false)" env:"GUBLE_GCM_ENABLE"`
+	APIKey  string `arg:"--gcm-api-key: The Google API Key for Google Cloud Messaging" env:"GUBLE_GCM_API_KEY"`
+	Workers int    `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
+}
+
+type Log struct {
+	Info  bool `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
+	Debug bool `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
 }
 
 func init() {
@@ -47,7 +51,7 @@ func init() {
 
 		Health: healthEndpointPrefix,
 
-		GCM: config.GCM{
+		GCM: GCM{
 			Workers: runtime.GOMAXPROCS(0),
 		},
 	}
