@@ -16,7 +16,6 @@ import (
 const (
 	defaultHealthFrequency = time.Second * 60
 	defaultHealthThreshold = 1
-	defaultLocalAddress    = "127.0.0.1"
 )
 
 var loggerService = log.WithFields(log.Fields{
@@ -102,7 +101,6 @@ func (s *Service) Start() error {
 	if s.clusterMode() {
 		clusterConfig := &ClusterConfig{
 			id:                   s.nodeID,
-			host:                 defaultLocalAddress,
 			port:                 s.nodePort,
 			remoteHostsWithPorts: s.nodesUrls,
 		}

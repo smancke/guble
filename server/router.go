@@ -83,7 +83,6 @@ func (router *router) Start() error {
 		time.Sleep(time.Second)
 
 		msgString := fmt.Sprintf("Hello from node %v !", router.cluster.config.id)
-		log.WithField("message", msgString).Debug("SendToTCP")
 		router.cluster.broadcast([]byte(msgString))
 
 		message := protocol.Message{}

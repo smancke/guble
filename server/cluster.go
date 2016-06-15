@@ -1,11 +1,12 @@
 package server
 
 import (
+	"github.com/smancke/guble/protocol"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/hashicorp/memberlist"
 
 	"fmt"
-	"github.com/smancke/guble/protocol"
 	"io/ioutil"
 )
 
@@ -39,8 +40,7 @@ func NewCluster(config *ClusterConfig) *Cluster {
 
 	c.Delegate = &ClusterDelegate{}
 
-	//TODO Cosmin we should read somewhere from this channel, in order not to block
-	c.Events = &memberlist.ChannelEventDelegate{cluster.eventC}
+	c.Events = &ClusterEventDelegate{}
 
 	//TODO Cosmin temporarily disabling any logging from memberlist
 	c.LogOutput = ioutil.Discard
@@ -66,12 +66,12 @@ func (cluster *Cluster) Stop() error {
 }
 
 func (cluster *Cluster) BroadcastMessage(message protocol.Message) {
-	log.WithField("message", message).Debug("BroadcastMessage to cluster")
+	logger.WithField("message", message).Debug("BroadcastMessage to cluster")
 	//TODO Marian convert to byte array and invoke "cluster.broadcast"
 }
 
 func (cluster *Cluster) broadcast(msg []byte) {
-	log.WithField("msg", msg).Debug("broadcast to cluster")
+	logger.Debug("broadcast to cluster")
 	for _, node := range cluster.memberlist.Members() {
 		cluster.memberlist.SendToTCP(node, msg)
 	}
