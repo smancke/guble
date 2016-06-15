@@ -425,6 +425,12 @@ func TestRouter_Check(t *testing.T) {
 	a.NotNil(router.Check())
 }
 
+func TestPanicOnInternalDependencies(t *testing.T) {
+	defer testutil.ExpectPanic(t)
+	router := NewRouter(nil, nil, nil).(*router)
+	router.panicIfInternalDependenciesAreNil()
+}
+
 func aStartedRouter() (*router, auth.AccessManager, store.MessageStore, store.KVStore) {
 	am := auth.NewAllowAllAccessManager(true)
 	kvs := store.NewMemoryKVStore()

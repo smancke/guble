@@ -3,14 +3,14 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
+
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/alexflint/go-arg"
-
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/protocol"
 )
@@ -27,16 +27,19 @@ type arguments struct {
 
 var args arguments
 
+var logger = log.WithField("app", "guble-cli")
+
 // This is a minimal commandline client to connect through a websocket
 func main() {
-	protocol.LogLevel = protocol.LEVEL_ERR
+
+	log.SetLevel(log.ErrorLevel)
 
 	args = loadArgs()
 	if args.LogInfo {
-		protocol.LogLevel = protocol.LEVEL_INFO
+		log.SetLevel(log.InfoLevel)
 	}
 	if args.LogDebug {
-		protocol.LogLevel = protocol.LEVEL_DEBUG
+		log.SetLevel(log.DebugLevel)
 	}
 
 	origin := "http://localhost/"
@@ -117,7 +120,8 @@ func writeLoop(client client.Client) {
 			}
 			if err := client.WriteRawMessage([]byte(text)); err != nil {
 				shouldStop = true
-				protocol.Err(err.Error())
+
+				logger.WithField("err", err).Error("Error on Writing  message")
 			}
 		}()
 	}

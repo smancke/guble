@@ -1,8 +1,7 @@
 package testutil
 
 import (
-	"github.com/smancke/guble/protocol"
-
+	log "github.com/Sirupsen/logrus"
 	"github.com/alexjlockwood/gcm"
 	"github.com/docker/distribution/health"
 	"github.com/golang/mock/gomock"
@@ -21,7 +20,7 @@ var MockCtrl *gomock.Controller
 func init() {
 	// disable error output while testing
 	// because also negative tests are tested
-	protocol.LogLevel = protocol.LEVEL_ERR
+	log.SetLevel(log.ErrorLevel)
 }
 
 // NewMockCtrl initializes the `MockCtrl` package var and returns a method to
@@ -39,9 +38,9 @@ func NewMockCtrl(t *testing.T) (*gomock.Controller, func()) {
 // Usage:
 //		test_util.EnableDebugForMethod()()
 func EnableDebugForMethod() func() {
-	reset := protocol.LogLevel
-	protocol.LogLevel = protocol.LEVEL_DEBUG
-	return func() { protocol.LogLevel = reset }
+	reset := log.GetLevel()
+	log.SetLevel(log.DebugLevel)
+	return func() { log.SetLevel(reset) }
 }
 
 // ExpectDone waits to receive a value in the doneChannel for at least a second
@@ -52,6 +51,12 @@ func ExpectDone(a *assert.Assertions, doneChannel chan bool) {
 		return
 	case <-time.After(time.Second):
 		a.Fail("timeout in expectDone")
+	}
+}
+
+func ExpectPanic(t *testing.T) {
+	if r := recover(); r == nil {
+		assert.Fail(t, "Expecting a panic but unfortunately it did not happen")
 	}
 }
 
@@ -96,20 +101,32 @@ const (
 type RoundTripperFunc func(req *http.Request) *http.Response
 
 func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	protocol.Debug("Served request for %v", req.URL.Path)
+	log.WithFields(log.Fields{
+		"module":   "testing",
+		"url_path": req.URL.Path,
+	}).Debug("Served request for")
+
 	return rt(req), nil
 }
 
 func CreateGcmSender(rt RoundTripperFunc) *gcm.Sender {
-	protocol.Debug("CreateGcmSender")
+	log.WithFields(log.Fields{
+		"module": "testing",
+	}).Debug("Create GCM sender")
 	httpClient := &http.Client{Transport: rt}
 	return &gcm.Sender{ApiKey: "124", Http: httpClient}
 }
 
 func CreateRoundTripperWithJsonResponse(httpStatusCode int, messageBodyAsJSON string, doneC chan bool) RoundTripperFunc {
-	protocol.Debug("CreateRoundTripperWithJsonResponse")
+
+	log.WithFields(log.Fields{
+		"module": "testing",
+	}).Debug("CreateRoundTripperWithJsonResponse")
 	return RoundTripperFunc(func(req *http.Request) *http.Response {
-		protocol.Debug("RoundTripperFunc")
+		log.WithFields(log.Fields{
+			"module": "testing",
+		}).Debug("RoundTripperFunc")
+
 		if doneC != nil {
 			defer func() {
 				close(doneC)

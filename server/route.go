@@ -110,6 +110,7 @@ func (r *Route) Deliver(m *protocol.Message) error {
 
 	if r.isInvalid() {
 		protocol.Debug("Cannot deliver cause route is invalid")
+		mTotalDeliverMessageErrors.Add(1)
 		return ErrInvalidRoute
 	}
 
@@ -121,6 +122,7 @@ func (r *Route) Deliver(m *protocol.Message) error {
 		} else if r.queue.len() >= r.queueSize {
 			protocol.Debug("Closing route cause of full queue")
 			r.Close()
+			mTotalDeliverMessageErrors.Add(1)
 			return ErrQueueFull
 		}
 	}
@@ -152,6 +154,7 @@ func (r *Route) consume() {
 	for {
 		if r.isInvalid() {
 			protocol.Debug("Stopping consuming cause of invalid route.")
+			mTotalDeliverMessageErrors.Add(1)
 			return
 		}
 

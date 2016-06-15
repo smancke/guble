@@ -3,67 +3,14 @@ package protocol
 import (
 	"bytes"
 	"fmt"
-	"log"
+	log "github.com/Sirupsen/logrus"
 	"runtime"
 	"strings"
 )
 
-const (
-	LEVEL_DEBUG = iota
-	LEVEL_INFO
-	LEVEL_WARN
-	LEVEL_ERR
-)
-
-var LogLevel = LEVEL_WARN
-
-func DebugEnabled() bool {
-	return LogLevel <= LEVEL_DEBUG
-}
-
-func Debug(pattern string, args ...interface{}) {
-	if DebugEnabled() {
-		log.Print("DEBUG: ", fmt.Sprintf(pattern, args...))
-	}
-}
-
-func InfoEnabled() bool {
-	return LogLevel <= LEVEL_INFO
-}
-
-func Info(pattern string, args ...interface{}) {
-	if InfoEnabled() {
-		log.Print("INFO: ", fmt.Sprintf(pattern, args...))
-	}
-}
-
-func WarnEnabled() bool {
-	return LogLevel <= LEVEL_WARN
-}
-
-func Warn(pattern string, args ...interface{}) {
-	if WarnEnabled() {
-		log.Print("WARN: ", fmt.Sprintf(pattern, args...))
-	}
-}
-
-func ErrEnabled() bool {
-	return LogLevel <= LEVEL_ERR
-}
-
-func Err(pattern string, args ...interface{}) {
-	if ErrEnabled() {
-		msg := fmt.Sprintf(pattern, args...)
-		log.Printf("ERROR (%v): %v", identifyLogOrigin(), msg)
-		log.Printf(getStackTraceMessage(msg))
-	}
-}
-
 func ErrWithoutTrace(pattern string, args ...interface{}) {
-	if ErrEnabled() {
-		msg := fmt.Sprintf(pattern, args...)
-		log.Printf("ERROR: %v", msg)
-	}
+	msg := fmt.Sprintf(pattern, args...)
+	log.Printf("ERROR: %v", msg)
 }
 
 func PanicLogger() {

@@ -24,7 +24,7 @@ func TestStopingOfModules(t *testing.T) {
 
 	// with a registered Stopable
 	stopable := NewMockStopable(ctrl)
-	service.registerModule(stopable)
+	service.RegisterModules(stopable)
 
 	service.Start()
 
@@ -43,7 +43,7 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 	service, _, _, _ := aMockedService()
 
 	// when I register an endpoint at path /foo
-	service.registerModule(&TestEndpoint{})
+	service.RegisterModules(&TestEndpoint{})
 	service.Start()
 	defer service.Stop()
 	time.Sleep(time.Millisecond * 10)
@@ -65,6 +65,7 @@ func TestHealthUp(t *testing.T) {
 
 	// given:
 	service, _, _, _ := aMockedService()
+	service = service.HealthEndpointPrefix("/health_url")
 
 	// when starting the service
 	defer service.Stop()
@@ -72,7 +73,7 @@ func TestHealthUp(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// and when I call the health URL
-	url := fmt.Sprintf("http://%s/health", service.WebServer().GetAddr())
+	url := fmt.Sprintf("http://%s/health_url", service.WebServer().GetAddr())
 	result, err := http.Get(url)
 
 	// then I get status 200 and JSON: {}
@@ -90,18 +91,19 @@ func TestHealthDown(t *testing.T) {
 
 	// given:
 	service, _, _, _ := aMockedService()
+	service = service.HealthEndpointPrefix("/health_url")
 	mockChecker := NewMockChecker(ctrl)
 	mockChecker.EXPECT().Check().Return(errors.New("sick")).AnyTimes()
 
 	// when starting the service with a short frequency
 	defer service.Stop()
-	service.healthCheckFrequency = time.Millisecond * 3
-	service.registerModule(mockChecker)
+	service.healthFrequency = time.Millisecond * 3
+	service.RegisterModules(mockChecker)
 	service.Start()
 	time.Sleep(time.Millisecond * 10)
 
 	// and when I can call the health URL
-	url := fmt.Sprintf("http://%s/health", service.WebServer().GetAddr())
+	url := fmt.Sprintf("http://%s/health_url", service.WebServer().GetAddr())
 	result, err := http.Get(url)
 	// then I receive status 503 and a JSON error message
 	a.NoError(err)
@@ -109,6 +111,32 @@ func TestHealthDown(t *testing.T) {
 	body, err := ioutil.ReadAll(result.Body)
 	a.NoError(err)
 	a.Equal("{\"*server.MockChecker\":\"sick\"}", string(body))
+}
+
+func TestMetricsEnabled(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	defer testutil.ResetDefaultRegistryHealthCheck()
+	a := assert.New(t)
+
+	// given:
+	service, _, _, _ := aMockedService()
+	service = service.MetricsEndpointPrefix("/metrics_url")
+
+	// when starting the service
+	defer service.Stop()
+	service.Start()
+	time.Sleep(time.Millisecond * 10)
+
+	// and when I call the health URL
+	url := fmt.Sprintf("http://%s/metrics_url", service.WebServer().GetAddr())
+	result, err := http.Get(url)
+
+	// then I get status 200 and JSON: {}
+	a.NoError(err)
+	body, err := ioutil.ReadAll(result.Body)
+	a.NoError(err)
+	a.True(len(body) > 0)
 }
 
 func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockRouter) {

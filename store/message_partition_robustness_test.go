@@ -1,10 +1,9 @@
 package store
 
 import (
-	"github.com/smancke/guble/protocol"
-
 	"github.com/stretchr/testify/assert"
 
+	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"math"
 	"os"
@@ -29,7 +28,7 @@ func Test_MessagePartition_forConcurrentWriteAndReads(t *testing.T) {
 
 	readerDone := make(chan bool)
 	for i := 1; i <= nReaders; i++ {
-		go messagePartitionReader("reader" + strconv.Itoa(i), a, store, n, readerDone)
+		go messagePartitionReader("reader"+strconv.Itoa(i), a, store, n, readerDone)
 	}
 
 	select {
@@ -63,7 +62,12 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 		msgC := make(chan MessageAndId)
 		errorC := make(chan error)
 
-		protocol.Debug("[%v] start fetching at: %v", name, lastReadMessage+1)
+		log.WithFields(log.Fields{
+			"module":      "testing",
+			"name":        name,
+			"lastReadMsg": lastReadMessage + 1,
+		}).Debug("Start fetching at")
+
 		store.Fetch(FetchRequest{
 			Partition:     "myMessages",
 			StartId:       uint64(lastReadMessage + 1),
@@ -80,7 +84,13 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 			select {
 			case msgAndId, open := <-msgC:
 				if !open {
-					protocol.Debug("[%v] stop fetching at %v", name, lastReadMessage)
+
+					log.WithFields(log.Fields{
+						"module":      "testing",
+						"name":        name,
+						"lastReadMsg": lastReadMessage,
+					}).Debug("Stop fetching at")
+
 					break fetch
 				}
 				a.Equal(lastReadMessage+1, int(msgAndId.Id))
@@ -93,6 +103,11 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 		}
 
 	}
-	protocol.Debug("[%v] ready, got %v", name, lastReadMessage)
+	log.WithFields(log.Fields{
+		"module":      "testing",
+		"name":        name,
+		"lastReadMsg": lastReadMessage,
+	}).Debug("Ready got id")
+
 	done <- true
 }

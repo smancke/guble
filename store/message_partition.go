@@ -201,7 +201,7 @@ func (p *MessagePartition) Store(msgId uint64, msg []byte) error {
 func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 
 	if msgId != 1+p.maxMessageId {
-		return fmt.Errorf("Invalid message id for partition %v. Next id should be %v, but was %q", p.name, 1+p.maxMessageId, msgId)
+		return fmt.Errorf("MessagePartition: Invalid message id for partition %v. Next id should be %v, but was %q", p.name, 1+p.maxMessageId, msgId)
 	}
 	if msgId > p.appendLastId ||
 		p.appendFile == nil ||
@@ -266,9 +266,8 @@ func (p *MessagePartition) Fetch(req FetchRequest) {
 	}()
 }
 
-// fetch the messages in the supplied fetchlist and send them to the channel
+// fetchByFetchlist fetches the messages in the supplied fetchlist and sends them to the message-channel
 func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC chan MessageAndId) error {
-
 	var fileId uint64
 	var file *os.File
 	var err error
@@ -299,7 +298,7 @@ func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC cha
 	return nil
 }
 
-// returns a list of fetchEntry records for all message in the fetch request.
+// calculateFetchList returns a list of fetchEntry records for all message in the fetch request.
 func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, error) {
 	if req.Direction == 0 {
 		req.Direction = 1
@@ -363,24 +362,22 @@ func readIndexEntry(file *os.File, indexPosition int64) (msgOffset uint64, msgSi
 	return msgOffset, msgSize, nil
 }
 
-// Return a file handle to the message file with the supplied file id.
-// The returned file handle may be shared for multiple go routinep.
+// checkoutMessagefile returns a file handle to the message file with the supplied file id. The returned file handle may be shared for multiple go routines.
 func (p *MessagePartition) checkoutMessagefile(fileId uint64) (*os.File, error) {
 	return os.Open(p.filenameByMessageId(fileId))
 }
 
-// Release a message file handle
+// releaseMessagefile releases a message file handle
 func (p *MessagePartition) releaseMessagefile(fileId uint64, file *os.File) {
 	file.Close()
 }
 
-// Return a file handle to the index file with the supplied file id.
-// The returned file handle may be shared for multiple go routinep.
+// checkoutIndexfile returns a file handle to the index file with the supplied file id. The returned file handle may be shared for multiple go routines.
 func (p *MessagePartition) checkoutIndexfile(fileId uint64) (*os.File, error) {
 	return os.Open(p.indexFilenameByMessageId(fileId))
 }
 
-// Release an index file handle
+// releaseIndexfile releases an index file handle
 func (p *MessagePartition) releaseIndexfile(fileId uint64, file *os.File) {
 	file.Close()
 }
