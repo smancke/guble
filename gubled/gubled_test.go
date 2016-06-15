@@ -36,17 +36,6 @@ func TestCreateKVStoreBackend(t *testing.T) {
 	a.Equal("*store.SqliteKVStore", reflect.TypeOf(sqlite).String())
 }
 
-func assertArguments(a *assert.Assertions, args Args) {
-	a.Equal("listen", args.Listen)
-	a.Equal(true, args.LogInfo)
-	a.Equal(true, args.LogDebug)
-	a.Equal("kv-backend", args.KVBackend)
-	a.Equal("storage-path", args.StoragePath)
-	a.Equal("ms-backend", args.MSBackend)
-	a.Equal("gcm-api-key", args.GcmApiKey)
-	a.Equal(true, args.GcmEnable)
-}
-
 func TestArgDefaultValues(t *testing.T) {
 	a := assert.New(t)
 
