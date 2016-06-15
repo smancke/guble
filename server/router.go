@@ -1,11 +1,13 @@
 package server
 
 import (
-	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/store"
+
+	log "github.com/Sirupsen/logrus"
+
+	"fmt"
 	"runtime"
 	"strings"
 	"sync"
@@ -24,13 +26,12 @@ var logger = log.WithFields(log.Fields{
 	"module": "router",
 	"env":    "TBD"})
 
-// Router interface provides mechanism for PubSub messaging
+// Router interface provides a mechanism for PubSub messaging
 type Router interface {
-	KVStore() (store.KVStore, error)
 	AccessManager() (auth.AccessManager, error)
 	MessageStore() (store.MessageStore, error)
-
-	SetCluster(*Cluster)
+	KVStore() (store.KVStore, error)
+	Cluster() *Cluster
 
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
@@ -59,7 +60,7 @@ type router struct {
 }
 
 // NewRouter returns a pointer to Router
-func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore) Router {
+func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore, cluster *Cluster) Router {
 	return &router{
 		routes: make(map[protocol.Path][]*Route),
 
@@ -71,6 +72,7 @@ func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore
 		accessManager: accessManager,
 		messageStore:  messageStore,
 		kvStore:       kvStore,
+		cluster:       cluster,
 	}
 }
 
@@ -82,7 +84,7 @@ func (router *router) Start() error {
 	if router.cluster != nil {
 		time.Sleep(time.Second)
 
-		msgString := fmt.Sprintf("Hello from node %v !", router.cluster.config.id)
+		msgString := fmt.Sprintf("Hello from node %v !", router.cluster.config.Id)
 		router.cluster.broadcast([]byte(msgString))
 
 		message := protocol.Message{}
@@ -429,6 +431,7 @@ func (router *router) KVStore() (store.KVStore, error) {
 	return router.kvStore, nil
 }
 
-func (router *router) SetCluster(cluster *Cluster) {
-	router.cluster = cluster
+// Cluster returns the `cluster` provided for the router, or nil if no cluster was set-up
+func (router *router) Cluster() *Cluster {
+	return router.cluster
 }

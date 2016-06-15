@@ -6,6 +6,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/hashicorp/memberlist"
 
+	"errors"
 	"fmt"
 	"io/ioutil"
 )
@@ -15,10 +16,10 @@ const (
 )
 
 type ClusterConfig struct {
-	id                   int
-	host                 string
-	port                 int
-	remoteHostsWithPorts []string
+	Id      int
+	Host    string
+	Port    int
+	Remotes []string
 }
 
 type Cluster struct {
@@ -34,12 +35,11 @@ func NewCluster(config *ClusterConfig) *Cluster {
 	}
 
 	c := memberlist.DefaultLANConfig()
-	c.Name = fmt.Sprintf("%d:%s:%d", config.id, config.host, config.port)
-	c.BindAddr = config.host
-	c.BindPort = config.port
+	c.Name = fmt.Sprintf("%d:%s:%d", config.Id, config.Host, config.Port)
+	c.BindAddr = config.Host
+	c.BindPort = config.Port
 
 	c.Delegate = &ClusterDelegate{}
-
 	c.Events = &ClusterEventDelegate{}
 
 	//TODO Cosmin temporarily disabling any logging from memberlist
@@ -47,18 +47,25 @@ func NewCluster(config *ClusterConfig) *Cluster {
 
 	memberlist, err := memberlist.Create(c)
 	if err != nil {
-		log.WithField("error", err).Fatal("Unexpected fatal error when creating the memberlist")
-	}
-
-	num, err := memberlist.Join(config.remoteHostsWithPorts)
-	if num == 0 || err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"num":   num,
-		}).Fatal("Unexpected fatal error when node wanted to join the cluster")
+		log.WithField("error", err).Fatal("Fatal error when creating the internal memberlist of the cluster")
 	}
 	cluster.memberlist = memberlist
 	return cluster
+}
+
+func (cluster *Cluster) Start() error {
+	log.WithField("remotes", cluster.config.Remotes).Debug("Starting Cluster")
+	num, err := cluster.memberlist.Join(cluster.config.Remotes)
+	if err != nil {
+		log.WithField("error", err).Error("Error when this node wanted to join the cluster")
+		return err
+	}
+	if num == 0 {
+		errorMessage := "No remote hosts were successfuly contacted when this node wanted to join the cluster"
+		log.Error(errorMessage)
+		return errors.New(errorMessage)
+	}
+	return nil
 }
 
 func (cluster *Cluster) Stop() error {
