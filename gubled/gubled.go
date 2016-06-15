@@ -35,7 +35,6 @@ const (
 	defaultKVBackend      = "file"
 	defaultMSBackend      = "file"
 	defaultStoragePath    = "/var/lib/guble"
-	defaultGcmWorkers     = runtime.GOMAXPROCS(0)
 	defaultHealthEndpoint = "/_health"
 	defaultNodePort       = 10000
 )
@@ -216,7 +215,7 @@ func loadArgs() Args {
 		KVBackend:   defaultKVBackend,
 		MSBackend:   defaultMSBackend,
 		StoragePath: defaultStoragePath,
-		GcmWorkers:  defaultGcmWorkers,
+		GcmWorkers:  runtime.GOMAXPROCS(0),
 		Health:      defaultHealthEndpoint,
 		NodePort:    defaultNodePort,
 	}
