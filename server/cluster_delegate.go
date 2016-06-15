@@ -10,9 +10,20 @@ type ClusterDelegate struct {
 }
 
 func (cd *ClusterDelegate) NotifyMsg(msg []byte) {
-	log.WithField("msg", string(msg)).Debug("NotifyMsg")
+	log.WithField("msgAsBytes", msg).Debug("NotifyMsg")
 
 	//TODO Marian decode protocol.Message
+
+	clusterMsg, err := ParseMessage(msg)
+	if err != nil {
+		logger.WithField("err", err).Error("Decoding of message failed")
+		return
+	}
+	logger.WithFields(log.Fields{
+		"senderNodeID": clusterMsg.NodeId,
+		"type":         clusterMsg.Type,
+		"body":         string(clusterMsg.Body),
+	}).Info("NotifyMsg:Received cluster message")
 
 	cp := make([]byte, len(msg))
 	copy(cp, msg)

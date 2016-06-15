@@ -5,7 +5,6 @@ import (
 	"github.com/hashicorp/memberlist"
 
 	"fmt"
-	"github.com/smancke/guble/protocol"
 	"io/ioutil"
 )
 
@@ -65,14 +64,26 @@ func (cluster *Cluster) Stop() error {
 	return cluster.memberlist.Shutdown()
 }
 
-func (cluster *Cluster) BroadcastMessage(message protocol.Message) {
+func (cluster *Cluster) BroadcastMessage(message *ClusterMessage) {
 	log.WithField("message", message).Debug("BroadcastMessage to cluster")
 	//TODO Marian convert to byte array and invoke "cluster.broadcast"
+	//encode the message and send it to
+	bytes, err := message.EncodeMessage()
+	if err != nil {
+		logger.WithField("err", err).Error("Could not sent message")
+	}
+	log.WithFields(log.Fields{
+		"nodeId":     cluster.config.id,
+		"msgAsBytes": bytes,
+	}).Debug("BroadcastMessage")
+
+	cluster.broadcast(bytes)
 }
 
 func (cluster *Cluster) broadcast(msg []byte) {
 	log.WithField("msg", msg).Debug("broadcast to cluster")
 	for _, node := range cluster.memberlist.Members() {
 		cluster.memberlist.SendToTCP(node, msg)
+
 	}
 }
