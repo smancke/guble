@@ -84,11 +84,12 @@ func (router *router) Start() error {
 	if router.cluster != nil {
 		time.Sleep(time.Second)
 
-		msgString := fmt.Sprintf("Hello from node %v !", router.cluster.config.Id)
-		router.cluster.broadcast([]byte(msgString))
+		msgString := fmt.Sprintf("Hello from node %v !", router.cluster.config.ID)
+		log.WithField("message", msgString).Debug("SendToTCP")
+		//router.cluster.broadcast([]byte(msgString))
 
-		message := protocol.Message{}
-		router.cluster.BroadcastMessage(message)
+		message := ClusterMessage{NodeId: router.cluster.config.ID, Type: STRING_BODY_MESSAGE, Body: []byte(msgString)}
+		router.cluster.BroadcastMessage(&message)
 	}
 
 	go func() {

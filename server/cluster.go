@@ -1,8 +1,6 @@
 package server
 
 import (
-	"github.com/smancke/guble/protocol"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/hashicorp/memberlist"
 
@@ -16,7 +14,7 @@ const (
 )
 
 type ClusterConfig struct {
-	Id      int
+	ID      int
 	Host    string
 	Port    int
 	Remotes []string
@@ -35,7 +33,7 @@ func NewCluster(config *ClusterConfig) *Cluster {
 	}
 
 	c := memberlist.DefaultLANConfig()
-	c.Name = fmt.Sprintf("%d:%s:%d", config.Id, config.Host, config.Port)
+	c.Name = fmt.Sprintf("%d:%s:%d", config.ID, config.Host, config.Port)
 	c.BindAddr = config.Host
 	c.BindPort = config.Port
 
@@ -72,14 +70,26 @@ func (cluster *Cluster) Stop() error {
 	return cluster.memberlist.Shutdown()
 }
 
-func (cluster *Cluster) BroadcastMessage(message protocol.Message) {
-	logger.WithField("message", message).Debug("BroadcastMessage to cluster")
+func (cluster *Cluster) BroadcastMessage(message *ClusterMessage) {
+	log.WithField("message", message).Debug("BroadcastMessage to cluster")
 	//TODO Marian convert to byte array and invoke "cluster.broadcast"
+	//encode the message and send it to
+	bytes, err := message.EncodeMessage()
+	if err != nil {
+		logger.WithField("err", err).Error("Could not sent message")
+	}
+	log.WithFields(log.Fields{
+		"nodeId":     cluster.config.ID,
+		"msgAsBytes": bytes,
+	}).Debug("BroadcastMessage")
+
+	cluster.broadcast(bytes)
 }
 
 func (cluster *Cluster) broadcast(msg []byte) {
-	logger.Debug("broadcast to cluster")
+	log.WithField("msg", msg).Debug("broadcast to cluster")
 	for _, node := range cluster.memberlist.Members() {
 		cluster.memberlist.SendToTCP(node, msg)
+
 	}
 }
