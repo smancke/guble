@@ -22,12 +22,6 @@ const (
 	unsubscribeChannelCapacity   = 10
 )
 
-var logger = log.WithFields(log.Fields{
-	"app":    "guble",
-	"module": "router",
-	"env":    "TBD",
-})
-
 // Router interface provides a mechanism for PubSub messaging
 type Router interface {
 	AccessManager() (auth.AccessManager, error)
