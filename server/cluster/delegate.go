@@ -18,7 +18,7 @@ func (d *Delegate) NotifyMsg(msg []byte) {
 		return
 	}
 	logger.WithFields(log.Fields{
-		"senderNodeID": cmsg.NodeId,
+		"senderNodeID": cmsg.NodeID,
 		"type":         cmsg.Type,
 		"body":         string(cmsg.Body),
 	}).Info("NotifyMsg: Received cluster message")

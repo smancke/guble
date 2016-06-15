@@ -37,13 +37,13 @@ func (id *NEXT_ID) Bytes() []byte {
 }
 
 type ClusterMessage struct {
-	NodeId int
+	NodeID int
 	Type   ClusterMessageType
 	Body   []byte
 }
 
 func (cmsg *ClusterMessage) len() int {
-	return int(unsafe.Sizeof(cmsg.Type)) + int(unsafe.Sizeof(cmsg.NodeId)) + len(cmsg.Body)
+	return int(unsafe.Sizeof(cmsg.Type)) + int(unsafe.Sizeof(cmsg.NodeID)) + len(cmsg.Body)
 }
 
 func (cmsg *ClusterMessage) EncodeMessage() (result []byte, err error) {
