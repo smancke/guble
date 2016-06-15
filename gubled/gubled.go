@@ -51,7 +51,7 @@ type Args struct {
 	GcmWorkers  int      `arg:"--gcm-workers: The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)" env:"GUBLE_GCM_WORKERS"`
 	Health      string   `arg:"--health: The health endpoint (default: /_health; value for disabling it: \"\" )" env:"GUBLE_HEALTH_ENDPOINT"`
 	Metrics     string   `arg:"--metrics: The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )" env:"GUBLE_METRICS_ENDPOINT"`
-	NodeId      int      `arg:"--node-id: This guble node's own ID (used in cluster mode): a strictly positive integer number which must be unique in cluster" env:"GUBLE_NODE_ID"`
+	NodeID      int      `arg:"--node-id: This guble node's own ID (used in cluster mode): a strictly positive integer number which must be unique in cluster" env:"GUBLE_NODE_ID"`
 	NodePort    int      `arg:"--node-port: This guble node's own local port (used in cluster mode): a strictly positive integer number" env:"GUBLE_NODE_PORT"`
 	Remotes     []string `arg:"positional,help: The list of URLs in absolute form of some other guble nodes (used in cluster mode)"`
 }
@@ -174,11 +174,11 @@ func StartService(args Args) *server.Service {
 	kvStore := CreateKVStore(args)
 
 	var cluster *server.Cluster
-	if args.NodeId > 0 {
-		validRemotes := validateCluster(args.NodeId, args.NodePort, args.Remotes)
+	if args.NodeID > 0 {
+		validRemotes := validateCluster(args.NodeID, args.NodePort, args.Remotes)
 		logger.Info("Starting in cluster-mode")
 		clusterConfig := &server.ClusterConfig{
-			Id:      args.NodeId,
+			Id:      args.NodeID,
 			Port:    args.NodePort,
 			Remotes: validRemotes,
 		}
@@ -225,12 +225,12 @@ func loadArgs() Args {
 	return args
 }
 
-func validateCluster(nodeId int, nodePort int, potentialRemotes []string) []string {
+func validateCluster(nodeID int, nodePort int, potentialRemotes []string) []string {
 	validRemotes := validateRemoteHostsWithPorts(potentialRemotes)
-	if (nodeId <= 0 && len(validRemotes) > 0) || (nodePort <= 0) {
+	if (nodeID <= 0 && len(validRemotes) > 0) || (nodePort <= 0) {
 		errorMessage := "Could not start in cluster-mode: invalid/incomplete parameters"
 		logger.WithFields(log.Fields{
-			"nodeID":               nodeId,
+			"nodeID":               nodeID,
 			"nodePort":             nodePort,
 			"numberOfValidRemotes": len(validRemotes),
 		}).Fatal(errorMessage)

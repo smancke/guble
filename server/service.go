@@ -156,9 +156,11 @@ func (s *Service) Stop() error {
 			stopOrder[i] = len(stopables) - i
 		}
 	} else {
-		for i := 1; i < len(stopables); i++ {
+		stopOrder[0] = 1
+		for i := 1; i < len(stopables)-1; i++ {
 			stopOrder[i] = len(stopables) - i
 		}
+		stopOrder[len(stopables)-1] = 0
 	}
 
 	loggerService.WithField("stopOrder", stopOrder).Debug("Stopping modules in this order relative to registration")

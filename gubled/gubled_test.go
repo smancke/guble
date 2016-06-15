@@ -118,7 +118,7 @@ func assertArguments(a *assert.Assertions, args Args, useNodeUrls bool) {
 	a.Equal("ms-backend", args.MSBackend)
 	a.Equal("gcm-api-key", args.GcmApiKey)
 	a.Equal(4, args.GcmWorkers)
-	a.Equal(1, args.NodeId)
+	a.Equal(1, args.NodeID)
 	a.Equal(true, args.GcmEnable)
 
 	if useNodeUrls == true {
