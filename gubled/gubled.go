@@ -9,6 +9,7 @@ import (
 	"github.com/smancke/guble/metrics"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/server/cluster"
 	"github.com/smancke/guble/server/rest"
 	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/server/websocket"
@@ -173,21 +174,21 @@ func StartService(args Args) *server.Service {
 	messageStore := CreateMessageStore(args)
 	kvStore := CreateKVStore(args)
 
-	var cluster *server.Cluster
+	var c *cluster.Cluster
 	if args.NodeID > 0 {
 		validRemotes := validateCluster(args.NodeID, args.NodePort, args.Remotes)
 		logger.Info("Starting in cluster-mode")
-		clusterConfig := &server.ClusterConfig{
+		clusterConfig := &cluster.ClusterConfig{
 			ID:      args.NodeID,
 			Port:    args.NodePort,
 			Remotes: validRemotes,
 		}
-		cluster = server.NewCluster(clusterConfig)
+		c = cluster.NewCluster(clusterConfig)
 	} else {
 		logger.Info("Starting in standalone-mode")
 	}
 
-	router := server.NewRouter(accessManager, messageStore, kvStore, cluster)
+	router := server.NewRouter(accessManager, messageStore, kvStore, c)
 	webserver := webserver.New(args.Listen)
 
 	service := server.NewService(router, webserver).

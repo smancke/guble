@@ -1,4 +1,4 @@
-package server
+package cluster
 
 import (
 	log "github.com/Sirupsen/logrus"
@@ -21,14 +21,14 @@ type ClusterConfig struct {
 }
 
 type Cluster struct {
-	config     *ClusterConfig
+	Config     *ClusterConfig
 	memberlist *memberlist.Memberlist
 	eventC     chan memberlist.NodeEvent
 }
 
 func NewCluster(config *ClusterConfig) *Cluster {
 	cluster := &Cluster{
-		config: config,
+		Config: config,
 		eventC: make(chan memberlist.NodeEvent, eventChannelBufferSize),
 	}
 
@@ -52,8 +52,8 @@ func NewCluster(config *ClusterConfig) *Cluster {
 }
 
 func (cluster *Cluster) Start() error {
-	log.WithField("remotes", cluster.config.Remotes).Debug("Starting Cluster")
-	num, err := cluster.memberlist.Join(cluster.config.Remotes)
+	log.WithField("remotes", cluster.Config.Remotes).Debug("Starting Cluster")
+	num, err := cluster.memberlist.Join(cluster.Config.Remotes)
 	if err != nil {
 		log.WithField("error", err).Error("Error when this node wanted to join the cluster")
 		return err
@@ -79,7 +79,7 @@ func (cluster *Cluster) BroadcastMessage(message *ClusterMessage) {
 		logger.WithField("err", err).Error("Could not sent message")
 	}
 	log.WithFields(log.Fields{
-		"nodeId":     cluster.config.ID,
+		"nodeId":     cluster.Config.ID,
 		"msgAsBytes": bytes,
 	}).Debug("BroadcastMessage")
 

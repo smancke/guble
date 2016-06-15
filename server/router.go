@@ -8,6 +8,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"fmt"
+	"github.com/smancke/guble/server/cluster"
 	"runtime"
 	"strings"
 	"sync"
@@ -24,14 +25,15 @@ const (
 var logger = log.WithFields(log.Fields{
 	"app":    "guble",
 	"module": "router",
-	"env":    "TBD"})
+	"env":    "TBD",
+})
 
 // Router interface provides a mechanism for PubSub messaging
 type Router interface {
 	AccessManager() (auth.AccessManager, error)
 	MessageStore() (store.MessageStore, error)
 	KVStore() (store.KVStore, error)
-	Cluster() *Cluster
+	Cluster() *cluster.Cluster
 
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
@@ -56,11 +58,11 @@ type router struct {
 	accessManager auth.AccessManager
 	messageStore  store.MessageStore
 	kvStore       store.KVStore
-	cluster       *Cluster
+	cluster       *cluster.Cluster
 }
 
 // NewRouter returns a pointer to Router
-func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore, cluster *Cluster) Router {
+func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore, cluster *cluster.Cluster) Router {
 	return &router{
 		routes: make(map[protocol.Path][]*Route),
 
@@ -82,8 +84,8 @@ func (router *router) Start() error {
 
 	//TODO Cosmin remove this (just a test)
 	if router.cluster != nil {
-		msgString := fmt.Sprintf("Hello from node %v !", router.cluster.config.ID)
-		message := ClusterMessage{NodeId: router.cluster.config.ID, Type: STRING_BODY_MESSAGE, Body: []byte(msgString)}
+		msgString := fmt.Sprintf("Hello from node %v !", router.cluster.Config.ID)
+		message := cluster.ClusterMessage{NodeId: router.cluster.Config.ID, Type: cluster.STRING_BODY_MESSAGE, Body: []byte(msgString)}
 		router.cluster.BroadcastMessage(&message)
 	}
 
@@ -428,6 +430,6 @@ func (router *router) KVStore() (store.KVStore, error) {
 }
 
 // Cluster returns the `cluster` provided for the router, or nil if no cluster was set-up
-func (router *router) Cluster() *Cluster {
+func (router *router) Cluster() *cluster.Cluster {
 	return router.cluster
 }

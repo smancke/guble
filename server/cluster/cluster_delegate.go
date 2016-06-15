@@ -1,4 +1,4 @@
-package server
+package cluster
 
 import (
 	log "github.com/Sirupsen/logrus"
