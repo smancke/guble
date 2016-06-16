@@ -313,37 +313,25 @@ func (router *router) storeAndChannelMessage(msg *protocol.Message) error {
 }
 
 func (router *router) routeMessage(message *protocol.Message) {
-
 	logger.WithFields(log.Fields{
 		"msgMetadata": message.Metadata(),
 	}).Debug("Called routeMessage for data")
 	mTotalMessagesRouted.Add(1)
 
-	for path, list := range router.routes {
+	matched := false
+	for path, pathRoutes := range router.routes {
 		if matchesTopic(message.Path, path) {
-			for _, route := range list {
-				router.deliverMessage(route, message)
+			matched = true
+			for _, route := range pathRoutes {
+				if err := route.Deliver(message); err == ErrInvalidRoute {
+					// Unsubscribe invalid routes
+					router.unsubscribe(route)
+				}
 			}
-		} else {
-			mTotalMessagesNotMatchingTopic.Add(1)
 		}
 	}
-}
-
-func (router *router) deliverMessage(route *Route, message *protocol.Message) {
-	defer protocol.PanicLogger()
-
-	select {
-	case route.MessagesChannel() <- &MessageForRoute{Message: message, Route: route}:
-	// fine, we could send the message
-	default:
-
-		logger.WithFields(log.Fields{
-			"route": route.String(),
-		}).Warn(" deliverMessage: queue was full, unsubscribing and closing delivery channel for route")
-		router.unsubscribe(route)
-		route.Close()
-		mTotalDeliverMessageErrors.Add(1)
+	if matched {
+		mTotalMessagesNotMatchingTopic.Add(1)
 	}
 }
 
