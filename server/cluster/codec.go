@@ -36,6 +36,17 @@ func (id *NEXT_ID) Bytes() []byte {
 	return buff.Bytes()
 }
 
+func DecodeNextID(payload []byte) (*NEXT_ID, error) {
+	i, err := strconv.Atoi(string(payload))
+	if err != nil {
+		return nil, err
+	}
+
+	tt := NEXT_ID(int(i))
+
+	return &tt, nil
+}
+
 type ClusterMessage struct {
 	NodeId int
 	Type   ClusterMessageType
