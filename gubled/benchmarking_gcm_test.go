@@ -3,13 +3,13 @@ package gubled
 import (
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gcm"
+	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/testutil"
 
 	"github.com/stretchr/testify/assert"
 
 	"bytes"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -18,6 +18,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 func BenchmarkGCMConnector_BroadcastMessagesSingleWorker(b *testing.B) {
@@ -60,16 +62,15 @@ func throughputSend(b *testing.B, nWorkers int, sampleSend func(c client.Client)
 	}()
 	a.NoError(errTempDir)
 
-	args := Args{
-		Listen:      "localhost:0",
-		KVBackend:   "memory",
-		MSBackend:   "file",
-		StoragePath: dir,
-		GcmEnable:   true,
-		GcmApiKey:   "WILL BE OVERWRITTEN",
-		GcmWorkers:  nWorkers}
+	*config.Listen = "localhost:0"
+	*config.KVBackend = "memory"
+	*config.MSBackend = "file"
+	*config.StoragePath = dir
+	*config.GCM.Enabled = true
+	*config.GCM.APIKey = "WILL BE OVERWRITTEN"
+	*config.GCM.Workers = nWorkers
 
-	service := StartService(args)
+	service := StartService()
 
 	log.WithFields(log.Fields{
 		"module": "testing",

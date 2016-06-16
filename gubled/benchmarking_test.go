@@ -1,17 +1,20 @@
 package gubled
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"fmt"
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/testutil"
 	"io/ioutil"
 	"log"
 	"os"
 	"time"
+
+	"github.com/smancke/guble/client"
+	"github.com/smancke/guble/gubled/config"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/testutil"
 )
 
 type testgroup struct {
@@ -41,11 +44,12 @@ func TestThroughput(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "guble_benchmarking_test")
 	defer os.RemoveAll(dir)
 
-	service := StartService(Args{
-		Listen:      "localhost:0",
-		KVBackend:   "memory",
-		MSBackend:   "file",
-		StoragePath: dir})
+	*config.Listen = "localhost:0"
+	*config.KVBackend = "memory"
+	*config.MSBackend = "file"
+	*config.StoragePath = dir
+
+	service := StartService()
 	defer func() {
 		service.Stop()
 	}()
