@@ -38,22 +38,22 @@ func NewCluster(config *Config) *Cluster {
 
 	memberlist, err := memberlist.Create(memberlistConfig)
 	if err != nil {
-		log.WithField("error", err).Fatal("Fatal error when creating the internal memberlist of the cluster")
+		logger.WithField("error", err).Fatal("Fatal error when creating the internal memberlist of the cluster")
 	}
 	c.memberlist = memberlist
 	return c
 }
 
 func (cluster *Cluster) Start() error {
-	log.WithField("remotes", cluster.Config.Remotes).Debug("Starting Cluster")
+	logger.WithField("remotes", cluster.Config.Remotes).Debug("Starting Cluster")
 	num, err := cluster.memberlist.Join(cluster.Config.Remotes)
 	if err != nil {
-		log.WithField("error", err).Error("Error when this node wanted to join the cluster")
+		logger.WithField("error", err).Error("Error when this node wanted to join the cluster")
 		return err
 	}
 	if num == 0 {
 		errorMessage := "No remote hosts were successfuly contacted when this node wanted to join the cluster"
-		log.Error(errorMessage)
+		logger.Error(errorMessage)
 		return errors.New(errorMessage)
 	}
 	return nil
@@ -64,7 +64,7 @@ func (cluster *Cluster) Stop() error {
 }
 
 func (cluster *Cluster) BroadcastString(sMessage *string) {
-	log.WithField("string", sMessage).Debug("BroadcastString")
+	logger.WithField("string", sMessage).Debug("BroadcastString")
 	cMessage := &message{
 		NodeID: cluster.Config.ID,
 		Type:   STRING_BODY_MESSAGE,
@@ -74,7 +74,7 @@ func (cluster *Cluster) BroadcastString(sMessage *string) {
 }
 
 func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) {
-	log.WithField("message", pMessage).Debug("BroadcastMessage")
+	logger.WithField("message", pMessage).Debug("BroadcastMessage")
 	cMessage := &message{
 		NodeID: cluster.Config.ID,
 		Type:   MESSAGE,
@@ -84,12 +84,12 @@ func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) {
 }
 
 func (cluster *Cluster) broadcastClusterMessage(cMessage *message) {
-	log.WithField("clusterMessage", cMessage).Debug("broadcastClusterMessage")
+	logger.WithField("clusterMessage", cMessage).Debug("broadcastClusterMessage")
 	cMessageBytes, err := cMessage.encode()
 	if err != nil {
 		logger.WithField("err", err).Error("Could not encode and send clusterMessage")
 	}
-	log.WithFields(log.Fields{
+	logger.WithFields(log.Fields{
 		"nodeId":                cMessage.NodeID,
 		"clusterMessageAsBytes": cMessageBytes,
 	}).Debug("broadcastClusterMessage bytes")
