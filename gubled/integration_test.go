@@ -2,11 +2,13 @@ package gubled
 
 import (
 	"github.com/smancke/guble/client"
+	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"encoding/json"
 	// "github.com/smancke/guble/testutil"
@@ -42,7 +44,9 @@ import (
 // }
 
 func initServerAndClients(t *testing.T) (*server.Service, client.Client, client.Client, func()) {
-	service := StartService(Args{Listen: "localhost:0", KVBackend: "memory"})
+	*config.Listen = "localhost:0"
+	*config.KVBackend = "memory"
+	service := StartService()
 
 	time.Sleep(time.Millisecond * 100)
 
