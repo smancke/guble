@@ -10,7 +10,7 @@ type Delegate struct {
 }
 
 func (d *Delegate) NotifyMsg(msg []byte) {
-	log.WithField("msgAsBytes", msg).Debug("NotifyMsg")
+	logger.WithField("msgAsBytes", msg).Debug("NotifyMsg")
 
 	cmsg, err := decode(msg)
 	if err != nil {
