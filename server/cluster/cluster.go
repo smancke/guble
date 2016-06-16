@@ -94,8 +94,10 @@ func (cluster *Cluster) broadcastClusterMessage(cMessage *message) {
 		"clusterMessageAsBytes": cMessageBytes,
 	}).Debug("broadcastClusterMessage bytes")
 
-	//TODO Cosmin/Marian do not send message to ourselves
 	for _, node := range cluster.memberlist.Members() {
-		cluster.memberlist.SendToTCP(node, cMessageBytes)
+		if cluster.memberlist.LocalNode().Name != node.Name {
+			logger.WithField("nodeName", node.Name).Debug("Sending MSG to node")
+			cluster.memberlist.SendToTCP(node, cMessageBytes)
+		}
 	}
 }
