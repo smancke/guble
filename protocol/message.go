@@ -139,16 +139,6 @@ func (msg *NotificationMessage) Bytes() []byte {
 	return buff.Bytes()
 }
 
-// Path is the path of a topic
-type Path string
-
-func (path Path) Partition() string {
-	if len(path) > 0 && path[0] == '/' {
-		path = path[1:]
-	}
-	return strings.SplitN(string(path), "/", 2)[0]
-}
-
 // ParseMessage parses a message, sent from the server to the client.
 // The parsed messages can have one of the types: *Message or *NotificationMessage
 func ParseMessage(message []byte) (interface{}, error) {
@@ -156,7 +146,6 @@ func ParseMessage(message []byte) (interface{}, error) {
 		return parseNotificationMessage(message)
 	}
 	return parseMessage(message)
-
 }
 
 func parseMessage(message []byte) (interface{}, error) {
