@@ -8,6 +8,7 @@ import (
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/server/cluster"
 	"github.com/smancke/guble/store"
 )
 
@@ -43,9 +44,9 @@ func (_mr *_MockRouterRecorder) AccessManager() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AccessManager")
 }
 
-func (_m *MockRouter) Cluster() *server.Cluster {
+func (_m *MockRouter) Cluster() *cluster.Cluster {
 	ret := _m.ctrl.Call(_m, "Cluster")
-	ret0, _ := ret[0].(*server.Cluster)
+	ret0, _ := ret[0].(*cluster.Cluster)
 	return ret0
 }
 

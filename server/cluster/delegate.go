@@ -12,16 +12,16 @@ type Delegate struct {
 func (d *Delegate) NotifyMsg(msg []byte) {
 	log.WithField("msgAsBytes", msg).Debug("NotifyMsg")
 
-	clusterMsg, err := ParseMessage(msg)
+	cmsg, err := ParseMessage(msg)
 	if err != nil {
 		logger.WithField("err", err).Error("Decoding of message failed")
 		return
 	}
 	logger.WithFields(log.Fields{
-		"senderNodeID": clusterMsg.NodeId,
-		"type":         clusterMsg.Type,
-		"body":         string(clusterMsg.Body),
-	}).Info("NotifyMsg:Received cluster message")
+		"senderNodeID": cmsg.NodeID,
+		"type":         cmsg.Type,
+		"body":         string(cmsg.Body),
+	}).Info("NotifyMsg: Received cluster message")
 
 	cp := make([]byte, len(msg))
 	copy(cp, msg)
