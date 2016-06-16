@@ -2,15 +2,13 @@ package metrics
 
 import (
 	log "github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/gubled/config"
 
 	"expvar"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 )
-
-var Enabled = len(os.Getenv("GUBLE_METRICS")) > 0
 
 type IntVar interface {
 	Add(int64)
@@ -25,7 +23,7 @@ func (v *emptyInt) Add(delta int64) {}
 func (v *emptyInt) Set(value int64) {}
 
 func NewInt(name string) IntVar {
-	if Enabled {
+	if *config.Metrics.Enabled {
 		return expvar.NewInt(name)
 	}
 	return &emptyInt{}
@@ -50,7 +48,7 @@ func writeMetrics(w io.Writer) {
 }
 
 func LogOnDebugLevel() {
-	if !Enabled {
+	if !*config.Metrics.Enabled {
 		log.Debug("metrics: not enabled")
 		return
 	}

@@ -2,19 +2,18 @@ package server
 
 import (
 	"errors"
-	"fmt"
+	"testing"
+	"time"
+
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 var aTestByteMessage = []byte("Hello World!")
-var chanSize = 10
 
 func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 	a := assert.New(t)
@@ -210,6 +209,7 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 
 	// Given a Router with route
 	router, r := aRouterRoute(chanSize)
+	r.SetTimeout(5 * time.Millisecond)
 
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
@@ -221,7 +221,7 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 	}
 
 	// when I send one more message
-	done := make(chan bool, 1)
+	done := make(chan bool)
 	go func() {
 		router.HandleMessage(&protocol.Message{Path: r.Path, Body: aTestByteMessage})
 		done <- true
@@ -251,7 +251,7 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 	case _, open := <-r.MessagesChannel():
 		a.False(open)
 	default:
-		fmt.Printf("len(r.C): %v", len(r.MessagesChannel()))
+		logger.Debug("len(r.C): %v", len(r.MessagesChannel()))
 		a.Fail("channel was not closed")
 	}
 }

@@ -7,10 +7,11 @@ import (
 
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"math"
 	"strconv"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 var logger = log.WithFields(log.Fields{

@@ -152,7 +152,7 @@ func StartService() *server.Service {
 
 	service := server.NewService(router, webserver).
 		HealthEndpointPrefix(*config.Health).
-		MetricsEndpointPrefix(*config.Metrics)
+		MetricsEndpointPrefix(*config.Metrics.Endpoint)
 
 	service.RegisterModules(CreateModules(router)...)
 

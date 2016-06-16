@@ -42,10 +42,19 @@ var (
 		Default(healthEndpointPrefix).
 		Envar("GUBLE_HEALTH_ENDPOINT").
 		String()
-	// Metrics sets the metrics endpoint to bind in the HTTP server and return  metrics data
-	Metrics = kingpin.Flag("metrics", "The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )").
-		Envar("GUBLE_METRICS_ENDPOINT").
-		String()
+
+	Metrics = struct {
+		Enabled  *bool
+		Endpoint *string
+	}{
+		// Enable metrics collection
+		Enabled: kingpin.Flag("metrics", "Enable metrics").Envar("GUBLE_METRICS_ENABLED").Bool(),
+
+		// Endpoint sets the metrics endpoint to bind in the HTTP server and return  metrics data
+		Endpoint: kingpin.Flag("metrics-endpoint", "The metrics endpoint (disabled by default; a possible value for enabling it: /_metrics )").
+			Envar("GUBLE_METRICS_ENDPOINT").
+			String(),
+	}
 
 	// GCM settings related to activating the GCM connector module
 	GCM = struct {
@@ -75,8 +84,8 @@ var (
 )
 
 func logLevels() (levels []string) {
-	for _, l := range log.AllLevels {
-		levels = append(levels, l.String())
+	for _, level := range log.AllLevels {
+		levels = append(levels, level.String())
 	}
 	return
 }
