@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"github.com/smancke/guble/gubled/config"
 	"github.com/stretchr/testify/assert"
 
 	log "github.com/Sirupsen/logrus"
@@ -19,10 +20,10 @@ func TestNewInt_Disabled(t *testing.T) {
 }
 
 func TestNewInt_Enabled(t *testing.T) {
-	Enabled = true
+	*config.Metrics.Enabled = true
 	_, ok := NewInt("a_name").(expvar.Var)
 	assert.True(t, ok)
-	Enabled = false
+	*config.Metrics.Enabled = false
 }
 
 func TestHttpHandler_MetricsNotEnabled(t *testing.T) {
@@ -59,9 +60,9 @@ func TestLogOnDebugLevel_DebugAndDisabled(t *testing.T) {
 
 	log.SetLevel(log.DebugLevel)
 
-	Enabled = true
+	*config.Metrics.Enabled = true
 	LogOnDebugLevel()
-	Enabled = false
+	*config.Metrics.Enabled = false
 
 	logContent, err := ioutil.ReadAll(bufferDebug)
 	a.NoError(err)
@@ -80,9 +81,9 @@ func TestLogOnDebugLevel_Info(t *testing.T) {
 	logContent, err := ioutil.ReadAll(bufferInfo)
 	a.NoError(err)
 
-	Enabled = true
+	*config.Metrics.Enabled = true
 	LogOnDebugLevel()
-	Enabled = false
+	*config.Metrics.Enabled = false
 
 	a.True(len(logContent) == 0)
 }
