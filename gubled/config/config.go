@@ -74,8 +74,17 @@ var (
 			Envar("GUBLE_LOG_DEBUG").
 			Bool(),
 	}
+
+	parsed = false
 )
 
-func init() {
+// Parse parses the flags from command line. Must be used before accessing the config.
+// If there are missing or invalid arguments it will exit the application and display a
+// corresponding message
+func Parse() {
+	if parsed {
+		return
+	}
 	kingpin.Parse()
+	parsed = true
 }

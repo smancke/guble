@@ -113,6 +113,7 @@ var CreateModules = func(router server.Router) []interface{} {
 }
 
 func Main() {
+	config.Parse()
 	defer func() {
 		if p := recover(); p != nil {
 			logger.Fatal("Fatal error in gubled after recover")
