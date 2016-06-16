@@ -10,14 +10,14 @@ func TestEncodeDecodeNextID(t *testing.T) {
 
 	tt := NEXT_ID(10)
 
-	msgToEncode := ClusterMessage{NodeId: 1, Type: NEXT_ID_RESPONSE, Body: tt.Bytes()}
+	msgToEncode := ClusterMessage{NodeID: 1, Type: NEXT_ID_RESPONSE, Body: tt.Bytes()}
 	bytes, err := msgToEncode.EncodeMessage()
 	a.Nil(err)
 
 	decodedMsg, err := ParseMessage(bytes)
 	a.Nil(err)
 	a.Equal(decodedMsg.Type, NEXT_ID_RESPONSE)
-	a.Equal(decodedMsg.NodeId, 1)
+	a.Equal(decodedMsg.NodeID, 1)
 
 	nextID, err := DecodeNextID(decodedMsg.Body)
 	a.Nil(err)
