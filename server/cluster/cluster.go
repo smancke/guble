@@ -64,7 +64,7 @@ func (cluster *Cluster) Stop() error {
 
 func (cluster *Cluster) BroadcastString(sMessage *string) {
 	log.WithField("string", sMessage).Debug("BroadcastString")
-	cMessage := &clusterMessage{
+	cMessage := &message{
 		NodeID: cluster.Config.ID,
 		Type:   STRING_BODY_MESSAGE,
 		Body:   []byte(*sMessage),
@@ -74,7 +74,7 @@ func (cluster *Cluster) BroadcastString(sMessage *string) {
 
 func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) {
 	log.WithField("message", pMessage).Debug("BroadcastMessage")
-	cMessage := &clusterMessage{
+	cMessage := &message{
 		NodeID: cluster.Config.ID,
 		Type:   MESSAGE,
 		Body:   pMessage.Bytes(),
@@ -82,9 +82,9 @@ func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) {
 	cluster.broadcastClusterMessage(cMessage)
 }
 
-func (cluster *Cluster) broadcastClusterMessage(cMessage *clusterMessage) {
+func (cluster *Cluster) broadcastClusterMessage(cMessage *message) {
 	log.WithField("clusterMessage", cMessage).Debug("broadcastClusterMessage")
-	bytes, err := cMessage.EncodeMessage()
+	bytes, err := cMessage.encode()
 	if err != nil {
 		logger.WithField("err", err).Error("Could not encode and send clusterMessage")
 	}
