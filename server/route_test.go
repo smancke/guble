@@ -59,7 +59,7 @@ func TestRouteDeliver_sendDirect(t *testing.T) {
 
 	a.True(r.invalid)
 	a.False(r.consuming)
-	a.Equal(0, r.queue.len())
+	a.Equal(0, r.queue.size())
 }
 
 func TestRouteDeliver_Invalid(t *testing.T) {
@@ -145,8 +145,8 @@ func TestRoute_CloseTwice(t *testing.T) {
 
 func TestQueue_ShiftEmpty(t *testing.T) {
 	q := newQueue(5)
-	q.shift()
-	assert.Equal(t, 0, q.len())
+	q.remove()
+	assert.Equal(t, 0, q.size())
 }
 
 func testRoute() *Route {

@@ -140,7 +140,7 @@ func (r *Route) Deliver(m *protocol.Message) error {
 		// not an infinite queue
 		if r.queueSize == 0 {
 			return r.sendDirect(m)
-		} else if r.queue.len() >= r.queueSize {
+		} else if r.queue.size() >= r.queueSize {
 			logger.Debug("Closing route cause of full queue")
 			r.Close()
 			mTotalDeliverMessageErrors.Add(1)
@@ -149,7 +149,7 @@ func (r *Route) Deliver(m *protocol.Message) error {
 	}
 
 	r.queue.push(m)
-	logger.Debug("Queue size: %d", r.queue.len())
+	logger.Debug("Queue size: %d", r.queue.size())
 
 	if !r.isConsuming() {
 		logger.Debug("Starting consuming")
@@ -180,7 +180,7 @@ func (r *Route) consume() {
 			return
 		}
 
-		m, err = r.queue.get()
+		m, err = r.queue.poll()
 
 		if err != nil {
 			if err == errEmptyQueue {
@@ -200,7 +200,7 @@ func (r *Route) consume() {
 			}
 		}
 		// all good shift the first item out of the queue
-		r.queue.shift()
+		r.queue.remove()
 	}
 }
 
@@ -296,7 +296,7 @@ func (q *queue) push(m *protocol.Message) {
 }
 
 // Remove the first item from the queue if exists
-func (q *queue) shift() {
+func (q *queue) remove() {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -307,7 +307,7 @@ func (q *queue) shift() {
 }
 
 // return the first item from the queue without removing it
-func (q *queue) get() (*protocol.Message, error) {
+func (q *queue) poll() (*protocol.Message, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -318,7 +318,7 @@ func (q *queue) get() (*protocol.Message, error) {
 	return q.queue[0], nil
 }
 
-func (q *queue) len() int {
+func (q *queue) size() int {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return len(q.queue)
