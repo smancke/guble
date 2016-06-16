@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"strconv"
 
+	log "github.com/Sirupsen/logrus"
+
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -63,20 +65,21 @@ var (
 			Int(),
 	}
 
-	// Log settings
-	Log = struct{ Info, Debug *bool }{
-		Info: kingpin.Flag("log-info", "Log on INFO level (false)").
-			Default("false").
-			Envar("GUBLE_LOG_INFO").
-			Bool(),
-		Debug: kingpin.Flag("log-debug", "Log on debug level (false)").
-			Default("false").
-			Envar("GUBLE_LOG_DEBUG").
-			Bool(),
-	}
+	// Log level
+	Log = kingpin.Flag("log", "Log level").
+		Default(log.ErrorLevel.String()).
+		Envar("GUBLE_LOG").
+		Enum(logLevels()...)
 
 	parsed = false
 )
+
+func logLevels() (levels []string) {
+	for _, l := range log.AllLevels {
+		levels = append(levels, l.String())
+	}
+	return
+}
 
 // Parse parses the flags from command line. Must be used before accessing the config.
 // If there are missing or invalid arguments it will exit the application and display a

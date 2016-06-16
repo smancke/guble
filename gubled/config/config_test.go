@@ -18,11 +18,8 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_LISTEN", "listen")
 	defer os.Unsetenv("GUBLE_LISTEN")
 
-	os.Setenv("GUBLE_LOG_INFO", "true")
-	defer os.Unsetenv("GUBLE_LOG_INFO")
-
-	os.Setenv("GUBLE_LOG_DEBUG", "true")
-	defer os.Unsetenv("GUBLE_LOG_DEBUG")
+	os.Setenv("GUBLE_LOG", "debug")
+	defer os.Unsetenv("GUBLE_LOG")
 
 	os.Setenv("GUBLE_KV_BACKEND", "kv-backend")
 	defer os.Unsetenv("GUBLE_KV_BACKEND")
@@ -65,8 +62,7 @@ func TestParsingArgs(t *testing.T) {
 	// given: a command line
 	os.Args = []string{os.Args[0],
 		"--listen", "listen",
-		"--log-info",
-		"--log-debug",
+		"--log", "debug",
 		"--kv-backend", "kv-backend",
 		"--storage-path", "storage-path",
 		"--ms-backend", "ms-backend",
@@ -97,7 +93,5 @@ func assertArguments(a *assert.Assertions) {
 	a.Equal("gcm-api-key", *GCM.APIKey)
 	a.Equal(3, *GCM.Workers)
 
-	a.Equal(true, *Log.Info)
-	a.Equal(true, *Log.Debug)
-
+	a.Equal("debug", *Log)
 }
