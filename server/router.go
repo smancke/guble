@@ -145,6 +145,7 @@ func (router *router) Check() error {
 	return nil
 }
 
+// HandleMessage assigns the new message id, stores the message and passes it to the handleC channel, and asynchronously to the cluster (if available).
 func (router *router) HandleMessage(message *protocol.Message) error {
 	logger.WithFields(log.Fields{
 		"userID": message.UserID,
@@ -163,7 +164,39 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
 	}
 
-	return router.storeAndDistributeMessage(message)
+	txCallback := func(msgId uint64) []byte {
+		message.ID = msgId
+		message.Time = time.Now().Unix()
+		return message.Bytes()
+	}
+	lenMsg := int64(len(message.Bytes()))
+	mTotalMessagesIncomingBytes.Add(lenMsg)
+
+	if err := router.messageStore.StoreTx(message.Path.Partition(), txCallback); err != nil {
+		logger.WithFields(log.Fields{
+			"err":          err,
+			"msgPartition": message.Path.Partition(),
+		}).Error("Error storing message in partition")
+		mTotalMessageStoreErrors.Add(1)
+		return err
+	}
+	mTotalMessagesStoredBytes.Add(lenMsg)
+
+	if float32(len(router.handleC))/float32(cap(router.handleC)) > overloadedHandleChannelRatio {
+		logger.WithFields(log.Fields{
+			"currentLength": len(router.handleC),
+			"maxCapacity":   cap(router.handleC),
+		}).Warn("storeAndChannelMessage: handleC channel is almost full")
+		mTotalOverloadedHandleChannel.Add(1)
+	}
+
+	router.handleC <- message
+
+	if router.cluster != nil {
+		go router.cluster.BroadcastMessage(message)
+	}
+
+	return nil
 }
 
 // Subscribe adds a route to the subscribers.
@@ -277,44 +310,6 @@ func (router *router) isStopping() error {
 	if router.stopping {
 		return &ModuleStoppingError{"Router"}
 	}
-	return nil
-}
-
-// Assign the new message id, store message and handle it by passing the stored message
-// to the messageIn channel
-func (router *router) storeAndDistributeMessage(msg *protocol.Message) error {
-	txCallback := func(msgId uint64) []byte {
-		msg.ID = msgId
-		msg.Time = time.Now().Unix()
-		return msg.Bytes()
-	}
-	lenMsg := int64(len(msg.Bytes()))
-	mTotalMessagesIncomingBytes.Add(lenMsg)
-
-	if err := router.messageStore.StoreTx(msg.Path.Partition(), txCallback); err != nil {
-		logger.WithFields(log.Fields{
-			"err":          err,
-			"msgPartition": msg.Path.Partition(),
-		}).Error("Error storing message in partition")
-		mTotalMessageStoreErrors.Add(1)
-		return err
-	}
-	mTotalMessagesStoredBytes.Add(lenMsg)
-
-	if float32(len(router.handleC))/float32(cap(router.handleC)) > overloadedHandleChannelRatio {
-		logger.WithFields(log.Fields{
-			"currentLength": len(router.handleC),
-			"maxCapacity":   cap(router.handleC),
-		}).Warn("storeAndChannelMessage: handleC channel is almost full")
-		mTotalOverloadedHandleChannel.Add(1)
-	}
-
-	router.handleC <- msg
-
-	if router.cluster != nil {
-		go router.cluster.BroadcastMessage(msg)
-	}
-
 	return nil
 }
 
