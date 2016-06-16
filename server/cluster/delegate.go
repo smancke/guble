@@ -4,12 +4,12 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-type Delegate struct {
+type delegate struct {
 	messages   [][]byte
 	broadcasts [][]byte
 }
 
-func (d *Delegate) NotifyMsg(msg []byte) {
+func (d *delegate) NotifyMsg(msg []byte) {
 	logger.WithField("msgAsBytes", msg).Debug("NotifyMsg")
 
 	cmsg, err := decode(msg)
@@ -28,7 +28,7 @@ func (d *Delegate) NotifyMsg(msg []byte) {
 	d.messages = append(d.messages, cp)
 }
 
-func (d *Delegate) GetBroadcasts(overhead, limit int) [][]byte {
+func (d *delegate) GetBroadcasts(overhead, limit int) [][]byte {
 	//TODO Cosmin uncomment or remove
 
 	//log.WithFields(log.Fields{
@@ -40,13 +40,13 @@ func (d *Delegate) GetBroadcasts(overhead, limit int) [][]byte {
 	return b
 }
 
-func (d *Delegate) NodeMeta(limit int) []byte {
+func (d *delegate) NodeMeta(limit int) []byte {
 	return nil
 }
 
-func (d *Delegate) LocalState(join bool) []byte {
+func (d *delegate) LocalState(join bool) []byte {
 	return nil
 }
 
-func (d *Delegate) MergeRemoteState(s []byte, join bool) {
+func (d *delegate) MergeRemoteState(s []byte, join bool) {
 }

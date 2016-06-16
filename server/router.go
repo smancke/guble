@@ -124,7 +124,6 @@ func (router *router) Check() error {
 		}).Error("Some mandatory services are not provided")
 		return ErrServiceNotProvided
 	}
-
 	err := router.messageStore.Check()
 	if err != nil {
 		logger.WithFields(log.Fields{
@@ -132,7 +131,6 @@ func (router *router) Check() error {
 		}).Error("MessageStore check failed")
 		return err
 	}
-
 	err = router.kvStore.Check()
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -141,7 +139,6 @@ func (router *router) Check() error {
 		}).Error("KVStore check failed")
 		return err
 	}
-
 	return nil
 }
 
@@ -172,23 +169,18 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 	lenMsg := int64(len(message.Bytes()))
 	mTotalMessagesIncomingBytes.Add(lenMsg)
 
-	if err := router.messageStore.StoreTx(message.Path.Partition(), txCallback); err != nil {
+	msgPathPartition := message.Path.Partition()
+	if err := router.messageStore.StoreTx(msgPathPartition, txCallback); err != nil {
 		logger.WithFields(log.Fields{
 			"err":          err,
-			"msgPartition": message.Path.Partition(),
+			"msgPartition": msgPathPartition,
 		}).Error("Error storing message in partition")
 		mTotalMessageStoreErrors.Add(1)
 		return err
 	}
 	mTotalMessagesStoredBytes.Add(lenMsg)
 
-	if float32(len(router.handleC))/float32(cap(router.handleC)) > overloadedHandleChannelRatio {
-		logger.WithFields(log.Fields{
-			"currentLength": len(router.handleC),
-			"maxCapacity":   cap(router.handleC),
-		}).Warn("handleC channel is almost full")
-		mTotalOverloadedHandleChannel.Add(1)
-	}
+	router.handleOverloadedChannel()
 
 	router.handleC <- message
 
@@ -201,7 +193,6 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 
 // Subscribe adds a route to the subscribers. If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Subscribe(r *Route) (*Route, error) {
-
 	logger.WithFields(log.Fields{
 		"accessManager": router.accessManager,
 		"userID":        r.UserID,
@@ -268,7 +259,6 @@ func (router *router) subscribe(r *Route) {
 }
 
 func (router *router) unsubscribe(r *Route) {
-
 	logger.WithFields(log.Fields{
 		"userID": r.UserID,
 		"path":   r.Path,
@@ -313,7 +303,6 @@ func (router *router) isStopping() error {
 }
 
 func (router *router) routeMessage(message *protocol.Message) {
-
 	logger.WithFields(log.Fields{
 		"msgMetadata": message.Metadata(),
 	}).Debug("Called routeMessage")
@@ -355,9 +344,19 @@ func (router *router) closeRoutes() {
 			log.WithFields(log.Fields{
 				"module": "router",
 				"route":  route.String(),
-			}).Debug("Closing route for ")
+			}).Debug("Closing route")
 			route.Close()
 		}
+	}
+}
+
+func (router *router) handleOverloadedChannel() {
+	if float32(len(router.handleC))/float32(cap(router.handleC)) > overloadedHandleChannelRatio {
+		logger.WithFields(log.Fields{
+			"currentLength": len(router.handleC),
+			"maxCapacity":   cap(router.handleC),
+		}).Warn("handleC channel is almost full")
+		mTotalOverloadedHandleChannel.Add(1)
 	}
 }
 

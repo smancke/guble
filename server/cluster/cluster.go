@@ -30,7 +30,7 @@ func NewCluster(config *Config) *Cluster {
 	memberlistConfig.Name = fmt.Sprintf("%d:%s:%d", config.ID, config.Host, config.Port)
 	memberlistConfig.BindAddr = config.Host
 	memberlistConfig.BindPort = config.Port
-	memberlistConfig.Delegate = &Delegate{}
+	memberlistConfig.Delegate = &delegate{}
 	memberlistConfig.Events = &EventDelegate{}
 
 	//TODO Cosmin temporarily disabling any logging from memberlist
