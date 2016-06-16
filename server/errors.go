@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"fmt"
+
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 )
@@ -19,7 +20,7 @@ var (
 	// and the channel is full
 	ErrChannelFull = errors.New("Route channel is full. Route is closed.")
 
-	// ErrQueueFull is returned when trying to `Deliver` a mesasge in a full queued route
+	// ErrQueueFull is returned when trying to `Deliver` a message in a full queued route
 	ErrQueueFull = errors.New("Route queue is full. Route is closed.")
 )
 

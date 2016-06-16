@@ -12,11 +12,13 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+const (
+	defaultQueueCap = 50
+)
+
 var (
 	errEmptyQueue = errors.New("Empty queue")
 	errTimeout    = errors.New("Channel sending timeout")
-
-	defaultQueueCap = 50
 )
 
 // Route represents a topic for subscription that has a channel to receive messages.
@@ -47,7 +49,6 @@ type Route struct {
 
 // NewRoute creates a new route pointer
 func NewRoute(path, applicationID, userID string, c chan *MessageForRoute) *Route {
-	// TODO: this will be received instead of external channel
 	queueSize := 0
 
 	route := &Route{
@@ -82,6 +83,72 @@ func (r *Route) SetQueueSize(size int) *Route {
 	return r
 }
 
+func (r *Route) String() string {
+	return fmt.Sprintf("%s:%s:%s", r.Path, r.UserID, r.ApplicationID)
+}
+
+// MessagesC returns the route channel to receive messages. To send messages through
+// a route use the `Deliver` method
+func (r *Route) MessagesC() chan *MessageForRoute {
+	return r.messagesC
+}
+
+// Deliver takes a messages and adds it to the queue to be delivered in to the
+// channel
+func (r *Route) Deliver(msg *protocol.Message) error {
+	logger := r.logger.WithField("message", msg)
+	logger.Debug("Delivering message")
+
+	if r.isInvalid() {
+		logger.Debug("Cannot deliver because route is invalid")
+		mTotalDeliverMessageErrors.Add(1)
+		return ErrInvalidRoute
+	}
+
+	// not an infinite queue
+	if r.queueSize >= 0 {
+		// if size is zero the sending is direct
+		if r.queueSize == 0 {
+			return r.sendDirect(msg)
+		} else if r.queue.size() >= r.queueSize {
+			logger.Debug("Closing route because queue is full")
+			r.Close()
+			mTotalDeliverMessageErrors.Add(1)
+			return ErrQueueFull
+		}
+	}
+
+	r.queue.push(msg)
+	logger.WithField("size", r.queue.size()).Debug("Queue size")
+
+	r.consume()
+	return nil
+}
+
+// Close closes the route channel.
+func (r *Route) Close() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.logger.Debug("Closing route")
+
+	// route already closed
+	if r.invalid {
+		return ErrInvalidRoute
+	}
+
+	r.invalid = true
+	close(r.messagesC)
+	close(r.closeC)
+
+	return ErrInvalidRoute
+}
+
+func (r *Route) equals(other *Route) bool {
+	return r.Path == other.Path &&
+		r.UserID == other.UserID &&
+		r.ApplicationID == other.ApplicationID
+}
+
 // IsInvalid returns true if the route is invalid, has been closed previously
 func (r *Route) isInvalid() bool {
 	r.mu.RLock()
@@ -107,127 +174,81 @@ func (r *Route) setConsuming(consuming bool) {
 	r.consuming = consuming
 }
 
-func (r *Route) String() string {
-	return fmt.Sprintf("%s:%s:%s", r.Path, r.UserID, r.ApplicationID)
-}
-
-func (r *Route) equals(other *Route) bool {
-	return r.Path == other.Path &&
-		r.UserID == other.UserID &&
-		r.ApplicationID == other.ApplicationID
-}
-
-// MessagesC returns the route channel to receive messages. To send messages through
-// a route use the `Deliver` method
-func (r *Route) MessagesC() chan *MessageForRoute {
-	return r.messagesC
-}
-
-// Deliver takes a messages and adds it to the queue to be delivered in to the
-// channel
-func (r *Route) Deliver(m *protocol.Message) error {
-	logger := r.logger.WithField("message", m)
-	logger.Debug("Delivering message")
-
-	if r.isInvalid() {
-		logger.Debug("Cannot deliver cause route is invalid")
-		mTotalDeliverMessageErrors.Add(1)
-		return ErrInvalidRoute
+// consume starts a goroutine to consume the queue and pass the messages to route
+// channel. Stops if there are no items in the queue.
+func (r *Route) consume() {
+	if r.isConsuming() {
+		return
 	}
+	r.setConsuming(true)
 
-	// if size is zero the sending is direct
-	if r.queueSize > -1 {
-		// not an infinite queue
-		if r.queueSize == 0 {
-			return r.sendDirect(m)
-		} else if r.queue.size() >= r.queueSize {
-			logger.Debug("Closing route cause of full queue")
-			r.Close()
-			mTotalDeliverMessageErrors.Add(1)
-			return ErrQueueFull
+	r.logger.Debug("Consuming route queue")
+	go func() {
+		defer r.setConsuming(false)
+
+		var (
+			msg *protocol.Message
+			err error
+		)
+
+		for {
+			if r.isInvalid() {
+				r.logger.Debug("Stopping to consume because route is invalid.")
+				mTotalDeliverMessageErrors.Add(1)
+				return
+			}
+
+			msg, err = r.queue.poll()
+
+			if err != nil {
+				if err == errEmptyQueue {
+					r.logger.Debug("Empty queue")
+					return
+				}
+				r.logger.WithField("error", err).Error("Error fetching a message from queue")
+				continue
+			}
+
+			if err = r.send(msg); err != nil {
+				r.logger.WithField("message", msg).Error("Error sending message through route")
+				if err == errTimeout || err == ErrInvalidRoute {
+					// channel been closed, ending the consumer
+					return
+				}
+			}
+			// remove the first item from the queue
+			r.queue.remove()
 		}
-	}
-
-	r.queue.push(m)
-	logger.Debug("Queue size: %d", r.queue.size())
-
-	if !r.isConsuming() {
-		logger.Debug("Starting consuming")
-		go r.consume()
-	}
+	}()
 
 	runtime.Gosched()
-	return nil
 }
 
-// consume starts to consume the queue and pass the messages to route
-// channel. Stops if there are no items in the queue. Should be started as a goroutine.
-func (r *Route) consume() {
-	r.logger.Debug("Consuming route queue")
-
-	r.setConsuming(true)
-	defer r.setConsuming(false)
-
-	var (
-		m   *protocol.Message
-		err error
-	)
-
-	for {
-		if r.isInvalid() {
-			r.logger.Debug("Stopping consuming cause route is invalid.")
-			mTotalDeliverMessageErrors.Add(1)
-			return
-		}
-
-		m, err = r.queue.poll()
-
-		if err != nil {
-			if err == errEmptyQueue {
-				r.logger.Debug("Empty queue")
-				return
-			}
-			r.logger.WithField("error", err).Error("Error fetching queue message")
-			continue
-		}
-
-		// send next message throught the channel
-		if err = r.send(m); err != nil {
-			r.logger.WithField("message", m).Error("Error sending message through route")
-			if err == errTimeout || err == ErrInvalidRoute {
-				// channel been closed, ending the consumer
-				return
-			}
-		}
-		// all good shift the first item out of the queue
-		r.queue.remove()
-	}
-}
-
-func (r *Route) send(m *protocol.Message) error {
+// send message through the channel
+func (r *Route) send(msg *protocol.Message) error {
 	defer r.invalidRecover()
-	r.logger.WithField("message", m).Debug("Sending message through route channel")
+	r.logger.WithField("message", msg).Debug("Sending message through route channel")
 
-	// no timeout, means we dont close the channel
+	// no timeout, means we don't close the channel
 	if r.timeout == -1 {
-		r.messagesC <- r.format(m)
+		r.messagesC <- r.format(msg)
 		r.logger.WithField("size", len(r.messagesC)).Debug("Channel size")
 		return nil
 	}
 
 	select {
-	case r.messagesC <- r.format(m):
+	case r.messagesC <- r.format(msg):
 		return nil
 	case <-r.closeC:
 		return ErrInvalidRoute
 	case <-time.After(r.timeout):
-		r.logger.Debug("Closing route cause of timeout")
+		r.logger.Debug("Closing route because of timeout")
 		r.Close()
 		return errTimeout
 	}
 }
 
-// recover function to use when sending on closed channel
+// invalidRecover is used to recoverd in case we end up sending on a closed channel
 func (r *Route) invalidRecover() error {
 	if rc := recover(); rc != nil && r.isInvalid() {
 		r.logger.WithField("error", rc).Debug("Recovered closed router")
@@ -237,8 +258,6 @@ func (r *Route) invalidRecover() error {
 }
 
 // format message according to the channel format
-// TODO: this will be dropped cause it's used only in GCM and after implementing
-// separated subscriptions wont be required anymore
 func (r *Route) format(m *protocol.Message) *MessageForRoute {
 	return &MessageForRoute{Message: m, Route: r}
 }
@@ -249,77 +268,8 @@ func (r *Route) sendDirect(m *protocol.Message) error {
 	case r.messagesC <- r.format(m):
 		return nil
 	default:
-		r.logger.Debug("Closing route cause of full channel")
+		r.logger.Debug("Closing route because of full channel")
 		r.Close()
 		return ErrChannelFull
 	}
-}
-
-// Close closes the route channel.
-func (r *Route) Close() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.logger.Debug("Closing route")
-
-	// route already closed
-	if r.invalid {
-		return ErrInvalidRoute
-	}
-
-	r.invalid = true
-	close(r.messagesC)
-	close(r.closeC)
-
-	return ErrInvalidRoute
-}
-
-// newQueue creates a *queue that will have the capacity specified by size
-func newQueue(size int) *queue {
-	if size == -1 {
-		size = defaultQueueCap
-	}
-	return &queue{
-		queue: make([]*protocol.Message, 0, size),
-	}
-}
-
-type queue struct {
-	mu    sync.Mutex
-	queue []*protocol.Message
-}
-
-func (q *queue) push(m *protocol.Message) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	q.queue = append(q.queue, m)
-}
-
-// Remove the first item from the queue if exists
-func (q *queue) remove() {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	if len(q.queue) == 0 {
-		return
-	}
-	q.queue = q.queue[1:]
-}
-
-// return the first item from the queue without removing it
-func (q *queue) poll() (*protocol.Message, error) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	if len(q.queue) == 0 {
-		return nil, errEmptyQueue
-	}
-
-	return q.queue[0], nil
-}
-
-func (q *queue) size() int {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	return len(q.queue)
 }
