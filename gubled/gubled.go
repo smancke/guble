@@ -120,12 +120,12 @@ func Main() {
 		}
 	}()
 
-	if *config.Log.Info {
-		log.SetLevel(log.InfoLevel)
+	// set log level
+	level, err := log.ParseLevel(*config.Log)
+	if err != nil {
+		logger.WithField("error", err).Fatal("Invalid log level")
 	}
-	if *config.Log.Debug {
-		log.SetLevel(log.DebugLevel)
-	}
+	log.SetLevel(level)
 
 	if err := ValidateStoragePath(); err != nil {
 		logger.Fatal("Fatal error in gubled in validation for storage path")
