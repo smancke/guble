@@ -78,9 +78,8 @@ func (router *router) Start() error {
 
 	//TODO Cosmin remove this (just a test)
 	if router.cluster != nil {
-		msgString := fmt.Sprintf("Hello from node %v !", router.cluster.Config.ID)
-		message := cluster.ClusterMessage{NodeID: router.cluster.Config.ID, Type: cluster.STRING_BODY_MESSAGE, Body: []byte(msgString)}
-		router.cluster.BroadcastMessage(&message)
+		sMessage := fmt.Sprintf("Hello from node %v !", router.cluster.Config.ID)
+		router.cluster.BroadcastString(&sMessage)
 	}
 
 	go func() {

@@ -21,43 +21,43 @@ const (
 	// NEXT_ID_RESPONSE permission
 	NEXT_ID_RESPONSE
 
-	//MESSAGE
+	// Guble protocol.Message
 	MESSAGE
-	//
+
 	STRING_BODY_MESSAGE
 )
 
-type NEXT_ID int
+type NextID int
 
-func (id *NEXT_ID) Bytes() []byte {
+func (id *NextID) Bytes() []byte {
 	buff := &bytes.Buffer{}
 
 	buff.WriteString(strconv.Itoa(int(*id)))
 	return buff.Bytes()
 }
 
-func DecodeNextID(payload []byte) (*NEXT_ID, error) {
+func DecodeNextID(payload []byte) (*NextID, error) {
 	i, err := strconv.Atoi(string(payload))
 	if err != nil {
 		return nil, err
 	}
 
-	tt := NEXT_ID(int(i))
+	tt := NextID(int(i))
 
 	return &tt, nil
 }
 
-type ClusterMessage struct {
+type clusterMessage struct {
 	NodeID int
 	Type   ClusterMessageType
 	Body   []byte
 }
 
-func (cmsg *ClusterMessage) len() int {
+func (cmsg *clusterMessage) len() int {
 	return int(unsafe.Sizeof(cmsg.Type)) + int(unsafe.Sizeof(cmsg.NodeID)) + len(cmsg.Body)
 }
 
-func (cmsg *ClusterMessage) EncodeMessage() (result []byte, err error) {
+func (cmsg *clusterMessage) EncodeMessage() (result []byte, err error) {
 	bytes := make([]byte, cmsg.len()+5)
 	enc := codec.NewEncoderBytes(&bytes, h)
 	err = enc.Encode(cmsg)
@@ -68,8 +68,8 @@ func (cmsg *ClusterMessage) EncodeMessage() (result []byte, err error) {
 	return bytes, nil
 }
 
-func ParseMessage(msg []byte) (*ClusterMessage, error) {
-	var recvMsg ClusterMessage
+func ParseMessage(msg []byte) (*clusterMessage, error) {
+	var recvMsg clusterMessage
 	logger.WithField("bytesForDecoding", string(msg)).Info("ParseMessage")
 
 	dec := codec.NewDecoderBytes(msg, h)

@@ -6,6 +6,6 @@ import (
 
 var logger = log.WithFields(log.Fields{
 	"app":    "guble",
-	"module": "router",
+	"module": "cluster",
 	"env":    "TBD",
 })
