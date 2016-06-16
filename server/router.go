@@ -166,8 +166,8 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		message.Time = time.Now().Unix()
 		return message.Bytes()
 	}
-	lenMsg := int64(len(message.Bytes()))
-	mTotalMessagesIncomingBytes.Add(lenMsg)
+	lenMessage := int64(len(message.Bytes()))
+	mTotalMessagesIncomingBytes.Add(lenMessage)
 
 	msgPathPartition := message.Path.Partition()
 	if err := router.messageStore.StoreTx(msgPathPartition, txCallback); err != nil {
@@ -178,7 +178,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		mTotalMessageStoreErrors.Add(1)
 		return err
 	}
-	mTotalMessagesStoredBytes.Add(lenMsg)
+	mTotalMessagesStoredBytes.Add(lenMessage)
 
 	router.handleOverloadedChannel()
 
