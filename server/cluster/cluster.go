@@ -83,15 +83,15 @@ func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) {
 }
 
 func (cluster *Cluster) broadcastClusterMessage(cMessage *clusterMessage) {
-	log.WithField("clusterMessage", cMessage).Debug("BroadcastMessage to cluster")
+	log.WithField("clusterMessage", cMessage).Debug("broadcastClusterMessage")
 	bytes, err := cMessage.EncodeMessage()
 	if err != nil {
-		logger.WithField("err", err).Error("Could not send clusterMessage")
+		logger.WithField("err", err).Error("Could not encode and send clusterMessage")
 	}
 	log.WithFields(log.Fields{
-		"nodeId":         cMessage.NodeID,
-		"messageAsBytes": bytes,
-	}).Debug("broadcastClusterMessage")
+		"nodeId":                cMessage.NodeID,
+		"clusterMessageAsBytes": bytes,
+	}).Debug("broadcastClusterMessage bytes")
 
 	cluster.broadcast(bytes)
 }
