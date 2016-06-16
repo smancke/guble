@@ -4,46 +4,54 @@ import (
 	"bufio"
 	"fmt"
 
+	"gopkg.in/alecthomas/kingpin.v2"
+
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/alexflint/go-arg"
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/protocol"
 )
 
-type arguments struct {
-	Exit     bool     `arg:"-x,help: Exit after sending the commands"`
-	Commands []string `arg:"positional,help: The commands to send after startup"`
-	Verbose  bool     `arg:"-v,help: Display verbose server communication"`
-	URL      string   `arg:"help: The websocket url to connect (ws://localhost:8080/stream/)"`
-	User     string   `arg:"help: The user name to connect with (guble-cli)"`
-	LogInfo  bool     `arg:"--log-info,help: Log on INFO level (false)" env:"GUBLE_LOG_INFO"`
-	LogDebug bool     `arg:"--log-debug,help: Log on DEBUG level (false)" env:"GUBLE_LOG_DEBUG"`
+var (
+	Exit     = kingpin.Flag("exit", "Exit after sending the commands").Short('x').Bool()
+	Commands = kingpin.Arg("commands", "The commands to send after startup").Strings()
+	Verbose  = kingpin.Flag("verbose", "Display verbose server communication").Short('v').Bool()
+	URL      = kingpin.Flag("url", "The websocket url to connect (ws://localhost:8080/stream/)").
+			Default("ws://localhost:8080/stream/").
+			String()
+	User = kingpin.Flag("user", "The user name to connect with (guble-cli)").Default("guble-cli").String()
+	Log  = kingpin.Flag("log", "Log level").
+		Default(log.ErrorLevel.String()).
+		Envar("GUBLE_LOG").
+		Enum(logLevels()...)
+
+	logger = log.WithField("app", "guble-cli")
+)
+
+func logLevels() (levels []string) {
+	for _, l := range log.AllLevels {
+		levels = append(levels, l.String())
+	}
+	return
 }
-
-var args arguments
-
-var logger = log.WithField("app", "guble-cli")
 
 // This is a minimal commandline client to connect through a websocket
 func main() {
+	kingpin.Parse()
 
-	log.SetLevel(log.ErrorLevel)
-
-	args = loadArgs()
-	if args.LogInfo {
-		log.SetLevel(log.InfoLevel)
+	// set log level
+	level, err := log.ParseLevel(*Log)
+	if err != nil {
+		logger.WithField("error", err).Fatal("Invalid log level")
 	}
-	if args.LogDebug {
-		log.SetLevel(log.DebugLevel)
-	}
+	log.SetLevel(level)
 
 	origin := "http://localhost/"
-	url := fmt.Sprintf("%v/user/%v", removeTrailingSlash(args.URL), args.User)
+	url := fmt.Sprintf("%v/user/%v", removeTrailingSlash(*URL), *User)
 	client, err := client.Open(url, origin, 100, true)
 	if err != nil {
 		log.Fatal(err)
@@ -52,31 +60,20 @@ func main() {
 	go writeLoop(client)
 	go readLoop(client)
 
-	for _, cmd := range args.Commands {
+	for _, cmd := range *Commands {
 		client.WriteRawMessage([]byte(cmd))
 	}
-	if args.Exit {
+	if *Exit {
 		return
 	}
 	waitForTermination(func() {})
-}
-
-func loadArgs() arguments {
-	args := arguments{
-		Verbose: false,
-		URL:     "ws://localhost:8080/stream/",
-		User:    "guble-cli",
-	}
-
-	arg.MustParse(&args)
-	return args
 }
 
 func readLoop(client client.Client) {
 	for {
 		select {
 		case incomingMessage := <-client.Messages():
-			if args.Verbose {
+			if *Verbose {
 				fmt.Println(string(incomingMessage.Bytes()))
 			} else {
 				fmt.Printf("%v: %v\n", incomingMessage.UserID, incomingMessage.BodyAsString())
@@ -115,7 +112,7 @@ func writeLoop(client client.Client) {
 				text += strings.TrimSpace(body)
 			}
 
-			if args.Verbose {
+			if *Verbose {
 				log.Printf("Sending: %v\n", text)
 			}
 			if err := client.WriteRawMessage([]byte(text)); err != nil {
