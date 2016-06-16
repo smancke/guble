@@ -2,8 +2,10 @@ package cluster
 
 import (
 	"github.com/hashicorp/go-msgpack/codec"
+
 	"github.com/smancke/guble/protocol"
-	"github.com/vektra/errors"
+
+	"errors"
 	"unsafe"
 )
 
