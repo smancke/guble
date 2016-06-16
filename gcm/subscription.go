@@ -3,14 +3,15 @@ package gcm
 import (
 	"encoding/json"
 	"errors"
+	"math"
+	"strconv"
+	"strings"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/alexjlockwood/gcm"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
-	"math"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -30,8 +31,8 @@ func (e *jsonError) Error() string {
 	return e.json
 }
 
-// sub represent a GCM subscription
-type sub struct {
+// subscription represent a GCM subscription
+type subscription struct {
 	gcm    *Connector
 	route  *server.Route
 	lastID uint64 // Last sent message id
@@ -40,8 +41,8 @@ type sub struct {
 }
 
 // Creates a subscription and returns the pointer
-func newSubscription(gcm *Connector, route *server.Route, lastID uint64) *sub {
-	return &sub{
+func newSubscription(gcm *Connector, route *server.Route, lastID uint64) *subscription {
+	return &subscription{
 		gcm:    gcm,
 		route:  route,
 		lastID: lastID,
@@ -54,7 +55,7 @@ func newSubscription(gcm *Connector, route *server.Route, lastID uint64) *sub {
 }
 
 // creates a subscription and adds it in router/kvstore then starts listening for messages
-func initSubscription(gcm *Connector, topic, userID, gcmID string, lastID uint64) (*sub, error) {
+func initSubscription(gcm *Connector, topic, userID, gcmID string, lastID uint64) (*subscription, error) {
 	route := server.NewRoute(topic, gcmID, userID, subBufferSize)
 	s := newSubscription(gcm, route, 0)
 	if err := s.store(); err != nil {
@@ -64,7 +65,7 @@ func initSubscription(gcm *Connector, topic, userID, gcmID string, lastID uint64
 	return s, nil
 }
 
-func (s *sub) subscribe() error {
+func (s *subscription) subscribe() error {
 	if _, err := s.gcm.router.Subscribe(s.route); err != nil {
 		s.logger.WithField("err", err).Error("Error subscribing")
 		return err
@@ -75,14 +76,14 @@ func (s *sub) subscribe() error {
 }
 
 // unsubscribe from router and remove KVStore
-func (s *sub) remove() *sub {
+func (s *subscription) remove() *subscription {
 	s.gcm.router.Unsubscribe(s.route)
 	s.gcm.kvStore.Delete(schema, s.route.ApplicationID)
 	return s
 }
 
 // start loop to receive messages from route
-func (s *sub) start() error {
+func (s *subscription) start() error {
 	if err := s.subscribe(); err != nil {
 		return err
 	}
@@ -91,7 +92,7 @@ func (s *sub) start() error {
 }
 
 // recreate the route and resubscribe
-func (s *sub) restart() error {
+func (s *subscription) restart() error {
 	s.route = server.NewRoute(string(s.route.Path), s.route.ApplicationID, s.route.UserID, subBufferSize)
 
 	// fetch from last id if applicable
@@ -105,7 +106,7 @@ func (s *sub) restart() error {
 
 // subscriptionLoop that will run in a goroutine and pipe messages from route to gcm
 // Attention: in order for this loop to finish the route channel must be closed
-func (s *sub) subscriptionLoop() {
+func (s *subscription) subscriptionLoop() {
 	s.logger.Debug("Starting subscription loop")
 
 	s.gcm.wg.Add(1)
@@ -141,7 +142,7 @@ func (s *sub) subscriptionLoop() {
 }
 
 // fetch messages from store starting with lastID
-func (s *sub) fetch() error {
+func (s *subscription) fetch() error {
 	if s.lastID == 0 {
 		s.logger.WithField("lastID", s.lastID).Debug("Nothing to fetch")
 		return nil
@@ -189,7 +190,7 @@ func (s *sub) fetch() error {
 	return nil
 }
 
-func (s *sub) createFetchRequest() store.FetchRequest {
+func (s *subscription) createFetchRequest() store.FetchRequest {
 	return store.FetchRequest{
 		Partition: s.route.Path.Partition(),
 		StartID:   s.lastID,
@@ -202,7 +203,7 @@ func (s *sub) createFetchRequest() store.FetchRequest {
 }
 
 // returns true if we are actually stopping the service
-func (s *sub) isStopping() bool {
+func (s *subscription) isStopping() bool {
 	select {
 	case <-s.gcm.stopC:
 		return true
@@ -213,7 +214,7 @@ func (s *sub) isStopping() bool {
 }
 
 // return bytes data to store in kvStore
-func (s *sub) bytes() []byte {
+func (s *subscription) bytes() []byte {
 	return []byte(strings.Join([]string{
 		s.route.UserID,
 		string(s.route.Path),
@@ -222,7 +223,7 @@ func (s *sub) bytes() []byte {
 }
 
 // store data in kvstore
-func (s *sub) store() error {
+func (s *subscription) store() error {
 	err := s.gcm.kvStore.Put(schema, s.route.ApplicationID, s.bytes())
 	if err != nil {
 		s.logger.WithField("err", err).Error("Error storing in KVStore")
@@ -230,7 +231,7 @@ func (s *sub) store() error {
 	return err
 }
 
-func (s *sub) setLastID(ID uint64) error {
+func (s *subscription) setLastID(ID uint64) error {
 	s.lastID = ID
 	// update KV when last id is set
 	return s.store()
@@ -238,7 +239,7 @@ func (s *sub) setLastID(ID uint64) error {
 
 // sends a message into the pipeline and waits for response saving the last id
 // in the kvstore
-func (s *sub) pipe(m *protocol.Message) error {
+func (s *subscription) pipe(m *protocol.Message) error {
 	pm := newPipeMessage(s, m)
 	defer pm.close()
 
@@ -261,7 +262,7 @@ func (s *sub) pipe(m *protocol.Message) error {
 	return nil
 }
 
-func (s *sub) handleGCMResponse(response *gcm.Response) error {
+func (s *subscription) handleGCMResponse(response *gcm.Response) error {
 	if err := s.handleJSONError(response); err != nil {
 		return err
 	}
@@ -276,7 +277,7 @@ func (s *sub) handleGCMResponse(response *gcm.Response) error {
 	return nil
 }
 
-func (s *sub) handleJSONError(response *gcm.Response) error {
+func (s *subscription) handleJSONError(response *gcm.Response) error {
 	errText := response.Results[0].Error
 	if errText != "" {
 		if errText == "NotRegistered" {
@@ -295,7 +296,7 @@ func (s *sub) handleJSONError(response *gcm.Response) error {
 
 // replace subscription with cannoical id, creates a new subscription but alters the route to
 // have the new ApplicationID
-func (s *sub) replaceCanonical(newGCMID string) error {
+func (s *subscription) replaceCanonical(newGCMID string) error {
 	s.logger.WithField("newGCMID", newGCMID).Info("Replacing with canonicalID")
 
 	// delete current route from kvstore
@@ -313,13 +314,13 @@ func (s *sub) replaceCanonical(newGCMID string) error {
 	return errSubReplaced
 }
 
-func newPipeMessage(s *sub, m *protocol.Message) *pipeMessage {
+func newPipeMessage(s *subscription, m *protocol.Message) *pipeMessage {
 	return &pipeMessage{s, m, make(chan *gcm.Response, 1), make(chan error, 1)}
 }
 
 // Pipeline message
 type pipeMessage struct {
-	*sub
+	*subscription
 	message *protocol.Message
 	resultC chan *gcm.Response
 	errC    chan error
