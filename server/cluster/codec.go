@@ -2,6 +2,8 @@ package cluster
 
 import (
 	"github.com/hashicorp/go-msgpack/codec"
+	"github.com/smancke/guble/protocol"
+	"github.com/vektra/errors"
 	"unsafe"
 )
 
@@ -56,4 +58,31 @@ func decode(msgBytes []byte) (*message, error) {
 		return nil, err
 	}
 	return &cmsg, nil
+}
+
+// ParseMessage parses a message, sent from the server to the client.
+// The parsed messages can have one of the types: *Message or *NotificationMessage or *NextID
+func ParseMessage(cmsg *message) (interface{}, error) {
+
+	switch cmsg.Type {
+	case NEXT_ID_REQUEST:
+
+		response, err := DecodeNextID(cmsg.Body)
+		if err != nil {
+			logger.WithField("err", err).Error("Decoding of NextId Message failed")
+			return nil, err
+		}
+		return response, nil
+	case MESSAGE:
+		response, err := protocol.ParseMessage(cmsg.Body)
+		if err != nil {
+			logger.WithField("err", err).Error("Decoding of protocol.Message failed")
+			return nil, err
+		}
+		return response, nil
+	default:
+		logger.Error("Unknown cluster message type")
+		return nil, errors.New("Unkown message type")
+	}
+
 }
