@@ -10,7 +10,7 @@ func TestEncodeDecodeNextID(t *testing.T) {
 
 	nID := NextID(10)
 
-	msgToEncode := message{NodeID: 1, MsgType: NEXT_ID_RESPONSE, Body: nID.Bytes()}
+	msgToEncode := message{NodeID: 1, Type: NEXT_ID_RESPONSE, Body: nID.Bytes()}
 	bytes, err := msgToEncode.encode()
 	a.Nil(err)
 
