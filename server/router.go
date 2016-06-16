@@ -3,12 +3,12 @@ package server
 import (
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/server/cluster"
 	"github.com/smancke/guble/store"
 
 	log "github.com/Sirupsen/logrus"
 
 	"fmt"
-	"github.com/smancke/guble/server/cluster"
 	"runtime"
 	"strings"
 	"sync"
@@ -121,7 +121,7 @@ func (router *router) Check() error {
 	if router.accessManager == nil || router.messageStore == nil || router.kvStore == nil {
 		logger.WithFields(log.Fields{
 			"err": ErrServiceNotProvided,
-		}).Error("Some services are not provided")
+		}).Error("Some mandatory services are not provided")
 		return ErrServiceNotProvided
 	}
 
@@ -138,14 +138,14 @@ func (router *router) Check() error {
 		log.WithFields(log.Fields{
 			"module": "router",
 			"err":    err,
-		}).Error("KvStore check failed")
+		}).Error("KVStore check failed")
 		return err
 	}
 
 	return nil
 }
 
-// HandleMessage assigns the new message id, stores the message and passes it to the handleC channel, and asynchronously to the cluster (if available).
+// HandleMessage assigns the new message id, stores the message and passes it to: the internal channel, and asynchronously to the cluster (if available).
 func (router *router) HandleMessage(message *protocol.Message) error {
 	logger.WithFields(log.Fields{
 		"userID": message.UserID,
@@ -186,7 +186,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		logger.WithFields(log.Fields{
 			"currentLength": len(router.handleC),
 			"maxCapacity":   cap(router.handleC),
-		}).Warn("storeAndChannelMessage: handleC channel is almost full")
+		}).Warn("handleC channel is almost full")
 		mTotalOverloadedHandleChannel.Add(1)
 	}
 
@@ -199,8 +199,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 	return nil
 }
 
-// Subscribe adds a route to the subscribers.
-// If there is already a route with same Application Id and Path, it will be replaced.
+// Subscribe adds a route to the subscribers. If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Subscribe(r *Route) (*Route, error) {
 
 	logger.WithFields(log.Fields{
@@ -360,12 +359,6 @@ func (router *router) closeRoutes() {
 			route.Close()
 		}
 	}
-}
-
-func copyOf(message []byte) []byte {
-	messageCopy := make([]byte, len(message))
-	copy(messageCopy, message)
-	return messageCopy
 }
 
 // matchesTopic checks whether the supplied routePath matches the message topic
