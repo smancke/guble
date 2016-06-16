@@ -75,8 +75,8 @@ var (
 )
 
 func logLevels() (levels []string) {
-	for _, l := range log.AllLevels {
-		levels = append(levels, l.String())
+	for _, level := range log.AllLevels {
+		levels = append(levels, level.String())
 	}
 	return
 }
