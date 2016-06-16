@@ -63,12 +63,10 @@ func decode(msgBytes []byte) (*message, error) {
 }
 
 // ParseMessage parses a message, sent from the server to the client.
-// The parsed messages can have one of the types: *Message or *NotificationMessage or *NextID
+// The parsed messages can have one of the types: *Message or *NextID
 func ParseMessage(cmsg *message) (interface{}, error) {
-
 	switch cmsg.Type {
 	case NEXT_ID_REQUEST:
-
 		response, err := DecodeNextID(cmsg.Body)
 		if err != nil {
 			logger.WithField("err", err).Error("Decoding of NextId Message failed")
@@ -83,8 +81,8 @@ func ParseMessage(cmsg *message) (interface{}, error) {
 		}
 		return response, nil
 	default:
-		logger.Error("Unknown cluster message type")
-		return nil, errors.New("Unkown message type")
+		errorMessage := "Unknown cluster message type"
+		logger.Error(errorMessage)
+		return nil, errors.New(errorMessage)
 	}
-
 }
