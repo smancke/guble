@@ -8,9 +8,9 @@ import (
 func TestEncodeDecodeNextID(t *testing.T) {
 	a := assert.New(t)
 
-	tt := NextID(10)
+	nID := NextID(10)
 
-	msgToEncode := message{NodeID: 1, Type: NEXT_ID_RESPONSE, Body: tt.Bytes()}
+	msgToEncode := message{NodeID: 1, MsgType: NEXT_ID_RESPONSE, Body: nID.Bytes()}
 	bytes, err := msgToEncode.encode()
 	a.Nil(err)
 

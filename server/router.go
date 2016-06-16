@@ -76,12 +76,6 @@ func (router *router) Start() error {
 	router.panicIfInternalDependenciesAreNil()
 	resetRouterMetrics()
 
-	//TODO Cosmin remove this (just a test)
-	if router.cluster != nil {
-		sMessage := fmt.Sprintf("Hello from node %v !", router.cluster.Config.ID)
-		router.cluster.BroadcastString(&sMessage)
-	}
-
 	go func() {
 		router.wg.Add(1)
 		for {
@@ -169,7 +163,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
 	}
 
-	return router.storeAndChannelMessage(message)
+	return router.storeAndDistributeMessage(message)
 }
 
 // Subscribe adds a route to the subscribers.
@@ -288,7 +282,7 @@ func (router *router) isStopping() error {
 
 // Assign the new message id, store message and handle it by passing the stored message
 // to the messageIn channel
-func (router *router) storeAndChannelMessage(msg *protocol.Message) error {
+func (router *router) storeAndDistributeMessage(msg *protocol.Message) error {
 	txCallback := func(msgId uint64) []byte {
 		msg.ID = msgId
 		msg.Time = time.Now().Unix()
@@ -316,6 +310,11 @@ func (router *router) storeAndChannelMessage(msg *protocol.Message) error {
 	}
 
 	router.handleC <- msg
+
+	if router.cluster != nil {
+		go router.cluster.BroadcastMessage(msg)
+	}
+
 	return nil
 }
 

@@ -4,9 +4,10 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/hashicorp/memberlist"
 
+	"github.com/smancke/guble/protocol"
+
 	"errors"
 	"fmt"
-	"github.com/smancke/guble/protocol"
 	"io/ioutil"
 )
 
@@ -84,22 +85,17 @@ func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) {
 
 func (cluster *Cluster) broadcastClusterMessage(cMessage *message) {
 	log.WithField("clusterMessage", cMessage).Debug("broadcastClusterMessage")
-	bytes, err := cMessage.encode()
+	cMessageBytes, err := cMessage.encode()
 	if err != nil {
 		logger.WithField("err", err).Error("Could not encode and send clusterMessage")
 	}
 	log.WithFields(log.Fields{
 		"nodeId":                cMessage.NodeID,
-		"clusterMessageAsBytes": bytes,
+		"clusterMessageAsBytes": cMessageBytes,
 	}).Debug("broadcastClusterMessage bytes")
 
-	cluster.broadcast(bytes)
-}
-
-func (cluster *Cluster) broadcast(msg []byte) {
-	log.WithField("msg", msg).Debug("broadcast to cluster")
+	//TODO Cosmin/Marian do not send message to ourselves
 	for _, node := range cluster.memberlist.Members() {
-		cluster.memberlist.SendToTCP(node, msg)
-
+		cluster.memberlist.SendToTCP(node, cMessageBytes)
 	}
 }

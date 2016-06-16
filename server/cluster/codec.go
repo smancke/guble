@@ -5,7 +5,7 @@ import (
 	"unsafe"
 )
 
-type ClusterMessageType int
+type messageType int
 
 var (
 	mh codec.MsgpackHandle
@@ -13,11 +13,9 @@ var (
 )
 
 const (
-	// NEXT_ID_REQUEST permission
-	NEXT_ID_REQUEST ClusterMessageType = iota
+	NEXT_ID_RESPONSE messageType = iota
 
-	// NEXT_ID_RESPONSE permission
-	NEXT_ID_RESPONSE
+	NEXT_ID_REQUEST
 
 	// Guble protocol.Message
 	MESSAGE
@@ -27,7 +25,7 @@ const (
 
 type message struct {
 	NodeID int
-	Type   ClusterMessageType
+	Type   messageType
 	Body   []byte
 }
 
