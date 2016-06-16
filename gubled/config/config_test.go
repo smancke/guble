@@ -4,8 +4,6 @@ import (
 	"os"
 	"testing"
 
-	"gopkg.in/alecthomas/kingpin.v2"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -51,7 +49,7 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	defer os.Unsetenv("GUBLE_GCM_WORKERS")
 
 	// when we parse the arguments
-	kingpin.Parse()
+	Parse()
 
 	// the the arg parameters are set
 	assertArguments(a)
@@ -80,7 +78,7 @@ func TestParsingArgs(t *testing.T) {
 	}
 
 	// when we parse the arguments
-	kingpin.Parse()
+	Parse()
 
 	// the the arg parameters are set
 	assertArguments(a)
