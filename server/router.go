@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/cluster"
@@ -143,6 +144,12 @@ func (router *router) Check() error {
 	return nil
 }
 
+func (router *router) HandleClusterMessage(message *protocol.Message) error {
+	logger.Debug("HandleClusterMessage")
+	router.HandleMessage(message)
+	return nil
+}
+
 // HandleMessage assigns the new message id, stores the message and passes it to: the internal channel, and asynchronously to the cluster (if available).
 func (router *router) HandleMessage(message *protocol.Message) error {
 	logger.WithFields(log.Fields{
@@ -162,22 +169,33 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
 	}
 
-	txCallback := func(msgId uint64) []byte {
-		message.ID = msgId
-		message.Time = time.Now().Unix()
-		return message.Bytes()
-	}
 	lenMessage := int64(len(message.Bytes()))
 	mTotalMessagesIncomingBytes.Add(lenMessage)
 
 	msgPathPartition := message.Path.Partition()
-	if err := router.messageStore.StoreTx(msgPathPartition, txCallback); err != nil {
-		logger.WithFields(log.Fields{
-			"err":          err,
-			"msgPartition": msgPathPartition,
-		}).Error("Error storing message in partition")
-		mTotalMessageStoreErrors.Add(1)
-		return err
+	if message.NodeID == *config.Cluster.NodeID {
+		txCallback := func(msgId uint64) []byte {
+			message.ID = msgId
+			message.Time = time.Now().Unix()
+			return message.Bytes()
+		}
+		if err := router.messageStore.StoreTx(msgPathPartition, txCallback); err != nil {
+			logger.WithFields(log.Fields{
+				"err":          err,
+				"msgPartition": msgPathPartition,
+			}).Error("Error storing message in partition")
+			mTotalMessageStoreErrors.Add(1)
+			return err
+		}
+	} else {
+		if err := router.messageStore.Store(msgPathPartition, message.ID, message.Bytes()); err != nil {
+			logger.WithFields(log.Fields{
+				"err":          err,
+				"msgPartition": msgPathPartition,
+			}).Error("Error storing message in partition")
+			mTotalMessageStoreErrors.Add(1)
+			return err
+		}
 	}
 	mTotalMessagesStoredBytes.Add(lenMessage)
 
@@ -185,15 +203,10 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 
 	router.handleC <- message
 
-	if router.cluster != nil {
+	if router.cluster != nil && message.NodeID == *config.Cluster.NodeID {
 		go router.cluster.BroadcastMessage(message)
 	}
 
-	return nil
-}
-
-func (router *router) HandleClusterMessage(message *protocol.Message) error {
-	logger.Debug("HandleClusterMessage")
 	return nil
 }
 

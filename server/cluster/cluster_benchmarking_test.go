@@ -34,9 +34,6 @@ func benchmarkCluster(b *testing.B, num int, timeoutForAllJoins time.Duration, l
 		c.GossipInterval = 20 * time.Millisecond
 		c.PushPullInterval = 200 * time.Millisecond
 
-		// TODO :  Remove or replace this line
-		//c.Delegate = &delegate{}
-
 		//TODO Cosmin temporarily disabling any logging from memberlist
 		c.LogOutput = ioutil.Discard
 
