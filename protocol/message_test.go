@@ -23,7 +23,7 @@ var unixTime, _ = time.Parse(time.RFC3339, "2015-01-01T12:00:00+01:00")
 func TestParsingANormalMessage(t *testing.T) {
 	assert := assert.New(t)
 
-	msgI, err := ParseMessage([]byte(aNormalMessage))
+	msgI, err := Decode([]byte(aNormalMessage))
 	assert.NoError(err)
 	assert.IsType(&Message{}, msgI)
 	msg := msgI.(*Message)
@@ -83,7 +83,7 @@ func TestSerializeAMinimalMessageWithBody(t *testing.T) {
 func TestParsingAMinimalMessage(t *testing.T) {
 	assert := assert.New(t)
 
-	msgI, err := ParseMessage([]byte(aMinimalMessage))
+	msgI, err := Decode([]byte(aMinimalMessage))
 	assert.NoError(err)
 	assert.IsType(&Message{}, msgI)
 	msg := msgI.(*Message)
@@ -103,30 +103,30 @@ func TestErrorsOnParsingMessages(t *testing.T) {
 	assert := assert.New(t)
 
 	var err error
-	_, err = ParseMessage([]byte(""))
+	_, err = Decode([]byte(""))
 	assert.Error(err)
 
 	// missing meta field
-	_, err = ParseMessage([]byte("42,/foo/bar,user01,phone1,id123\n{}\nBla"))
+	_, err = Decode([]byte("42,/foo/bar,user01,phone1,id123\n{}\nBla"))
 	assert.Error(err)
 
 	// id not an integer
-	_, err = ParseMessage([]byte("xy42,/foo/bar,user01,phone1,id123,1420110000\n"))
+	_, err = Decode([]byte("xy42,/foo/bar,user01,phone1,id123,1420110000\n"))
 	assert.Error(err)
 
 	// path is empty
-	_, err = ParseMessage([]byte("42,,user01,phone1,id123,1420110000\n"))
+	_, err = Decode([]byte("42,,user01,phone1,id123,1420110000\n"))
 	assert.Error(err)
 
 	// Error Message without Name
-	_, err = ParseMessage([]byte("!"))
+	_, err = Decode([]byte("!"))
 	assert.Error(err)
 }
 
 func TestParsingNotificationMessage(t *testing.T) {
 	assert := assert.New(t)
 
-	msgI, err := ParseMessage([]byte(aConnectedNotification))
+	msgI, err := Decode([]byte(aConnectedNotification))
 	assert.NoError(err)
 	assert.IsType(&NotificationMessage{}, msgI)
 	msg := msgI.(*NotificationMessage)
@@ -173,7 +173,7 @@ func TestParsingErrorNotificationMessage(t *testing.T) {
 
 	raw := "!bad-request unknown command 'sdcsd'"
 
-	msgI, err := ParseMessage([]byte(raw))
+	msgI, err := Decode([]byte(raw))
 	assert.NoError(err)
 	assert.IsType(&NotificationMessage{}, msgI)
 	msg := msgI.(*NotificationMessage)

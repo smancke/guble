@@ -19,7 +19,7 @@ func TestEncodeDecodeNextID(t *testing.T) {
 	a.Equal(decodedMsg.Type, NEXT_ID_RESPONSE)
 	a.Equal(decodedMsg.NodeID, 1)
 
-	nextID, err := DecodeNextID(decodedMsg.Body)
+	nextID, err := decodeNextID(decodedMsg.Body)
 	a.Nil(err)
 	a.Equal(int(*nextID), 10)
 }

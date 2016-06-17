@@ -10,12 +10,12 @@ type NextID uint64
 func (id *NextID) Bytes() []byte {
 	buff := &bytes.Buffer{}
 
-	buff.WriteString(strconv.FormatUint(uint64(*id),10))
+	buff.WriteString(strconv.FormatUint(uint64(*id), 10))
 	return buff.Bytes()
 }
 
-func DecodeNextID(payload []byte) (*NextID, error) {
-	i, err := strconv.ParseUint(string(payload), 10,64)
+func decodeNextID(payload []byte) (*NextID, error) {
+	i, err := strconv.ParseUint(string(payload), 10, 64)
 	if err != nil {
 		return nil, err
 	}

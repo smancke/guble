@@ -62,7 +62,9 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 	cluster := router.Cluster()
 	if cluster != nil {
 		s.RegisterModules(cluster)
+		router.Cluster().RouterDelegate = router
 	}
+
 	s.RegisterModules(s.router, s.webserver)
 	return s
 }

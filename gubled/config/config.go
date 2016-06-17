@@ -89,7 +89,7 @@ var (
 			Envar("GUBLE_NODE_PORT").
 			Int(),
 
-		Remotes: kingpin.Arg("ips", "The list of URLs in absolute form of some other guble nodes (used in cluster mode").
+		Remotes: kingpin.Arg("ips", "The list of IP:port of some other guble nodes (used in cluster mode)").
 			URLList(),
 	}
 

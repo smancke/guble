@@ -32,6 +32,7 @@ type Router interface {
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
 	HandleMessage(message *protocol.Message) error
+	HandleClusterMessage(message *protocol.Message) error // handle regular guble-messages coming from the cluster
 }
 
 // Helper struct to pass `Route` to subscription channel and provide a notification channel.
@@ -188,6 +189,11 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		go router.cluster.BroadcastMessage(message)
 	}
 
+	return nil
+}
+
+func (router *router) HandleClusterMessage(message *protocol.Message) error {
+	logger.Debug("HandleClusterMessage")
 	return nil
 }
 

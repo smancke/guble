@@ -141,14 +141,14 @@ func (msg *NotificationMessage) Bytes() []byte {
 
 // ParseMessage parses a message, sent from the server to the client.
 // The parsed messages can have one of the types: *Message or *NotificationMessage
-func ParseMessage(message []byte) (interface{}, error) {
+func Decode(message []byte) (interface{}, error) {
 	if len(message) >= 1 && (message[0] == '#' || message[0] == '!') {
 		return parseNotificationMessage(message)
 	}
-	return parseMessage(message)
+	return ParseMessage(message)
 }
 
-func parseMessage(message []byte) (interface{}, error) {
+func ParseMessage(message []byte) (*Message, error) {
 	parts := strings.SplitN(string(message), "\n", 3)
 	if len(message) == 0 {
 		return nil, fmt.Errorf("empty message")
@@ -194,8 +194,7 @@ func parseMessage(message []byte) (interface{}, error) {
 	return msg, nil
 }
 
-func parseNotificationMessage(message []byte) (interface{}, error) {
-
+func parseNotificationMessage(message []byte) (*NotificationMessage, error) {
 	msg := &NotificationMessage{}
 
 	if len(message) < 2 || (message[0] != '#' && message[0] != '!') {
