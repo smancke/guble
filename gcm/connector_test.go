@@ -22,7 +22,7 @@ func TestServeHTTPSuccess(t *testing.T) {
 	defer finish()
 
 	a := assert.New(t)
-	gcm, routerMock, _ := testGCMResponse(t, testutil.CorrectGcmResponseMessageJSON)
+	gcm, routerMock, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
 
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
 		a.Equal("/notifications", string(route.Path))
@@ -47,10 +47,10 @@ func TestGCMConnector_Check(t *testing.T) {
 	defer finish()
 
 	a := assert.New(t)
-	gcm, _, _ := testGCMResponse(t, testutil.CorrectGcmResponseMessageJSON)
+	gcm, _, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
 
 	done := make(chan bool)
-	mockSender := testutil.CreateGcmSender(testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.CorrectGcmResponseMessageJSON, done))
+	mockSender := testutil.CreateGcmSender(testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.SuccessGCMResponse, done))
 	gcm.Sender = mockSender
 	err := gcm.Check()
 	a.NoError(err)
@@ -67,7 +67,7 @@ func TestServeHTTPWithErrorCases(t *testing.T) {
 	defer finish()
 
 	a := assert.New(t)
-	gcm, _, _ := testGCMResponse(t, testutil.CorrectGcmResponseMessageJSON)
+	gcm, _, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
 
 	url, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe/notifications")
 	// and a http context
@@ -97,7 +97,7 @@ func TestGCM_SaveAndLoadSubs(t *testing.T) {
 	defer finish()
 
 	a := assert.New(t)
-	gcm, routerMock, _ := testGCMResponse(t, testutil.CorrectGcmResponseMessageJSON)
+	gcm, routerMock, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
 
 	// given: some test routes
 	testRoutes := map[string]bool{
@@ -139,7 +139,7 @@ func TestGCMConnector_parseParams(t *testing.T) {
 	defer finish()
 
 	a := assert.New(t)
-	gcm, _, _ := testGCMResponse(t, testutil.CorrectGcmResponseMessageJSON)
+	gcm, _, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
 
 	testCases := []struct {
 		urlPath, userID, gcmID, topic, err string
@@ -174,7 +174,7 @@ func TestGCMConnector_GetPrefix(t *testing.T) {
 	defer finish()
 
 	a := assert.New(t)
-	gcm, _, _ := testGCMResponse(t, testutil.CorrectGcmResponseMessageJSON)
+	gcm, _, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
 
 	a.Equal(gcm.GetPrefix(), "/gcm/")
 }
@@ -184,7 +184,7 @@ func TestGCMConnector_Stop(t *testing.T) {
 	defer finish()
 
 	a := assert.New(t)
-	gcm, _, _ := testGCMResponse(t, testutil.CorrectGcmResponseMessageJSON)
+	gcm, _, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
 
 	err := gcm.Stop()
 	a.Nil(err)
@@ -202,18 +202,7 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	defer finish()
 
 	a := assert.New(t)
-	gcm, _, done := testGCMResponse(t, testutil.CorrectGcmResponseMessageJSON)
-
-	// TEMP: There will be no broadcast atm
-	// put a broadcast message with no recipients and expect to be dropped by
-	// broadcastMsgWithNoRecipients := &protocol.Message{
-	// 	ID:   uint64(4),
-	// 	Body: []byte("{id:id}"),
-	// 	Time: 1405544146,
-	// 	Path: "/gcm/broadcast"}
-	// gcm.pipelineC <- broadcastMsgWithNoRecipients
-	// time.Sleep(50 * time.Millisecond)
-	// expect that the HTTP Dummy Server to not handle any requests
+	gcm, _, done := testGCMResponse(t, testutil.SuccessGCMResponse)
 
 	// put a dummy gcm message with minimum information
 	route := &server.Route{ApplicationID: "id"}
@@ -292,7 +281,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	defer finish()
 
 	a := assert.New(t)
-	gcm, routerMock, done := testGCMResponse(t, testutil.ErrorResponseMessageJSON)
+	gcm, routerMock, done := testGCMResponse(t, testutil.ErrorGCMResponse)
 
 	// expect the route unsubscribed from removeSubscription
 	routerMock.EXPECT().Unsubscribe(gomock.Any()).Do(func(route *server.Route) {

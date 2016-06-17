@@ -1,6 +1,11 @@
 package gcm
 
 import (
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/alexjlockwood/gcm"
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
@@ -8,10 +13,6 @@ import (
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
-	"strconv"
-	"strings"
-	"testing"
-	"time"
 )
 
 var fetchMessage = `/foo/bar,42,user01,phone01,id123,1420110000
@@ -118,7 +119,7 @@ func TestSub_Restart(t *testing.T) {
 	sub.route.MessagesChannel() <- &protocol.Message{Path: "/foo/bar", ID: 4, Body: []byte("dummy")}
 
 	time.Sleep(10 * time.Millisecond)
-	a.Equal(uint64(4), sub.lastID)
+	a.Equal(uint64(4), sub.getLastID())
 
 	route.Close()
 

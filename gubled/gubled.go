@@ -142,6 +142,7 @@ func Main() {
 	})
 }
 
+// TODO: StartService should return an error in case it fails to start
 func StartService() *server.Service {
 	accessManager := auth.NewAllowAllAccessManager(true)
 	messageStore := CreateMessageStore()

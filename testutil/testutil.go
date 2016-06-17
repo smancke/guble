@@ -67,45 +67,40 @@ func ResetDefaultRegistryHealthCheck() {
 }
 
 const (
-	CorrectGcmResponseMessageJSON = `
-{
-   "multicast_id":3,
-   "succes":1,
-   "failure":0,
-   "canonicals_ids":5,
-   "results":[
-      {
-         "message_id":"da",
-         "registration_id":"rId",
-         "error":""
-      }
-   ]
-}`
+	SuccessGCMResponse = `{
+	   "multicast_id":3,
+	   "succes":1,
+	   "failure":0,
+	   "canonicals_ids":5,
+	   "results":[
+	      {
+	         "message_id":"da",
+	         "registration_id":"rId",
+	         "error":""
+	      }
+	   ]
+	}`
 
-	ErrorResponseMessageJSON = `
-{
-   "multicast_id":3,
-   "succes":0,
-   "failure":1,
-   "canonicals_ids":5,
-   "results":[
-      {
-         "message_id":"err",
-         "registration_id":"gcmCanonicalID",
-         "error":"InvalidRegistration"
-      }
-   ]
-}`
+	ErrorGCMResponse = `{
+	   "multicast_id":3,
+	   "succes":0,
+	   "failure":1,
+	   "canonicals_ids":5,
+	   "results":[
+	      {
+	         "message_id":"err",
+	         "registration_id":"gcmCanonicalID",
+	         "error":"InvalidRegistration"
+	      }
+	   ]
+	}`
 )
 
 // mock a https round tripper in order to not send the test request to GCM.
 type RoundTripperFunc func(req *http.Request) *http.Response
 
 func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	log.WithFields(log.Fields{
-		"module":   "testing",
-		"url_path": req.URL.Path,
-	}).Debug("Served request for")
+	log.WithFields(log.Fields{"module": "testing", "url_path": req.URL.Path}).Debug("Served request")
 	return rt(req), nil
 }
 
@@ -117,32 +112,48 @@ func CreateGcmSender(rt RoundTripperFunc) *gcm.Sender {
 	return &gcm.Sender{ApiKey: "124", Http: httpClient}
 }
 
-func CreateRoundTripperWithJsonResponse(httpStatusCode int, messageBodyAsJSON string, doneC chan bool) RoundTripperFunc {
-	log.WithFields(log.Fields{
-		"module": "testing",
-	}).Debug("CreateRoundTripperWithJSONResponse")
+func CreateRoundTripperWithJsonResponse(statusCode int, body string, doneC chan bool) RoundTripperFunc {
+	log.WithFields(log.Fields{"module": "testing"}).Debug("CreateRoundTripperWithJSONResponse")
+
 	return RoundTripperFunc(func(req *http.Request) *http.Response {
-		log.WithFields(log.Fields{
-			"module": "testing",
-			"url":    req.URL.String(),
-		}).Debug("RoundTripperFunc")
+		log.WithFields(log.Fields{"module": "testing", "url": req.URL.String()}).Debug("RoundTripperFunc")
 
 		if doneC != nil {
 			defer func() {
 				close(doneC)
 			}()
 		}
-
-		resp := &http.Response{
-			Proto:      "HTTP/1.1",
-			ProtoMajor: 1,
-			ProtoMinor: 1,
-			Header:     make(http.Header),
-			Body:       ioutil.NopCloser(strings.NewReader(messageBodyAsJSON)),
-			Request:    req,
-			StatusCode: httpStatusCode,
-		}
-		resp.Header.Add("Content-Type", "application/json")
+		resp := responseBuilder(statusCode, body)
+		resp.Request = req
 		return resp
 	})
+}
+
+// CreateRoundTripperWithCount will mock the GCM API and will send each request as a count into a channel
+func CreateRoundTripperWithCountAndTimeout(statusCode int, body string, countC chan int, to time.Duration) RoundTripperFunc {
+	log.WithFields(log.Fields{"module": "testing"}).Debug("CreateRoundTripperWithCount")
+	return RoundTripperFunc(func(req *http.Request) *http.Response {
+		log.WithFields(log.Fields{"module": "testing", "url": req.URL.String()}).Debug("RoundTripperFunc")
+
+		resp := responseBuilder(statusCode, body)
+		resp.Request = req
+		time.Sleep(to)
+		countC <- 1
+		return resp
+	})
+}
+
+func responseBuilder(statusCode int, body string) *http.Response {
+	headers := make(http.Header)
+	headers.Add("Content-Type", "application/json")
+	log.WithFields(log.Fields{"status": statusCode}).Debug("Building response")
+	return &http.Response{
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     headers,
+		Body:       ioutil.NopCloser(strings.NewReader(body)),
+		// Request:    req,
+		StatusCode: statusCode,
+	}
 }

@@ -44,8 +44,10 @@ func (_mr *_MockRouterRecorder) AccessManager() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AccessManager")
 }
 
-func (_m *MockRouter) Fetch(_param0 store.FetchRequest) {
-	_m.ctrl.Call(_m, "Fetch", _param0)
+func (_m *MockRouter) Fetch(_param0 store.FetchRequest) error {
+	ret := _m.ctrl.Call(_m, "Fetch", _param0)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 func (_mr *_MockRouterRecorder) Fetch(arg0 interface{}) *gomock.Call {

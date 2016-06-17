@@ -1,12 +1,13 @@
 package gcm
 
 import (
+	"strconv"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/alexjlockwood/gcm"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
-	"strconv"
 
 	"errors"
 	"fmt"

@@ -16,7 +16,7 @@ import (
 
 const (
 	// default subscription channel buffer size
-	subBufferSize = 50
+	subBufferSize = 10000
 )
 
 var (
@@ -58,6 +58,7 @@ func newSubscription(gcm *Connector, route *server.Route, lastID uint64) *subscr
 func initSubscription(gcm *Connector, topic, userID, gcmID string, lastID uint64) (*subscription, error) {
 	route := server.NewRoute(topic, gcmID, userID, subBufferSize)
 	s := newSubscription(gcm, route, 0)
+	s.logger.Debug("New subscription")
 	if err := s.store(); err != nil {
 		return nil, err
 	}
@@ -109,10 +110,10 @@ func (s *subscription) restart() error {
 func (s *subscription) subscriptionLoop() {
 	s.logger.Debug("Starting subscription loop")
 
-	s.gcm.wg.Add(1)
+	// s.gcm.wg.Add(1)
 	defer func() {
 		s.logger.Debug("Stopped subscription loop")
-		s.gcm.wg.Done()
+		// s.gcm.wg.Done()
 	}()
 
 	// no need to wait for `*gcm.stopC` the channel will be closed by the router anyway
@@ -138,7 +139,11 @@ func (s *subscription) subscriptionLoop() {
 
 	// assume that the route channel has been closed cause of slow processing
 	// try restarting, by fetching from lastId and then subscribing again
-	s.restart()
+	if err := s.restart(); err != nil {
+		if stoppingErr, ok := err.(*server.ModuleStoppingError); ok {
+			s.logger.WithField("error", stoppingErr).Debug("Error restarting subscription")
+		}
+	}
 }
 
 // fetch messages from store starting with lastID
@@ -148,15 +153,17 @@ func (s *subscription) fetch() error {
 		return nil
 	}
 
-	s.logger.Debug("Fetching from store")
-	s.gcm.wg.Add(1)
+	// s.gcm.wg.Add(1)
 	defer func() {
 		s.logger.WithField("lastID", s.lastID).Debug("Stop fetching")
-		s.gcm.wg.Done()
+		// s.gcm.wg.Done()
 	}()
 
+	s.logger.Debug("Fetching from store")
 	req := s.createFetchRequest()
-	s.gcm.router.Fetch(req)
+	if err := s.gcm.router.Fetch(req); err != nil {
+		return err
+	}
 	for {
 		select {
 		case results := <-req.StartC:
@@ -224,6 +231,7 @@ func (s *subscription) bytes() []byte {
 
 // store data in kvstore
 func (s *subscription) store() error {
+	s.logger.Debug("Storing subscription")
 	err := s.gcm.kvStore.Put(schema, s.route.ApplicationID, s.bytes())
 	if err != nil {
 		s.logger.WithField("err", err).Error("Error storing in KVStore")
