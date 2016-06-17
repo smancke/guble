@@ -187,9 +187,7 @@ func (c *client) shouldStop() bool {
 func (c *client) handleIncomingMessage(msg []byte) {
 	parsed, err := protocol.Decode(msg)
 	if err != nil {
-
 		logger.WithField("err", err).Error("Error on parsing of incoming message")
-
 		c.errors <- clientErrorMessage(err.Error())
 		return
 	}

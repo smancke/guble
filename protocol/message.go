@@ -161,7 +161,7 @@ func ParseMessage(message []byte) (*Message, error) {
 	meta := strings.Split(parts[0], ",")
 	fmt.Println(meta)
 	if len(meta) != 7 {
-		return nil, fmt.Errorf("message metadata has to have 6 fields, but was %v", parts[0])
+		return nil, fmt.Errorf("message metadata has to have 7 fields, but was %v", parts[0])
 	}
 
 	if len(meta[0]) == 0 || meta[0][0] != '/' {
@@ -170,17 +170,17 @@ func ParseMessage(message []byte) (*Message, error) {
 
 	id, err := strconv.ParseUint(meta[1], 10, 0)
 	if err != nil {
-		return nil, fmt.Errorf("message metadata to have an integer id as second field, but was %v", meta[1])
+		return nil, fmt.Errorf("message metadata to have an integer (message-id) as second field, but was %v", meta[1])
 	}
 
 	publishingTime, err := strconv.ParseInt(meta[5], 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("message metadata to have an integer id as sixth field, but was %v", meta[5])
+		return nil, fmt.Errorf("message metadata to have an integer (publishing time) as sixth field, but was %v", meta[5])
 	}
 
 	nodeID, err := strconv.Atoi(meta[6])
 	if err != nil {
-		return nil, fmt.Errorf("message metadata to have an integer id as seventh field, but was %v", meta[5])
+		return nil, fmt.Errorf("message metadata to have an integer (nodeID) as seventh field, but was %v", meta[6])
 	}
 
 	msg := &Message{
