@@ -103,15 +103,24 @@ func (fms *FileMessageStore) partitionStore(partition string) (*MessagePartition
 		if _, err := os.Stat(dir); err != nil {
 			if os.IsNotExist(err) {
 				if err := os.MkdirAll(dir, 0700); err != nil {
+					messageStoreLogger.WithFields(log.Fields{
+						"err": err,
+					}).Error("FileMessageStore partitionStore")
 					return nil, err
 				}
 			} else {
+				messageStoreLogger.WithFields(log.Fields{
+					"err": err,
+				}).Error("FileMessageStore partitionStore")
 				return nil, err
 			}
 		}
 		var err error
 		partitionStore, err = NewMessagePartition(dir, partition)
 		if err != nil {
+			messageStoreLogger.WithFields(log.Fields{
+				"err": err,
+			}).Error("FileMessageStore partitionStore")
 			return nil, err
 		}
 		fms.partitions[partition] = partitionStore
@@ -126,7 +135,6 @@ func (fms *FileMessageStore) Check() error {
 		messageStoreLogger.WithFields(log.Fields{
 			"err": err,
 		}).Error("FileMessageStore Check() failed")
-
 		return err
 	}
 	syscall.Statfs(wd, &stat)
