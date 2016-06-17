@@ -169,7 +169,7 @@ func (rec *Receiver) subscribe() {
 func (rec *Receiver) receiveFromSubscription() {
 	for {
 		select {
-		case msgAndRoute, ok := <-rec.route.MessagesChannel():
+		case msgAndRoute, ok := <-rec.route.MessagesC():
 			if !ok {
 
 				logger.WithFields(log.Fields{

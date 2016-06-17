@@ -2,6 +2,7 @@ package metrics
 
 import (
 	log "github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/gubled/config"
 
 	"expvar"
 	"fmt"
@@ -29,7 +30,7 @@ func (v *emptyInt) Set(value int64) {}
 
 // NewInt returns an expvar.Int or a dummy emptyInt, depending on the Enabled flag
 func NewInt(name string) IntVar {
-	if Enabled {
+	if *config.Metrics.Enabled {
 		return expvar.NewInt(name)
 	}
 	return &emptyInt{}
@@ -56,7 +57,7 @@ func writeMetrics(w io.Writer) {
 
 // LogOnDebugLevel logs all the current metrics, if logging is on Debug level.
 func LogOnDebugLevel() {
-	if !Enabled {
+	if !*config.Metrics.Enabled {
 		log.Debug("metrics: not enabled")
 		return
 	}
