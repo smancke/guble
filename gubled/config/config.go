@@ -75,7 +75,7 @@ var (
 			Int(),
 	}
 
-	CLUSTER = struct {
+	Cluster = struct {
 		NodeID   *int
 		NodePort *int
 		Remotes  *[]*url.URL
@@ -86,7 +86,7 @@ var (
 
 		NodePort: kingpin.Flag("node-port", "This guble node's own local port (used in cluster mode): a strictly positive integer number").
 			Default(strconv.Itoa(10000)).
-			Envar("GUBLE_NODE_ID").
+			Envar("GUBLE_NODE_PORT").
 			Int(),
 
 		Remotes: kingpin.Arg("ips", "The list of URLs in absolute form of some other guble nodes (used in cluster mode").

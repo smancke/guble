@@ -151,12 +151,12 @@ func StartService() *server.Service {
 	kvStore := CreateKVStore()
 
 	var c *cluster.Cluster
-	if *config.CLUSTER.NodeID > 0 {
-		validRemotes := validateCluster(*config.CLUSTER.NodeID, *config.CLUSTER.NodePort, *config.CLUSTER.Remotes)
+	if *config.Cluster.NodeID > 0 {
+		validRemotes := validateCluster(*config.Cluster.NodeID, *config.Cluster.NodePort, *config.Cluster.Remotes)
 		logger.Info("Starting in cluster-mode")
 		clusterConfig := &cluster.Config{
-			ID:      *config.CLUSTER.NodeID,
-			Port:    *config.CLUSTER.NodePort,
+			ID:      *config.Cluster.NodeID,
+			Port:    *config.Cluster.NodePort,
 			Remotes: validRemotes,
 		}
 		c = cluster.NewCluster(clusterConfig)
@@ -180,7 +180,6 @@ func StartService() *server.Service {
 		logger.WithField("err", err).Fatal("Service could not be started")
 	}
 	// TODO: COSMIN  MAYBE USE os.args instead of old args
-
 	//expvar.Publish("guble.args", expvar.Func(func() interface{} {
 	//	return args
 	//}))
