@@ -154,12 +154,11 @@ func StartService() *server.Service {
 	if *config.Cluster.NodeID > 0 {
 		validRemotes := validateCluster(*config.Cluster.NodeID, *config.Cluster.NodePort, *config.Cluster.Remotes)
 		logger.Info("Starting in cluster-mode")
-		clusterConfig := &cluster.Config{
+		c = cluster.New(&cluster.Config{
 			ID:      *config.Cluster.NodeID,
 			Port:    *config.Cluster.NodePort,
 			Remotes: validRemotes,
-		}
-		c = cluster.New(clusterConfig)
+		})
 	} else {
 		logger.Info("Starting in standalone-mode")
 	}
@@ -179,10 +178,6 @@ func StartService() *server.Service {
 		}
 		logger.WithField("err", err).Fatal("Service could not be started")
 	}
-	// TODO: COSMIN  MAYBE USE os.args instead of old args
-	//expvar.Publish("guble.args", expvar.Func(func() interface{} {
-	//	return args
-	//}))
 
 	return service
 }
