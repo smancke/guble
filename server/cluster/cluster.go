@@ -94,12 +94,6 @@ func (cluster *Cluster) NotifyMsg(msg []byte) {
 }
 
 func (cluster *Cluster) GetBroadcasts(overhead, limit int) [][]byte {
-	//TODO Cosmin uncomment or remove
-
-	//log.WithFields(log.Fields{
-	//	"overhead": overhead,
-	//	"limit":    limit,
-	//}).Debug("GetBroadcasts")
 	b := cluster.broadcasts
 	cluster.broadcasts = nil
 	return b

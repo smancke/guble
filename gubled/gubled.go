@@ -17,12 +17,10 @@ import (
 	"github.com/smancke/guble/server/websocket"
 	"github.com/smancke/guble/store"
 
-	//"expvar"
 	"net/url"
 	"os"
 	"os/signal"
 	"path"
-	//"strings"
 	"syscall"
 )
 
