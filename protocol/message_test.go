@@ -32,7 +32,7 @@ func TestParsingANormalMessage(t *testing.T) {
 	assert.Equal(Path("/foo/bar"), msg.Path)
 	assert.Equal("user01", msg.UserID)
 	assert.Equal("phone01", msg.ApplicationID)
-	assert.Equal("id123", msg.MessageID)
+	assert.Equal("id123", msg.OptionalID)
 	assert.Equal(unixTime.Unix(), msg.Time)
 	assert.Equal(1, msg.NodeID)
 	assert.Equal(`{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`, msg.HeaderJSON)
@@ -46,7 +46,7 @@ func TestSerializeANormalMessage(t *testing.T) {
 		Path:          Path("/foo/bar"),
 		UserID:        "user01",
 		ApplicationID: "phone01",
-		MessageID:     "id123",
+		OptionalID:    "id123",
 		Time:          unixTime.Unix(),
 		NodeID:        1,
 		HeaderJSON:    `{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`,
@@ -94,7 +94,7 @@ func TestParsingAMinimalMessage(t *testing.T) {
 	assert.Equal(Path("/"), msg.Path)
 	assert.Equal("", msg.UserID)
 	assert.Equal("", msg.ApplicationID)
-	assert.Equal("", msg.MessageID)
+	assert.Equal("", msg.OptionalID)
 	assert.Equal(unixTime.Unix(), msg.Time)
 	assert.Equal("", msg.HeaderJSON)
 

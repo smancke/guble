@@ -261,12 +261,12 @@ func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
 		NodeID:        *config.Cluster.NodeID,
 	}
 	if len(args) == 2 {
-		msg.MessageID = args[1]
+		msg.OptionalID = args[1]
 	}
 
 	ws.Router.HandleMessage(msg)
 
-	ws.sendOK(protocol.SUCCESS_SEND, msg.MessageID)
+	ws.sendOK(protocol.SUCCESS_SEND, msg.OptionalID)
 }
 
 func (ws *WebSocket) cleanAndClose() {

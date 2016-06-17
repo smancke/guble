@@ -23,13 +23,13 @@ type Message struct {
 	// The id of the sending application
 	ApplicationID string
 
-	// An id given by the sender (optional)
-	MessageID string
+	// An optional ID given by the sender
+	OptionalID string
 
 	// The time of publishing, as Unix Timestamp date
 	Time int64
 
-	// The header line of the message (optional). If set, than this has to be a valid json object structure.
+	// The header line of the message (optional). If set, then it has to be a valid JSON object structure.
 	HeaderJSON string
 
 	// The message payload
@@ -84,7 +84,7 @@ func (msg *Message) writeMetadata(buff *bytes.Buffer) {
 	buff.WriteString(",")
 	buff.WriteString(msg.ApplicationID)
 	buff.WriteString(",")
-	buff.WriteString(msg.MessageID)
+	buff.WriteString(msg.OptionalID)
 	buff.WriteString(",")
 	buff.WriteString(strconv.FormatInt(msg.Time, 10))
 	buff.WriteString(",")
@@ -188,7 +188,7 @@ func ParseMessage(message []byte) (*Message, error) {
 		Path:          Path(meta[0]),
 		UserID:        meta[2],
 		ApplicationID: meta[3],
-		MessageID:     meta[4],
+		OptionalID:    meta[4],
 		Time:          publishingTime,
 		NodeID:        nodeID,
 	}

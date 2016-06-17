@@ -71,7 +71,7 @@ func Test_SendMessageWithPublisherMessageId(t *testing.T) {
 
 	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *protocol.Message) {
 		assert.Equal(t, protocol.Path("/path"), msg.Path)
-		assert.Equal(t, "42", msg.MessageID)
+		assert.Equal(t, "42", msg.OptionalID)
 	})
 
 	wsconn.EXPECT().Send([]byte("#send 42"))

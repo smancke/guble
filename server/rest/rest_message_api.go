@@ -58,7 +58,7 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Body:          body,
 		UserID:        q(r, `userId`),
 		ApplicationID: xid.New().String(),
-		MessageID:     q(r, `messageId`),
+		OptionalID:    q(r, `messageId`),
 		HeaderJSON:    headersToJSON(r.Header),
 		NodeID:        *config.Cluster.NodeID,
 	}

@@ -45,7 +45,7 @@ func TestServerHTTP(t *testing.T) {
 		a.Equal("{}", msg.HeaderJSON)
 		a.Equal("/my/topic", string(msg.Path))
 		a.True(len(msg.ApplicationID) > 0)
-		a.Equal("42", msg.MessageID)
+		a.Equal("42", msg.OptionalID)
 		a.Equal("marvin", msg.UserID)
 	})
 
