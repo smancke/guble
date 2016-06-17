@@ -18,18 +18,18 @@ type Config struct {
 	Remotes []string
 }
 
-type RouterDelegate interface {
-	HandleClusterMessage(message *protocol.Message) error
+type MessageHandler interface {
+	HandleMessage(message *protocol.Message) error
 }
 
 type Cluster struct {
 	Config         *Config
 	memberlist     *memberlist.Memberlist
-	RouterDelegate RouterDelegate
+	MessageHandler MessageHandler
 	broadcasts     [][]byte
 }
 
-func NewCluster(config *Config) *Cluster {
+func New(config *Config) *Cluster {
 	c := &Cluster{Config: config}
 
 	memberlistConfig := memberlist.DefaultLANConfig()
@@ -83,13 +83,13 @@ func (cluster *Cluster) NotifyMsg(msg []byte) {
 		"body":         string(cmsg.Body),
 	}).Info("NotifyMsg: Received cluster message")
 
-	if cluster.RouterDelegate != nil && cmsg.Type == GUBLE_MESSAGE {
+	if cluster.MessageHandler != nil && cmsg.Type == GUBLE_MESSAGE {
 		gmsg, err := protocol.ParseMessage(cmsg.Body)
 		if err != nil {
 			logger.WithField("err", err).Error("Parsing of guble-message contained in cluster-message failed")
 			return
 		}
-		cluster.RouterDelegate.HandleClusterMessage(gmsg)
+		cluster.MessageHandler.HandleMessage(gmsg)
 	}
 }
 

@@ -33,7 +33,6 @@ type Router interface {
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
 	HandleMessage(message *protocol.Message) error
-	HandleClusterMessage(message *protocol.Message) error // handle regular guble-messages coming from the cluster
 }
 
 // Helper struct to pass `Route` to subscription channel and provide a notification channel.
@@ -144,13 +143,8 @@ func (router *router) Check() error {
 	return nil
 }
 
-func (router *router) HandleClusterMessage(message *protocol.Message) error {
-	logger.Debug("HandleClusterMessage")
-	router.HandleMessage(message)
-	return nil
-}
-
-// HandleMessage assigns the new message id, stores the message and passes it to: the internal channel, and asynchronously to the cluster (if available).
+// HandleMessage stores the message in the MessageStore(and gets a new ID for it iff the message was created locally)
+// and then passes it to: the internal channel, and asynchronously to the cluster (if available).
 func (router *router) HandleMessage(message *protocol.Message) error {
 	logger.WithFields(log.Fields{
 		"userID": message.UserID,
@@ -173,7 +167,8 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 	mTotalMessagesIncomingBytes.Add(lenMessage)
 
 	msgPathPartition := message.Path.Partition()
-	if message.NodeID == *config.Cluster.NodeID {
+	if router.cluster == nil || message.NodeID == *config.Cluster.NodeID {
+		// if running standalone or for a new locally-generated message, we need to generate a new message-ID
 		txCallback := func(msgId uint64) []byte {
 			message.ID = msgId
 			message.Time = time.Now().Unix()

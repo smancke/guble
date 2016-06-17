@@ -159,7 +159,7 @@ func StartService() *server.Service {
 			Port:    *config.Cluster.NodePort,
 			Remotes: validRemotes,
 		}
-		c = cluster.NewCluster(clusterConfig)
+		c = cluster.New(clusterConfig)
 	} else {
 		logger.Info("Starting in standalone-mode")
 	}
