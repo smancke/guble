@@ -1,8 +1,6 @@
 package store
 
 import (
-	log "github.com/Sirupsen/logrus"
-
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
@@ -55,9 +53,7 @@ func (p *MessagePartition) initialize() error {
 
 	fileList, err := p.scanFiles()
 	if err != nil {
-		messageStoreLogger.WithFields(log.Fields{
-			"err": err,
-		}).Error("MessagePartition")
+		messageStoreLogger.WithField("err", err).Error("MessagePartition")
 		return err
 	}
 	if len(fileList) == 0 {
@@ -66,9 +62,7 @@ func (p *MessagePartition) initialize() error {
 		var err error
 		p.maxMessageId, err = p.calculateMaxMessageIdFromIndex(fileList[len(fileList)-1])
 		if err != nil {
-			messageStoreLogger.WithFields(log.Fields{
-				"err": err,
-			}).Error("MessagePartition")
+			messageStoreLogger.WithField("err", err).Error("MessagePartition")
 			return err
 		}
 	}
@@ -209,7 +203,8 @@ func (p *MessagePartition) Store(msgId uint64, msg []byte) error {
 func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 
 	if msgId != 1+p.maxMessageId {
-		return fmt.Errorf("MessagePartition: Invalid message id for partition %v. Next id should be %v, but was %q", p.name, 1+p.maxMessageId, msgId)
+		return fmt.Errorf("MessagePartition: Invalid message id for partition %v. Next id should be %v, but was %q",
+			p.name, 1+p.maxMessageId, msgId)
 	}
 	if msgId > p.appendLastId ||
 		p.appendFile == nil ||

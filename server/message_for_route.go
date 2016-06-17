@@ -1,8 +1,9 @@
 package server
 
 import (
-	"fmt"
 	"github.com/smancke/guble/protocol"
+
+	"fmt"
 )
 
 // MessageForRoute is a wrapper that aggregates the message and the route.

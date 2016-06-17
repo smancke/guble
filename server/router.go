@@ -76,6 +76,7 @@ func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore
 func (router *router) Start() error {
 	router.panicIfInternalDependenciesAreNil()
 	resetRouterMetrics()
+	logger.Info("Starting router")
 
 	go func() {
 		router.wg.Add(1)
@@ -111,7 +112,7 @@ func (router *router) Start() error {
 
 // Stop stops the router by closing the stop channel, and waiting on the WaitGroup
 func (router *router) Stop() error {
-	logger.Debug("Stopping router")
+	logger.Info("Stopping router")
 
 	router.stopC <- true
 	router.wg.Wait()
@@ -178,7 +179,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 			logger.WithFields(log.Fields{
 				"err":          err,
 				"msgPartition": msgPathPartition,
-			}).Error("Error storing message in partition")
+			}).Error("Error storing new local message in partition")
 			mTotalMessageStoreErrors.Add(1)
 			return err
 		}
@@ -187,7 +188,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 			logger.WithFields(log.Fields{
 				"err":          err,
 				"msgPartition": msgPathPartition,
-			}).Error("Error storing message in partition")
+			}).Error("Error storing message from cluster in partition")
 			mTotalMessageStoreErrors.Add(1)
 			return err
 		}

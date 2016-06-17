@@ -1,9 +1,9 @@
 package cluster
 
 import (
-	"github.com/hashicorp/go-msgpack/codec"
-
 	"github.com/smancke/guble/protocol"
+
+	"github.com/hashicorp/go-msgpack/codec"
 
 	"errors"
 	"unsafe"
@@ -35,7 +35,7 @@ type message struct {
 
 func (cmsg *message) encode() ([]byte, error) {
 	logger.WithField("clusterMessage", cmsg).Debug("encode")
-	encodedBytes := make([]byte, cmsg.len()+5)
+	encodedBytes := make([]byte, cmsg.len())
 	encoder := codec.NewEncoderBytes(&encodedBytes, h)
 	err := encoder.Encode(cmsg)
 	if err != nil {

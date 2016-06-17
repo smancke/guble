@@ -1,10 +1,10 @@
 package cluster
 
 import (
+	"github.com/smancke/guble/protocol"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/hashicorp/memberlist"
-
-	"github.com/smancke/guble/protocol"
 
 	"errors"
 	"fmt"
@@ -81,7 +81,7 @@ func (cluster *Cluster) NotifyMsg(msg []byte) {
 		"senderNodeID": cmsg.NodeID,
 		"type":         cmsg.Type,
 		"body":         string(cmsg.Body),
-	}).Info("NotifyMsg: Received cluster message")
+	}).Debug("NotifyMsg: Received cluster message")
 
 	if cluster.MessageHandler != nil && cmsg.Type == GUBLE_MESSAGE {
 		gmsg, err := protocol.ParseMessage(cmsg.Body)

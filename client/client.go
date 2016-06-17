@@ -1,9 +1,11 @@
 package client
 
 import (
+	"github.com/smancke/guble/protocol"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
-	"github.com/smancke/guble/protocol"
+
 	"net/http"
 	"sync"
 	"time"

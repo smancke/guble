@@ -5,9 +5,10 @@ import (
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 
+	log "github.com/Sirupsen/logrus"
+
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"math"
 	"strconv"
 	"strings"

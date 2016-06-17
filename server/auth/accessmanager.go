@@ -1,8 +1,10 @@
 package auth
 
 import (
-	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
+
+	log "github.com/Sirupsen/logrus"
+
 	"io/ioutil"
 	"net/http"
 	"net/url"

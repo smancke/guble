@@ -6,11 +6,11 @@ import (
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
 	"github.com/rs/xid"
 
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"net/http"
 	"strings"
 	"time"
