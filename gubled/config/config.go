@@ -74,7 +74,7 @@ var (
 			Envar("GUBLE_GCM_WORKERS").
 			Int(),
 	}
-
+	// Cluster settings related to activating the cluster module
 	Cluster = struct {
 		NodeID   *int
 		NodePort *int
