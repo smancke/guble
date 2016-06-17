@@ -8,11 +8,11 @@ import (
 	"time"
 )
 
-var aNormalMessage = `/foo/bar,42,user01,phone01,id123,1420110000
+var aNormalMessage = `/foo/bar,42,user01,phone01,id123,1420110000,1
 {"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}
 Hello World`
 
-var aMinimalMessage = "/,42,,,,1420110000"
+var aMinimalMessage = "/,42,,,,1420110000,0"
 
 var aConnectedNotification = `#connected You are connected to the server.
 {"ApplicationId": "phone1", "UserId": "user01", "Time": "1420110000"}`
@@ -34,6 +34,7 @@ func TestParsingANormalMessage(t *testing.T) {
 	assert.Equal("phone01", msg.ApplicationID)
 	assert.Equal("id123", msg.MessageID)
 	assert.Equal(unixTime.Unix(), msg.Time)
+	assert.Equal(1, msg.NodeID)
 	assert.Equal(`{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`, msg.HeaderJSON)
 	assert.Equal("Hello World", string(msg.Body))
 }
@@ -47,6 +48,7 @@ func TestSerializeANormalMessage(t *testing.T) {
 		ApplicationID: "phone01",
 		MessageID:     "id123",
 		Time:          unixTime.Unix(),
+		NodeID:        1,
 		HeaderJSON:    `{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`,
 		Body:          []byte("Hello World"),
 	}

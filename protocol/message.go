@@ -34,6 +34,8 @@ type Message struct {
 
 	// The message payload
 	Body []byte
+
+	NodeID int
 }
 
 // Metadata returns the first line of a serialized message, without the newline
@@ -85,6 +87,8 @@ func (msg *Message) writeMetadata(buff *bytes.Buffer) {
 	buff.WriteString(msg.MessageID)
 	buff.WriteString(",")
 	buff.WriteString(strconv.FormatInt(msg.Time, 10))
+	buff.WriteString(",")
+	buff.WriteString(strconv.Itoa(msg.NodeID))
 }
 
 // Valid constants for the NotificationMessage.Name
@@ -156,7 +160,7 @@ func ParseMessage(message []byte) (*Message, error) {
 
 	meta := strings.Split(parts[0], ",")
 	fmt.Println(meta)
-	if len(meta) != 6 {
+	if len(meta) != 7 {
 		return nil, fmt.Errorf("message metadata has to have 6 fields, but was %v", parts[0])
 	}
 
@@ -174,6 +178,11 @@ func ParseMessage(message []byte) (*Message, error) {
 		return nil, fmt.Errorf("message metadata to have an integer id as sixth field, but was %v", meta[5])
 	}
 
+	nodeID, err := strconv.Atoi(meta[6])
+	if err != nil {
+		return nil, fmt.Errorf("message metadata to have an integer id as seventh field, but was %v", meta[5])
+	}
+
 	msg := &Message{
 		ID:            id,
 		Path:          Path(meta[0]),
@@ -181,6 +190,7 @@ func ParseMessage(message []byte) (*Message, error) {
 		ApplicationID: meta[3],
 		MessageID:     meta[4],
 		Time:          publishingTime,
+		NodeID:        nodeID,
 	}
 
 	if len(parts) >= 2 {
