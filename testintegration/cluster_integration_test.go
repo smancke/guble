@@ -9,7 +9,8 @@ import (
 	"os"
 	"testing"
 	"time"
-	"github.com/smancke/guble/testutil"
+	//"github.com/smancke/guble/testutil"
+	"fmt"
 )
 
 func createService(storagePath, nodeID, nodePort, listenPort string, remotes string) *server.Service {
@@ -30,8 +31,7 @@ func createService(storagePath, nodeID, nodePort, listenPort string, remotes str
 
 func Test_Cluster(t *testing.T) {
 	a := assert.New(t)
-	defer testutil.EnableDebugForMethod()()
-
+	//defer testutil.EnableDebugForMethod()()
 
 	service1 := createService("/tmp/s1", "1", "10000", "127.0.0.1:8080", "tcp://127.0.0.1:10000")
 	a.NotNil(service1)
@@ -48,16 +48,25 @@ func Test_Cluster(t *testing.T) {
 	err = client1.Subscribe("/foo")
 	a.Nil(err)
 
-	err = client2.Subscribe("/barbazzMarian35")
+	err = client2.Subscribe("/testTopic")
 	a.Nil(err)
 
-	err = client1.Send("/barbazzMarian35", "", "{}")
+	err = client1.Send("/testTopic", "", "{}")
 	a.Nil(err)
+
+	//see if the message arrived at the other  client
+	select {
+	case incomingMessage := <-client2.Messages():
+		fmt.Printf("+++%v: %v\n", incomingMessage.UserID, incomingMessage.BodyAsString())
+	case <-time.After(time.Second):
+		a.FailNow("No Message was received on second client in 1 second")
+	}
 
 	time.Sleep(time.Millisecond * 10)
 	//
 	err = service1.Stop()
-	//err = service2.Stop()
+	err2 := service2.Stop()
 	time.Sleep(time.Second * 2)
 	a.Nil(err)
+	a.Nil(err2)
 }
