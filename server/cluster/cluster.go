@@ -172,7 +172,7 @@ func (cluster *Cluster) broadcastClusterMessage(cMessage *message) error {
 	logger.WithField("clusterMessage", cMessage).Debug("broadcastClusterMessage")
 	cMessageBytes, err := cMessage.encode()
 	if err != nil {
-		logger.WithField("err", err).Error("Could not encode and send clusterMessage")
+		logger.WithField("err", err).Error("Could not encode and broadcast cluster-message")
 		return err
 	}
 	logger.WithFields(log.Fields{
