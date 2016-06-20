@@ -62,7 +62,7 @@ func decode(cmsgBytes []byte) (*message, error) {
 	return &cmsg, nil
 }
 
-// ParseMessage parses a message, sent from the server to the client.
+// parseMessage parses a message, sent from the server to the client.
 // The parsed messages can have one of the types: *Message or *NextID
 func parseMessage(cmsg *message) (interface{}, error) {
 	switch cmsg.Type {

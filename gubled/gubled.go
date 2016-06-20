@@ -149,14 +149,18 @@ func StartService() *server.Service {
 	kvStore := CreateKVStore()
 
 	var c *cluster.Cluster
+	var err error
 	if *config.Cluster.NodeID > 0 {
 		validRemotes := validateCluster(*config.Cluster.NodeID, *config.Cluster.NodePort, *config.Cluster.Remotes)
 		logger.Info("Starting in cluster-mode")
-		c = cluster.New(&cluster.Config{
+		c, err = cluster.New(&cluster.Config{
 			ID:      *config.Cluster.NodeID,
 			Port:    *config.Cluster.NodePort,
 			Remotes: validRemotes,
 		})
+		if err != nil {
+			logger.WithField("err", err).Fatal("Service could not be started (cluster)")
+		}
 	} else {
 		logger.Info("Starting in standalone-mode")
 	}
@@ -170,8 +174,8 @@ func StartService() *server.Service {
 
 	service.RegisterModules(CreateModules(router)...)
 
-	if err := service.Start(); err != nil {
-		if err := service.Stop(); err != nil {
+	if err = service.Start(); err != nil {
+		if err = service.Stop(); err != nil {
 			logger.WithField("err", err).Error("Error when stopping service after Start() failed")
 		}
 		logger.WithField("err", err).Fatal("Service could not be started")

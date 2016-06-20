@@ -23,8 +23,7 @@ func (l *ErrorList) Add(err error) {
 	l.errors = append(l.errors, err)
 }
 
-// ErrorOrNil returns an error containing the information of all errors in the list,
-// of nil if the list is empty.
+// ErrorOrNil returns an error containing the information of all errors in the list, or nil if the list is empty.
 func (l *ErrorList) ErrorOrNil() error {
 	if len(l.errors) == 0 {
 		return nil
