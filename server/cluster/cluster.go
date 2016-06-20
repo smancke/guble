@@ -110,31 +110,32 @@ func (cluster *Cluster) LocalState(join bool) []byte {
 func (cluster *Cluster) MergeRemoteState(s []byte, join bool) {
 }
 
-func (cluster *Cluster) BroadcastString(sMessage *string) {
+func (cluster *Cluster) BroadcastString(sMessage *string) error {
 	logger.WithField("string", sMessage).Debug("BroadcastString")
 	cMessage := &message{
 		NodeID: cluster.Config.ID,
 		Type:   STRING_BODY_MESSAGE,
 		Body:   []byte(*sMessage),
 	}
-	cluster.broadcastClusterMessage(cMessage)
+	return cluster.broadcastClusterMessage(cMessage)
 }
 
-func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) {
+func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) error {
 	logger.WithField("message", pMessage).Debug("BroadcastMessage")
 	cMessage := &message{
 		NodeID: cluster.Config.ID,
 		Type:   GUBLE_MESSAGE,
 		Body:   pMessage.Bytes(),
 	}
-	cluster.broadcastClusterMessage(cMessage)
+	return cluster.broadcastClusterMessage(cMessage)
 }
 
-func (cluster *Cluster) broadcastClusterMessage(cMessage *message) {
+func (cluster *Cluster) broadcastClusterMessage(cMessage *message) error {
 	logger.WithField("clusterMessage", cMessage).Debug("broadcastClusterMessage")
 	cMessageBytes, err := cMessage.encode()
 	if err != nil {
 		logger.WithField("err", err).Error("Could not encode and send clusterMessage")
+		return err
 	}
 	logger.WithFields(log.Fields{
 		"nodeId":                cMessage.NodeID,
@@ -144,7 +145,15 @@ func (cluster *Cluster) broadcastClusterMessage(cMessage *message) {
 	for _, node := range cluster.memberlist.Members() {
 		if cluster.memberlist.LocalNode().Name != node.Name {
 			logger.WithField("nodeName", node.Name).Debug("Sending cluster-message to a guble node")
-			cluster.memberlist.SendToTCP(node, cMessageBytes)
+			err := cluster.memberlist.SendToTCP(node, cMessageBytes)
+			if err != nil {
+				logger.WithFields(log.Fields{
+					"err":  err,
+					"node": node,
+				}).Error("Error sending message to node")
+				return err
+			}
 		}
 	}
+	return nil
 }
