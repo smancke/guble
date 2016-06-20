@@ -3,6 +3,8 @@ package gubled
 import (
 	"bytes"
 	"fmt"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,127 +19,190 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"runtime"
 	"strconv"
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
 )
 
+var (
+	gcmTopic = "/topic"
+)
+
+func BenchmarkGCM_1Workers10MilliTimeout8Clients1Subscription(b *testing.B) {
+	params := &benchParams{
+		B:             b,
+		workers:       1,
+		subscriptions: 1,
+		timeout:       10 * time.Millisecond,
+		clients:       8,
+		sender:        sendMessageSample,
+	}
+	params.throughputSend()
+	fmt.Println(params)
+}
+
+func BenchmarkGCM_MaxWorkers10MilliTimeout8Clients1Subscription(b *testing.B) {
+	params := &benchParams{
+		B:             b,
+		workers:       runtime.GOMAXPROCS(0),
+		subscriptions: 1,
+		timeout:       10 * time.Millisecond,
+		clients:       8,
+		sender:        sendMessageSample,
+	}
+	params.throughputSend()
+	fmt.Println(params)
+}
+
+func BenchmarkGCM_16Workers10MilliTimeout8Clients1Subscription(b *testing.B) {
+	params := &benchParams{
+		B:             b,
+		workers:       16,
+		subscriptions: 1,
+		timeout:       10 * time.Millisecond,
+		clients:       8,
+		sender:        sendMessageSample,
+	}
+	params.throughputSend()
+	fmt.Println(params)
+}
+
+func BenchmarkGCM_1Workers10MilliTimeout1Clients1Subscription(b *testing.B) {
+	params := &benchParams{
+		B:             b,
+		workers:       1,
+		subscriptions: 1,
+		timeout:       10 * time.Millisecond,
+		clients:       1,
+		sender:        sendMessageSample,
+	}
+	params.throughputSend()
+	fmt.Println(params)
+}
+
+func BenchmarkGCM_1Workers50MilliTimeout8Clients8Subscription(b *testing.B) {
+	params := &benchParams{
+		B:             b,
+		workers:       1,
+		subscriptions: 8,
+		timeout:       50 * time.Millisecond,
+		clients:       8,
+		sender:        sendMessageSample,
+	}
+	params.throughputSend()
+	fmt.Println(params)
+}
+
+func BenchmarkGCM_8Workers50MilliTimeout8Clients8Subscription(b *testing.B) {
+	params := &benchParams{
+		B:             b,
+		workers:       8,
+		subscriptions: 8,
+		timeout:       50 * time.Millisecond,
+		clients:       8,
+		sender:        sendMessageSample,
+	}
+	params.throughputSend()
+	fmt.Println(params)
+}
+
+func BenchmarkGCM_16Workers50MilliTimeout8Clients8Subscription(b *testing.B) {
+	params := &benchParams{
+		B:             b,
+		workers:       16,
+		subscriptions: 8,
+		timeout:       50 * time.Millisecond,
+		clients:       8,
+		sender:        sendMessageSample,
+	}
+	params.throughputSend()
+	fmt.Println(params)
+}
+
+func BenchmarkGCM_16Workers100MilliTimeout8Clients8Subscription(b *testing.B) {
+	params := &benchParams{
+		B:             b,
+		workers:       16,
+		subscriptions: 8,
+		timeout:       100 * time.Millisecond,
+		clients:       8,
+		sender:        sendMessageSample,
+	}
+	params.throughputSend()
+	fmt.Println(params)
+}
+
+func sendMessageSample(c client.Client) error {
+	return c.Send(gcmTopic, "test-body", "{id:id}")
+}
+
 type sender func(c client.Client) error
 
 type benchParams struct {
-	workers     int
-	subCount    int
-	gcmTimeout  time.Duration
-	sender      sender
-	clientCount int
+	*testing.B
+	workers       int           // number of gcm workers
+	subscriptions int           // number of subscriptions listening on the topic
+	timeout       time.Duration // gcm timeout response
+	clients       int           // number of clients
+	sender        sender        // the function that will send the messages
+	sent          int           // sent messages
+	received      int           // received messages
+
+	service  *server.Service
+	receiveC chan bool
+	doneC    chan struct{}
+
+	wg    sync.WaitGroup
+	start time.Time
+	end   time.Time
 }
 
-var service *server.Service
-
-// func BenchmarkGCMConnector_BroadcastMessagesSingleWorker(b *testing.B) {
-// 	throughput := throughputSend(b, 1, sendBroadcastSample)
-// 	fmt.Printf("Broadcast throughput for single worker: %.2f msg/sec\n", throughput)
-// }
-
-// func BenchmarkGCMConnector_BroadcastMessagesMultipleWorkers(b *testing.B) {
-// 	gomaxprocs := runtime.GOMAXPROCS(0)
-// 	throughput := throughputSend(b, gomaxprocs, sendBroadcastSample)
-// 	fmt.Printf("Broadcast throughput for GOMAXPROCS (%v): %.2f msg/sec\n", gomaxprocs, throughput)
-// }
-
-func BenchmarkGCMConnector_SendMessagesSingleWorker(b *testing.B) {
-	throughput := throughputSend(b, 1, sendMessageSample)
-	fmt.Printf("Send throughput for single worker: %.2f msg/sec\n", throughput)
+func (params *benchParams) String() string {
+	return fmt.Sprintf(`Throughput %.2f messages/second using:
+		%d workers
+		%d gcm subscriptions
+		%s gcm response timeout
+		%d clients
+	`, params.mps(), params.workers, params.subscriptions, params.timeout, params.clients)
 }
 
-func BenchmarkGCMConnector_SendMessagesMultipleWorkers(b *testing.B) {
-	gomaxprocs := runtime.GOMAXPROCS(0)
-	throughput := throughputSend(b, gomaxprocs, sendMessageSample)
-	fmt.Printf("Send throughput for GOMAXPROCS (%v): %.2f msg/sec\n", gomaxprocs, throughput)
+func (params *benchParams) expectedMessagesCount() int {
+	return params.N * params.clients * params.subscriptions
 }
 
-func throughputSend(b *testing.B, params benchParams) float64 {
-	// defer testutil.EnableDebugForMethod()()
-	defer testutil.ResetDefaultRegistryHealthCheck()
-	countC := setUp(b, nWorkers, gcmTimeout)
-
-	a := assert.New(b)
-
-	gomaxprocs := runtime.GOMAXPROCS(0)
-	wsURL := "ws://" + service.WebServer().GetAddr() + "/stream/user/"
-
-	clients := make([]client.Client, 0, gomaxprocs)
-	for clientID := 0; clientID < gomaxprocs; clientID++ {
-		location := wsURL + strconv.Itoa(clientID)
-		client, err := client.Open(location, "http://localhost/", 1000, true)
-		a.NoError(err)
-		clients = append(clients, client)
+func (params *benchParams) send(c client.Client) error {
+	err := params.sender(c)
+	if err != nil {
+		return err
 	}
-
-	// Report allocations also
-	b.ReportAllocs()
-
-	// Reset timer to start the actual timing
-	b.ResetTimer()
-	start := time.Now()
-
-	var wg sync.WaitGroup
-	doneC := make(chan struct{})
-
-	// read count
-	go func() {
-		counter := 0
-		for {
-			select {
-			case <-countC:
-				counter++
-				wg.Done()
-				log.WithField("count", counter).Info("Passed messages")
-			case <-doneC:
-				return
-			}
-		}
-	}()
-
-	// wait until all messages are sent
-	log.WithFields(log.Fields{
-		"b.N":       b.N,
-		"waitCount": b.N * len(clients) * nWorkers,
-	}).Debug("Bench wait group")
-	wg.Add(b.N * len(clients) * nWorkers)
-	for _, c := range clients {
-		go func(c client.Client) {
-			for i := 0; i < b.N; i++ {
-				a.NoError(sampleSend(c))
-			}
-		}(c)
-	}
-	wg.Wait()
-	close(doneC)
-
-	// stop timer after the actual test
-	b.StopTimer()
-	end := time.Now()
-
-	// stop service (and wait for all the messages to be processed during the given grace period)
-	tearDown(b)
-
-	return float64(b.N*gomaxprocs) / end.Sub(start).Seconds()
+	params.sent++
+	return nil
 }
 
-// func sendBroadcastSample(c client.Client) error {
-// 	return c.Send("/gcm/broadcast", "general offer", "{id:id}")
-// }
-
-func sendMessageSample(c client.Client) error {
-	return c.Send("/topic", "personalized offer", "{id:id}")
+func (params *benchParams) receiveLoop() {
+	for i := 0; i <= params.workers; i++ {
+		go func() {
+			for {
+				select {
+				case <-params.receiveC:
+					params.received++
+					log.WithField("received", params.received).Info("Received gcm call")
+					params.wg.Done()
+				case <-params.doneC:
+					return
+				}
+			}
+		}()
+	}
 }
 
 // start the service
-func setUp(b *testing.B, nWorkers int) chan int {
-	a := assert.New(b)
+func (params *benchParams) setUp() {
+	params.doneC = make(chan struct{})
+	params.receiveC = make(chan bool)
+
+	a := assert.New(params)
 
 	dir, errTempDir := ioutil.TempDir("", "guble_benchmarking_gcm_test")
 	defer func() {
@@ -154,35 +219,104 @@ func setUp(b *testing.B, nWorkers int) chan int {
 	*config.StoragePath = dir
 	*config.GCM.Enabled = true
 	*config.GCM.APIKey = "WILL BE OVERWRITTEN"
-	*config.GCM.Workers = nWorkers
+	*config.GCM.Workers = params.workers
 
-	service = StartService()
+	params.service = StartService()
 
-	gcmConnector, ok := service.Modules()[4].(*gcm.Connector)
+	gcmConnector, ok := params.service.Modules()[4].(*gcm.Connector)
 	a.True(ok, "Modules[4] should be of type GCMConnector")
 
-	countC := make(chan int)
-
 	gcmConnector.Sender = testutil.CreateGcmSender(
-		testutil.CreateRoundTripperWithCount(http.StatusOK, testutil.SuccessGCMResponse, countC))
+		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, testutil.SuccessGCMResponse, params.receiveC, params.timeout))
 
-	urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/topic", service.WebServer().GetAddr())
-	for i := 1; i <= nWorkers; i++ {
-		// create GCM subscription with topic: /topic
-		response, errPost := http.Post(fmt.Sprintf(urlFormat, i, i), "text/plain", bytes.NewBufferString(""))
+	urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/%%s", params.service.WebServer().GetAddr())
+	for i := 1; i <= params.subscriptions; i++ {
+		// create GCM subscription with topic: gcmTopic
+		response, errPost := http.Post(
+			fmt.Sprintf(urlFormat, i, i, strings.TrimPrefix(gcmTopic, "/")),
+			"text/plain",
+			bytes.NewBufferString(""),
+		)
 		a.NoError(errPost)
 		a.Equal(response.StatusCode, 200)
 
 		body, errReadAll := ioutil.ReadAll(response.Body)
 		a.NoError(errReadAll)
 		a.Equal("registered: /topic\n", string(body))
-
 	}
-
-	return countC
 }
 
-func tearDown(b *testing.B) {
-	assert.NoError(b, service.Stop())
-	service = nil
+func (params *benchParams) tearDown() {
+	assert.NoError(params, params.service.Stop())
+	params.service = nil
+}
+
+func (params *benchParams) createClients() []client.Client {
+	wsURL := "ws://" + params.service.WebServer().GetAddr() + "/stream/user/"
+
+	clients := make([]client.Client, 0, params.clients)
+	for clientID := 0; clientID < params.clients; clientID++ {
+		location := wsURL + strconv.Itoa(clientID)
+		client, err := client.Open(location, "http://localhost/", 1000, true)
+		assert.NoError(params, err)
+		clients = append(clients, client)
+	}
+	return clients
+}
+
+func (params *benchParams) throughputSend() {
+	defer testutil.EnableDebugForMethod()()
+	defer testutil.ResetDefaultRegistryHealthCheck()
+	params.setUp()
+
+	a := assert.New(params)
+	clients := params.createClients()
+
+	// Report allocations also
+	params.ReportAllocs()
+	log.WithFields(log.Fields{
+		"count": params.expectedMessagesCount(),
+		"N":     params.N,
+	}).Info("Expecting messages")
+	params.wg.Add(params.expectedMessagesCount())
+
+	// Reset timer to start the actual timing
+	params.receiveLoop()
+	params.ResetTimer()
+
+	// wait until all messages are sent
+	for _, c := range clients {
+		go func(c client.Client) {
+			for i := 0; i < params.N; i++ {
+				a.NoError(params.send(c))
+			}
+		}(c)
+	}
+	params.wg.Wait()
+	close(params.doneC)
+
+	// stop timer after the actual test
+	params.StopTimer()
+
+	// stop service (and wait for all the messages to be processed during the given grace period)
+	params.tearDown()
+}
+
+func (params *benchParams) ResetTimer() {
+	params.start = time.Now()
+	params.B.ResetTimer()
+}
+
+func (params *benchParams) StopTimer() {
+	params.end = time.Now()
+	params.B.StopTimer()
+}
+
+func (params *benchParams) duration() time.Duration {
+	return params.end.Sub(params.start)
+}
+
+// messages per second
+func (params *benchParams) mps() float64 {
+	return float64(params.received) / params.duration().Seconds()
 }

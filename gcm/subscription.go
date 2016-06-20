@@ -16,7 +16,7 @@ import (
 
 const (
 	// default subscription channel buffer size
-	subBufferSize = 10000
+	subBufferSize = 1000
 )
 
 var (
@@ -110,28 +110,51 @@ func (s *subscription) restart() error {
 func (s *subscription) subscriptionLoop() {
 	s.logger.Debug("Starting subscription loop")
 
-	// s.gcm.wg.Add(1)
+	s.gcm.wg.Add(1)
 	defer func() {
 		s.logger.Debug("Stopped subscription loop")
-		// s.gcm.wg.Done()
+		s.gcm.wg.Done()
 	}()
 
 	// no need to wait for `*gcm.stopC` the channel will be closed by the router anyway
-	for m := range s.route.MessagesChannel() {
-		if err := s.pipe(m); err != nil {
-			// abbandon route if the following 2 errors are met
-			// the subscription has been replaced
-			if err == errSubReplaced {
-				return
+	for {
+		select {
+		case m, open := <-s.route.MessagesChannel():
+			if !open {
+				break
 			}
-			// the subscription is not registered with GCM anymore
-			if _, ok := err.(*jsonError); ok {
-				return
-			}
+			if err := s.pipe(m); err != nil {
+				// abbandon route if the following 2 errors are met
+				// the subscription has been replaced
+				if err == errSubReplaced {
+					return
+				}
+				// the subscription is not registered with GCM anymore
+				if _, ok := err.(*jsonError); ok {
+					return
+				}
 
-			s.logger.WithField("err", err).Error("Error pipelining message")
+				s.logger.WithField("err", err).Error("Error pipelining message")
+			}
+		case <-s.gcm.stopC:
+			return
 		}
 	}
+	// for m := range s.route.MessagesChannel() {
+	// 	if err := s.pipe(m); err != nil {
+	// 		// abbandon route if the following 2 errors are met
+	// 		// the subscription has been replaced
+	// 		if err == errSubReplaced {
+	// 			return
+	// 		}
+	// 		// the subscription is not registered with GCM anymore
+	// 		if _, ok := err.(*jsonError); ok {
+	// 			return
+	// 		}
+
+	// 		s.logger.WithField("err", err).Error("Error pipelining message")
+	// 	}
+	// }
 	// if route is closed and we are actually stopping then return
 	if s.isStopping() {
 		return
@@ -231,7 +254,7 @@ func (s *subscription) bytes() []byte {
 
 // store data in kvstore
 func (s *subscription) store() error {
-	s.logger.Debug("Storing subscription")
+	s.logger.WithField("lastID", s.lastID).Debug("Storing subscription")
 	err := s.gcm.kvStore.Put(schema, s.route.ApplicationID, s.bytes())
 	if err != nil {
 		s.logger.WithField("err", err).Error("Error storing in KVStore")
@@ -266,8 +289,6 @@ func (s *subscription) pipe(m *protocol.Message) error {
 		s.logger.WithField("err", err).Error("Error sending message to GCM")
 		return err
 	}
-
-	return nil
 }
 
 func (s *subscription) handleGCMResponse(response *gcm.Response) error {

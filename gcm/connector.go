@@ -26,7 +26,7 @@ const (
 	subscribePrefixPath = "subscribe"
 
 	// default channel buffer size
-	bufferSize = 1000
+	bufferSize = 100
 )
 
 var logger = log.WithField("module", "gcm")
@@ -65,10 +65,6 @@ func New(router server.Router, prefix string, gcmAPIKey string, nWorkers int) (*
 
 // Start opens the connector, creates more goroutines / workers to handle messages coming from the router
 func (conn *Connector) Start() error {
-	// broadcast route will be a custom subscription
-	// broadcastRoute := server.NewRoute(conn.broadcastPath, "gcm_connector", "gcm_connector", bufferSize)
-	// conn.router.Subscribe(broadcastRoute)
-
 	// blocking until current subs are loaded
 	conn.loadSubscriptions()
 

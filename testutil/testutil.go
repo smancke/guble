@@ -130,15 +130,15 @@ func CreateRoundTripperWithJsonResponse(statusCode int, body string, doneC chan 
 }
 
 // CreateRoundTripperWithCount will mock the GCM API and will send each request as a count into a channel
-func CreateRoundTripperWithCountAndTimeout(statusCode int, body string, countC chan int, to time.Duration) RoundTripperFunc {
+func CreateRoundTripperWithCountAndTimeout(statusCode int, body string, countC chan bool, to time.Duration) RoundTripperFunc {
 	log.WithFields(log.Fields{"module": "testing"}).Debug("CreateRoundTripperWithCount")
 	return RoundTripperFunc(func(req *http.Request) *http.Response {
-		log.WithFields(log.Fields{"module": "testing", "url": req.URL.String()}).Debug("RoundTripperFunc")
+		log.WithFields(log.Fields{"module": "testing", "url": req.URL.String()}).Debug("RoundTripperWithCountAndTimeout")
 
 		resp := responseBuilder(statusCode, body)
 		resp.Request = req
 		time.Sleep(to)
-		countC <- 1
+		countC <- true
 		return resp
 	})
 }

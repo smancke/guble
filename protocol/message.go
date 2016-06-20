@@ -166,7 +166,7 @@ func parseMessage(message []byte) (interface{}, error) {
 	}
 
 	meta := strings.Split(parts[0], ",")
-	fmt.Println(meta)
+
 	if len(meta) != 6 {
 		return nil, fmt.Errorf("message metadata has to have 6 fields, but was %v", parts[0])
 	}
