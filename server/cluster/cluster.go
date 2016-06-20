@@ -42,7 +42,7 @@ func New(config *Config) (*Cluster, error) {
 	c := &Cluster{Config: config}
 
 	memberlistConfig := memberlist.DefaultLANConfig()
-	memberlistConfig.Name = fmt.Sprintf("%d:%s:%d", config.ID, config.Host, config.Port)
+	memberlistConfig.Name = fmt.Sprintf("%d", config.ID)
 	memberlistConfig.BindAddr = config.Host
 	memberlistConfig.BindPort = config.Port
 	memberlistConfig.Events = &eventDelegate{}
@@ -52,17 +52,23 @@ func New(config *Config) (*Cluster, error) {
 
 	memberlist, err := memberlist.Create(memberlistConfig)
 	if err != nil {
-		logger.WithField("error", err).Error("Fatal error when creating the internal memberlist of the cluster")
+		logger.WithField("error", err).Error("Error when creating the internal memberlist of the cluster")
 		return nil, err
 	}
 	c.memberlist = memberlist
 	memberlistConfig.Delegate = c
+	memberlistConfig.Conflict = c
 	return c, nil
 }
 
 // Start the cluster module.
 func (cluster *Cluster) Start() error {
 	logger.WithField("remotes", cluster.Config.Remotes).Debug("Starting Cluster")
+	if cluster.MessageHandler == nil {
+		errorMessage := "There should be a valid MessageHandler already set-up"
+		logger.Error(errorMessage)
+		return errors.New(errorMessage)
+	}
 	num, err := cluster.memberlist.Join(cluster.Config.Remotes)
 	if err != nil {
 		logger.WithField("error", err).Error("Error when this node wanted to join the cluster")
@@ -70,11 +76,6 @@ func (cluster *Cluster) Start() error {
 	}
 	if num == 0 {
 		errorMessage := "No remote hosts were successfuly contacted when this node wanted to join the cluster"
-		logger.Error(errorMessage)
-		return errors.New(errorMessage)
-	}
-	if cluster.MessageHandler == nil {
-		errorMessage := "There should be a valid MessageHandler already set-up"
 		logger.Error(errorMessage)
 		return errors.New(errorMessage)
 	}
@@ -136,6 +137,13 @@ func (cluster *Cluster) LocalState(join bool) []byte {
 }
 
 func (cluster *Cluster) MergeRemoteState(s []byte, join bool) {
+}
+
+func (cluster *Cluster) NotifyConflict(existing, other *memberlist.Node) {
+	logger.WithFields(log.Fields{
+		"existing": *existing,
+		"other":    *other,
+	}).Panic("NotifyConflict")
 }
 
 // BroadcastString broadcasts a string to all the other nodes in the guble cluster
