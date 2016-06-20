@@ -1,4 +1,4 @@
-package gubled
+package benchmarks
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gcm"
+	"github.com/smancke/guble/gubled"
 	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/testutil"
@@ -221,7 +222,7 @@ func (params *benchParams) setUp() {
 	*config.GCM.APIKey = "WILL BE OVERWRITTEN"
 	*config.GCM.Workers = params.workers
 
-	params.service = StartService()
+	params.service = gubled.StartService()
 
 	gcmConnector, ok := params.service.Modules()[4].(*gcm.Connector)
 	a.True(ok, "Modules[4] should be of type GCMConnector")

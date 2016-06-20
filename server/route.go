@@ -120,7 +120,7 @@ func (r *Route) Deliver(msg *protocol.Message) error {
 }
 
 // MessagesChannel returns the route channel to send or receive messages.
-func (r *Route) MessagesChannel() chan *protocol.Message {
+func (r *Route) MessagesChannel() <-chan *protocol.Message {
 	return r.messagesC
 }
 

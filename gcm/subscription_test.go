@@ -115,11 +115,11 @@ func TestSub_Restart(t *testing.T) {
 	sub.start()
 
 	// pipe 2 messages to route and then close.
-	sub.route.MessagesChannel() <- &protocol.Message{Path: "/foo/bar", ID: 3, Body: []byte("dummy")}
-	sub.route.MessagesChannel() <- &protocol.Message{Path: "/foo/bar", ID: 4, Body: []byte("dummy")}
+	sub.route.Deliver(&protocol.Message{Path: "/foo/bar", ID: 3, Body: []byte("dummy")})
+	sub.route.Deliver(&protocol.Message{Path: "/foo/bar", ID: 4, Body: []byte("dummy")})
 
 	time.Sleep(10 * time.Millisecond)
-	a.Equal(uint64(4), sub.getLastID())
+	a.Equal(uint64(4), sub.lastID)
 
 	route.Close()
 

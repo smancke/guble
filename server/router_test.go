@@ -446,7 +446,7 @@ func aRouterRoute(chSize int) (*router, *Route) {
 	return router, route
 }
 
-func assertChannelContainsMessage(a *assert.Assertions, c chan *protocol.Message, msg []byte) {
+func assertChannelContainsMessage(a *assert.Assertions, c <-chan *protocol.Message, msg []byte) {
 	select {
 	case m := <-c:
 		a.Equal(string(msg), string(m.Body))

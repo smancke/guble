@@ -312,7 +312,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	}
 
 	// send the message into the subscription route channel
-	s.route.MessagesChannel() <- message
+	s.route.Deliver(message)
 	// expect that the Http Server gives us a malformed message
 	<-done
 

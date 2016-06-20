@@ -117,11 +117,15 @@ func (s *subscription) subscriptionLoop() {
 	}()
 
 	// no need to wait for `*gcm.stopC` the channel will be closed by the router anyway
-	for {
+	var (
+		m      *protocol.Message
+		opened = true
+	)
+	for opened {
 		select {
-		case m, open := <-s.route.MessagesChannel():
-			if !open {
-				break
+		case m, opened = <-s.route.MessagesChannel():
+			if !opened {
+				continue
 			}
 			if err := s.pipe(m); err != nil {
 				// abbandon route if the following 2 errors are met
@@ -140,6 +144,7 @@ func (s *subscription) subscriptionLoop() {
 			return
 		}
 	}
+	log.Debug("DAFUQ")
 	// for m := range s.route.MessagesChannel() {
 	// 	if err := s.pipe(m); err != nil {
 	// 		// abbandon route if the following 2 errors are met
