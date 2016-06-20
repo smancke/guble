@@ -199,7 +199,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 
 	router.handleC <- message
 
-	if router.cluster != nil && message.NodeID == *config.Cluster.NodeID {
+	if router.cluster != nil && message.NodeID == router.cluster.Config.ID {
 		go router.cluster.BroadcastMessage(message)
 	}
 
