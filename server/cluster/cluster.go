@@ -13,10 +13,11 @@ import (
 
 // Config is a struct used by the local node when creating and running the guble cluster
 type Config struct {
-	ID      int
-	Host    string
-	Port    int
-	Remotes []string
+	ID                   int
+	Host                 string
+	Port                 int
+	Remotes              []string
+	HealthScoreThreshold int
 }
 
 type MessageHandler interface {
@@ -25,17 +26,19 @@ type MessageHandler interface {
 
 // Cluster is a struct for managing the `local view` of the guble cluster, as seen by a node.
 type Cluster struct {
-	// Pointer to a Config struct based on which the Cluster node is created and runs.
+	// Pointer to a Config struct, based on which the Cluster node is created and runs.
 	Config *Config
 
+	// MessageHandler is used for dispatching messages received by this node.
+	// Should be set after the node is created with New(), and before Start().
 	MessageHandler MessageHandler
 
 	memberlist *memberlist.Memberlist
 	broadcasts [][]byte
 }
 
-//New returns a new instance of the cluster, created using the Config parameter.
-func New(config *Config) *Cluster {
+//New returns a new instance of the cluster, created using the given Config.
+func New(config *Config) (*Cluster, error) {
 	c := &Cluster{Config: config}
 
 	memberlistConfig := memberlist.DefaultLANConfig()
@@ -49,11 +52,12 @@ func New(config *Config) *Cluster {
 
 	memberlist, err := memberlist.Create(memberlistConfig)
 	if err != nil {
-		logger.WithField("error", err).Fatal("Fatal error when creating the internal memberlist of the cluster")
+		logger.WithField("error", err).Error("Fatal error when creating the internal memberlist of the cluster")
+		return nil, err
 	}
 	c.memberlist = memberlist
 	memberlistConfig.Delegate = c
-	return c
+	return c, nil
 }
 
 // Start the cluster module.
@@ -80,6 +84,16 @@ func (cluster *Cluster) Start() error {
 // Stop the cluster module.
 func (cluster *Cluster) Stop() error {
 	return cluster.memberlist.Shutdown()
+}
+
+// Check returns a non-nil error if the health status of the cluster (as seen by this node) is not perfect.
+func (cluster *Cluster) Check() error {
+	if healthScore := cluster.memberlist.GetHealthScore(); healthScore > cluster.Config.HealthScoreThreshold {
+		errorMessage := "Cluster Health Score is not perfect"
+		logger.WithField("healthScore", healthScore).Error(errorMessage)
+		return errors.New(errorMessage)
+	}
+	return nil
 }
 
 // NotifyMsg is invoked each time a message is received by this node of the cluster; it decodes and dispatches the messages.
