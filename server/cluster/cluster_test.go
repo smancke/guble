@@ -35,16 +35,16 @@ func TestCluster_BroadcastMessage(t *testing.T) {
 	//start the cluster node 1
 	err := node1.Start()
 	defer node1.Stop()
-	a.Nil(err, "No error should be raised when Starting the Cluster (node 1)")
+	a.Nil(err, "No error should be raised when starting node 1 of the Cluster")
 
-	confNode2 := Config{ID: 2, Host: "localhost", Port: 10002, Remotes: []string{"127.0.0.1:10002"}}
+	confNode2 := Config{ID: 2, Host: "localhost", Port: 10002, Remotes: []string{"127.0.0.1:10001"}}
 	node2 := New(&confNode2)
 	node2.MessageHandler = DummyMessageHandler{}
 
 	//start the cluster node 2
 	err = node2.Start()
 	defer node2.Stop()
-	a.Nil(err, "No error should be raised when Starting the Cluster (node 2)")
+	a.Nil(err, "No error should be raised when starting node 2 of the Cluster")
 
 	// Send a String Message
 	str := "TEST"
