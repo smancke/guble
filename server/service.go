@@ -51,7 +51,7 @@ type Service struct {
 	metricsEndpoint string
 }
 
-// NewService registers the Main Router, where other modules can subscribe for messages
+// NewService creates a new Service, using the given Router and WebServer
 func NewService(router Router, webserver *webserver.WebServer) *Service {
 	s := &Service{
 		webserver:       webserver,
@@ -69,6 +69,7 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 	return s
 }
 
+// RegisterModules adds more modules (which can be Startable, Stopable, Endpoint etc.) to the service
 func (s *Service) RegisterModules(modules ...interface{}) {
 	loggerService.WithFields(log.Fields{
 		"numberOfNewModules":      len(modules),

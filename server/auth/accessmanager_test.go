@@ -14,7 +14,6 @@ func Test_AllowAllAccessManager(t *testing.T) {
 
 	am = AccessManager(NewAllowAllAccessManager(false))
 	a.False(am.IsAllowed(READ, "userid", "/path"))
-
 }
 
 func Test_RestAccessManagerAllowed(t *testing.T) {
@@ -27,7 +26,6 @@ func Test_RestAccessManagerAllowed(t *testing.T) {
 	am := NewRestAccessManager(ts.URL)
 	a.True(am.IsAllowed(READ, "foo", "/foo"))
 	a.True(am.IsAllowed(WRITE, "foo", "/foo"))
-
 }
 
 func Test_RestAccessManagerNotAllowed(t *testing.T) {
@@ -41,7 +39,7 @@ func Test_RestAccessManagerNotAllowed(t *testing.T) {
 	a.False(am.IsAllowed(READ, "user", "/foo"))
 }
 
-func Test_RestAccessManagerNotAllowedWithServerUnstarted(t *testing.T) {
+func Test_RestAccessManagerNotAllowedWithServerNotStarted(t *testing.T) {
 	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("false"))
 	}))
