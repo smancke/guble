@@ -167,7 +167,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 	mTotalMessagesIncomingBytes.Add(lenMessage)
 
 	msgPathPartition := message.Path.Partition()
-	if message.NodeID == router.cluster.Config.ID {
+	if router.cluster == nil || (router.cluster != nil && message.NodeID == router.cluster.Config.ID) {
 		// for a new locally-generated message, we need to generate a new message-ID
 		txCallback := func(msgId uint64) []byte {
 			message.ID = msgId
