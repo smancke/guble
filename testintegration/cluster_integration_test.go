@@ -39,22 +39,24 @@ func Test_Cluster(t *testing.T) {
 	service2 := createService("/tmp/s2", "2", "10001", "127.0.0.1:8081", "tcp://127.0.0.1:10000")
 	a.NotNil(service2)
 
-	client1, err := client.Open("ws://127.0.0.1:8081/stream/user/user1", "http://localhost", 1, false)
-	assert.NoError(t, err)
+	client1, err1 := client.Open("ws://127.0.0.1:8081/stream/user/user1", "http://localhost", 1, false)
+	assert.NoError(t, err1)
 
-	client2, err := client.Open("ws://127.0.0.1:8080/stream/user/user2", "http://localhost", 1, false)
-	assert.NoError(t, err)
+	client2, err2 := client.Open("ws://127.0.0.1:8080/stream/user/user2", "http://localhost", 1, false)
+	assert.NoError(t, err2)
 
-	err = client1.Subscribe("/foo")
-	a.Nil(err)
+	err1 = client1.Subscribe("/foo")
+	a.NoError(err1)
 
-	err = client2.Subscribe("/testTopic")
-	a.Nil(err)
+	err2 = client2.Subscribe("/testTopic")
+	a.NoError(err2)
 
-	err = client1.Send("/testTopic", "", "{}")
-	a.Nil(err)
+	err := client1.Send("/testTopic", "", "{}")
+	a.NoError(err)
 
-	//see if the message arrived at the other  client
+	timeoutValue := time.Second
+
+	//see if the message arrived at the other client
 	select {
 	case incomingMessage := <-client2.Messages():
 		logger.WithFields(log.Fields{
@@ -65,15 +67,15 @@ func Test_Cluster(t *testing.T) {
 		}).Info("Client2 Received:")
 		a.Equal(incomingMessage.Path, protocol.Path("/testTopic"))
 
-	case <-time.After(time.Second):
-		a.FailNow("No Message was received on second client in 1 second")
+	case <-time.After(timeoutValue):
+		a.FailNow("No Message was received on second client until timeout %v", timeoutValue)
 	}
 
 	time.Sleep(time.Millisecond * 10)
+
 	// stop the cluster
-	err = service1.Stop()
-	err2 := service2.Stop()
-	time.Sleep(time.Second * 1)
-	a.Nil(err)
-	a.Nil(err2)
+	err1 = service1.Stop()
+	err2 = service2.Stop()
+	a.NoError(err1)
+	a.NoError(err2)
 }
