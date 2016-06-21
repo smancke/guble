@@ -29,6 +29,8 @@ type Cluster struct {
 	// Pointer to a Config struct, based on which the Cluster node is created and runs.
 	Config *Config
 
+	Name string
+
 	// MessageHandler is used for dispatching messages received by this node.
 	// Should be set after the node is created with New(), and before Start().
 	MessageHandler MessageHandler
@@ -39,10 +41,10 @@ type Cluster struct {
 
 //New returns a new instance of the cluster, created using the given Config.
 func New(config *Config) (*Cluster, error) {
-	c := &Cluster{Config: config}
+	c := &Cluster{Config: config, Name: fmt.Sprintf("%d", config.ID)}
 
 	memberlistConfig := memberlist.DefaultLANConfig()
-	memberlistConfig.Name = fmt.Sprintf("%d", config.ID)
+	memberlistConfig.Name = c.Name
 	memberlistConfig.BindAddr = config.Host
 	memberlistConfig.BindPort = config.Port
 	memberlistConfig.Events = &eventDelegate{}
@@ -112,7 +114,7 @@ func (cluster *Cluster) NotifyMsg(msg []byte) {
 		"body":         string(cmsg.Body),
 	}).Debug("NotifyMsg: Received cluster message")
 
-	if cluster.MessageHandler != nil && cmsg.Type == GUBLE_MESSAGE {
+	if cluster.MessageHandler != nil && cmsg.Type == gubleMessage {
 		pMessage, err := protocol.ParseMessage(cmsg.Body)
 		if err != nil {
 			logger.WithField("err", err).Error("Parsing of guble-message contained in cluster-message failed")
@@ -151,7 +153,7 @@ func (cluster *Cluster) BroadcastString(sMessage *string) error {
 	logger.WithField("string", sMessage).Debug("BroadcastString")
 	cMessage := &message{
 		NodeID: cluster.Config.ID,
-		Type:   STRING_BODY_MESSAGE,
+		Type:   stringMessage,
 		Body:   []byte(*sMessage),
 	}
 	return cluster.broadcastClusterMessage(cMessage)
@@ -162,7 +164,7 @@ func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) error {
 	logger.WithField("message", pMessage).Debug("BroadcastMessage")
 	cMessage := &message{
 		NodeID: cluster.Config.ID,
-		Type:   GUBLE_MESSAGE,
+		Type:   gubleMessage,
 		Body:   pMessage.Bytes(),
 	}
 	return cluster.broadcastClusterMessage(cMessage)
@@ -180,16 +182,17 @@ func (cluster *Cluster) broadcastClusterMessage(cMessage *message) error {
 		return err
 	}
 	for _, node := range cluster.memberlist.Members() {
-		if cluster.memberlist.LocalNode().Name != node.Name {
-			logger.WithField("nodeName", node.Name).Debug("Sending cluster-message to a node")
-			err := cluster.memberlist.SendToTCP(node, cMessageBytes)
-			if err != nil {
-				logger.WithFields(log.Fields{
-					"err":  err,
-					"node": node,
-				}).Error("Error sending cluster-message to a node")
-				return err
-			}
+		if cluster.Name == node.Name {
+			continue
+		}
+		logger.WithField("nodeName", node.Name).Debug("Sending cluster-message to a node")
+		err := cluster.memberlist.SendToTCP(node, cMessageBytes)
+		if err != nil {
+			logger.WithFields(log.Fields{
+				"err":  err,
+				"node": node,
+			}).Error("Error sending cluster-message to a node")
+			return err
 		}
 	}
 	return nil

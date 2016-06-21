@@ -17,14 +17,14 @@ var (
 )
 
 const (
-	NEXT_ID_RESPONSE messageType = iota
+	nextIdResponse messageType = iota
 
-	NEXT_ID_REQUEST
+	nextIdRequest
 
 	// Guble protocol.Message
-	GUBLE_MESSAGE
+	gubleMessage
 
-	STRING_BODY_MESSAGE
+	stringMessage
 )
 
 type message struct {
@@ -66,14 +66,14 @@ func decode(cmsgBytes []byte) (*message, error) {
 // The parsed messages can have one of the types: *Message or *NextID
 func parseMessage(cmsg *message) (interface{}, error) {
 	switch cmsg.Type {
-	case NEXT_ID_REQUEST:
+	case nextIdRequest:
 		response, err := decodeNextID(cmsg.Body)
 		if err != nil {
 			logger.WithField("err", err).Error("Decoding of NextId Message failed")
 			return nil, err
 		}
 		return response, nil
-	case GUBLE_MESSAGE:
+	case gubleMessage:
 		response, err := protocol.Decode(cmsg.Body)
 		if err != nil {
 			logger.WithField("err", err).Error("Decoding of protocol.Message failed")
