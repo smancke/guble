@@ -20,9 +20,10 @@ const (
 )
 
 var logger = log.WithFields(log.Fields{
-	"app":    "guble",
-	"module": "accessManager",
-	"env":    "TBD"})
+	"service":          "guble",
+	"application_type": "service",
+	"module":           "accessManager",
+	"env":              "TBD"})
 
 // AccessManager interface allows to provide a custom authentication mechanism
 type AccessManager interface {

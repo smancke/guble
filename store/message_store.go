@@ -10,9 +10,10 @@ import (
 )
 
 var messageStoreLogger = log.WithFields(log.Fields{
-	"app":    "guble",
-	"module": "messageStore",
-	"env":    "TBD"})
+	"service":          "guble",
+	"application_type": "service",
+	"module":           "messageStore",
+	"env":              "TBD"})
 
 // FileMessageStore is an implementation of the MessageStore interface based on files
 type FileMessageStore struct {

@@ -14,9 +14,10 @@ import (
 )
 
 var logger = log.WithFields(log.Fields{
-	"app":    "guble",
-	"module": "websocket",
-	"env":    "TBD"})
+	"service":          "guble",
+	"application_type": "service",
+	"module":           "websocket",
+	"env":              "TBD"})
 
 var errUnreadMsgsAvailable = errors.New("unread messages available")
 

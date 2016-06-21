@@ -10,9 +10,10 @@ import (
 )
 
 var logger = log.WithFields(log.Fields{
-	"app":    "guble-cli",
-	"module": "client",
-	"env":    "TBD"})
+	"service":          "guble",
+	"application_type": "service",
+	"module":           "client",
+	"env":              "TBD"})
 
 type WSConnection interface {
 	WriteMessage(messageType int, data []byte) error

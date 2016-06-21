@@ -22,9 +22,10 @@ const (
 )
 
 var logger = log.WithFields(log.Fields{
-	"app":    "guble",
-	"module": "kv-sqlite",
-	"env":    "TBD"})
+	"service":          "guble",
+	"application_type": "service",
+	"module":           "kv-sqlite",
+	"env":              "TBD"})
 
 type kvEntry struct {
 	Schema    string    `gorm:"primary_key"sql:"type:varchar(200)"`
