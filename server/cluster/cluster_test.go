@@ -175,7 +175,7 @@ func TestCluster_broadcastClusterMessage(t *testing.T) {
 
 	err = node.broadcastClusterMessage(nil)
 	if a.Error(err, "An error is expected from broadcastClusterMessage") {
-		expected := errors.New("Could not encode and broadcast a nil cluster-message")
+		expected := errors.New("Could not broadcast a nil cluster-message")
 		a.Equal(err, expected, "Error should be precisely defined")
 	}
 }

@@ -170,7 +170,7 @@ func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) error {
 
 func (cluster *Cluster) broadcastClusterMessage(cMessage *message) error {
 	if cMessage == nil {
-		errorMessage := "Could not encode and broadcast a nil cluster-message"
+		errorMessage := "Could not broadcast a nil cluster-message"
 		logger.Error(errorMessage)
 		return errors.New(errorMessage)
 	}
@@ -187,7 +187,7 @@ func (cluster *Cluster) broadcastClusterMessage(cMessage *message) error {
 				logger.WithFields(log.Fields{
 					"err":  err,
 					"node": node,
-				}).Error("Error sending cluster-message to node")
+				}).Error("Error sending cluster-message to a node")
 				return err
 			}
 		}
