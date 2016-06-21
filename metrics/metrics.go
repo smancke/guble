@@ -1,19 +1,15 @@
 package metrics
 
 import (
-	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/gubled/config"
+
+	log "github.com/Sirupsen/logrus"
 
 	"expvar"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 )
-
-// Enabled is a global flag for enabling/disabling the collection of metrics.
-// Metrics are enabled if a specific environment variable is defined with any value.
-var Enabled = len(os.Getenv("GUBLE_METRICS")) > 0
 
 // IntVar is an interface for the operations defined on expvar.Int
 type IntVar interface {
