@@ -11,6 +11,7 @@ import (
 	"os"
 	"testing"
 	"time"
+	//"github.com/smancke/guble/testutil"
 )
 
 func createService(storagePath, nodeID, nodePort, listenPort string, remotes string) *server.Service {
@@ -51,7 +52,7 @@ func Test_Cluster(t *testing.T) {
 	err2 = client2.Subscribe("/testTopic")
 	a.NoError(err2)
 
-	err := client1.Send("/testTopic", "", "{}")
+	err := client1.Send("/testTopic", "xyz", "{}")
 	a.NoError(err)
 
 	timeoutValue := time.Second
@@ -65,13 +66,14 @@ func Test_Cluster(t *testing.T) {
 			"incomingMsgUserId": incomingMessage.UserID,
 			"msg":               incomingMessage.BodyAsString(),
 		}).Info("Client2 Received:")
-		a.Equal(incomingMessage.Path, protocol.Path("/testTopic"))
+
+		a.Equal(protocol.Path("/testTopic"), incomingMessage.Path)
+		a.Equal("user1", incomingMessage.UserID)
+		a.Equal("xyz", incomingMessage.BodyAsString())
 
 	case <-time.After(timeoutValue):
 		a.FailNow("No Message was received on second client until timeout")
 	}
-
-	time.Sleep(time.Millisecond * 10)
 
 	// stop the cluster
 	err1 = service1.Stop()
