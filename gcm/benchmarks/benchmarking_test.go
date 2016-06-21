@@ -24,8 +24,6 @@ import (
 	"os"
 	"strconv"
 	"testing"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 var (
@@ -165,7 +163,7 @@ func (params *benchParams) receiveLoop() {
 				select {
 				case <-params.receiveC:
 					params.received++
-					log.WithField("received", params.received).Info("Received gcm call")
+					logger.WithField("received", params.received).Info("Received gcm call")
 					params.wg.Done()
 				case <-params.doneC:
 					return
@@ -186,7 +184,7 @@ func (params *benchParams) setUp() {
 	defer func() {
 		errRemove := os.RemoveAll(dir)
 		if errRemove != nil {
-			log.WithFields(log.Fields{"module": "testing", "err": errRemove}).Error("Could not remove directory")
+			logger.WithFields(lo.Fields{"module": "testing", "err": errRemove}).Error("Could not remove directory")
 		}
 	}()
 	a.NoError(errTempDir)
@@ -252,7 +250,7 @@ func (params *benchParams) throughputSend() {
 
 	// Report allocations also
 	params.ReportAllocs()
-	log.WithFields(log.Fields{
+	logger.WithFields(lo.Fields{
 		"count": params.expectedMessagesCount(),
 		"N":     params.N,
 	}).Info("Expecting messages")
