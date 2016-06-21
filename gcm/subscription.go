@@ -62,7 +62,7 @@ func initSubscription(gcm *Connector, topic, userID, gcmID string, lastID uint64
 	if err := s.store(); err != nil {
 		return nil, err
 	}
-	s.start()
+	s.restart()
 	return s, nil
 }
 
