@@ -29,22 +29,21 @@ type Cluster struct {
 	// Pointer to a Config struct, based on which the Cluster node is created and runs.
 	Config *Config
 
-	Name string
-
 	// MessageHandler is used for dispatching messages received by this node.
 	// Should be set after the node is created with New(), and before Start().
 	MessageHandler MessageHandler
 
+	name       string
 	memberlist *memberlist.Memberlist
 	broadcasts [][]byte
 }
 
 //New returns a new instance of the cluster, created using the given Config.
 func New(config *Config) (*Cluster, error) {
-	c := &Cluster{Config: config, Name: fmt.Sprintf("%d", config.ID)}
+	c := &Cluster{Config: config, name: fmt.Sprintf("%d", config.ID)}
 
 	memberlistConfig := memberlist.DefaultLANConfig()
-	memberlistConfig.Name = c.Name
+	memberlistConfig.Name = c.name
 	memberlistConfig.BindAddr = config.Host
 	memberlistConfig.BindPort = config.Port
 	memberlistConfig.Events = &eventDelegate{}
@@ -182,7 +181,7 @@ func (cluster *Cluster) broadcastClusterMessage(cMessage *message) error {
 		return err
 	}
 	for _, node := range cluster.memberlist.Members() {
-		if cluster.Name == node.Name {
+		if cluster.name == node.Name {
 			continue
 		}
 		logger.WithField("nodeName", node.Name).Debug("Sending cluster-message to a node")
