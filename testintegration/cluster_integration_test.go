@@ -1,16 +1,16 @@
 package testintegration
 
 import (
+	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gubled"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
 	"testing"
 	"time"
-	//"github.com/smancke/guble/testutil"
-	"fmt"
 )
 
 func createService(storagePath, nodeID, nodePort, listenPort string, remotes string) *server.Service {
@@ -57,16 +57,23 @@ func Test_Cluster(t *testing.T) {
 	//see if the message arrived at the other  client
 	select {
 	case incomingMessage := <-client2.Messages():
-		fmt.Printf("+++%v: %v\n", incomingMessage.UserID, incomingMessage.BodyAsString())
+		logger.WithFields(log.Fields{
+			"nodeID":            incomingMessage.NodeID,
+			"path":              incomingMessage.Path,
+			"incomingMsgUserId": incomingMessage.UserID,
+			"msg":               incomingMessage.BodyAsString(),
+		}).Info("Client2 Received:")
+		a.Equal(incomingMessage.Path, protocol.Path("/testTopic"))
+
 	case <-time.After(time.Second):
 		a.FailNow("No Message was received on second client in 1 second")
 	}
 
 	time.Sleep(time.Millisecond * 10)
-	//
+	// stop the cluster
 	err = service1.Stop()
 	err2 := service2.Stop()
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 1)
 	a.Nil(err)
 	a.Nil(err2)
 }
