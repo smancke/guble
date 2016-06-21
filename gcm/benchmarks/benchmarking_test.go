@@ -1,9 +1,11 @@
+// GCM benchmarks
+// Default number of clients and subscriptions are 8, for tests that do not
+// specify this in their name
 package benchmarks
 
 import (
 	"bytes"
 	"fmt"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -30,59 +32,7 @@ var (
 	gcmTopic = "/topic"
 )
 
-func BenchmarkGCM_1Workers10MilliTimeout8Clients1Subscription(b *testing.B) {
-	params := &benchParams{
-		B:             b,
-		workers:       1,
-		subscriptions: 1,
-		timeout:       10 * time.Millisecond,
-		clients:       8,
-		sender:        sendMessageSample,
-	}
-	params.throughputSend()
-	fmt.Println(params)
-}
-
-func BenchmarkGCM_MaxWorkers10MilliTimeout8Clients1Subscription(b *testing.B) {
-	params := &benchParams{
-		B:             b,
-		workers:       runtime.GOMAXPROCS(0),
-		subscriptions: 1,
-		timeout:       10 * time.Millisecond,
-		clients:       8,
-		sender:        sendMessageSample,
-	}
-	params.throughputSend()
-	fmt.Println(params)
-}
-
-func BenchmarkGCM_16Workers10MilliTimeout8Clients1Subscription(b *testing.B) {
-	params := &benchParams{
-		B:             b,
-		workers:       16,
-		subscriptions: 1,
-		timeout:       10 * time.Millisecond,
-		clients:       8,
-		sender:        sendMessageSample,
-	}
-	params.throughputSend()
-	fmt.Println(params)
-}
-
-func BenchmarkGCM_1Workers10MilliTimeout1Clients1Subscription(b *testing.B) {
-	params := &benchParams{
-		B:             b,
-		workers:       1,
-		subscriptions: 1,
-		timeout:       10 * time.Millisecond,
-		clients:       1,
-		sender:        sendMessageSample,
-	}
-	params.throughputSend()
-	fmt.Println(params)
-}
-
-func BenchmarkGCM_1Workers50MilliTimeout8Clients8Subscription(b *testing.B) {
+func BenchmarkGCM_1Workers50MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       1,
@@ -95,7 +45,7 @@ func BenchmarkGCM_1Workers50MilliTimeout8Clients8Subscription(b *testing.B) {
 	fmt.Println(params)
 }
 
-func BenchmarkGCM_8Workers50MilliTimeout8Clients8Subscription(b *testing.B) {
+func BenchmarkGCM_8Workers50MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       8,
@@ -108,7 +58,7 @@ func BenchmarkGCM_8Workers50MilliTimeout8Clients8Subscription(b *testing.B) {
 	fmt.Println(params)
 }
 
-func BenchmarkGCM_16Workers50MilliTimeout8Clients8Subscription(b *testing.B) {
+func BenchmarkGCM_16Workers50MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       16,
@@ -121,7 +71,33 @@ func BenchmarkGCM_16Workers50MilliTimeout8Clients8Subscription(b *testing.B) {
 	fmt.Println(params)
 }
 
-func BenchmarkGCM_16Workers100MilliTimeout8Clients8Subscription(b *testing.B) {
+func BenchmarkGCM_1Workers100MilliTimeout(b *testing.B) {
+	params := &benchParams{
+		B:             b,
+		workers:       1,
+		subscriptions: 8,
+		timeout:       100 * time.Millisecond,
+		clients:       8,
+		sender:        sendMessageSample,
+	}
+	params.throughputSend()
+	fmt.Println(params)
+}
+
+func BenchmarkGCM_8Workers100MilliTimeout(b *testing.B) {
+	params := &benchParams{
+		B:             b,
+		workers:       8,
+		subscriptions: 8,
+		timeout:       100 * time.Millisecond,
+		clients:       8,
+		sender:        sendMessageSample,
+	}
+	params.throughputSend()
+	fmt.Println(params)
+}
+
+func BenchmarkGCM_16Workers100MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       16,
@@ -160,11 +136,12 @@ type benchParams struct {
 }
 
 func (params *benchParams) String() string {
-	return fmt.Sprintf(`Throughput %.2f messages/second using:
-		%d workers
-		%d gcm subscriptions
-		%s gcm response timeout
-		%d clients
+	return fmt.Sprintf(`
+		Throughput %.2f messages/second using:
+			%d workers
+			%d gcm subscriptions
+			%s gcm response timeout
+			%d clients
 	`, params.mps(), params.workers, params.subscriptions, params.timeout, params.clients)
 }
 
@@ -266,7 +243,7 @@ func (params *benchParams) createClients() []client.Client {
 }
 
 func (params *benchParams) throughputSend() {
-	defer testutil.EnableDebugForMethod()()
+	// defer testutil.EnableDebugForMethod()()
 	defer testutil.ResetDefaultRegistryHealthCheck()
 	params.setUp()
 
