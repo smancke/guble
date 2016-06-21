@@ -160,6 +160,26 @@ func TestCluster_NotifyMsgShouldSimplyReturnWhenDecodingInvalidMessage(t *testin
 	//TODO Cosmin check that HandleMessage is not invoked (i.e. invalid message is not dispatched)
 }
 
+func TestCluster_broadcastClusterMessage(t *testing.T) {
+	a := assert.New(t)
+
+	conf := Config{ID: 1, Host: "localhost", Port: 10009, Remotes: []string{"127.0.0.1:10009"}}
+	node, err := New(&conf)
+	a.NoError(err, "No error should be raised when Creating the Cluster")
+
+	node.MessageHandler = DummyMessageHandler{}
+
+	defer node.Stop()
+	err = node.Start()
+	a.NoError(err, "No error should be raised when Starting the Cluster")
+
+	err = node.broadcastClusterMessage(nil)
+	if a.Error(err, "An error is expected from broadcastClusterMessage") {
+		expected := errors.New("Could not encode and broadcast a nil cluster-message")
+		a.Equal(err, expected, "Error should be precisely defined")
+	}
+}
+
 type DummyMessageHandler struct {
 }
 

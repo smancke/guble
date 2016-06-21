@@ -169,17 +169,16 @@ func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) error {
 }
 
 func (cluster *Cluster) broadcastClusterMessage(cMessage *message) error {
-	logger.WithField("clusterMessage", cMessage).Debug("broadcastClusterMessage")
+	if cMessage == nil {
+		errorMessage := "Could not encode and broadcast a nil cluster-message"
+		logger.Error(errorMessage)
+		return errors.New(errorMessage)
+	}
 	cMessageBytes, err := cMessage.encode()
 	if err != nil {
 		logger.WithField("err", err).Error("Could not encode and broadcast cluster-message")
 		return err
 	}
-	logger.WithFields(log.Fields{
-		"nodeId":                cMessage.NodeID,
-		"clusterMessageAsBytes": cMessageBytes,
-	}).Debug("broadcastClusterMessage bytes")
-
 	for _, node := range cluster.memberlist.Members() {
 		if cluster.memberlist.LocalNode().Name != node.Name {
 			logger.WithField("nodeName", node.Name).Debug("Sending cluster-message to a node")
