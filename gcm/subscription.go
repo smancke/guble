@@ -116,7 +116,6 @@ func (s *subscription) subscriptionLoop() {
 		s.gcm.wg.Done()
 	}()
 
-	// no need to wait for `*gcm.stopC` the channel will be closed by the router anyway
 	var (
 		m      *protocol.Message
 		opened = true
@@ -127,6 +126,7 @@ func (s *subscription) subscriptionLoop() {
 			if !opened {
 				continue
 			}
+
 			if err := s.pipe(m); err != nil {
 				// abbandon route if the following 2 errors are met
 				// the subscription has been replaced
@@ -144,22 +144,7 @@ func (s *subscription) subscriptionLoop() {
 			return
 		}
 	}
-	log.Debug("DAFUQ")
-	// for m := range s.route.MessagesChannel() {
-	// 	if err := s.pipe(m); err != nil {
-	// 		// abbandon route if the following 2 errors are met
-	// 		// the subscription has been replaced
-	// 		if err == errSubReplaced {
-	// 			return
-	// 		}
-	// 		// the subscription is not registered with GCM anymore
-	// 		if _, ok := err.(*jsonError); ok {
-	// 			return
-	// 		}
 
-	// 		s.logger.WithField("err", err).Error("Error pipelining message")
-	// 	}
-	// }
 	// if route is closed and we are actually stopping then return
 	if s.isStopping() {
 		return
