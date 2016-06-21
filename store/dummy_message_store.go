@@ -78,7 +78,8 @@ func (dms *DummyMessageStore) store(partition string, msgId uint64, msg []byte) 
 		return err
 	}
 	if msgId > 1+maxId {
-		return fmt.Errorf("Invalid message id for partition %v. Next id should be %v, but was %q", partition, 1+maxId, msgId)
+		return fmt.Errorf("DummyMessageStore: Invalid message id for partition %v. Next id should be %v, but was %q",
+			partition, 1+maxId, msgId)
 	}
 	dms.setId(partition, msgId)
 	return nil

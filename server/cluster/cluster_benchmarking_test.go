@@ -41,15 +41,15 @@ func benchmarkCluster(b *testing.B, num int, timeoutForAllJoins time.Duration, l
 			firstMemberName = c.Name
 		}
 
-		newMemberList, err := memberlist.Create(c)
+		newMember, err := memberlist.Create(c)
 		if err != nil {
 			log.WithField("error", err).Fatal("Unexpected error when creating the memberlist")
 		}
-		nodes = append(nodes, newMemberList)
-		defer newMemberList.Shutdown()
+		nodes = append(nodes, newMember)
+		defer newMember.Shutdown()
 
 		if i >= 0 {
-			num, err := newMemberList.Join([]string{firstMemberName})
+			num, err := newMember.Join([]string{firstMemberName})
 			if num == 0 || err != nil {
 				log.WithField("error", err).Fatal("Unexpected fatal error when node wanted to join the cluster")
 			}
