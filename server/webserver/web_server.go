@@ -11,8 +11,9 @@ import (
 var logger = log.WithFields(log.Fields{
 	"service":          "guble",
 	"application_type": "service",
+	"log_type":         "application",
 	"module":           "webserver",
-	"env":              "TBD"})
+	"environment":      "TBD"})
 
 type WebServer struct {
 	server *http.Server

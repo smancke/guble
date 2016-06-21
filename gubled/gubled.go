@@ -24,8 +24,9 @@ import (
 var logger = log.WithFields(log.Fields{
 	"service":          "guble",
 	"application_type": "service",
+	"log_type":         "application",
 	"module":           "gubled",
-	"env":              "TBD"})
+	"environment":      "TBD"})
 
 var ValidateStoragePath = func() error {
 	if *config.KVBackend == "file" || *config.MSBackend == "file" {

@@ -12,8 +12,9 @@ import (
 var logger = log.WithFields(log.Fields{
 	"service":          "guble",
 	"application_type": "service",
+	"log_type":         "application",
 	"module":           "client",
-	"env":              "TBD"})
+	"environment":      "TBD"})
 
 type WSConnection interface {
 	WriteMessage(messageType int, data []byte) error
