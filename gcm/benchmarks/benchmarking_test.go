@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
+
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/gubled"
@@ -184,7 +186,7 @@ func (params *benchParams) setUp() {
 	defer func() {
 		errRemove := os.RemoveAll(dir)
 		if errRemove != nil {
-			logger.WithFields(lo.Fields{"module": "testing", "err": errRemove}).Error("Could not remove directory")
+			logger.WithFields(log.Fields{"module": "testing", "err": errRemove}).Error("Could not remove directory")
 		}
 	}()
 	a.NoError(errTempDir)
@@ -250,7 +252,7 @@ func (params *benchParams) throughputSend() {
 
 	// Report allocations also
 	params.ReportAllocs()
-	logger.WithFields(lo.Fields{
+	logger.WithFields(log.Fields{
 		"count": params.expectedMessagesCount(),
 		"N":     params.N,
 	}).Info("Expecting messages")
