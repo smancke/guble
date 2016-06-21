@@ -68,7 +68,7 @@ func Test_Cluster(t *testing.T) {
 		a.Equal(incomingMessage.Path, protocol.Path("/testTopic"))
 
 	case <-time.After(timeoutValue):
-		a.FailNow("No Message was received on second client until timeout %v", timeoutValue)
+		a.FailNow("No Message was received on second client until timeout")
 	}
 
 	time.Sleep(time.Millisecond * 10)
