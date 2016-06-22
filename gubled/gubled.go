@@ -30,7 +30,7 @@ var logger = log.WithFields(log.Fields{
 	"env":    "TBD"})
 
 var ValidateStoragePath = func() error {
-	if *config.KVBackend == "file" || *config.MSBackend == "file" {
+	if *config.KVS == "file" || *config.MS == "file" {
 		testfile := path.Join(*config.StoragePath, "write-test-file")
 		f, err := os.Create(testfile)
 		if err != nil {
@@ -54,7 +54,7 @@ var ValidateStoragePath = func() error {
 }
 
 var CreateKVStore = func() store.KVStore {
-	switch *config.KVBackend {
+	switch *config.KVS {
 	case "memory":
 		return store.NewMemoryKVStore()
 	case "file":
@@ -65,12 +65,12 @@ var CreateKVStore = func() store.KVStore {
 		}
 		return db
 	default:
-		panic(fmt.Errorf("Unknown key-value backend: %q", *config.KVBackend))
+		panic(fmt.Errorf("Unknown key-value backend: %q", *config.KVS))
 	}
 }
 
 var CreateMessageStore = func() store.MessageStore {
-	switch *config.MSBackend {
+	switch *config.MS {
 	case "none", "":
 		return store.NewDummyMessageStore(store.NewMemoryKVStore())
 	case "file":
@@ -78,7 +78,7 @@ var CreateMessageStore = func() store.MessageStore {
 
 		return store.NewFileMessageStore(*config.StoragePath)
 	default:
-		panic(fmt.Errorf("Unknown message-store backend: %q", *config.MSBackend))
+		panic(fmt.Errorf("Unknown message-store backend: %q", *config.MS))
 	}
 }
 
@@ -166,10 +166,10 @@ func StartService() *server.Service {
 	}
 
 	router := server.NewRouter(accessManager, messageStore, kvStore, c)
-	webserver := webserver.New(*config.Listen)
+	webserver := webserver.New(*config.HttpListen)
 
 	service := server.NewService(router, webserver).
-		HealthEndpoint(*config.Health).
+		HealthEndpoint(*config.HealthEndpoint).
 		MetricsEndpoint(*config.Metrics.Endpoint)
 
 	service.RegisterModules(CreateModules(router)...)

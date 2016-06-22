@@ -21,16 +21,16 @@ const (
 )
 
 var (
-	Listen = kingpin.Flag("http", `The address to for the HTTP server to listen on (format: "[Host]:Port" ; default: ":8080")`).
-		Default(defaultHttp).Envar("GUBLE_HTTP").String()
-	StoragePath = kingpin.Flag("storage-path", "The path for storing messages and key value data if 'file' is enabled (default: /var/lib/guble)").
+	HttpListen = kingpin.Flag("http", `The address to for the HTTP server to listen on (format: "[Host]:Port" ; default: ":8080")`).
+			Default(defaultHttp).Envar("GUBLE_HTTP").String()
+	StoragePath = kingpin.Flag("storage-path", "The path for storing messages and key-value data if 'file' is enabled (default: /var/lib/guble)").
 			Default(defaultStoragePath).Envar("GUBLE_STORAGE_PATH").String()
-	KVBackend = kingpin.Flag("kv-backend", "The storage backend for the key value store to use: file|memory (file)").
-			Default(defaultKVBackend).Envar("GUBLE_KV_BACKEND").String()
-	MSBackend = kingpin.Flag("ms-backend", "The message storage backend : file|memory (file)").
-			Default(defaultMSBackend).Envar("GUBLE_MS_BACKEND").String()
-	Health = kingpin.Flag("health-endpoint", `The health endpoint to be used by the HTTP server (default: /_health; value for disabling it: "")`).
-		Default(defaultHealthEndpoint).Envar("GUBLE_HEALTH_ENDPOINT").String()
+	KVS = kingpin.Flag("kvs", "The storage backend for the key-value store to use: file|memory (file)").
+		Default(defaultKVBackend).Envar("GUBLE_KVS").String()
+	MS = kingpin.Flag("ms", "The message storage backend : file|memory (file)").
+		Default(defaultMSBackend).Envar("GUBLE_MS").String()
+	HealthEndpoint = kingpin.Flag("health-endpoint", `The health endpoint to be used by the HTTP server (default: /_health; value for disabling it: "")`).
+			Default(defaultHealthEndpoint).Envar("GUBLE_HEALTH_ENDPOINT").String()
 
 	Metrics = struct {
 		Enabled  *bool
