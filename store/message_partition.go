@@ -57,7 +57,7 @@ func (p *MessagePartition) initialize() error {
 
 	fileList, err := p.scanFiles()
 	if err != nil {
-		messageStoreLogger.WithField("err", err).Error("MessagePartition")
+		messageStoreLogger.WithField("err", err).Error("MessagePartition error on scanFiles")
 		return err
 	}
 	if len(fileList) == 0 {
@@ -66,14 +66,14 @@ func (p *MessagePartition) initialize() error {
 		var err error
 		p.maxMessageId, err = p.calculateMaxMessageIdFromIndex(fileList[len(fileList)-1])
 		if err != nil {
-			messageStoreLogger.WithField("err", err).Error("MessagePartition")
+			messageStoreLogger.WithField("err", err).Error("MessagePartition error on calculateMaxMessageIdFromIndex")
 			return err
 		}
 	}
 	return nil
 }
 
-// returns the max message id for a message file
+// calculateMaxMessageIdFromIndex returns the max message id for a message file
 func (p *MessagePartition) calculateMaxMessageIdFromIndex(fileId uint64) (uint64, error) {
 	stat, err := os.Stat(p.indexFilenameByMessageId(fileId))
 	if err != nil {
@@ -81,7 +81,7 @@ func (p *MessagePartition) calculateMaxMessageIdFromIndex(fileId uint64) (uint64
 	}
 	entriesInIndex := uint64(stat.Size() / int64(INDEX_ENTRY_SIZE))
 
-	return (entriesInIndex - 1 + fileId), nil
+	return entriesInIndex - 1 + fileId, nil
 }
 
 // Returns the start messages ids for all available message files
@@ -131,7 +131,6 @@ func (p *MessagePartition) closeAppendFiles() error {
 }
 
 func (p *MessagePartition) createNextAppendFiles(msgId uint64) error {
-
 	firstMessageIdForFile := p.firstMessageIdForFile(msgId)
 
 	appendfile, err := os.OpenFile(p.filenameByMessageId(firstMessageIdForFile), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -205,7 +204,6 @@ func (p *MessagePartition) Store(msgId uint64, msg []byte) error {
 }
 
 func (p *MessagePartition) store(msgId uint64, msg []byte) error {
-
 	if msgId != 1+p.maxMessageId {
 		return fmt.Errorf("MessagePartition: Invalid message id for partition %v. Next id should be %v, but was %q",
 			p.name, 1+p.maxMessageId, msgId)
