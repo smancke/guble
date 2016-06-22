@@ -15,8 +15,8 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	defer func() { os.Args = originalArgs }()
 
 	// given: some environment variables
-	os.Setenv("GUBLE_LISTEN", "listen")
-	defer os.Unsetenv("GUBLE_LISTEN")
+	os.Setenv("GUBLE_HTTP", "http_listen")
+	defer os.Unsetenv("GUBLE_HTTP")
 
 	os.Setenv("GUBLE_LOG", "debug")
 	defer os.Unsetenv("GUBLE_LOG")
@@ -30,8 +30,8 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_HEALTH_ENDPOINT", "health_endpoint")
 	defer os.Unsetenv("GUBLE_HEALTH_ENDPOINT")
 
-	os.Setenv("GUBLE_METRICS_ENABLED", "true")
-	defer os.Unsetenv("GUBLE_METRICS_ENDPOINT")
+	os.Setenv("GUBLE_METRICS", "true")
+	defer os.Unsetenv("GUBLE_METRICS")
 
 	os.Setenv("GUBLE_METRICS_ENDPOINT", "metrics_endpoint")
 	defer os.Unsetenv("GUBLE_METRICS_ENDPOINT")
@@ -39,8 +39,8 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_MS_BACKEND", "ms-backend")
 	defer os.Unsetenv("GUBLE_MS_BACKEND")
 
-	os.Setenv("GUBLE_GCM_ENABLED", "true")
-	defer os.Unsetenv("GUBLE_GCM_ENABLED")
+	os.Setenv("GUBLE_GCM", "true")
+	defer os.Unsetenv("GUBLE_GCM")
 
 	os.Setenv("GUBLE_GCM_API_KEY", "gcm-api-key")
 	defer os.Unsetenv("GUBLE_GCM_API_KEY")
@@ -48,10 +48,10 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_GCM_WORKERS", "3")
 	defer os.Unsetenv("GUBLE_GCM_WORKERS")
 
-	// when we parse the arguments
+	// when we parse the arguments from environment variables
 	Parse()
 
-	// the the arg parameters are set
+	// then the parsed parameters are correctly set
 	assertArguments(a)
 }
 
@@ -77,10 +77,10 @@ func TestParsingArgs(t *testing.T) {
 		"--gcm-workers", "3",
 	}
 
-	// when we parse the arguments
+	// when we parse the arguments from command-line flags
 	Parse()
 
-	// the the arg parameters are set
+	// then the parsed parameters are correctly set
 	assertArguments(a)
 }
 

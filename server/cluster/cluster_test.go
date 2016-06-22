@@ -8,14 +8,39 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"errors"
+	"net"
 	"testing"
 	"time"
 )
 
+const basePort = 10000
+
+var (
+	index = 1
+)
+
+func testConfig() (config Config) {
+	remoteAddr := net.TCPAddr{IP: []byte{127, 0, 0, 1}, Port: basePort + index}
+	var remotes []*net.TCPAddr
+	remotes = append(remotes, &remoteAddr)
+	config = Config{ID: index, Host: "127.0.0.1", Port: basePort + index, Remotes: remotes}
+	index++
+	return
+}
+
+func testConfigAnother() (config Config) {
+	remoteAddr := net.TCPAddr{IP: []byte{127, 0, 0, 1}, Port: basePort + index - 1}
+	var remotes []*net.TCPAddr
+	remotes = append(remotes, &remoteAddr)
+	config = Config{ID: index, Host: "127.0.0.1", Port: basePort + index, Remotes: remotes}
+	index++
+	return
+}
+
 func TestCluster_StartCheckStop(t *testing.T) {
 	a := assert.New(t)
 
-	conf := Config{ID: 1, Host: "localhost", Port: 10000, Remotes: []string{"127.0.0.1:10000"}}
+	conf := testConfig()
 	node, err := New(&conf)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
@@ -35,8 +60,8 @@ func TestCluster_BroadcastStringAndMessageAndCheck(t *testing.T) {
 	defer testutil.EnableDebugForMethod()
 	a := assert.New(t)
 
-	confNode1 := Config{ID: 1, Host: "127.0.0.1", Port: 10001, Remotes: []string{"127.0.0.1:10001"}}
-	node1, err := New(&confNode1)
+	config1 := testConfig()
+	node1, err := New(&config1)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
 	node1.MessageHandler = DummyMessageHandler{}
@@ -46,8 +71,8 @@ func TestCluster_BroadcastStringAndMessageAndCheck(t *testing.T) {
 	err = node1.Start()
 	a.NoError(err, "No error should be raised when starting node 1 of the Cluster")
 
-	confNode2 := Config{ID: 2, Host: "127.0.0.1", Port: 10002, Remotes: []string{"127.0.0.1:10001"}}
-	node2, err := New(&confNode2)
+	config2 := testConfigAnother()
+	node2, err := New(&config2)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
 	node2.MessageHandler = DummyMessageHandler{}
@@ -85,10 +110,15 @@ func TestCluster_BroadcastStringAndMessageAndCheck(t *testing.T) {
 func TestCluster_NewShouldReturnErrorWhenPortIsInvalid(t *testing.T) {
 	a := assert.New(t)
 
-	conf := Config{ID: 1, Host: "localhost", Port: -10, Remotes: []string{"127.0.0.1:9999"}}
-	_, err := New(&conf)
+	remoteAddr := net.TCPAddr{IP: []byte{127, 0, 0, 1}, Port: basePort + index - 1}
+	var remotes []*net.TCPAddr
+	remotes = append(remotes, &remoteAddr)
+	index++
+
+	config := Config{ID: 1, Host: "localhost", Port: -1, Remotes: remotes}
+	_, err := New(&config)
 	if a.Error(err, "An error was expected when Creating the Cluster") {
-		a.Equal(err, errors.New("Failed to start TCP listener. Err: listen tcp :-10: bind: invalid argument"),
+		a.Equal(err, errors.New("Failed to start TCP listener. Err: listen tcp :-1: bind: invalid argument"),
 			"Error should be precisely defined")
 	}
 }
@@ -96,8 +126,11 @@ func TestCluster_NewShouldReturnErrorWhenPortIsInvalid(t *testing.T) {
 func TestCluster_StartShouldReturnErrorWhenNoRemotes(t *testing.T) {
 	a := assert.New(t)
 
-	conf := Config{ID: 1, Host: "localhost", Port: 10003, Remotes: []string{}}
-	node, err := New(&conf)
+	var remotes []*net.TCPAddr
+	index++
+
+	config := Config{ID: 1, Host: "localhost", Port: basePort + index - 1, Remotes: remotes}
+	node, err := New(&config)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
 	node.MessageHandler = DummyMessageHandler{}
@@ -113,8 +146,13 @@ func TestCluster_StartShouldReturnErrorWhenNoRemotes(t *testing.T) {
 func TestCluster_StartShouldReturnErrorWhenInvalidRemotes(t *testing.T) {
 	a := assert.New(t)
 
-	conf := Config{ID: 1, Host: "localhost", Port: 10004, Remotes: []string{"127.0.0.1:1"}}
-	node, err := New(&conf)
+	remoteAddr := net.TCPAddr{IP: []byte{127, 0, 0, 1}, Port: 0}
+	var remotes []*net.TCPAddr
+	remotes = append(remotes, &remoteAddr)
+	index++
+
+	config := Config{ID: 1, Host: "localhost", Port: basePort + index - 1, Remotes: remotes}
+	node, err := New(&config)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
 	node.MessageHandler = DummyMessageHandler{}
@@ -122,7 +160,7 @@ func TestCluster_StartShouldReturnErrorWhenInvalidRemotes(t *testing.T) {
 	defer node.Stop()
 	err = node.Start()
 	if a.Error(err, "An error is expected when Starting the Cluster") {
-		expected := multierror.Append(errors.New("Failed to join 127.0.0.1: dial tcp 127.0.0.1:1: getsockopt: connection refused"))
+		expected := multierror.Append(errors.New("Failed to join 127.0.0.1: dial tcp 127.0.0.1:0: getsockopt: connection refused"))
 		a.Equal(err, expected, "Error should be precisely defined")
 	}
 }
@@ -130,8 +168,8 @@ func TestCluster_StartShouldReturnErrorWhenInvalidRemotes(t *testing.T) {
 func TestCluster_StartShouldReturnErrorWhenNoMessageHandler(t *testing.T) {
 	a := assert.New(t)
 
-	conf := Config{ID: 1, Host: "localhost", Port: 10005, Remotes: []string{"127.0.0.1:10005"}}
-	node, err := New(&conf)
+	config := testConfig()
+	node, err := New(&config)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
 	defer node.Stop()
@@ -145,8 +183,8 @@ func TestCluster_StartShouldReturnErrorWhenNoMessageHandler(t *testing.T) {
 func TestCluster_NotifyMsgShouldSimplyReturnWhenDecodingInvalidMessage(t *testing.T) {
 	a := assert.New(t)
 
-	conf := Config{ID: 1, Host: "localhost", Port: 10008, Remotes: []string{"127.0.0.1:10008"}}
-	node, err := New(&conf)
+	config := testConfig()
+	node, err := New(&config)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
 	node.MessageHandler = DummyMessageHandler{}
@@ -163,8 +201,8 @@ func TestCluster_NotifyMsgShouldSimplyReturnWhenDecodingInvalidMessage(t *testin
 func TestCluster_broadcastClusterMessage(t *testing.T) {
 	a := assert.New(t)
 
-	conf := Config{ID: 1, Host: "localhost", Port: 10009, Remotes: []string{"127.0.0.1:10009"}}
-	node, err := New(&conf)
+	config := testConfig()
+	node, err := New(&config)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
 	node.MessageHandler = DummyMessageHandler{}

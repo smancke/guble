@@ -22,7 +22,7 @@ const (
 
 var (
 	Listen = kingpin.Flag("http", `The address to for the HTTP server to listen on (format: "[Host]:Port" ; default: ":8080")`).
-		Default(defaultHttp).Envar("GUBLE_LISTEN").String()
+		Default(defaultHttp).Envar("GUBLE_HTTP").String()
 	StoragePath = kingpin.Flag("storage-path", "The path for storing messages and key value data if 'file' is enabled (default: /var/lib/guble)").
 			Default(defaultStoragePath).Envar("GUBLE_STORAGE_PATH").String()
 	KVBackend = kingpin.Flag("kv-backend", "The storage backend for the key value store to use: file|memory (file)").
