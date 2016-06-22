@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
+	"strconv"
 )
 
 // Config is a struct used by the local node when creating and running the guble cluster
@@ -16,7 +18,7 @@ type Config struct {
 	ID                   int
 	Host                 string
 	Port                 int
-	Remotes              []string
+	Remotes              []*net.TCPAddr
 	HealthScoreThreshold int
 }
 
@@ -70,7 +72,7 @@ func (cluster *Cluster) Start() error {
 		logger.Error(errorMessage)
 		return errors.New(errorMessage)
 	}
-	num, err := cluster.memberlist.Join(cluster.Config.Remotes)
+	num, err := cluster.memberlist.Join(cluster.remotesAsStrings())
 	if err != nil {
 		logger.WithField("error", err).Error("Error when this node wanted to join the cluster")
 		return err
@@ -80,6 +82,7 @@ func (cluster *Cluster) Start() error {
 		logger.Error(errorMessage)
 		return errors.New(errorMessage)
 	}
+	logger.Debug("Started Cluster")
 	return nil
 }
 
@@ -195,4 +198,11 @@ func (cluster *Cluster) broadcastClusterMessage(cMessage *message) error {
 		}
 	}
 	return nil
+}
+
+func (cluster *Cluster) remotesAsStrings() (strings []string) {
+	for _, remote := range cluster.Config.Remotes {
+		strings = append(strings, remote.IP.String()+":"+strconv.Itoa(remote.Port))
+	}
+	return
 }

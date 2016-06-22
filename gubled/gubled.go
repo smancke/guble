@@ -17,7 +17,7 @@ import (
 	"github.com/smancke/guble/server/websocket"
 	"github.com/smancke/guble/store"
 
-	"net/url"
+	"net"
 	"os"
 	"os/signal"
 	"path"
@@ -151,12 +151,12 @@ func StartService() *server.Service {
 	var c *cluster.Cluster
 	var err error
 	if *config.Cluster.NodeID > 0 {
-		validRemotes := validateCluster(*config.Cluster.NodeID, *config.Cluster.NodePort, *config.Cluster.Remotes)
+		exitIfInvalidClusterParams(*config.Cluster.NodeID, *config.Cluster.NodePort, *config.Cluster.Remotes)
 		logger.Info("Starting in cluster-mode")
 		c, err = cluster.New(&cluster.Config{
 			ID:      *config.Cluster.NodeID,
 			Port:    *config.Cluster.NodePort,
-			Remotes: validRemotes,
+			Remotes: *config.Cluster.Remotes,
 		})
 		if err != nil {
 			logger.WithField("err", err).Fatal("Service could not be started (cluster)")
@@ -184,26 +184,15 @@ func StartService() *server.Service {
 	return service
 }
 
-func validateCluster(nodeID int, nodePort int, potentialRemotes []*url.URL) []string {
-	validRemotes := validateRemoteHostsWithPorts(potentialRemotes)
-	if (nodeID <= 0 && len(validRemotes) > 0) || (nodePort <= 0) {
+func exitIfInvalidClusterParams(nodeID int, nodePort int, remotes []*net.TCPAddr) {
+	if (nodeID <= 0 && len(remotes) > 0) || (nodePort <= 0) {
 		errorMessage := "Could not start in cluster-mode: invalid/incomplete parameters"
 		logger.WithFields(log.Fields{
-			"nodeID":               nodeID,
-			"nodePort":             nodePort,
-			"numberOfValidRemotes": len(validRemotes),
+			"nodeID":          nodeID,
+			"nodePort":        nodePort,
+			"numberOfRemotes": len(remotes),
 		}).Fatal(errorMessage)
 	}
-	return validRemotes
-}
-
-func validateRemoteHostsWithPorts(potentialRemotes []*url.URL) []string {
-	var validRemotes []string
-	for _, potentialRemote := range potentialRemotes {
-		validRemotes = append(validRemotes, potentialRemote.Host)
-	}
-	logger.WithField("validRemotes", validRemotes).Debug("List of valid Remotes (hosts with ports)")
-	return validRemotes
 }
 
 func waitForTermination(callback func()) {

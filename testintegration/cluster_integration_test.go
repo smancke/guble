@@ -15,13 +15,13 @@ import (
 	"time"
 )
 
-func createService(storagePath, nodeID, nodePort, listenPort string, remotes string) *server.Service {
+func createService(storagePath, nodeID, nodePort, httpListen string, remotes string) *server.Service {
 	os.Args = []string{os.Args[0],
 		"--log", "debug",
-		"--listen", listenPort,
+		"--http", httpListen,
 		"--storage-path", storagePath,
 		"--node-id", nodeID,
-		"--health", "",
+		"--health-endpoint", "",
 		"--node-port", nodePort,
 		remotes,
 	}
@@ -35,10 +35,10 @@ func Test_Cluster(t *testing.T) {
 	a := assert.New(t)
 	//defer testutil.EnableDebugForMethod()()
 
-	service1 := createService("/tmp/s1", "1", "10000", "127.0.0.1:8080", "tcp://127.0.0.1:10000")
+	service1 := createService("/tmp/s1", "1", "10000", "127.0.0.1:8080", "127.0.0.1:10000")
 	a.NotNil(service1)
 
-	service2 := createService("/tmp/s2", "2", "10001", "127.0.0.1:8081", "tcp://127.0.0.1:10000")
+	service2 := createService("/tmp/s2", "2", "10001", "127.0.0.1:8081", "127.0.0.1:10000")
 	a.NotNil(service2)
 
 	client1, err1 := client.Open("ws://127.0.0.1:8081/stream/user/user1", "http://localhost", 1, false)

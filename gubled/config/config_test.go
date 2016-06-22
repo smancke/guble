@@ -64,15 +64,15 @@ func TestParsingArgs(t *testing.T) {
 
 	// given: a command line
 	os.Args = []string{os.Args[0],
-		"--listen", "listen",
+		"--http", "http_listen",
 		"--log", "debug",
 		"--kv-backend", "kv-backend",
 		"--storage-path", "storage-path",
 		"--ms-backend", "ms-backend",
 		"--health", "health_endpoint",
-		"--metrics",
+		"--metrics", "true",
 		"--metrics-endpoint", "metrics_endpoint",
-		"--gcm-enabled",
+		"--gcm", "true",
 		"--gcm-api-key", "gcm-api-key",
 		"--gcm-workers", "3",
 	}
@@ -85,12 +85,12 @@ func TestParsingArgs(t *testing.T) {
 }
 
 func assertArguments(a *assert.Assertions) {
-	a.Equal("listen", *Listen)
+	a.Equal("http_listen", *Listen)
 	a.Equal("kv-backend", *KVBackend)
 	a.Equal("storage-path", *StoragePath)
 	a.Equal("ms-backend", *MSBackend)
-
 	a.Equal("health_endpoint", *Health)
+
 	a.Equal(true, *Metrics.Enabled)
 	a.Equal("metrics_endpoint", *Metrics.Endpoint)
 
@@ -99,4 +99,6 @@ func assertArguments(a *assert.Assertions) {
 	a.Equal(3, *GCM.Workers)
 
 	a.Equal("debug", *Log)
+
+	//TODO Cosmin check also the arguments used in cluster-mode
 }
