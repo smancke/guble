@@ -68,19 +68,19 @@ WAIT:
 	for {
 		select {
 		case incomingMessage := <-client2.Messages():
+			numReceived++
 			logger.WithFields(log.Fields{
 				"nodeID":            incomingMessage.NodeID,
 				"path":              incomingMessage.Path,
 				"incomingMsgUserId": incomingMessage.UserID,
 				"msg":               incomingMessage.BodyAsString(),
+				"numReceived":       numReceived,
 			}).Info("Client2 received a message")
 
 			a.Equal(protocol.Path("/testTopic"), incomingMessage.Path)
 			a.Equal("user1", incomingMessage.UserID)
 			a.Equal("xyz", incomingMessage.BodyAsString())
 
-			numReceived++
-			logger.WithField("num", numReceived).Debug("received")
 			if numReceived == numSent {
 				break WAIT
 			}
