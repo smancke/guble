@@ -60,8 +60,7 @@ var CreateKVStore = func() store.KVStore {
 	case "file":
 		db := store.NewSqliteKVStore(path.Join(*config.StoragePath, "kv-store.db"), true)
 		if err := db.Open(); err != nil {
-			logger.WithField("err", err).Panic("Could not open db connection")
-
+			logger.WithField("err", err).Panic("Could not open database connection")
 		}
 		return db
 	default:

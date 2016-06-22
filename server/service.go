@@ -51,7 +51,9 @@ type Service struct {
 	metricsEndpoint string
 }
 
-// NewService creates a new Service, using the given Router and WebServer
+// NewService creates a new Service, using the given Router and WebServer.
+// If the router has already a configured Cluster, it is registered as a service module.
+// The Router and Webserver are then registered as modules.
 func NewService(router Router, webserver *webserver.WebServer) *Service {
 	s := &Service{
 		webserver:       webserver,
@@ -64,12 +66,11 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 		s.RegisterModules(cluster)
 		router.Cluster().MessageHandler = router
 	}
-
 	s.RegisterModules(s.router, s.webserver)
 	return s
 }
 
-// RegisterModules adds more modules (which can be Startable, Stopable, Endpoint etc.) to the service
+// RegisterModules adds more modules (which can be Startable, Stopable, Endpoint etc.) to the service.
 func (s *Service) RegisterModules(modules ...interface{}) {
 	loggerService.WithFields(log.Fields{
 		"numberOfNewModules":      len(modules),
@@ -106,7 +107,7 @@ func (s *Service) Start() error {
 	}
 
 	if s.metricsEndpoint != "" {
-		loggerService.WithField("metricsEndpoint", s.metricsEndpoint).Info("Metrics Endpoint")
+		loggerService.WithField("metricsEndpoint", s.metricsEndpoint).Info("Metrics endpoint")
 		s.webserver.Handle(s.metricsEndpoint, http.HandlerFunc(metrics.HttpHandler))
 	} else {
 		loggerService.Info("Metrics endpoint disabled")
@@ -128,7 +129,7 @@ func (s *Service) Start() error {
 			}
 		}
 		if checker, ok := module.(health.Checker); ok && s.healthEndpoint != "" {
-			loggerService.WithField("name", name).Info("Registering module as HealthChecker")
+			loggerService.WithField("name", name).Info("Registering module as Health-Checker")
 			health.RegisterPeriodicThresholdFunc(name, s.healthFrequency, s.healthThreshold, health.CheckFunc(checker.Check))
 		}
 		if endpoint, ok := module.(Endpoint); ok {
