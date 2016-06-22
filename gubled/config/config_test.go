@@ -48,6 +48,12 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_GCM_WORKERS", "3")
 	defer os.Unsetenv("GUBLE_GCM_WORKERS")
 
+	os.Setenv("GUBLE_NODE_ID", "1")
+	defer os.Unsetenv("GUBLE_NODE_ID")
+
+	os.Setenv("GUBLE_NODE_PORT", "10000")
+	defer os.Unsetenv("GUBLE_NODE_PORT")
+
 	// when we parse the arguments from environment variables
 	Parse()
 
@@ -75,6 +81,8 @@ func TestParsingArgs(t *testing.T) {
 		"--gcm", "true",
 		"--gcm-api-key", "gcm-api-key",
 		"--gcm-workers", "3",
+		"--node-id", "1",
+		"--node-port", "10000",
 	}
 
 	// when we parse the arguments from command-line flags
@@ -98,7 +106,10 @@ func assertArguments(a *assert.Assertions) {
 	a.Equal("gcm-api-key", *GCM.APIKey)
 	a.Equal(3, *GCM.Workers)
 
+	a.Equal(1, *Cluster.NodeID)
+	a.Equal(10000, *Cluster.NodePort)
+
 	a.Equal("debug", *Log)
 
-	//TODO Cosmin check also the arguments used in cluster-mode
+	//TODO Cosmin check also the arguments used in cluster-mode (remotes)
 }
