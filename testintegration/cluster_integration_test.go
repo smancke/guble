@@ -87,6 +87,7 @@ WAIT:
 
 		case <-breakTimer:
 			a.FailNow("Not all messages were received on second client until timeout")
+			break WAIT
 		}
 	}
 
