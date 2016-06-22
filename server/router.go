@@ -20,9 +20,8 @@ const (
 )
 
 var logger = log.WithFields(log.Fields{
-	"app":    "guble",
 	"module": "router",
-	"env":    "TBD"})
+})
 
 // Router interface provides mechanism for PubSub messaging
 type Router interface {

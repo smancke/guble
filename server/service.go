@@ -19,9 +19,8 @@ const (
 )
 
 var loggerService = log.WithFields(log.Fields{
-	"app":    "guble",
 	"module": "service",
-	"env":    "TBD"})
+})
 
 // Startable interface for modules which provide a start mechanism
 type Startable interface {
@@ -89,14 +88,14 @@ func (s *Service) Start() error {
 	el := protocol.NewErrorList("service: errors occured while starting: ")
 
 	if s.healthEndpoint != "" {
-		logger.WithField("healthEndpoint",s.healthEndpoint).Info("Health endpoint")
+		logger.WithField("healthEndpoint", s.healthEndpoint).Info("Health endpoint")
 		s.webserver.Handle(s.healthEndpoint, http.HandlerFunc(health.StatusHandler))
 	} else {
 		logger.Debug("Health endpoint disabled")
 	}
 
 	if s.metricsEndpoint != "" {
-		logger.WithField("metricsEndpoint",s.metricsEndpoint).Info("Metrics Endpoint")
+		logger.WithField("metricsEndpoint", s.metricsEndpoint).Info("Metrics Endpoint")
 		s.webserver.Handle(s.metricsEndpoint, http.HandlerFunc(metrics.HttpHandler))
 	} else {
 		logger.Debug("Metrics endpoint disabled")
@@ -121,7 +120,7 @@ func (s *Service) Start() error {
 		}
 		if checker, ok := module.(health.Checker); ok && s.healthEndpoint != "" {
 
-			logger.WithField("name",name).Info("Registering module as HealthChecker")
+			logger.WithField("name", name).Info("Registering module as HealthChecker")
 			health.RegisterPeriodicThresholdFunc(name, s.healthFrequency, s.healthThreshold, health.CheckFunc(checker.Check))
 		}
 		if endpoint, ok := module.(Endpoint); ok {

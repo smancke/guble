@@ -22,12 +22,8 @@ import (
 )
 
 var logger = log.WithFields(log.Fields{
-	"service":          "guble",
-	"application_type": "service",
-	"log_type":         "application",
-	"module":           "gubled",
-	"environment":      "TBD"})
-
+	"module": "gubled",
+})
 var ValidateStoragePath = func() error {
 	if *config.KVBackend == "file" || *config.MSBackend == "file" {
 		testfile := path.Join(*config.StoragePath, "write-test-file")
