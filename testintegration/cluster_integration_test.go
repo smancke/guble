@@ -44,10 +44,10 @@ func Test_Cluster(t *testing.T) {
 	a.NoError(err2)
 	defer os.RemoveAll(dir2)
 
-	service1 := createService(dir1, "1", "10000", "127.0.0.1:8080", "127.0.0.1:10000")
+	service1 := createService(dir1, "1", "10000", ":8080", "127.0.0.1:10000")
 	a.NotNil(service1)
 
-	service2 := createService(dir2, "2", "10001", "127.0.0.1:8081", "127.0.0.1:10000")
+	service2 := createService(dir2, "2", "10001", ":8081", "127.0.0.1:10000")
 	a.NotNil(service2)
 
 	defer func() {
@@ -68,7 +68,7 @@ func Test_Cluster(t *testing.T) {
 
 	numSent := 5
 	for i := 0; i < numSent; i++ {
-		err := client1.Send("/testTopic", "xyz", "{}")
+		err := client1.Send("/testTopic", "body", "{jsonHeader:1}")
 		a.NoError(err)
 
 		//TODO Cosmin this sleep should be eliminated when messages receive correct message-IDs
@@ -78,7 +78,7 @@ func Test_Cluster(t *testing.T) {
 	breakTimer := time.After(time.Second)
 	numReceived := 0
 
-	//see if the exact number of messages arrived at the other client, before timeout is reached
+	//see if the correct number of messages arrived at the other client, before timeout is reached
 WAIT:
 	for {
 		select {
@@ -88,14 +88,16 @@ WAIT:
 				"nodeID":            incomingMessage.NodeID,
 				"path":              incomingMessage.Path,
 				"incomingMsgUserId": incomingMessage.UserID,
-				"msg":               incomingMessage.BodyAsString(),
+				"headerJson":        incomingMessage.HeaderJSON,
+				"body":              incomingMessage.BodyAsString(),
 				"numReceived":       numReceived,
 			}).Info("Client2 received a message")
 
+			a.Equal(2, incomingMessage.NodeID)
 			a.Equal(protocol.Path("/testTopic"), incomingMessage.Path)
 			a.Equal("user1", incomingMessage.UserID)
-			a.Equal(2, incomingMessage.NodeID)
-			a.Equal("xyz", incomingMessage.BodyAsString())
+			a.Equal("{jsonHeader:1}", incomingMessage.HeaderJSON)
+			a.Equal("body", incomingMessage.BodyAsString())
 
 			if numReceived == numSent {
 				break WAIT
