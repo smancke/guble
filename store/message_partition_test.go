@@ -11,7 +11,7 @@ import (
 
 func Test_MessagePartition_scanFiles(t *testing.T) {
 	a := assert.New(t)
-	dir, _ := ioutil.TempDir("", "partition_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 	store, _ := NewMessagePartition(dir, "myMessages")
 
@@ -30,7 +30,7 @@ func Test_MessagePartition_scanFiles(t *testing.T) {
 
 func Test_MessagePartition_correctIdAfterRestart(t *testing.T) {
 	a := assert.New(t)
-	dir, _ := ioutil.TempDir("", "partition_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 	store, _ := NewMessagePartition(dir, "myMessages")
 
@@ -48,7 +48,7 @@ func TestCreateNextAppendFiles(t *testing.T) {
 	a := assert.New(t)
 
 	// given: a store
-	dir, _ := ioutil.TempDir("", "partition_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 	store, _ := NewMessagePartition(dir, "myMessages")
 
@@ -78,7 +78,7 @@ func Test_Storing_Two_Messages_With_Append(t *testing.T) {
 	a := assert.New(t)
 
 	// given: a store
-	dir, _ := ioutil.TempDir("", "partition_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 
 	// when i store a message
@@ -120,7 +120,7 @@ func Test_Storing_Two_Messages_With_Append(t *testing.T) {
 
 func Benchmark_Storing_HelloWorld_Messages(b *testing.B) {
 	a := assert.New(b)
-	dir, _ := ioutil.TempDir("", "partition_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 	store, _ := NewMessagePartition(dir, "myMessages")
 
@@ -134,7 +134,7 @@ func Benchmark_Storing_HelloWorld_Messages(b *testing.B) {
 
 func Benchmark_Storing_1Kb_Messages(b *testing.B) {
 	a := assert.New(b)
-	dir, _ := ioutil.TempDir("", "partition_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 	store, _ := NewMessagePartition(dir, "myMessages")
 
@@ -153,7 +153,7 @@ func Benchmark_Storing_1Kb_Messages(b *testing.B) {
 
 func Benchmark_Storing_1MB_Messages(b *testing.B) {
 	a := assert.New(b)
-	dir, _ := ioutil.TempDir("", "partition_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 	store, _ := NewMessagePartition(dir, "myMessages")
 
@@ -181,7 +181,7 @@ func TestFirstMessageIdForFile(t *testing.T) {
 
 func Test_calculateFetchList(t *testing.T) {
 	a := assert.New(t)
-	dir, _ := ioutil.TempDir("", "partition_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 
 	// when i store a message
@@ -205,25 +205,25 @@ func Test_calculateFetchList(t *testing.T) {
 		{`direct match`,
 			FetchRequest{StartID: 3, Direction: 0, Count: 1},
 			[]fetchEntry{
-				fetchEntry{3, uint64(0), 21, 10}, // messageId, fileId, offset, size
+				{3, uint64(0), 21, 10}, // messageId, fileId, offset, size
 			},
 		},
 		{`direct match in second file`,
 			FetchRequest{StartID: MESSAGES_PER_FILE, Direction: 0, Count: 1},
 			[]fetchEntry{
-				fetchEntry{MESSAGES_PER_FILE, MESSAGES_PER_FILE, 21, 10}, // messageId, fileId, offset, size
+				{MESSAGES_PER_FILE, MESSAGES_PER_FILE, 21, 10}, // messageId, fileId, offset, size
 			},
 		},
 		{`next entry matches`,
 			FetchRequest{StartID: 1, Direction: 0, Count: 1},
 			[]fetchEntry{
-				fetchEntry{3, uint64(0), 21, 10}, // messageId, fileId, offset, size
+				{3, uint64(0), 21, 10}, // messageId, fileId, offset, size
 			},
 		},
 		{`entry before matches`,
 			FetchRequest{StartID: 5, Direction: -1, Count: 1},
 			[]fetchEntry{
-				fetchEntry{4, uint64(0), 43, 10}, // messageId, fileId, offset, size
+				{4, uint64(0), 43, 10}, // messageId, fileId, offset, size
 			},
 		},
 		{`backward, no match`,
@@ -270,7 +270,7 @@ func Test_calculateFetchList(t *testing.T) {
 
 func Test_Partition_Fetch(t *testing.T) {
 	a := assert.New(t)
-	dir, _ := ioutil.TempDir("", "partition_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 
 	// when i store a message
@@ -393,7 +393,7 @@ func Test_firstMessageIdForFile(t *testing.T) {
 
 func Test_calculateMaxMessageIdFromIndex(t *testing.T) {
 	a := assert.New(t)
-	dir, _ := ioutil.TempDir("", "partition_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 
 	// when i store a message
@@ -408,7 +408,7 @@ func Test_calculateMaxMessageIdFromIndex(t *testing.T) {
 
 func Test_MessagePartition_ErrorOnWrongMessageId(t *testing.T) {
 	a := assert.New(t)
-	dir, _ := ioutil.TempDir("", "partition_store_test")
+	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 
 	// when i store a message

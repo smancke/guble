@@ -1,10 +1,11 @@
 package store
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_DummyMessageStore_IncreaseOnStore(t *testing.T) {
@@ -32,8 +33,8 @@ func Test_DummyMessageStore_InitIdsFromKvStore(t *testing.T) {
 
 	// given: as kv store with some values
 	kvStore := NewMemoryKVStore()
-	kvStore.Put(TOPIC_SCHEMA, "partition1", []byte("42"))
-	kvStore.Put(TOPIC_SCHEMA, "partition2", []byte("43"))
+	kvStore.Put(topicSchema, "partition1", []byte("42"))
+	kvStore.Put(topicSchema, "partition2", []byte("43"))
 	store := NewDummyMessageStore(kvStore)
 
 	// then
@@ -50,7 +51,7 @@ func Test_DummyMessageStore_SyncIds(t *testing.T) {
 	store.idSyncDuration = time.Millisecond
 
 	a.Equal(uint64(0), fne(store.MaxMessageID("partition")))
-	_, exist, _ := kvStore.Get(TOPIC_SCHEMA, "partition")
+	_, exist, _ := kvStore.Get(topicSchema, "partition")
 	a.False(exist)
 
 	// and is started
@@ -65,7 +66,7 @@ func Test_DummyMessageStore_SyncIds(t *testing.T) {
 	time.Sleep(time.Millisecond * 4)
 
 	// the value is synced to the kv store
-	value, exist, _ := kvStore.Get(TOPIC_SCHEMA, "partition")
+	value, exist, _ := kvStore.Get(topicSchema, "partition")
 	a.True(exist)
 	a.Equal([]byte(strconv.FormatUint(uint64(42), 10)), value)
 }
@@ -86,7 +87,7 @@ func Test_DummyMessageStore_SyncIdsOnStop(t *testing.T) {
 
 	// then it is not synced after some wait
 	time.Sleep(time.Millisecond * 2)
-	_, exist, _ := kvStore.Get(TOPIC_SCHEMA, "partition")
+	_, exist, _ := kvStore.Get(topicSchema, "partition")
 	a.False(exist)
 
 	// but
@@ -95,7 +96,7 @@ func Test_DummyMessageStore_SyncIdsOnStop(t *testing.T) {
 	store.Stop()
 
 	// then: the the value is synced to the kv store
-	value, exist, _ := kvStore.Get(TOPIC_SCHEMA, "partition")
+	value, exist, _ := kvStore.Get(topicSchema, "partition")
 	a.True(exist)
 	a.Equal([]byte(strconv.FormatUint(uint64(42), 10)), value)
 }

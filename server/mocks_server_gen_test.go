@@ -8,6 +8,7 @@ import (
 	protocol "github.com/smancke/guble/protocol"
 	
 	auth "github.com/smancke/guble/server/auth"
+	cluster "github.com/smancke/guble/server/cluster"
 	store "github.com/smancke/guble/store"
 	http "net/http"
 )
@@ -42,6 +43,16 @@ func (_m *MockRouter) AccessManager() (auth.AccessManager, error) {
 
 func (_mr *_MockRouterRecorder) AccessManager() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AccessManager")
+}
+
+func (_m *MockRouter) Cluster() *cluster.Cluster {
+	ret := _m.ctrl.Call(_m, "Cluster")
+	ret0, _ := ret[0].(*cluster.Cluster)
+	return ret0
+}
+
+func (_mr *_MockRouterRecorder) Cluster() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Cluster")
 }
 
 func (_m *MockRouter) Fetch(_param0 store.FetchRequest) error {

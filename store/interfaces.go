@@ -9,8 +9,7 @@ type MessageStore interface {
 	// fetching an id and storing the message.
 	Store(partition string, msgID uint64, msg []byte) error
 
-	// StoreTx retrieves the next available id and store the message
-	// in one atomic transaction
+	// StoreTx retrieves the next available id and stores the message in one atomic transaction
 	StoreTx(partition string,
 		callback func(msgID uint64) (msg []byte)) error
 

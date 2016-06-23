@@ -1,10 +1,9 @@
 package server
 
-// newQueue creates a *queue that will have the capacity specified by size
 import (
-	"sync"
-
 	"github.com/smancke/guble/protocol"
+
+	"sync"
 )
 
 type queue struct {
@@ -12,7 +11,8 @@ type queue struct {
 	queue []*protocol.Message
 }
 
-// if `size` is negative use the defaultQueueCap.
+// newQueue creates a *queue that will have the capacity specified by size.
+// If `size` is negative use the defaultQueueCap.
 func newQueue(size int) *queue {
 	if size < 0 {
 		size = defaultQueueCap
@@ -29,7 +29,7 @@ func (q *queue) push(m *protocol.Message) {
 	q.queue = append(q.queue, m)
 }
 
-// Remove the first item from the queue if exists
+// remove the first item from the queue if exists
 func (q *queue) remove() {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -40,7 +40,7 @@ func (q *queue) remove() {
 	q.queue = q.queue[1:]
 }
 
-// return the first item from the queue without removing it
+// poll returns the first item from the queue without removing it
 func (q *queue) poll() (*protocol.Message, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()

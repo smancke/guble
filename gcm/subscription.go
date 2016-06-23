@@ -186,10 +186,10 @@ func (s *subscription) subscriptionLoop() {
 
 // fetch messages from store starting with lastID
 func (s *subscription) fetch() error {
-	if s.lastID == 0 {
-		s.logger.WithField("lastID", s.lastID).Debug("Nothing to fetch")
-		return nil
-	}
+	// if s.lastID == 0 {
+	// 	s.logger.WithField("lastID", s.lastID).Debug("Nothing to fetch")
+	// 	return nil
+	// }
 
 	s.gcm.wg.Add(1)
 	defer func() {
@@ -202,6 +202,7 @@ func (s *subscription) fetch() error {
 	if err := s.gcm.router.Fetch(req); err != nil {
 		return err
 	}
+
 	for {
 		select {
 		case results := <-req.StartC:
@@ -216,15 +217,9 @@ func (s *subscription) fetch() error {
 				return err
 			}
 
-			if message, ok := message.(*protocol.Message); ok {
-				s.logger.WithFields(log.Fields{
-					"ID":       msgAndID.ID,
-					"parsedID": message.ID,
-				}).Debug("Fetched message")
-				s.pipe(message)
-			} else {
-				s.logger.WithField("messageID", msgAndID.ID).Warn("Message is not a *protocol.Message.")
-			}
+			s.logger.WithFields(log.Fields{"ID": msgAndID.ID, "parsedID": message.ID}).Debug("Fetched message")
+			// Pipe message into gcm connector
+			s.pipe(message)
 		case err := <-req.ErrorC:
 			return err
 		case <-s.gcm.stopC:

@@ -2,14 +2,13 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/formatters/logstash"
 	"github.com/smancke/guble/gubled"
-	"time"
+	"github.com/smancke/guble/gubled/config"
 )
 
 func main() {
 
-	log.SetFormatter(&logstash.LogstashFormatter{TimestampFormat: time.RFC3339Nano})
+	log.SetFormatter(&config.LogstashGubleFormatter{})
 
 	gubled.Main()
 

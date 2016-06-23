@@ -15,14 +15,14 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	defer func() { os.Args = originalArgs }()
 
 	// given: some environment variables
-	os.Setenv("GUBLE_LISTEN", "listen")
-	defer os.Unsetenv("GUBLE_LISTEN")
+	os.Setenv("GUBLE_HTTP", "http_listen")
+	defer os.Unsetenv("GUBLE_HTTP")
 
 	os.Setenv("GUBLE_LOG", "debug")
 	defer os.Unsetenv("GUBLE_LOG")
 
-	os.Setenv("GUBLE_KV_BACKEND", "kv-backend")
-	defer os.Unsetenv("GUBLE_KV_BACKEND")
+	os.Setenv("GUBLE_KVS", "kvs-backend")
+	defer os.Unsetenv("GUBLE_KVS")
 
 	os.Setenv("GUBLE_STORAGE_PATH", "storage-path")
 	defer os.Unsetenv("GUBLE_STORAGE_PATH")
@@ -30,17 +30,17 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_HEALTH_ENDPOINT", "health_endpoint")
 	defer os.Unsetenv("GUBLE_HEALTH_ENDPOINT")
 
-	os.Setenv("GUBLE_METRICS_ENABLED", "true")
-	defer os.Unsetenv("GUBLE_METRICS_ENDPOINT")
+	os.Setenv("GUBLE_METRICS", "true")
+	defer os.Unsetenv("GUBLE_METRICS")
 
 	os.Setenv("GUBLE_METRICS_ENDPOINT", "metrics_endpoint")
 	defer os.Unsetenv("GUBLE_METRICS_ENDPOINT")
 
-	os.Setenv("GUBLE_MS_BACKEND", "ms-backend")
-	defer os.Unsetenv("GUBLE_MS_BACKEND")
+	os.Setenv("GUBLE_MS", "ms-backend")
+	defer os.Unsetenv("GUBLE_MS")
 
-	os.Setenv("GUBLE_GCM_ENABLED", "true")
-	defer os.Unsetenv("GUBLE_GCM_ENABLED")
+	os.Setenv("GUBLE_GCM", "true")
+	defer os.Unsetenv("GUBLE_GCM")
 
 	os.Setenv("GUBLE_GCM_API_KEY", "gcm-api-key")
 	defer os.Unsetenv("GUBLE_GCM_API_KEY")
@@ -48,10 +48,16 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_GCM_WORKERS", "3")
 	defer os.Unsetenv("GUBLE_GCM_WORKERS")
 
-	// when we parse the arguments
+	os.Setenv("GUBLE_NODE_ID", "1")
+	defer os.Unsetenv("GUBLE_NODE_ID")
+
+	os.Setenv("GUBLE_NODE_PORT", "10000")
+	defer os.Unsetenv("GUBLE_NODE_PORT")
+
+	// when we parse the arguments from environment variables
 	Parse()
 
-	// the the arg parameters are set
+	// then the parsed parameters are correctly set
 	assertArguments(a)
 }
 
@@ -64,33 +70,35 @@ func TestParsingArgs(t *testing.T) {
 
 	// given: a command line
 	os.Args = []string{os.Args[0],
-		"--listen", "listen",
+		"--http", "http_listen",
 		"--log", "debug",
-		"--kv-backend", "kv-backend",
 		"--storage-path", "storage-path",
-		"--ms-backend", "ms-backend",
+		"--kvs", "kv-backend",
+		"--ms", "ms-backend",
 		"--health", "health_endpoint",
-		"--metrics",
+		"--metrics", "true",
 		"--metrics-endpoint", "metrics_endpoint",
-		"--gcm-enabled",
+		"--gcm", "true",
 		"--gcm-api-key", "gcm-api-key",
 		"--gcm-workers", "3",
+		"--node-id", "1",
+		"--node-port", "10000",
 	}
 
-	// when we parse the arguments
+	// when we parse the arguments from command-line flags
 	Parse()
 
-	// the the arg parameters are set
+	// then the parsed parameters are correctly set
 	assertArguments(a)
 }
 
 func assertArguments(a *assert.Assertions) {
-	a.Equal("listen", *Listen)
-	a.Equal("kv-backend", *KVBackend)
+	a.Equal("http_listen", *HttpListen)
+	a.Equal("kvs-backend", *KVS)
 	a.Equal("storage-path", *StoragePath)
-	a.Equal("ms-backend", *MSBackend)
+	a.Equal("ms-backend", *MS)
+	a.Equal("health_endpoint", *HealthEndpoint)
 
-	a.Equal("health_endpoint", *Health)
 	a.Equal(true, *Metrics.Enabled)
 	a.Equal("metrics_endpoint", *Metrics.Endpoint)
 
@@ -98,5 +106,10 @@ func assertArguments(a *assert.Assertions) {
 	a.Equal("gcm-api-key", *GCM.APIKey)
 	a.Equal(3, *GCM.Workers)
 
+	a.Equal(1, *Cluster.NodeID)
+	a.Equal(10000, *Cluster.NodePort)
+
 	a.Equal("debug", *Log)
+
+	//TODO Cosmin check also the arguments used in cluster-mode (remotes)
 }

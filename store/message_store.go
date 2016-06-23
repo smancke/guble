@@ -10,9 +10,8 @@ import (
 )
 
 var messageStoreLogger = log.WithFields(log.Fields{
-	"app":    "guble",
 	"module": "messageStore",
-	"env":    "TBD"})
+})
 
 // FileMessageStore is an implementation of the MessageStore interface based on files
 type FileMessageStore struct {
@@ -39,13 +38,11 @@ func (fms *FileMessageStore) MaxMessageID(partition string) (uint64, error) {
 func (fms *FileMessageStore) Stop() error {
 	fms.mutex.Lock()
 	defer fms.mutex.Unlock()
-	messageStoreLogger.Debug("Stop")
-
+	messageStoreLogger.Info("Stop")
 	var returnError error
 	for key, partition := range fms.partitions {
 		if err := partition.Close(); err != nil {
 			returnError = err
-
 			messageStoreLogger.WithFields(log.Fields{
 				"key": key,
 				"err": err,
@@ -103,15 +100,18 @@ func (fms *FileMessageStore) partitionStore(partition string) (*MessagePartition
 		if _, err := os.Stat(dir); err != nil {
 			if os.IsNotExist(err) {
 				if err := os.MkdirAll(dir, 0700); err != nil {
+					messageStoreLogger.WithField("err", err).Error("partitionStore")
 					return nil, err
 				}
 			} else {
+				messageStoreLogger.WithField("err", err).Error("partitionStore")
 				return nil, err
 			}
 		}
 		var err error
 		partitionStore, err = NewMessagePartition(dir, partition)
 		if err != nil {
+			messageStoreLogger.WithField("err", err).Error("partitionStore")
 			return nil, err
 		}
 		fms.partitions[partition] = partitionStore
@@ -123,10 +123,7 @@ func (fms *FileMessageStore) Check() error {
 	var stat syscall.Statfs_t
 	wd, err := os.Getwd()
 	if err != nil {
-		messageStoreLogger.WithFields(log.Fields{
-			"err": err,
-		}).Error("FileMessageStore Check() failed")
-
+		messageStoreLogger.WithField("err", err).Error("Check() failed")
 		return err
 	}
 	syscall.Statfs(wd, &stat)
@@ -139,11 +136,9 @@ func (fms *FileMessageStore) Check() error {
 	usedSpacePercentage := 1 - (float64(freeSpace) / float64(totalSpace))
 
 	if usedSpacePercentage > 0.95 {
-		messageStoreLogger.WithFields(log.Fields{
-			"usedDiskSpacePercentage": usedSpacePercentage,
-		}).Warn("Disk space is used more than 95 percent")
-
-		return errors.New("Disk is almost full.")
+		errorMessage := "Disk is almost full."
+		messageStoreLogger.WithField("usedDiskSpacePercentage", usedSpacePercentage).Warn(errorMessage)
+		return errors.New(errorMessage)
 	}
 
 	return nil

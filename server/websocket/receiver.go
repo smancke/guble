@@ -15,17 +15,16 @@ import (
 )
 
 var logger = log.WithFields(log.Fields{
-	"app":    "guble",
 	"module": "websocket",
-	"env":    "TBD"})
+})
 
 var errUnreadMsgsAvailable = errors.New("unread messages available")
 
 // Receiver is a helper class, for managing a combined pull push on a topic.
 // It is used for implementation of the + (receive) command in the guble protocol.
 type Receiver struct {
-	cancelChannel       chan bool
-	sendChannel         chan []byte
+	cancelC             chan bool
+	sendC               chan []byte
 	applicationId       string
 	router              server.Router
 	messageStore        store.MessageStore
@@ -56,10 +55,10 @@ func NewReceiverFromCmd(
 
 	rec = &Receiver{
 		applicationId:       applicationId,
-		sendChannel:         sendChannel,
+		sendC:               sendChannel,
 		router:              router,
 		messageStore:        messageStore,
-		cancelChannel:       make(chan bool, 1),
+		cancelC:             make(chan bool, 1),
 		enableNotifications: true,
 		userId:              userId,
 	}
@@ -123,8 +122,8 @@ func (rec *Receiver) subscriptionLoop() {
 				} else {
 
 					logger.WithFields(log.Fields{
-						"rec": rec.startId,
-						"err": err,
+						"recStartId": rec.startId,
+						"err":        err,
 					}).Error("Error while subscribeIfNoUnreadMessagesAvailable")
 
 					rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
@@ -185,13 +184,13 @@ func (rec *Receiver) receiveFromSubscription() {
 
 			if m.ID > rec.lastSendId {
 				rec.lastSendId = m.ID
-				rec.sendChannel <- m.Bytes()
+				rec.sendC <- m.Bytes()
 			} else {
 				logger.WithFields(log.Fields{
 					"msgId": m.ID,
 				}).Debug("Message already sent to client. Dropping message.")
 			}
-		case <-rec.cancelChannel:
+		case <-rec.cancelC:
 			rec.shouldStop = true
 			rec.router.Unsubscribe(rec.route)
 			rec.route = nil
@@ -231,11 +230,12 @@ func (rec *Receiver) fetch() error {
 		}
 	} else {
 		fetch.Direction = 1
-		if maxId, err := rec.messageStore.MaxMessageID(rec.path.Partition()); err != nil {
+		maxId, err := rec.messageStore.MaxMessageID(rec.path.Partition())
+		if err != nil {
 			return err
-		} else {
-			fetch.StartID = maxId + 1 + uint64(rec.startId)
 		}
+
+		fetch.StartID = maxId + 1 + uint64(rec.startId)
 		if rec.maxCount == 0 {
 			fetch.Count = -1 * int(rec.startId)
 		}
@@ -258,10 +258,10 @@ func (rec *Receiver) fetch() error {
 			}).Debug("Reply sent")
 
 			rec.lastSendId = msgAndID.ID
-			rec.sendChannel <- msgAndID.Message
+			rec.sendC <- msgAndID.Message
 		case err := <-fetch.ErrorC:
 			return err
-		case <-rec.cancelChannel:
+		case <-rec.cancelC:
 			rec.shouldStop = true
 			rec.sendOK(protocol.SUCCESS_CANCELED, string(rec.path))
 			// TODO implement cancellation in message store
@@ -272,26 +272,26 @@ func (rec *Receiver) fetch() error {
 
 // Stop stops/cancels the receiver
 func (rec *Receiver) Stop() error {
-	rec.cancelChannel <- true
+	rec.cancelC <- true
 	return nil
 }
 
 func (rec *Receiver) sendError(name string, argPattern string, params ...interface{}) {
-	n := &protocol.NotificationMessage{
+	notificationMessage := &protocol.NotificationMessage{
 		Name:    name,
 		Arg:     fmt.Sprintf(argPattern, params...),
 		IsError: true,
 	}
-	rec.sendChannel <- n.Bytes()
+	rec.sendC <- notificationMessage.Bytes()
 }
 
 func (rec *Receiver) sendOK(name string, argPattern string, params ...interface{}) {
 	if rec.enableNotifications {
-		n := &protocol.NotificationMessage{
+		notificationMessage := &protocol.NotificationMessage{
 			Name:    name,
 			Arg:     fmt.Sprintf(argPattern, params...),
 			IsError: false,
 		}
-		rec.sendChannel <- n.Bytes()
+		rec.sendC <- notificationMessage.Bytes()
 	}
 }

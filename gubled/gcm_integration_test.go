@@ -98,9 +98,9 @@ func serviceSetUp(t *testing.T) *server.Service {
 	}()
 	assert.NoError(t, errTempDir)
 
-	*config.Listen = "localhost:0"
-	*config.KVBackend = "memory"
-	*config.MSBackend = "file"
+	*config.HttpListen = "localhost:0"
+	*config.KVS = "memory"
+	*config.MS = "file"
 	*config.StoragePath = dir
 	*config.GCM.Enabled = true
 	*config.GCM.APIKey = "WILL BE OVERWRITTEN"

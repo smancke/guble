@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var fetchMessage = `/foo/bar,42,user01,phone01,id123,1420110000
+var fetchMessage = `/foo/bar,42,user01,phone01,id123,1420110000,1
 {"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}
 Hello World`
 
@@ -64,16 +64,20 @@ func TestSub_Fetch(t *testing.T) {
 		close(done)
 	}()
 
-	// start subscription fetching
-	go sub.fetch()
+	go func() {
+		select {
+		case <-done:
+			// all good
+		case <-time.After(30 * time.Millisecond):
+			// taking too long, fail the test
+			a.Fail("Fetching messages and piping them took too long.")
+		}
+	}()
 
-	select {
-	case <-done:
-		// all good
-	case <-time.After(30 * time.Millisecond):
-		// taking too long, fail the test
-		a.Fail("Fetching messages and piping them took too long.")
-	}
+	// start subscription fetching
+	err := sub.fetch()
+	a.NoError(err)
+
 }
 
 func dummyGCMResponse() *gcm.Response {
