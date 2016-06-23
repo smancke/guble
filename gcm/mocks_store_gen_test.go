@@ -4,7 +4,7 @@
 package gcm
 
 import (
-	gomock "github.com/golang/mock/gomock"
+	"github.com/golang/mock/gomock"
 )
 
 // Mock of KVStore interface

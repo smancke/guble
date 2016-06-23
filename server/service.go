@@ -19,9 +19,7 @@ const (
 )
 
 var loggerService = log.WithFields(log.Fields{
-	"app":    "guble",
 	"module": "service",
-	"env":    "TBD",
 })
 
 // Startable interface for modules which provide a start mechanism
