@@ -14,17 +14,18 @@ import (
 const (
 	defaultHttpListen     = ":8080"
 	defaultHealthEndpoint = "/_health"
-	defaultStoragePath    = "/var/lib/guble"
-	defaultNodePort       = "10000"
-	defaultKVBackend      = "file"
+	defaultKVSBackend     = "file"
 	defaultMSBackend      = "file"
+	defaultStoragePath    = "/var/lib/guble"
+	defaultNodeID         = "0"
+	defaultNodePort       = "10000"
 )
 
 var (
 	HttpListen = kingpin.Flag("http", `The address to for the HTTP server to listen on (format: "[Host]:Port")`).
 			Default(defaultHttpListen).Envar("GUBLE_HTTP_LISTEN").String()
 	KVS = kingpin.Flag("kvs", "The storage backend for the key-value store to use : file | memory").
-		Default(defaultKVBackend).HintOptions([]string{"file", "memory"}...).Envar("GUBLE_KVS").String()
+		Default(defaultKVSBackend).HintOptions([]string{"file", "memory"}...).Envar("GUBLE_KVS").String()
 	MS = kingpin.Flag("ms", "The message storage backend : file | memory").
 		Default(defaultMSBackend).HintOptions([]string{"file", "memory"}...).Envar("GUBLE_MS").String()
 	StoragePath = kingpin.Flag("storage-path", "The path for storing messages and key-value data if 'file' is selected").
@@ -36,8 +37,7 @@ var (
 		Enabled  *bool
 		Endpoint *string
 	}{
-		Enabled: kingpin.Flag("metrics", "Enable collection of metrics").
-			Default("false").Envar("GUBLE_METRICS").Bool(),
+		Enabled: kingpin.Flag("metrics", "Enable collection of metrics").Envar("GUBLE_METRICS").Bool(),
 		Endpoint: kingpin.Flag("metrics-endpoint", `The metrics endpoint to be used by the HTTP server (disabled by default; a possible value for enabling it: "/_metrics" )`).
 			Default("").Envar("GUBLE_METRICS_ENDPOINT").String(),
 	}
@@ -62,11 +62,11 @@ var (
 		NodePort *int
 		Remotes  *[]*net.TCPAddr
 	}{
-		NodeID: kingpin.Flag("node-id", "This guble node's own ID (used in cluster mode): a strictly positive integer number which must be unique in cluster").
-			Default("0").Envar("GUBLE_NODE_ID").Int(),
-		NodePort: kingpin.Flag("node-port", "This guble node's own local port (used in cluster mode): a strictly positive integer number").
+		NodeID: kingpin.Flag("node-id", "(cluster mode) This guble node's own ID: a strictly positive integer number which must be unique in cluster").
+			Default(defaultNodeID).Envar("GUBLE_NODE_ID").Int(),
+		NodePort: kingpin.Flag("node-port", "(cluster mode) This guble node's own local port: a strictly positive integer number").
 			Default(defaultNodePort).Envar("GUBLE_NODE_PORT").Int(),
-		Remotes: kingpin.Arg("tcplist", `The list of TCP addresses of some other guble nodes (used in cluster mode; format: "IP:port")`).
+		Remotes: kingpin.Arg("tcplist", `(cluster mode) The list of TCP addresses of some other guble nodes (format: "IP:port")`).
 			TCPList(),
 	}
 
