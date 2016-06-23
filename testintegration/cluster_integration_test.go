@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/alecthomas/kingpin.v2"
 
+	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -35,36 +36,50 @@ func Test_Cluster(t *testing.T) {
 	a := assert.New(t)
 	//defer testutil.EnableDebugForMethod()()
 
-	service1 := createService("/tmp/s1", "1", "10000", "127.0.0.1:8080", "127.0.0.1:10000")
+	dir1, err1 := ioutil.TempDir("", "guble_cluster_integration_test")
+	a.NoError(err1)
+	defer os.RemoveAll(dir1)
+
+	dir2, err2 := ioutil.TempDir("", "guble_cluster_integration_test")
+	a.NoError(err2)
+	defer os.RemoveAll(dir2)
+
+	service1 := createService(dir1, "1", "10000", "127.0.0.1:8080", "127.0.0.1:10000")
 	a.NotNil(service1)
 
-	service2 := createService("/tmp/s2", "2", "10001", "127.0.0.1:8081", "127.0.0.1:10000")
+	service2 := createService(dir2, "2", "10001", "127.0.0.1:8081", "127.0.0.1:10000")
 	a.NotNil(service2)
 
-	client1, err1 := client.Open("ws://127.0.0.1:8081/stream/user/user1", "http://localhost", 1, false)
-	assert.NoError(t, err1)
+	defer func() {
+		errStop1 := service1.Stop()
+		errStop2 := service2.Stop()
+		a.NoError(errStop1)
+		a.NoError(errStop2)
+	}()
 
-	client2, err2 := client.Open("ws://127.0.0.1:8080/stream/user/user2", "http://localhost", 1, false)
-	assert.NoError(t, err2)
-
-	err1 = client1.Subscribe("/foo")
+	client1, err1 := client.Open("ws://127.0.0.1:8081/stream/user/user1", "http://localhost", 10, false)
 	a.NoError(err1)
+
+	client2, err2 := client.Open("ws://127.0.0.1:8080/stream/user/user2", "http://localhost", 10, false)
+	a.NoError(err2)
 
 	err2 = client2.Subscribe("/testTopic")
 	a.NoError(err2)
 
-	//TODO Cosmin this number should later be >1
-	numSent := 1
+	numSent := 5
 	for i := 0; i < numSent; i++ {
 		err := client1.Send("/testTopic", "xyz", "{}")
 		a.NoError(err)
+
+		//TODO Cosmin this sleep should be eliminated when messages receive correct message-IDs
+		time.Sleep(time.Millisecond * 20)
 	}
 
 	breakTimer := time.After(time.Second)
 	numReceived := 0
 
+	//see if the exact number of messages arrived at the other client, before timeout is reached
 WAIT:
-	//see if the exact number of messages arrived at the other client, before a timeout
 	for {
 		select {
 		case incomingMessage := <-client2.Messages():
@@ -79,6 +94,7 @@ WAIT:
 
 			a.Equal(protocol.Path("/testTopic"), incomingMessage.Path)
 			a.Equal("user1", incomingMessage.UserID)
+			a.Equal(2, incomingMessage.NodeID)
 			a.Equal("xyz", incomingMessage.BodyAsString())
 
 			if numReceived == numSent {
@@ -86,18 +102,9 @@ WAIT:
 			}
 
 		case <-breakTimer:
-			a.FailNow("Not all messages were received on second client until timeout")
 			break WAIT
 		}
 	}
 
 	a.True(numReceived == numSent)
-
-	time.Sleep(time.Millisecond * 10)
-
-	// stop the cluster
-	err1 = service1.Stop()
-	err2 = service2.Stop()
-	a.NoError(err1)
-	a.NoError(err2)
 }
