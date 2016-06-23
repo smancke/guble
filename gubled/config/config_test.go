@@ -15,8 +15,8 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	defer func() { os.Args = originalArgs }()
 
 	// given: some environment variables
-	os.Setenv("GUBLE_HTTP", "http_listen")
-	defer os.Unsetenv("GUBLE_HTTP")
+	os.Setenv("GUBLE_HTTP_LISTEN", "http_listen")
+	defer os.Unsetenv("GUBLE_HTTP_LISTEN")
 
 	os.Setenv("GUBLE_LOG", "debug")
 	defer os.Unsetenv("GUBLE_LOG")
@@ -24,7 +24,7 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_KVS", "kvs-backend")
 	defer os.Unsetenv("GUBLE_KVS")
 
-	os.Setenv("GUBLE_STORAGE_PATH", "storage-path")
+	os.Setenv("GUBLE_STORAGE_PATH", "storage_path")
 	defer os.Unsetenv("GUBLE_STORAGE_PATH")
 
 	os.Setenv("GUBLE_HEALTH_ENDPOINT", "health_endpoint")
@@ -72,7 +72,7 @@ func TestParsingArgs(t *testing.T) {
 	os.Args = []string{os.Args[0],
 		"--http", "http_listen",
 		"--log", "debug",
-		"--storage-path", "storage-path",
+		"--storage-path", "storage_path",
 		"--kvs", "kv-backend",
 		"--ms", "ms-backend",
 		"--health", "health_endpoint",
@@ -95,7 +95,7 @@ func TestParsingArgs(t *testing.T) {
 func assertArguments(a *assert.Assertions) {
 	a.Equal("http_listen", *HttpListen)
 	a.Equal("kvs-backend", *KVS)
-	a.Equal("storage-path", *StoragePath)
+	a.Equal("storage_path", *StoragePath)
 	a.Equal("ms-backend", *MS)
 	a.Equal("health_endpoint", *HealthEndpoint)
 

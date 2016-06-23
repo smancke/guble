@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultHttp           = ":8080"
+	defaultHttpListen     = ":8080"
 	defaultHealthEndpoint = "/_health"
 	defaultStoragePath    = "/var/lib/guble"
 	defaultNodePort       = "10000"
@@ -21,15 +21,15 @@ const (
 )
 
 var (
-	HttpListen = kingpin.Flag("http", `The address to for the HTTP server to listen on (format: "[Host]:Port" ; default: ":8080")`).
-			Default(defaultHttp).Envar("GUBLE_HTTP").String()
-	StoragePath = kingpin.Flag("storage-path", "The path for storing messages and key-value data if 'file' is enabled (default: /var/lib/guble)").
+	HttpListen = kingpin.Flag("http", `The address to for the HTTP server to listen on (format: "[Host]:Port")`).
+			Default(defaultHttpListen).Envar("GUBLE_HTTP_LISTEN").String()
+	KVS = kingpin.Flag("kvs", "The storage backend for the key-value store to use : file | memory").
+		Default(defaultKVBackend).HintOptions([]string{"file", "memory"}...).Envar("GUBLE_KVS").String()
+	MS = kingpin.Flag("ms", "The message storage backend : file | memory").
+		Default(defaultMSBackend).HintOptions([]string{"file", "memory"}...).Envar("GUBLE_MS").String()
+	StoragePath = kingpin.Flag("storage-path", "The path for storing messages and key-value data if 'file' is selected").
 			Default(defaultStoragePath).Envar("GUBLE_STORAGE_PATH").String()
-	KVS = kingpin.Flag("kvs", "The storage backend for the key-value store to use: file|memory (file)").
-		Default(defaultKVBackend).Envar("GUBLE_KVS").String()
-	MS = kingpin.Flag("ms", "The message storage backend : file|memory (file)").
-		Default(defaultMSBackend).Envar("GUBLE_MS").String()
-	HealthEndpoint = kingpin.Flag("health-endpoint", `The health endpoint to be used by the HTTP server (default: /_health; value for disabling it: "")`).
+	HealthEndpoint = kingpin.Flag("health-endpoint", `The health endpoint to be used by the HTTP server (value for disabling it: "")`).
 			Default(defaultHealthEndpoint).Envar("GUBLE_HEALTH_ENDPOINT").String()
 
 	Metrics = struct {
@@ -37,9 +37,9 @@ var (
 		Endpoint *string
 	}{
 		Enabled: kingpin.Flag("metrics", "Enable collection of metrics").
-			Envar("GUBLE_METRICS").Bool(),
-		Endpoint: kingpin.Flag("metrics-endpoint", "The metrics endpoint to be used by the HTTP server (disabled by default; a possible value for enabling it: /_metrics )").
-			Envar("GUBLE_METRICS_ENDPOINT").String(),
+			Default("false").Envar("GUBLE_METRICS").Bool(),
+		Endpoint: kingpin.Flag("metrics-endpoint", `The metrics endpoint to be used by the HTTP server (disabled by default; a possible value for enabling it: "/_metrics" )`).
+			Default("").Envar("GUBLE_METRICS_ENDPOINT").String(),
 	}
 
 	// GCM settings related to activating the GCM connector module
@@ -63,7 +63,7 @@ var (
 		Remotes  *[]*net.TCPAddr
 	}{
 		NodeID: kingpin.Flag("node-id", "This guble node's own ID (used in cluster mode): a strictly positive integer number which must be unique in cluster").
-			Envar("GUBLE_NODE_ID").Int(),
+			Default("0").Envar("GUBLE_NODE_ID").Int(),
 		NodePort: kingpin.Flag("node-port", "This guble node's own local port (used in cluster mode): a strictly positive integer number").
 			Default(defaultNodePort).Envar("GUBLE_NODE_PORT").Int(),
 		Remotes: kingpin.Arg("tcplist", `The list of TCP addresses of some other guble nodes (used in cluster mode; format: "IP:port")`).
