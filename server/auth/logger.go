@@ -5,7 +5,5 @@ import (
 )
 
 var logger = log.WithFields(log.Fields{
-	"app":    "guble",
 	"module": "accessManager",
-	"env":    "TBD",
 })

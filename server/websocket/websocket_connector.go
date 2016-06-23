@@ -80,7 +80,7 @@ func (conn *wsconn) Close() {
 	conn.Conn.Close()
 }
 
-func (conn *wsconn) Send(bytes []byte) (err error) {
+func (conn *wsconn) Send(bytes []byte) error {
 	return conn.WriteMessage(websocket.BinaryMessage, bytes)
 }
 

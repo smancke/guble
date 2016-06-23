@@ -25,10 +25,8 @@ import (
 )
 
 var logger = log.WithFields(log.Fields{
-	"app":    "guble",
 	"module": "gubled",
-	"env":    "TBD"})
-
+})
 var ValidateStoragePath = func() error {
 	if *config.KVS == "file" || *config.MS == "file" {
 		testfile := path.Join(*config.StoragePath, "write-test-file")
