@@ -15,7 +15,7 @@ import (
 func Test_MessagePartition_forConcurrentWriteAndReads(t *testing.T) {
 	//defer enableDebugForMethod()()
 	a := assert.New(t)
-	dir, _ := ioutil.TempDir("", "partition_store_test")
+	dir, _ := ioutil.TempDir("", "guble_partition_store_test")
 	defer os.RemoveAll(dir)
 
 	store, _ := NewMessagePartition(dir, "myMessages")
