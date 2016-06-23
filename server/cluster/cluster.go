@@ -187,17 +187,20 @@ func (cluster *Cluster) broadcastClusterMessage(cMessage *message) error {
 		if cluster.name == node.Name {
 			continue
 		}
-		logger.WithField("nodeName", node.Name).Debug("Sending cluster-message to a node")
-		err := cluster.memberlist.SendToTCP(node, cMessageBytes)
-		if err != nil {
-			logger.WithFields(log.Fields{
-				"err":  err,
-				"node": node,
-			}).Error("Error sending cluster-message to a node")
-			return err
-		}
+		go cluster.sendToNode(node, cMessageBytes)
 	}
 	return nil
+}
+
+func (cluster *Cluster) sendToNode(node *memberlist.Node, msgBytes []byte) {
+	logger.WithField("nodeName", node.Name).Debug("Sending cluster-message to a node")
+	err := cluster.memberlist.SendToTCP(node, msgBytes)
+	if err != nil {
+		logger.WithFields(log.Fields{
+			"err":  err,
+			"node": node,
+		}).Error("Error sending cluster-message to a node")
+	}
 }
 
 func (cluster *Cluster) remotesAsStrings() (strings []string) {
