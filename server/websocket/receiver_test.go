@@ -227,7 +227,7 @@ func Test_Receiver_Fetch_Produces_Correct_Fetch_Requests(t *testing.T) {
 		a.NoError(err, test.desc)
 
 		if test.maxId != -1 {
-			messageStore.EXPECT().MaxMessageId(test.expect.Partition).
+			messageStore.EXPECT().MaxMessageID(test.expect.Partition).
 				Return(uint64(test.maxId), nil)
 		}
 
@@ -280,7 +280,7 @@ func Test_Receiver_Fetch_Sends_error_on_failure_in_MaxMessageId(t *testing.T) {
 	rec, msgChannel, _, messageStore, err := aMockedReceiver("/foo -2 2")
 	a.NoError(err)
 
-	messageStore.EXPECT().MaxMessageId("foo").
+	messageStore.EXPECT().MaxMessageID("foo").
 		Return(uint64(0), errors.New("expected test error"))
 
 	rec.Start()
