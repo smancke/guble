@@ -11,13 +11,12 @@ import (
 	"sync"
 )
 
-var MAGIC_NUMBER = []byte{42, 249, 180, 108, 82, 75, 222, 182}
-
-var FILE_FORMAT_VERSION = []byte{1}
-
-var MESSAGES_PER_FILE = uint64(10000)
-
-var INDEX_ENTRY_SIZE = 12
+var (
+	MAGIC_NUMBER        = []byte{42, 249, 180, 108, 82, 75, 222, 182}
+	FILE_FORMAT_VERSION = []byte{1}
+	MESSAGES_PER_FILE   = uint64(10000)
+	INDEX_ENTRY_SIZE    = 12
+)
 
 const (
 	defaultInitialCapacity = 128
@@ -303,7 +302,7 @@ func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC cha
 	return nil
 }
 
-// calculateFetchList returns a list of fetchEntry records for all message in the fetch request.
+// calculateFetchList returns a list of fetchEntry records for all messages in the fetch request.
 func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, error) {
 	if req.Direction == 0 {
 		req.Direction = 1
