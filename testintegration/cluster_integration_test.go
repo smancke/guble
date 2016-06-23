@@ -77,6 +77,7 @@ func Test_Cluster(t *testing.T) {
 
 	breakTimer := time.After(time.Second)
 	numReceived := 0
+	idReceived := make(map[uint64]bool)
 
 	//see if the correct number of messages arrived at the other client, before timeout is reached
 WAIT:
@@ -98,6 +99,8 @@ WAIT:
 			a.Equal("user1", incomingMessage.UserID)
 			a.Equal("{jsonHeader:1}", incomingMessage.HeaderJSON)
 			a.Equal("body", incomingMessage.BodyAsString())
+			a.True(incomingMessage.ID > 0 && incomingMessage.ID <= uint64(numSent))
+			idReceived[incomingMessage.ID] = true
 
 			if numReceived == numSent {
 				break WAIT
@@ -109,4 +112,6 @@ WAIT:
 	}
 
 	a.True(numReceived == numSent)
+	// there should be no duplicated message-IDs
+	a.True(numReceived == len(idReceived))
 }
