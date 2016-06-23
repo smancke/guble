@@ -17,7 +17,6 @@ const (
 	defaultKVSBackend     = "file"
 	defaultMSBackend      = "file"
 	defaultStoragePath    = "/var/lib/guble"
-	defaultNodeID         = "0"
 	defaultNodePort       = "10000"
 )
 
@@ -63,7 +62,7 @@ var (
 		Remotes  *[]*net.TCPAddr
 	}{
 		NodeID: kingpin.Flag("node-id", "(cluster mode) This guble node's own ID: a strictly positive integer number which must be unique in cluster").
-			Default(defaultNodeID).Envar("GUBLE_NODE_ID").Int(),
+			Envar("GUBLE_NODE_ID").Int(),
 		NodePort: kingpin.Flag("node-port", "(cluster mode) This guble node's own local port: a strictly positive integer number").
 			Default(defaultNodePort).Envar("GUBLE_NODE_PORT").Int(),
 		Remotes: kingpin.Arg("tcplist", `(cluster mode) The list of TCP addresses of some other guble nodes (format: "IP:port")`).
