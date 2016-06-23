@@ -14,10 +14,6 @@ import (
 	"strings"
 )
 
-var logger = log.WithFields(log.Fields{
-	"module": "websocket",
-})
-
 var errUnreadMsgsAvailable = errors.New("unread messages available")
 
 // Receiver is a helper class, for managing a combined pull push on a topic.
