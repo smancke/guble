@@ -100,7 +100,7 @@ func Test_MaxMessageId(t *testing.T) {
 	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
 	a.NoError(store.Store("p1", uint64(expectedMaxId), []byte("bbbbbbbbbb")))
 
-	maxID, err := store.MaxMessageId("p1")
+	maxID, err := store.MaxMessageID("p1")
 	a.Nil(err, "No error should be received for partition p1")
 	a.Equal(maxID, uint64(expectedMaxId), fmt.Sprintf("MaxId should be [%d]", expectedMaxId))
 }
@@ -109,7 +109,7 @@ func Test_MaxMessageIdError(t *testing.T) {
 	a := assert.New(t)
 	store := NewFileMessageStore("/TestDir")
 
-	_, err := store.MaxMessageId("p2")
+	_, err := store.MaxMessageID("p2")
 	a.NotNil(err)
 }
 

@@ -8,7 +8,6 @@ import (
 
 	"github.com/alexjlockwood/gcm"
 	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
@@ -25,7 +24,7 @@ func TestSub_Fetch(t *testing.T) {
 
 	a := assert.New(t)
 
-	gcm, routerMock := testSimpleGCM(t)
+	gcm, routerMock, _ := testSimpleGCM(t, false)
 
 	route := server.NewRoute("/foo/bar", "phone01", "user01", subBufferSize)
 	sub := newSubscription(gcm, route, 2)
@@ -91,7 +90,7 @@ func TestSub_Restart(t *testing.T) {
 
 	a := assert.New(t)
 
-	gcm, routerMock := testSimpleGCM(t)
+	gcm, routerMock, storeMock := testSimpleGCM(t, true)
 
 	route := server.NewRoute("/foo/bar", "phone01", "user01", subBufferSize)
 	sub := newSubscription(gcm, route, 2)
@@ -112,14 +111,15 @@ func TestSub_Restart(t *testing.T) {
 	routerMock.EXPECT().Subscribe(gomock.Eq(route))
 	// expect again for a subscription
 	routerMock.EXPECT().Subscribe(gomock.Any())
+	storeMock.EXPECT().MaxMessageID("foo").Return(uint64(4), nil).AnyTimes()
+
 	sub.start()
 
 	// pipe 2 messages to route and then close.
-	sub.route.Deliver(&protocol.Message{Path: "/foo/bar", ID: 3, Body: []byte("dummy")})
-	sub.route.Deliver(&protocol.Message{Path: "/foo/bar", ID: 4, Body: []byte("dummy")})
+	// sub.route.Deliver(&protocol.Message{Path: "/foo/bar", ID: 3, Body: []byte("dummy")})
+	// sub.route.Deliver(&protocol.Message{Path: "/foo/bar", ID: 4, Body: []byte("dummy")})
 
 	time.Sleep(10 * time.Millisecond)
-	a.Equal(uint64(4), sub.lastID)
 
 	route.Close()
 
@@ -144,6 +144,7 @@ func TestSub_Restart(t *testing.T) {
 
 	// subscription route shouldn't be equal anymore
 	a.NotEqual(route, sub.route)
+	a.Equal(uint64(4), sub.lastID)
 
 	time.Sleep(10 * time.Millisecond)
 	close(done)

@@ -231,7 +231,7 @@ func (rec *Receiver) fetch() error {
 		}
 	} else {
 		fetch.Direction = 1
-		if maxId, err := rec.messageStore.MaxMessageId(rec.path.Partition()); err != nil {
+		if maxId, err := rec.messageStore.MaxMessageID(rec.path.Partition()); err != nil {
 			return err
 		} else {
 			fetch.StartID = maxId + 1 + uint64(rec.startId)
@@ -247,18 +247,18 @@ func (rec *Receiver) fetch() error {
 		select {
 		case numberOfResults := <-fetch.StartC:
 			rec.sendOK(protocol.SUCCESS_FETCH_START, fmt.Sprintf("%v %v", rec.path, numberOfResults))
-		case msgAndId, open := <-fetch.MessageC:
+		case msgAndID, open := <-fetch.MessageC:
 			if !open {
 				rec.sendOK(protocol.SUCCESS_FETCH_END, string(rec.path))
 				return nil
 			}
 			logger.WithFields(log.Fields{
-				"msgId": msgAndId.ID,
-				"msg":   string(msgAndId.Message),
+				"msgId": msgAndID.ID,
+				"msg":   string(msgAndID.Message),
 			}).Debug("Reply sent")
 
-			rec.lastSendId = msgAndId.ID
-			rec.sendChannel <- msgAndId.Message
+			rec.lastSendId = msgAndID.ID
+			rec.sendChannel <- msgAndID.Message
 		case err := <-fetch.ErrorC:
 			return err
 		case <-rec.cancelChannel:

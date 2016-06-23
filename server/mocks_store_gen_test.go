@@ -57,15 +57,15 @@ func (_mr *_MockMessageStoreRecorder) Fetch(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Fetch", arg0)
 }
 
-func (_m *MockMessageStore) MaxMessageId(_param0 string) (uint64, error) {
-	ret := _m.ctrl.Call(_m, "MaxMessageId", _param0)
+func (_m *MockMessageStore) MaxMessageID(_param0 string) (uint64, error) {
+	ret := _m.ctrl.Call(_m, "MaxMessageID", _param0)
 	ret0, _ := ret[0].(uint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockMessageStoreRecorder) MaxMessageId(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaxMessageId", arg0)
+func (_mr *_MockMessageStoreRecorder) MaxMessageID(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaxMessageID", arg0)
 }
 
 func (_m *MockMessageStore) Store(_param0 string, _param1 uint64, _param2 []byte) error {

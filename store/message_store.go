@@ -28,7 +28,7 @@ func NewFileMessageStore(basedir string) *FileMessageStore {
 	}
 }
 
-func (fms *FileMessageStore) MaxMessageId(partition string) (uint64, error) {
+func (fms *FileMessageStore) MaxMessageID(partition string) (uint64, error) {
 	p, err := fms.partitionStore(partition)
 	if err != nil {
 		return 0, err

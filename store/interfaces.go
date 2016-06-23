@@ -20,7 +20,7 @@ type MessageStore interface {
 	Fetch(FetchRequest)
 
 	// MaxMessageId returns the highest message id for a particular partition
-	MaxMessageId(partition string) (uint64, error)
+	MaxMessageID(partition string) (uint64, error)
 
 	// DoInTx executes the supplied function within the locking context of the message partition.
 	// This ensures, that wile the code is executed, no change to the supplied maxMessageId can occur.

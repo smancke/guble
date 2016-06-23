@@ -133,12 +133,18 @@ func CreateRoundTripperWithJsonResponse(statusCode int, body string, doneC chan 
 func CreateRoundTripperWithCountAndTimeout(statusCode int, body string, countC chan bool, to time.Duration) RoundTripperFunc {
 	log.WithFields(log.Fields{"module": "testing"}).Debug("CreateRoundTripperWithCount")
 	return RoundTripperFunc(func(req *http.Request) *http.Response {
+		defer func() {
+			select {
+			case countC <- true:
+			case <-time.After(10 * time.Millisecond):
+				return
+			}
+		}()
 		log.WithFields(log.Fields{"module": "testing", "url": req.URL.String()}).Debug("RoundTripperWithCountAndTimeout")
 
 		resp := responseBuilder(statusCode, body)
 		resp.Request = req
 		time.Sleep(to)
-		countC <- true
 		return resp
 	})
 }

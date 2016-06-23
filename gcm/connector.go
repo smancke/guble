@@ -26,10 +26,14 @@ const (
 	subscribePrefixPath = "subscribe"
 
 	// default channel buffer size
-	bufferSize = 100
+	bufferSize = 1000
 )
 
-var logger = log.WithField("module", "gcm")
+var logger = log.WithFields(log.Fields{
+	"app":    "guble",
+	"env":    "TBD",
+	"module": "gcm",
+})
 
 // Connector is the structure for handling the communication with Google Cloud Messaging
 type Connector struct {

@@ -243,7 +243,7 @@ func (params *benchParams) createClients() []client.Client {
 }
 
 func (params *benchParams) throughputSend() {
-	// defer testutil.EnableDebugForMethod()()
+	defer testutil.EnableDebugForMethod()()
 	defer testutil.ResetDefaultRegistryHealthCheck()
 	params.setUp()
 

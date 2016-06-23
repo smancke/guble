@@ -327,7 +327,7 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 }
 
 func testGCMResponse(t *testing.T, jsonResponse string) (*Connector, *MockRouter, chan bool) {
-	gcm, routerMock := testSimpleGCM(t)
+	gcm, routerMock, _ := testSimpleGCM(t, false)
 
 	err := gcm.Start()
 	assert.NoError(t, err)
@@ -340,20 +340,19 @@ func testGCMResponse(t *testing.T, jsonResponse string) (*Connector, *MockRouter
 	return gcm, routerMock, done
 }
 
-func testSimpleGCM(t *testing.T) (*Connector, *MockRouter) {
+func testSimpleGCM(t *testing.T, mockStore bool) (*Connector, *MockRouter, *MockMessageStore) {
 	routerMock := NewMockRouter(testutil.MockCtrl)
 	kvStore := store.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
 
-	// TEMP: There will be no broadcast atm
-	// routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
-	// 	a.Equal("/gcm/broadcast", string(route.Path))
-	// 	a.Equal("gcm_connector", route.UserID)
-	// 	a.Equal("gcm_connector", route.ApplicationID)
-	// })
-
 	gcm, err := New(routerMock, "/gcm/", "testApi", 1)
 	assert.NoError(t, err)
 
-	return gcm, routerMock
+	var storeMock *MockMessageStore
+	if mockStore {
+		storeMock = NewMockMessageStore(testutil.MockCtrl)
+		routerMock.EXPECT().MessageStore().Return(storeMock, nil).AnyTimes()
+	}
+
+	return gcm, routerMock, storeMock
 }

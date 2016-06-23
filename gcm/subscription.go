@@ -16,7 +16,7 @@ import (
 
 const (
 	// default subscription channel buffer size
-	subBufferSize = 1000
+	subBufferSize = 50
 )
 
 var (
@@ -96,13 +96,38 @@ func (s *subscription) start() error {
 func (s *subscription) restart() error {
 	s.route = server.NewRoute(string(s.route.Path), s.route.ApplicationID, s.route.UserID, subBufferSize)
 
-	// fetch from last id if applicable
-	if err := s.fetch(); err != nil {
-		return err
+	// fetch until we reach the end
+	for s.shouldFetch() {
+		// fetch from last id if applicable
+		if err := s.fetch(); err != nil {
+			return err
+		}
 	}
 
 	// subscribe to the router and start
 	return s.start()
+}
+
+// returns true if we should continue fetching
+// checks if lastID has not reached maxMessageID from partition
+func (s *subscription) shouldFetch() bool {
+	if s.lastID <= 0 {
+		return false
+	}
+
+	messageStore, err := s.gcm.router.MessageStore()
+	if err != nil {
+		s.logger.WithField("error", err).Error("Error retrieving message store instance from router")
+		return false
+	}
+
+	maxID, err := messageStore.MaxMessageID(s.route.Path.Partition())
+	if err != nil {
+		s.logger.WithField("error", err).Error("Error retrieving max message ID")
+		return false
+	}
+
+	return s.lastID < maxID
 }
 
 // subscriptionLoop that will run in a goroutine and pipe messages from route to gcm
@@ -166,10 +191,10 @@ func (s *subscription) fetch() error {
 		return nil
 	}
 
-	// s.gcm.wg.Add(1)
+	s.gcm.wg.Add(1)
 	defer func() {
 		s.logger.WithField("lastID", s.lastID).Debug("Stop fetching")
-		// s.gcm.wg.Done()
+		s.gcm.wg.Done()
 	}()
 
 	s.logger.Debug("Fetching from store")
@@ -213,7 +238,7 @@ func (s *subscription) fetch() error {
 func (s *subscription) createFetchRequest() store.FetchRequest {
 	return store.FetchRequest{
 		Partition: s.route.Path.Partition(),
-		StartID:   s.lastID,
+		StartID:   s.lastID + 1,
 		Direction: 1,
 		Count:     math.MaxInt32,
 		MessageC:  make(chan store.MessageAndID, 5),
