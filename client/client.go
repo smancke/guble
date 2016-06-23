@@ -1,9 +1,11 @@
 package client
 
 import (
+	"github.com/smancke/guble/protocol"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
-	"github.com/smancke/guble/protocol"
+
 	"net/http"
 	"sync"
 	"time"
@@ -185,11 +187,9 @@ func (c *client) shouldStop() bool {
 }
 
 func (c *client) handleIncomingMessage(msg []byte) {
-	parsed, err := protocol.ParseMessage(msg)
+	parsed, err := protocol.Decode(msg)
 	if err != nil {
-
-		logger.WithField("err", err).Error("Error on parsing of incomming message")
-
+		logger.WithField("err", err).Error("Error on parsing of incoming message")
 		c.errors <- clientErrorMessage(err.Error())
 		return
 	}

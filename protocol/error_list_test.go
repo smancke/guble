@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func Test_util_ErrorList(t *testing.T) {
+func TestErrorList(t *testing.T) {
 	a := assert.New(t)
 
 	l := NewErrorList("bad things happend: ")

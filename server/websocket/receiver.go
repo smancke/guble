@@ -5,9 +5,10 @@ import (
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 
+	log "github.com/Sirupsen/logrus"
+
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"math"
 	"strconv"
 	"strings"
@@ -23,8 +24,8 @@ var errUnreadMsgsAvailable = errors.New("unread messages available")
 // Receiver is a helper class, for managing a combined pull push on a topic.
 // It is used for implementation of the + (receive) command in the guble protocol.
 type Receiver struct {
-	cancelChannel       chan bool
-	sendChannel         chan []byte
+	cancelC             chan bool
+	sendC               chan []byte
 	applicationId       string
 	router              server.Router
 	messageStore        store.MessageStore
@@ -55,10 +56,10 @@ func NewReceiverFromCmd(
 
 	rec = &Receiver{
 		applicationId:       applicationId,
-		sendChannel:         sendChannel,
+		sendC:               sendChannel,
 		router:              router,
 		messageStore:        messageStore,
-		cancelChannel:       make(chan bool, 1),
+		cancelC:             make(chan bool, 1),
 		enableNotifications: true,
 		userId:              userId,
 	}
@@ -122,8 +123,8 @@ func (rec *Receiver) subscriptionLoop() {
 				} else {
 
 					logger.WithFields(log.Fields{
-						"rec": rec.startId,
-						"err": err,
+						"recStartId": rec.startId,
+						"err":        err,
 					}).Error("Error while subscribeIfNoUnreadMessagesAvailable")
 
 					rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
@@ -181,18 +182,18 @@ func (rec *Receiver) receiveFromSubscription() {
 			logger.WithFields(log.Fields{
 				"applicationId":   rec.applicationId,
 				"messageMetadata": msgAndRoute.Message.Metadata(),
-			}).Debug("Deliver message to")
+			}).Debug("Deliver message")
 
 			if msgAndRoute.Message.ID > rec.lastSendId {
 				rec.lastSendId = msgAndRoute.Message.ID
-				rec.sendChannel <- msgAndRoute.Message.Bytes()
+				rec.sendC <- msgAndRoute.Message.Bytes()
 			} else {
 				logger.WithFields(log.Fields{
 					"msgId": msgAndRoute.Message.ID,
-				}).Debug("Message already sent to client Dropping message with id")
+				}).Debug("Message already sent to client dropping message with id")
 
 			}
-		case <-rec.cancelChannel:
+		case <-rec.cancelC:
 			rec.shouldStop = true
 			rec.router.Unsubscribe(rec.route)
 			rec.route = nil
@@ -232,11 +233,11 @@ func (rec *Receiver) fetch() error {
 		}
 	} else {
 		fetch.Direction = 1
-		if maxId, err := rec.messageStore.MaxMessageId(rec.path.Partition()); err != nil {
+		maxId, err := rec.messageStore.MaxMessageId(rec.path.Partition())
+		if err != nil {
 			return err
-		} else {
-			fetch.StartId = maxId + 1 + uint64(rec.startId)
 		}
+		fetch.StartId = maxId + 1 + uint64(rec.startId)
 		if rec.maxCount == 0 {
 			fetch.Count = -1 * int(rec.startId)
 		}
@@ -260,10 +261,10 @@ func (rec *Receiver) fetch() error {
 			}).Debug("Reply sen to")
 
 			rec.lastSendId = msgAndId.Id
-			rec.sendChannel <- msgAndId.Message
+			rec.sendC <- msgAndId.Message
 		case err := <-fetch.ErrorCallback:
 			return err
-		case <-rec.cancelChannel:
+		case <-rec.cancelC:
 			rec.shouldStop = true
 			rec.sendOK(protocol.SUCCESS_CANCELED, string(rec.path))
 			// TODO implement cancellation in message store
@@ -274,26 +275,26 @@ func (rec *Receiver) fetch() error {
 
 // Stop stops/cancels the receiver
 func (rec *Receiver) Stop() error {
-	rec.cancelChannel <- true
+	rec.cancelC <- true
 	return nil
 }
 
 func (rec *Receiver) sendError(name string, argPattern string, params ...interface{}) {
-	n := &protocol.NotificationMessage{
+	notificationMessage := &protocol.NotificationMessage{
 		Name:    name,
 		Arg:     fmt.Sprintf(argPattern, params...),
 		IsError: true,
 	}
-	rec.sendChannel <- n.Bytes()
+	rec.sendC <- notificationMessage.Bytes()
 }
 
 func (rec *Receiver) sendOK(name string, argPattern string, params ...interface{}) {
 	if rec.enableNotifications {
-		n := &protocol.NotificationMessage{
+		notificationMessage := &protocol.NotificationMessage{
 			Name:    name,
 			Arg:     fmt.Sprintf(argPattern, params...),
 			IsError: false,
 		}
-		rec.sendChannel <- n.Bytes()
+		rec.sendC <- notificationMessage.Bytes()
 	}
 }

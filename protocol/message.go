@@ -23,17 +23,19 @@ type Message struct {
 	// The id of the sending application
 	ApplicationID string
 
-	// An id given by the sender (optional)
-	MessageID string
+	// An optional ID given by the sender
+	OptionalID string
 
 	// The time of publishing, as Unix Timestamp date
 	Time int64
 
-	// The header line of the message (optional). If set, than this has to be a valid json object structure.
+	// The header line of the message (optional). If set, then it has to be a valid JSON object structure.
 	HeaderJSON string
 
 	// The message payload
 	Body []byte
+
+	NodeID int
 }
 
 // Metadata returns the first line of a serialized message, without the newline
@@ -82,9 +84,11 @@ func (msg *Message) writeMetadata(buff *bytes.Buffer) {
 	buff.WriteString(",")
 	buff.WriteString(msg.ApplicationID)
 	buff.WriteString(",")
-	buff.WriteString(msg.MessageID)
+	buff.WriteString(msg.OptionalID)
 	buff.WriteString(",")
 	buff.WriteString(strconv.FormatInt(msg.Time, 10))
+	buff.WriteString(",")
+	buff.WriteString(strconv.Itoa(msg.NodeID))
 }
 
 // Valid constants for the NotificationMessage.Name
@@ -139,27 +143,16 @@ func (msg *NotificationMessage) Bytes() []byte {
 	return buff.Bytes()
 }
 
-// Path is the path of a topic
-type Path string
-
-func (path Path) Partition() string {
-	if len(path) > 0 && path[0] == '/' {
-		path = path[1:]
-	}
-	return strings.SplitN(string(path), "/", 2)[0]
-}
-
 // ParseMessage parses a message, sent from the server to the client.
 // The parsed messages can have one of the types: *Message or *NotificationMessage
-func ParseMessage(message []byte) (interface{}, error) {
+func Decode(message []byte) (interface{}, error) {
 	if len(message) >= 1 && (message[0] == '#' || message[0] == '!') {
 		return parseNotificationMessage(message)
 	}
-	return parseMessage(message)
-
+	return ParseMessage(message)
 }
 
-func parseMessage(message []byte) (interface{}, error) {
+func ParseMessage(message []byte) (*Message, error) {
 	parts := strings.SplitN(string(message), "\n", 3)
 	if len(message) == 0 {
 		return nil, fmt.Errorf("empty message")
@@ -167,8 +160,8 @@ func parseMessage(message []byte) (interface{}, error) {
 
 	meta := strings.Split(parts[0], ",")
 	fmt.Println(meta)
-	if len(meta) != 6 {
-		return nil, fmt.Errorf("message metadata has to have 6 fields, but was %v", parts[0])
+	if len(meta) != 7 {
+		return nil, fmt.Errorf("message metadata has to have 7 fields, but was %v", parts[0])
 	}
 
 	if len(meta[0]) == 0 || meta[0][0] != '/' {
@@ -177,12 +170,17 @@ func parseMessage(message []byte) (interface{}, error) {
 
 	id, err := strconv.ParseUint(meta[1], 10, 0)
 	if err != nil {
-		return nil, fmt.Errorf("message metadata to have an integer id as second field, but was %v", meta[1])
+		return nil, fmt.Errorf("message metadata to have an integer (message-id) as second field, but was %v", meta[1])
 	}
 
 	publishingTime, err := strconv.ParseInt(meta[5], 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("message metadata to have an integer id as sixth field, but was %v", meta[5])
+		return nil, fmt.Errorf("message metadata to have an integer (publishing time) as sixth field, but was %v", meta[5])
+	}
+
+	nodeID, err := strconv.Atoi(meta[6])
+	if err != nil {
+		return nil, fmt.Errorf("message metadata to have an integer (nodeID) as seventh field, but was %v", meta[6])
 	}
 
 	msg := &Message{
@@ -190,8 +188,9 @@ func parseMessage(message []byte) (interface{}, error) {
 		Path:          Path(meta[0]),
 		UserID:        meta[2],
 		ApplicationID: meta[3],
-		MessageID:     meta[4],
+		OptionalID:    meta[4],
 		Time:          publishingTime,
+		NodeID:        nodeID,
 	}
 
 	if len(parts) >= 2 {
@@ -205,8 +204,7 @@ func parseMessage(message []byte) (interface{}, error) {
 	return msg, nil
 }
 
-func parseNotificationMessage(message []byte) (interface{}, error) {
-
+func parseNotificationMessage(message []byte) (*NotificationMessage, error) {
 	msg := &NotificationMessage{}
 
 	if len(message) < 2 || (message[0] != '#' && message[0] != '!') {

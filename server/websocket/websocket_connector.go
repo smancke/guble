@@ -1,15 +1,16 @@
 package websocket
 
 import (
+	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/auth"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
 	"github.com/rs/xid"
 
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/server/auth"
 	"net/http"
 	"strings"
 	"time"
@@ -257,14 +258,15 @@ func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
 		UserID:        ws.userID,
 		HeaderJSON:    cmd.HeaderJSON,
 		Body:          cmd.Body,
+		NodeID:        *config.Cluster.NodeID,
 	}
 	if len(args) == 2 {
-		msg.MessageID = args[1]
+		msg.OptionalID = args[1]
 	}
 
 	ws.Router.HandleMessage(msg)
 
-	ws.sendOK(protocol.SUCCESS_SEND, msg.MessageID)
+	ws.sendOK(protocol.SUCCESS_SEND, msg.OptionalID)
 }
 
 func (ws *WebSocket) cleanAndClose() {

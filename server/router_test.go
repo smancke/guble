@@ -61,7 +61,7 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 
 	am.EXPECT().IsAllowed(auth.READ, "user01", protocol.Path("/blah")).Return(false)
 
-	router := NewRouter(am, msMock, kvsMock).(*router)
+	router := NewRouter(am, msMock, kvsMock, nil).(*router)
 	router.Start()
 
 	channel := make(chan *MessageForRoute, chanSize)
@@ -270,7 +270,7 @@ func TestRouter_storeInTxAndHandle(t *testing.T) {
 
 	am := auth.NewAllowAllAccessManager(true)
 	msMock := NewMockMessageStore(ctrl)
-	router := NewRouter(am, msMock, nil).(*router)
+	router := NewRouter(am, msMock, nil, nil).(*router)
 
 	msMock.EXPECT().StoreTx("topic1", gomock.Any()).
 		Do(func(topic string, callback func(msgId uint64) []byte) {
@@ -428,7 +428,7 @@ func TestRouter_Check(t *testing.T) {
 
 func TestPanicOnInternalDependencies(t *testing.T) {
 	defer testutil.ExpectPanic(t)
-	router := NewRouter(nil, nil, nil).(*router)
+	router := NewRouter(nil, nil, nil, nil).(*router)
 	router.panicIfInternalDependenciesAreNil()
 }
 
@@ -436,7 +436,7 @@ func aStartedRouter() (*router, auth.AccessManager, store.MessageStore, store.KV
 	am := auth.NewAllowAllAccessManager(true)
 	kvs := store.NewMemoryKVStore()
 	ms := store.NewDummyMessageStore(kvs)
-	router := NewRouter(am, ms, kvs).(*router)
+	router := NewRouter(am, ms, kvs, nil).(*router)
 	router.Start()
 	return router, am, ms, kvs
 }

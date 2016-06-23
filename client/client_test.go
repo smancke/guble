@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var aNormalMessage = `/foo/bar,42,user01,phone01,id123,1420110000
+var aNormalMessage = `/foo/bar,42,user01,phone01,id123,1420110000,0
 
 Hello World`
 

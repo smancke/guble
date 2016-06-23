@@ -20,14 +20,12 @@ var (
 	Exit     = kingpin.Flag("exit", "Exit after sending the commands").Short('x').Bool()
 	Commands = kingpin.Arg("commands", "The commands to send after startup").Strings()
 	Verbose  = kingpin.Flag("verbose", "Display verbose server communication").Short('v').Bool()
-	URL      = kingpin.Flag("url", "The websocket url to connect (ws://localhost:8080/stream/)").
-			Default("ws://localhost:8080/stream/").
-			String()
-	User = kingpin.Flag("user", "The user name to connect with (guble-cli)").Default("guble-cli").String()
-	Log  = kingpin.Flag("log", "Log level").
-		Default(log.ErrorLevel.String()).
-		Envar("GUBLE_LOG").
-		Enum(logLevels()...)
+	URL      = kingpin.Flag("url", "The websocket url to connect to").Default("ws://localhost:8080/stream/").String()
+	User     = kingpin.Flag("user", "The user name to connect with (guble-cli)").Default("guble-cli").String()
+	Log      = kingpin.Flag("log", "Log level").
+			Default(log.ErrorLevel.String()).
+			Envar("GUBLE_LOG").
+			Enum(logLevels()...)
 
 	logger = log.WithField("app", "guble-cli")
 )
