@@ -1,11 +1,14 @@
 package server
 
 import (
-	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/server/cluster"
 	"github.com/smancke/guble/store"
+
+	log "github.com/Sirupsen/logrus"
+
+	"fmt"
 	"runtime"
 	"strings"
 	"sync"
@@ -19,15 +22,12 @@ const (
 	unsubscribeChannelCapacity   = 10
 )
 
-var logger = log.WithFields(log.Fields{
-	"module": "router",
-})
-
-// Router interface provides mechanism for PubSub messaging
+// Router interface provides a mechanism for PubSub messaging
 type Router interface {
-	KVStore() (store.KVStore, error)
 	AccessManager() (auth.AccessManager, error)
 	MessageStore() (store.MessageStore, error)
+	KVStore() (store.KVStore, error)
+	Cluster() *cluster.Cluster
 
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
@@ -36,8 +36,8 @@ type Router interface {
 
 // Helper struct to pass `Route` to subscription channel and provide a notification channel.
 type subRequest struct {
-	route      *Route
-	doneNotify chan bool
+	route *Route
+	doneC chan bool
 }
 
 type router struct {
@@ -52,10 +52,11 @@ type router struct {
 	accessManager auth.AccessManager
 	messageStore  store.MessageStore
 	kvStore       store.KVStore
+	cluster       *cluster.Cluster
 }
 
 // NewRouter returns a pointer to Router
-func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore) Router {
+func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore, cluster *cluster.Cluster) Router {
 	return &router{
 		routes: make(map[protocol.Path][]*Route),
 
@@ -67,12 +68,15 @@ func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore
 		accessManager: accessManager,
 		messageStore:  messageStore,
 		kvStore:       kvStore,
+		cluster:       cluster,
 	}
 }
 
 func (router *router) Start() error {
 	router.panicIfInternalDependenciesAreNil()
 	resetRouterMetrics()
+	logger.Info("Starting router")
+
 	go func() {
 		router.wg.Add(1)
 		for {
@@ -91,10 +95,10 @@ func (router *router) Start() error {
 					runtime.Gosched()
 				case subscriber := <-router.subscribeC:
 					router.subscribe(subscriber.route)
-					subscriber.doneNotify <- true
+					subscriber.doneC <- true
 				case unsubscriber := <-router.unsubscribeC:
 					router.unsubscribe(unsubscriber.route)
-					unsubscriber.doneNotify <- true
+					unsubscriber.doneC <- true
 				case <-router.stopC:
 					router.stopping = true
 				}
@@ -107,7 +111,7 @@ func (router *router) Start() error {
 
 // Stop stops the router by closing the stop channel, and waiting on the WaitGroup
 func (router *router) Stop() error {
-	logger.Debug("Stopping router")
+	logger.Info("Stopping router")
 
 	router.stopC <- true
 	router.wg.Wait()
@@ -118,10 +122,9 @@ func (router *router) Check() error {
 	if router.accessManager == nil || router.messageStore == nil || router.kvStore == nil {
 		logger.WithFields(log.Fields{
 			"err": ErrServiceNotProvided,
-		}).Error("Some services are not provided")
+		}).Error("Some mandatory services are not provided")
 		return ErrServiceNotProvided
 	}
-
 	err := router.messageStore.Check()
 	if err != nil {
 		logger.WithFields(log.Fields{
@@ -129,19 +132,19 @@ func (router *router) Check() error {
 		}).Error("MessageStore check failed")
 		return err
 	}
-
 	err = router.kvStore.Check()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"module": "router",
 			"err":    err,
-		}).Error("KvStore check failed")
+		}).Error("KVStore check failed")
 		return err
 	}
-
 	return nil
 }
 
+// HandleMessage stores the message in the MessageStore(and gets a new ID for it iff the message was created locally)
+// and then passes it to: the internal channel, and asynchronously to the cluster (if available).
 func (router *router) HandleMessage(message *protocol.Message) error {
 	logger.WithFields(log.Fields{
 		"userID": message.UserID,
@@ -160,13 +163,50 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
 	}
 
-	return router.storeAndChannelMessage(message)
+	lenMessage := int64(len(message.Bytes()))
+	mTotalMessagesIncomingBytes.Add(lenMessage)
+
+	msgPathPartition := message.Path.Partition()
+	if router.cluster == nil || (router.cluster != nil && message.NodeID == router.cluster.Config.ID) {
+		// for a new locally-generated message, we need to generate a new message-ID
+		txCallback := func(msgId uint64) []byte {
+			message.ID = msgId
+			message.Time = time.Now().Unix()
+			return message.Bytes()
+		}
+		if err := router.messageStore.StoreTx(msgPathPartition, txCallback); err != nil {
+			logger.WithFields(log.Fields{
+				"err":          err,
+				"msgPartition": msgPathPartition,
+			}).Error("Error storing new local message in partition")
+			mTotalMessageStoreErrors.Add(1)
+			return err
+		}
+	} else {
+		if err := router.messageStore.Store(msgPathPartition, message.ID, message.Bytes()); err != nil {
+			logger.WithFields(log.Fields{
+				"err":          err,
+				"msgPartition": msgPathPartition,
+			}).Error("Error storing message from cluster in partition")
+			mTotalMessageStoreErrors.Add(1)
+			return err
+		}
+	}
+	mTotalMessagesStoredBytes.Add(lenMessage)
+
+	router.handleOverloadedChannel()
+
+	router.handleC <- message
+
+	if router.cluster != nil && message.NodeID == router.cluster.Config.ID {
+		go router.cluster.BroadcastMessage(message)
+	}
+
+	return nil
 }
 
-// Subscribe adds a route to the subscribers.
-// If there is already a route with same Application Id and Path, it will be replaced.
+// Subscribe adds a route to the subscribers. If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Subscribe(r *Route) (*Route, error) {
-
 	logger.WithFields(log.Fields{
 		"accessManager": router.accessManager,
 		"userID":        r.UserID,
@@ -182,11 +222,11 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 		return r, &PermissionDeniedError{UserID: r.UserID, AccessType: auth.READ, Path: r.Path}
 	}
 	req := subRequest{
-		route:      r,
-		doneNotify: make(chan bool),
+		route: r,
+		doneC: make(chan bool),
 	}
 	router.subscribeC <- req
-	<-req.doneNotify
+	<-req.doneC
 	return r, nil
 }
 
@@ -198,18 +238,18 @@ func (router *router) Unsubscribe(r *Route) {
 	}).Debug("Unsubscribe")
 
 	req := subRequest{
-		route:      r,
-		doneNotify: make(chan bool),
+		route: r,
+		doneC: make(chan bool),
 	}
 	router.unsubscribeC <- req
-	<-req.doneNotify
+	<-req.doneC
 }
 
 func (router *router) subscribe(r *Route) {
 	logger.WithFields(log.Fields{
 		"userID": r.UserID,
 		"path":   r.Path,
-	}).Debug("Intenal subscribe for")
+	}).Debug("Internal subscribe")
 	mTotalSubscriptionAttempts.Add(1)
 
 	slice, present := router.routes[r.Path]
@@ -233,11 +273,10 @@ func (router *router) subscribe(r *Route) {
 }
 
 func (router *router) unsubscribe(r *Route) {
-
 	logger.WithFields(log.Fields{
 		"userID": r.UserID,
 		"path":   r.Path,
-	}).Debug("Intenal unsubscribe for :")
+	}).Debug("Internal unsubscribe")
 	mTotalUnsubscriptionAttempts.Add(1)
 
 	slice, present := router.routes[r.Path]
@@ -277,40 +316,6 @@ func (router *router) isStopping() error {
 	return nil
 }
 
-// Assign the new message id, store message and handle it by passing the stored message
-// to the messageIn channel
-func (router *router) storeAndChannelMessage(msg *protocol.Message) error {
-	txCallback := func(msgId uint64) []byte {
-		msg.ID = msgId
-		msg.Time = time.Now().Unix()
-		return msg.Bytes()
-	}
-	lenMsg := int64(len(msg.Bytes()))
-	mTotalMessagesIncomingBytes.Add(lenMsg)
-
-	if err := router.messageStore.StoreTx(msg.Path.Partition(), txCallback); err != nil {
-		logger.WithFields(log.Fields{
-			"err":          err,
-			"msgPartition": msg.Path.Partition(),
-		}).Error("Error storing message in partition")
-		mTotalMessageStoreErrors.Add(1)
-		return err
-	} else {
-		mTotalMessagesStoredBytes.Add(lenMsg)
-	}
-
-	if float32(len(router.handleC))/float32(cap(router.handleC)) > overloadedHandleChannelRatio {
-		logger.WithFields(log.Fields{
-			"currentLength": len(router.handleC),
-			"maxCapacity":   cap(router.handleC),
-		}).Warn("Warning handleC channel almost full")
-		mTotalOverloadedHandleChannel.Add(1)
-	}
-
-	router.handleC <- msg
-	return nil
-}
-
 func (router *router) routeMessage(message *protocol.Message) {
 	logger.WithFields(log.Fields{
 		"msgMetadata": message.Metadata(),
@@ -343,16 +348,20 @@ func (router *router) closeRoutes() {
 			log.WithFields(log.Fields{
 				"module": "router",
 				"route":  route.String(),
-			}).Debug("Closing route for ")
+			}).Debug("Closing route")
 			route.Close()
 		}
 	}
 }
 
-func copyOf(message []byte) []byte {
-	messageCopy := make([]byte, len(message))
-	copy(messageCopy, message)
-	return messageCopy
+func (router *router) handleOverloadedChannel() {
+	if float32(len(router.handleC))/float32(cap(router.handleC)) > overloadedHandleChannelRatio {
+		logger.WithFields(log.Fields{
+			"currentLength": len(router.handleC),
+			"maxCapacity":   cap(router.handleC),
+		}).Warn("handleC channel is almost full")
+		mTotalOverloadedHandleChannel.Add(1)
+	}
 }
 
 // matchesTopic checks whether the supplied routePath matches the message topic
@@ -364,7 +373,7 @@ func matchesTopic(messagePath, routePath protocol.Path) bool {
 			(messagePathLen > routePathLen && string(messagePath)[routePathLen] == '/'))
 }
 
-// remove removes a route from the supplied list, based on same ApplicationID id and same path (if existing)
+// removeIfMatching removes a route from the supplied list, based on same ApplicationID id and same path (if existing)
 // returns: the (possibly updated) slide, and a boolean value (true if route was removed, false otherwise)
 func removeIfMatching(slice []*Route, route *Route) ([]*Route, bool) {
 	position := -1
@@ -401,4 +410,9 @@ func (router *router) KVStore() (store.KVStore, error) {
 		return nil, ErrServiceNotProvided
 	}
 	return router.kvStore, nil
+}
+
+// Cluster returns the `cluster` provided for the router, or nil if no cluster was set-up
+func (router *router) Cluster() *cluster.Cluster {
+	return router.cluster
 }

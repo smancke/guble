@@ -19,7 +19,9 @@ const (
 )
 
 var loggerService = log.WithFields(log.Fields{
+	"app":    "guble",
 	"module": "service",
+	"env":    "TBD",
 })
 
 // Startable interface for modules which provide a start mechanism
@@ -49,34 +51,44 @@ type Service struct {
 	metricsEndpoint string
 }
 
-// NewService registers the Main Router, where other modules can subscribe for messages
+// NewService creates a new Service, using the given Router and WebServer.
+// If the router has already a configured Cluster, it is registered as a service module.
+// The Router and Webserver are then registered as modules.
 func NewService(router Router, webserver *webserver.WebServer) *Service {
-	service := &Service{
+	s := &Service{
 		webserver:       webserver,
 		router:          router,
 		healthFrequency: defaultHealthFrequency,
 		healthThreshold: defaultHealthThreshold,
 	}
-	service.RegisterModules(service.router, service.webserver)
-	return service
+	cluster := router.Cluster()
+	if cluster != nil {
+		s.RegisterModules(cluster)
+		router.Cluster().MessageHandler = router
+	}
+	s.RegisterModules(s.router, s.webserver)
+	return s
 }
 
+// RegisterModules adds more modules (which can be Startable, Stopable, Endpoint etc.) to the service.
 func (s *Service) RegisterModules(modules ...interface{}) {
 	loggerService.WithFields(log.Fields{
-		"numberOfNewModules":       len(s.modules),
-		"numberOfExsistingModules": len(modules),
-	}).Debug(" RegisterModules: adding")
+		"numberOfNewModules":      len(modules),
+		"numberOfExistingModules": len(s.modules),
+	}).Info("RegisterModules: adding")
 
 	s.modules = append(s.modules, modules...)
 }
 
-func (s *Service) HealthEndpointPrefix(value string) *Service {
-	s.healthEndpoint = value
+// HealthEndpoint sets the endpoint used for health. Parameter for disabling the endpoint is: "". Returns the updated service.
+func (s *Service) HealthEndpoint(endpointPrefix string) *Service {
+	s.healthEndpoint = endpointPrefix
 	return s
 }
 
-func (s *Service) MetricsEndpointPrefix(value string) *Service {
-	s.metricsEndpoint = value
+// MetricsEndpoint sets the endpoint used for metrics. Parameter for disabling the endpoint is: "". Returns the updated service.
+func (s *Service) MetricsEndpoint(endpointPrefix string) *Service {
+	s.metricsEndpoint = endpointPrefix
 	return s
 }
 
@@ -88,17 +100,17 @@ func (s *Service) Start() error {
 	el := protocol.NewErrorList("service: errors occured while starting: ")
 
 	if s.healthEndpoint != "" {
-		logger.WithField("healthEndpoint", s.healthEndpoint).Info("Health endpoint")
+		loggerService.WithField("healthEndpoint", s.healthEndpoint).Info("Health endpoint")
 		s.webserver.Handle(s.healthEndpoint, http.HandlerFunc(health.StatusHandler))
 	} else {
-		logger.Debug("Health endpoint disabled")
+		loggerService.Info("Health endpoint disabled")
 	}
 
 	if s.metricsEndpoint != "" {
-		logger.WithField("metricsEndpoint", s.metricsEndpoint).Info("Metrics Endpoint")
+		loggerService.WithField("metricsEndpoint", s.metricsEndpoint).Info("Metrics endpoint")
 		s.webserver.Handle(s.metricsEndpoint, http.HandlerFunc(metrics.HttpHandler))
 	} else {
-		logger.Debug("Metrics endpoint disabled")
+		loggerService.Info("Metrics endpoint disabled")
 	}
 
 	for _, module := range s.modules {
@@ -109,18 +121,15 @@ func (s *Service) Start() error {
 			}).Info("Starting module")
 
 			if err := startable.Start(); err != nil {
-
 				loggerService.WithFields(log.Fields{
 					"name": name,
 					"err":  err,
 				}).Error("Error while starting module")
-
 				el.Add(err)
 			}
 		}
 		if checker, ok := module.(health.Checker); ok && s.healthEndpoint != "" {
-
-			logger.WithField("name", name).Info("Registering module as HealthChecker")
+			loggerService.WithField("name", name).Info("Registering module as Health-Checker")
 			health.RegisterPeriodicThresholdFunc(name, s.healthFrequency, s.healthThreshold, health.CheckFunc(checker.Check))
 		}
 		if endpoint, ok := module.(Endpoint); ok {
@@ -128,7 +137,7 @@ func (s *Service) Start() error {
 			loggerService.WithFields(log.Fields{
 				"name":   name,
 				"prefix": prefix,
-			}).Info("Resgistering Endpoint  module with name")
+			}).Info("Registering module as Endpoint")
 			s.webserver.Handle(prefix, endpoint)
 		}
 	}
@@ -146,23 +155,29 @@ func (s *Service) Stop() error {
 	}
 
 	stopOrder := make([]int, len(stopables))
-	for i := 1; i < len(stopables); i++ {
-		stopOrder[i] = len(stopables) - i
+
+	if s.router.Cluster() == nil {
+		for i := 1; i < len(stopables); i++ {
+			stopOrder[i] = len(stopables) - i
+		}
+	} else {
+		stopOrder[0] = 1
+		for i := 1; i < len(stopables)-1; i++ {
+			stopOrder[i] = len(stopables) - i
+		}
+		stopOrder[len(stopables)-1] = 0
 	}
-	loggerService.WithFields(log.Fields{
-		"numberOfNewModules":       len(stopOrder),
-		"numberOfExsistingModules": stopOrder,
-	}).Debug("Stopping modules in this order relative to registration")
+
+	loggerService.WithField("stopOrder", stopOrder).Debug("Stopping modules in this order relative to registration")
 
 	errors := protocol.NewErrorList("stopping errors: ")
 	for _, order := range stopOrder {
 		module := stopables[order]
 		name := reflect.TypeOf(module).String()
-
 		loggerService.WithFields(log.Fields{
 			"name":  name,
 			"order": order,
-		}).Info("Stopping module with name")
+		}).Info("Stopping module")
 		if err := module.Stop(); err != nil {
 			errors.Add(err)
 		}

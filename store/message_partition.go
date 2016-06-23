@@ -11,13 +11,16 @@ import (
 	"sync"
 )
 
-var MAGIC_NUMBER = []byte{42, 249, 180, 108, 82, 75, 222, 182}
+var (
+	MAGIC_NUMBER        = []byte{42, 249, 180, 108, 82, 75, 222, 182}
+	FILE_FORMAT_VERSION = []byte{1}
+	MESSAGES_PER_FILE   = uint64(10000)
+	INDEX_ENTRY_SIZE    = 12
+)
 
-var FILE_FORMAT_VERSION = []byte{1}
-
-var MESSAGES_PER_FILE = uint64(10000)
-
-var INDEX_ENTRY_SIZE = 12
+const (
+	defaultInitialCapacity = 128
+)
 
 type fetchEntry struct {
 	messageId uint64
@@ -30,7 +33,7 @@ type MessagePartition struct {
 	basedir                 string
 	name                    string
 	appendFile              *os.File
-	appendIndexFile         *os.File
+	indexFile               *os.File
 	appendFirstId           uint64
 	appendLastId            uint64
 	appendFileWritePosition uint64
@@ -53,6 +56,7 @@ func (p *MessagePartition) initialize() error {
 
 	fileList, err := p.scanFiles()
 	if err != nil {
+		messageStoreLogger.WithField("err", err).Error("MessagePartition error on scanFiles")
 		return err
 	}
 	if len(fileList) == 0 {
@@ -61,13 +65,14 @@ func (p *MessagePartition) initialize() error {
 		var err error
 		p.maxMessageId, err = p.calculateMaxMessageIdFromIndex(fileList[len(fileList)-1])
 		if err != nil {
+			messageStoreLogger.WithField("err", err).Error("MessagePartition error on calculateMaxMessageIdFromIndex")
 			return err
 		}
 	}
 	return nil
 }
 
-// returns the max message id for a message file
+// calculateMaxMessageIdFromIndex returns the max message id for a message file
 func (p *MessagePartition) calculateMaxMessageIdFromIndex(fileId uint64) (uint64, error) {
 	stat, err := os.Stat(p.indexFilenameByMessageId(fileId))
 	if err != nil {
@@ -75,7 +80,7 @@ func (p *MessagePartition) calculateMaxMessageIdFromIndex(fileId uint64) (uint64
 	}
 	entriesInIndex := uint64(stat.Size() / int64(INDEX_ENTRY_SIZE))
 
-	return (entriesInIndex - 1 + fileId), nil
+	return entriesInIndex - 1 + fileId, nil
 }
 
 // Returns the start messages ids for all available message files
@@ -108,58 +113,57 @@ func (p *MessagePartition) MaxMessageId() (uint64, error) {
 func (p *MessagePartition) closeAppendFiles() error {
 	if p.appendFile != nil {
 		if err := p.appendFile.Close(); err != nil {
-			if p.appendIndexFile != nil {
-				defer p.appendIndexFile.Close()
+			if p.indexFile != nil {
+				defer p.indexFile.Close()
 			}
 			return err
 		}
 		p.appendFile = nil
 	}
 
-	if p.appendIndexFile != nil {
-		err := p.appendIndexFile.Close()
-		p.appendIndexFile = nil
+	if p.indexFile != nil {
+		err := p.indexFile.Close()
+		p.indexFile = nil
 		return err
 	}
 	return nil
 }
 
 func (p *MessagePartition) createNextAppendFiles(msgId uint64) error {
-
 	firstMessageIdForFile := p.firstMessageIdForFile(msgId)
 
-	file, err := os.OpenFile(p.filenameByMessageId(firstMessageIdForFile), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	appendfile, err := os.OpenFile(p.filenameByMessageId(firstMessageIdForFile), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return err
 	}
 
 	// write file header on new files
-	if stat, _ := file.Stat(); stat.Size() == 0 {
+	if stat, _ := appendfile.Stat(); stat.Size() == 0 {
 		p.appendFileWritePosition = uint64(stat.Size())
 
-		_, err = file.Write(MAGIC_NUMBER)
+		_, err = appendfile.Write(MAGIC_NUMBER)
 		if err != nil {
 			return err
 		}
 
-		_, err = file.Write(FILE_FORMAT_VERSION)
+		_, err = appendfile.Write(FILE_FORMAT_VERSION)
 		if err != nil {
 			return err
 		}
 	}
 
-	index, errIndex := os.OpenFile(p.indexFilenameByMessageId(firstMessageIdForFile), os.O_RDWR|os.O_CREATE, 0666)
+	indexfile, errIndex := os.OpenFile(p.indexFilenameByMessageId(firstMessageIdForFile), os.O_RDWR|os.O_CREATE, 0666)
 	if errIndex != nil {
-		defer file.Close()
-		defer os.Remove(file.Name())
+		defer appendfile.Close()
+		defer os.Remove(appendfile.Name())
 		return err
 	}
 
-	p.appendFile = file
-	p.appendIndexFile = index
+	p.appendFile = appendfile
+	p.indexFile = indexfile
 	p.appendFirstId = firstMessageIdForFile
 	p.appendLastId = firstMessageIdForFile + MESSAGES_PER_FILE - 1
-	stat, err := file.Stat()
+	stat, err := appendfile.Stat()
 	if err != nil {
 		return err
 	}
@@ -199,13 +203,13 @@ func (p *MessagePartition) Store(msgId uint64, msg []byte) error {
 }
 
 func (p *MessagePartition) store(msgId uint64, msg []byte) error {
-
 	if msgId != 1+p.maxMessageId {
-		return fmt.Errorf("MessagePartition: Invalid message id for partition %v. Next id should be %v, but was %q", p.name, 1+p.maxMessageId, msgId)
+		return fmt.Errorf("MessagePartition: Invalid message id for partition %v. Next id should be %v, but was %q",
+			p.name, 1+p.maxMessageId, msgId)
 	}
 	if msgId > p.appendLastId ||
 		p.appendFile == nil ||
-		p.appendIndexFile == nil {
+		p.indexFile == nil {
 
 		if err := p.closeAppendFiles(); err != nil {
 			return err
@@ -215,7 +219,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 		}
 	}
 
-	// write the message size and the message id 32bit and 64 bit
+	// write the message size and the message id: 32 bit and 64 bit, so 12 bytes
 	sizeAndId := make([]byte, 12)
 	binary.LittleEndian.PutUint32(sizeAndId, uint32(len(msg)))
 	binary.LittleEndian.PutUint64(sizeAndId[4:], msgId)
@@ -235,7 +239,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 	binary.LittleEndian.PutUint64(messageOffsetBuff, messageOffset)
 	binary.LittleEndian.PutUint32(messageOffsetBuff[8:], uint32(len(msg)))
 
-	if _, err := p.appendIndexFile.WriteAt(messageOffsetBuff, indexPosition); err != nil {
+	if _, err := p.indexFile.WriteAt(messageOffsetBuff, indexPosition); err != nil {
 		return err
 	}
 
@@ -278,7 +282,7 @@ func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC cha
 		}
 		lastMsgId = f.messageId
 
-		// ensure, that we read on the correct file
+		// ensure, that we read from the correct file
 		if file == nil || fileId != f.fileId {
 			file, err = p.checkoutMessagefile(f.fileId)
 			if err != nil {
@@ -298,15 +302,15 @@ func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC cha
 	return nil
 }
 
-// calculateFetchList returns a list of fetchEntry records for all message in the fetch request.
+// calculateFetchList returns a list of fetchEntry records for all messages in the fetch request.
 func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, error) {
 	if req.Direction == 0 {
 		req.Direction = 1
 	}
 	nextId := req.StartId
 	initialCap := req.Count
-	if initialCap > 100 {
-		initialCap = 100
+	if initialCap > defaultInitialCapacity {
+		initialCap = defaultInitialCapacity
 	}
 	result := make([]fetchEntry, 0, initialCap)
 	var file *os.File
@@ -314,7 +318,7 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 	for len(result) < req.Count && nextId >= 0 {
 		nextFileId := p.firstMessageIdForFile(nextId)
 
-		// ensure, that we read on the correct file
+		// ensure, that we read from the correct file
 		if file == nil || nextFileId != fileId {
 			var err error
 			file, err = p.checkoutIndexfile(nextFileId)
@@ -352,13 +356,13 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 	return result, nil
 }
 
-func readIndexEntry(file *os.File, indexPosition int64) (msgOffset uint64, msgSize uint32, err error) {
+func readIndexEntry(file *os.File, indexPosition int64) (uint64, uint32, error) {
 	msgOffsetBuff := make([]byte, INDEX_ENTRY_SIZE)
 	if _, err := file.ReadAt(msgOffsetBuff, indexPosition); err != nil {
 		return 0, 0, err
 	}
-	msgOffset = binary.LittleEndian.Uint64(msgOffsetBuff)
-	msgSize = binary.LittleEndian.Uint32(msgOffsetBuff[8:])
+	msgOffset := binary.LittleEndian.Uint64(msgOffsetBuff)
+	msgSize := binary.LittleEndian.Uint32(msgOffsetBuff[8:])
 	return msgOffset, msgSize, nil
 }
 

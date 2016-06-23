@@ -97,7 +97,7 @@ const (
 }`
 )
 
-// mock a https round tripper in order to not send the test request to GCM.
+// RoundTripperFunc mocks a https round tripper in order to not send the test request to GCM.
 type RoundTripperFunc func(req *http.Request) *http.Response
 
 func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {

@@ -8,11 +8,11 @@ import (
 	"time"
 )
 
-var aNormalMessage = `/foo/bar,42,user01,phone01,id123,1420110000
+var aNormalMessage = `/foo/bar,42,user01,phone01,id123,1420110000,1
 {"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}
 Hello World`
 
-var aMinimalMessage = "/,42,,,,1420110000"
+var aMinimalMessage = "/,42,,,,1420110000,0"
 
 var aConnectedNotification = `#connected You are connected to the server.
 {"ApplicationId": "phone1", "UserId": "user01", "Time": "1420110000"}`
@@ -23,7 +23,7 @@ var unixTime, _ = time.Parse(time.RFC3339, "2015-01-01T12:00:00+01:00")
 func TestParsingANormalMessage(t *testing.T) {
 	assert := assert.New(t)
 
-	msgI, err := ParseMessage([]byte(aNormalMessage))
+	msgI, err := Decode([]byte(aNormalMessage))
 	assert.NoError(err)
 	assert.IsType(&Message{}, msgI)
 	msg := msgI.(*Message)
@@ -32,8 +32,9 @@ func TestParsingANormalMessage(t *testing.T) {
 	assert.Equal(Path("/foo/bar"), msg.Path)
 	assert.Equal("user01", msg.UserID)
 	assert.Equal("phone01", msg.ApplicationID)
-	assert.Equal("id123", msg.MessageID)
+	assert.Equal("id123", msg.OptionalID)
 	assert.Equal(unixTime.Unix(), msg.Time)
+	assert.Equal(1, msg.NodeID)
 	assert.Equal(`{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`, msg.HeaderJSON)
 	assert.Equal("Hello World", string(msg.Body))
 }
@@ -45,8 +46,9 @@ func TestSerializeANormalMessage(t *testing.T) {
 		Path:          Path("/foo/bar"),
 		UserID:        "user01",
 		ApplicationID: "phone01",
-		MessageID:     "id123",
+		OptionalID:    "id123",
 		Time:          unixTime.Unix(),
+		NodeID:        1,
 		HeaderJSON:    `{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`,
 		Body:          []byte("Hello World"),
 	}
@@ -83,7 +85,7 @@ func TestSerializeAMinimalMessageWithBody(t *testing.T) {
 func TestParsingAMinimalMessage(t *testing.T) {
 	assert := assert.New(t)
 
-	msgI, err := ParseMessage([]byte(aMinimalMessage))
+	msgI, err := Decode([]byte(aMinimalMessage))
 	assert.NoError(err)
 	assert.IsType(&Message{}, msgI)
 	msg := msgI.(*Message)
@@ -92,7 +94,7 @@ func TestParsingAMinimalMessage(t *testing.T) {
 	assert.Equal(Path("/"), msg.Path)
 	assert.Equal("", msg.UserID)
 	assert.Equal("", msg.ApplicationID)
-	assert.Equal("", msg.MessageID)
+	assert.Equal("", msg.OptionalID)
 	assert.Equal(unixTime.Unix(), msg.Time)
 	assert.Equal("", msg.HeaderJSON)
 
@@ -103,30 +105,30 @@ func TestErrorsOnParsingMessages(t *testing.T) {
 	assert := assert.New(t)
 
 	var err error
-	_, err = ParseMessage([]byte(""))
+	_, err = Decode([]byte(""))
 	assert.Error(err)
 
 	// missing meta field
-	_, err = ParseMessage([]byte("42,/foo/bar,user01,phone1,id123\n{}\nBla"))
+	_, err = Decode([]byte("42,/foo/bar,user01,phone1,id123\n{}\nBla"))
 	assert.Error(err)
 
 	// id not an integer
-	_, err = ParseMessage([]byte("xy42,/foo/bar,user01,phone1,id123,1420110000\n"))
+	_, err = Decode([]byte("xy42,/foo/bar,user01,phone1,id123,1420110000\n"))
 	assert.Error(err)
 
 	// path is empty
-	_, err = ParseMessage([]byte("42,,user01,phone1,id123,1420110000\n"))
+	_, err = Decode([]byte("42,,user01,phone1,id123,1420110000\n"))
 	assert.Error(err)
 
 	// Error Message without Name
-	_, err = ParseMessage([]byte("!"))
+	_, err = Decode([]byte("!"))
 	assert.Error(err)
 }
 
 func TestParsingNotificationMessage(t *testing.T) {
 	assert := assert.New(t)
 
-	msgI, err := ParseMessage([]byte(aConnectedNotification))
+	msgI, err := Decode([]byte(aConnectedNotification))
 	assert.NoError(err)
 	assert.IsType(&NotificationMessage{}, msgI)
 	msg := msgI.(*NotificationMessage)
@@ -173,7 +175,7 @@ func TestParsingErrorNotificationMessage(t *testing.T) {
 
 	raw := "!bad-request unknown command 'sdcsd'"
 
-	msgI, err := ParseMessage([]byte(raw))
+	msgI, err := Decode([]byte(raw))
 	assert.NoError(err)
 	assert.IsType(&NotificationMessage{}, msgI)
 	msg := msgI.(*NotificationMessage)

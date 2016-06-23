@@ -17,13 +17,15 @@ import (
 var WriteTestFilename = "db_testfile"
 
 const (
-	maxIdleConns = 2
-	maxOpenConns = 5
+	maxIdleConns        = 2
+	maxOpenConns        = 5
+	responseChannelSize = 100
 )
 
-var logger = log.WithFields(log.Fields{
+var sqliteLogger = log.WithFields(log.Fields{
+	"app":    "guble",
 	"module": "kv-sqlite",
-})
+	"env":    "TBD"})
 
 type kvEntry struct {
 	Schema    string    `gorm:"primary_key"sql:"type:varchar(200)"`
@@ -61,7 +63,7 @@ func (kvStore *SqliteKVStore) Put(schema, key string, value []byte) error {
 	return kvStore.db.Create(entry).Error
 }
 
-func (kvStore *SqliteKVStore) Get(schema, key string) (value []byte, exist bool, err error) {
+func (kvStore *SqliteKVStore) Get(schema, key string) ([]byte, bool, error) {
 	entry := &kvEntry{}
 	if err := kvStore.db.First(&entry, "schema = ? and key = ?", schema, key).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -73,8 +75,8 @@ func (kvStore *SqliteKVStore) Get(schema, key string) (value []byte, exist bool,
 	return entry.Value, true, nil
 }
 
-func (kvStore *SqliteKVStore) Iterate(schema string, keyPrefix string) (entries chan [2]string) {
-	responseChan := make(chan [2]string, 100)
+func (kvStore *SqliteKVStore) Iterate(schema string, keyPrefix string) chan [2]string {
+	responseC := make(chan [2]string, responseChannelSize)
 
 	go func() {
 
@@ -82,7 +84,7 @@ func (kvStore *SqliteKVStore) Iterate(schema string, keyPrefix string) (entries 
 			Rows()
 
 		if err != nil {
-			logger.WithFields(log.Fields{
+			sqliteLogger.WithFields(log.Fields{
 				"err": err,
 			}).Error("Error fetching keys from db")
 
@@ -91,16 +93,16 @@ func (kvStore *SqliteKVStore) Iterate(schema string, keyPrefix string) (entries 
 			for rows.Next() {
 				var key, value string
 				rows.Scan(&key, &value)
-				responseChan <- [2]string{key, value}
+				responseC <- [2]string{key, value}
 			}
 		}
-		close(responseChan)
+		close(responseC)
 	}()
-	return responseChan
+	return responseC
 }
 
 func (kvStore *SqliteKVStore) IterateKeys(schema string, keyPrefix string) chan string {
-	responseChan := make(chan string, 100)
+	responseC := make(chan string, responseChannelSize)
 
 	go func() {
 
@@ -108,7 +110,7 @@ func (kvStore *SqliteKVStore) IterateKeys(schema string, keyPrefix string) chan 
 			Rows()
 
 		if err != nil {
-			logger.WithFields(log.Fields{
+			sqliteLogger.WithFields(log.Fields{
 				"err": err,
 			}).Error("Error fetching keys from db")
 		} else {
@@ -116,12 +118,12 @@ func (kvStore *SqliteKVStore) IterateKeys(schema string, keyPrefix string) chan 
 			for rows.Next() {
 				var value string
 				rows.Scan(&value)
-				responseChan <- value
+				responseC <- value
 			}
 		}
-		close(responseChan)
+		close(responseC)
 	}()
-	return responseChan
+	return responseC
 }
 
 func (kvStore *SqliteKVStore) Delete(schema, key string) error {
@@ -133,15 +135,14 @@ func (kvStore *SqliteKVStore) Delete(schema, key string) error {
 func (kvStore *SqliteKVStore) Open() error {
 	directoryPath := filepath.Dir(kvStore.filename)
 	if err := ensureWriteableDirectory(directoryPath); err != nil {
-
-		logger.WithFields(log.Fields{
+		sqliteLogger.WithFields(log.Fields{
 			"dbFilename": kvStore.filename,
 			"err":        err,
-		}).Error("Error directory not writeable")
+		}).Error("DB Directory not writeable")
 		return err
 	}
 
-	logger.WithFields(log.Fields{
+	sqliteLogger.WithFields(log.Fields{
 		"dbFilename": kvStore.filename,
 	}).Info("Opening sqldb")
 
@@ -151,7 +152,7 @@ func (kvStore *SqliteKVStore) Open() error {
 			"module":     "kv-sqlite",
 			"dbFilename": kvStore.filename,
 			"err":        err,
-		}).Error("Error opening sqlite3 db")
+		}).Error("Error opening sqlite db")
 		return err
 	}
 
@@ -160,7 +161,7 @@ func (kvStore *SqliteKVStore) Open() error {
 			"module":      "kv-sqlite",
 			"db_filename": kvStore.filename,
 			"err":         err,
-		}).Error("Error  pinging database")
+		}).Error("Error pinging database")
 
 	} else {
 		log.WithFields(log.Fields{
@@ -178,7 +179,7 @@ func (kvStore *SqliteKVStore) Open() error {
 		log.WithFields(log.Fields{
 			"module": "kv-sqlite",
 			"err":    err,
-		}).Error("Error  in schema migration:")
+		}).Error("Error in schema migration:")
 
 		return err
 	}
@@ -188,10 +189,10 @@ func (kvStore *SqliteKVStore) Open() error {
 	}).Debug("Ensured db schema")
 
 	if !kvStore.syncOnWrite {
-		logger.Info("Setting db: PRAGMA synchronous = OFF")
+		sqliteLogger.Info("Setting db: PRAGMA synchronous = OFF")
 		if err := gormdb.Exec("PRAGMA synchronous = OFF").Error; err != nil {
 
-			logger.WithFields(log.Fields{
+			sqliteLogger.WithFields(log.Fields{
 				"err": err,
 			}).Error("Error setting PRAGMA synchronous = OFF")
 			return err
@@ -203,7 +204,7 @@ func (kvStore *SqliteKVStore) Open() error {
 
 func (kvStore *SqliteKVStore) Check() error {
 	if kvStore.db == nil {
-		logger.WithFields(log.Fields{
+		sqliteLogger.WithFields(log.Fields{
 			"err": "Db service is null.",
 		}).Error("Error Db pointer is not initialized")
 
@@ -211,7 +212,7 @@ func (kvStore *SqliteKVStore) Check() error {
 	}
 
 	if err := kvStore.db.DB().Ping(); err != nil {
-		logger.WithFields(log.Fields{
+		sqliteLogger.WithFields(log.Fields{
 			"db_filename": kvStore.filename,
 			"err":         err,
 		}).Error("Error pinging database")

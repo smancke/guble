@@ -20,7 +20,7 @@ func TestStopingOfModules(t *testing.T) {
 	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	// given:
-	service, _, _, _ := aMockedService()
+	service, _, _, _ := aMockedServiceWithMockedRouterStandalone()
 
 	// with a registered Stopable
 	stopable := NewMockStopable(ctrl)
@@ -40,7 +40,7 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 	a := assert.New(t)
 
 	// given:
-	service, _, _, _ := aMockedService()
+	service, _, _, _ := aMockedServiceWithMockedRouterStandalone()
 
 	// when I register an endpoint at path /foo
 	service.RegisterModules(&TestEndpoint{})
@@ -64,8 +64,8 @@ func TestHealthUp(t *testing.T) {
 	a := assert.New(t)
 
 	// given:
-	service, _, _, _ := aMockedService()
-	service = service.HealthEndpointPrefix("/health_url")
+	service, _, _, _ := aMockedServiceWithMockedRouterStandalone()
+	service = service.HealthEndpoint("/health_url")
 
 	// when starting the service
 	defer service.Stop()
@@ -90,8 +90,8 @@ func TestHealthDown(t *testing.T) {
 	a := assert.New(t)
 
 	// given:
-	service, _, _, _ := aMockedService()
-	service = service.HealthEndpointPrefix("/health_url")
+	service, _, _, _ := aMockedServiceWithMockedRouterStandalone()
+	service = service.HealthEndpoint("/health_url")
 	mockChecker := NewMockChecker(ctrl)
 	mockChecker.EXPECT().Check().Return(errors.New("sick")).AnyTimes()
 
@@ -120,8 +120,8 @@ func TestMetricsEnabled(t *testing.T) {
 	a := assert.New(t)
 
 	// given:
-	service, _, _, _ := aMockedService()
-	service = service.MetricsEndpointPrefix("/metrics_url")
+	service, _, _, _ := aMockedServiceWithMockedRouterStandalone()
+	service = service.MetricsEndpoint("/metrics_url")
 
 	// when starting the service
 	defer service.Stop()
@@ -139,10 +139,11 @@ func TestMetricsEnabled(t *testing.T) {
 	a.True(len(body) > 0)
 }
 
-func aMockedService() (*Service, store.KVStore, store.MessageStore, *MockRouter) {
+func aMockedServiceWithMockedRouterStandalone() (*Service, store.KVStore, store.MessageStore, *MockRouter) {
 	kvStore := store.NewMemoryKVStore()
 	messageStore := store.NewDummyMessageStore(kvStore)
 	routerMock := NewMockRouter(testutil.MockCtrl)
+	routerMock.EXPECT().Cluster().Return(nil).MaxTimes(2)
 	service := NewService(routerMock, webserver.New("localhost:0"))
 	return service, kvStore, messageStore, routerMock
 }

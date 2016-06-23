@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const TOPIC_SCHEMA = "topic_sequence"
+const topicSchema = "topic_sequence"
 
 // DummyMessageStore is a minimal implementation of the MessageStore interface.
 // Everything it does is storing the message ids in the key value store to
@@ -78,7 +78,8 @@ func (dms *DummyMessageStore) store(partition string, msgId uint64, msg []byte) 
 		return err
 	}
 	if msgId > 1+maxId {
-		return fmt.Errorf("Invalid message id for partition %v. Next id should be %v, but was %q", partition, 1+maxId, msgId)
+		return fmt.Errorf("DummyMessageStore: Invalid message id for partition %v. Next id should be %v, but was %q",
+			partition, 1+maxId, msgId)
 	}
 	dms.setId(partition, msgId)
 	return nil
@@ -107,7 +108,7 @@ func (dms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessa
 func (dms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
 	sequenceValue, exist := dms.topicSequences[partition]
 	if !exist {
-		val, existInKVStore, err := dms.kvStore.Get(TOPIC_SCHEMA, partition)
+		val, existInKVStore, err := dms.kvStore.Get(topicSchema, partition)
 		if err != nil {
 			return 0, err
 		}
@@ -153,7 +154,7 @@ func (dms *DummyMessageStore) startSequenceSync() {
 			dms.topicSequencesLock.Unlock()
 
 			lastSyncValues[topic] = latestValue
-			dms.kvStore.Put(TOPIC_SCHEMA, topic, []byte(strconv.FormatUint(latestValue, 10)))
+			dms.kvStore.Put(topicSchema, topic, []byte(strconv.FormatUint(latestValue, 10)))
 		}
 	}
 	dms.stoppedC <- true

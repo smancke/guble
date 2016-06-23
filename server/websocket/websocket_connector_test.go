@@ -71,7 +71,7 @@ func Test_SendMessageWithPublisherMessageId(t *testing.T) {
 
 	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *protocol.Message) {
 		assert.Equal(t, protocol.Path("/path"), msg.Path)
-		assert.Equal(t, "42", msg.MessageID)
+		assert.Equal(t, "42", msg.OptionalID)
 	})
 
 	wsconn.EXPECT().Send([]byte("#send 42"))
@@ -92,7 +92,7 @@ func Test_SendMessage(t *testing.T) {
 	runNewWebSocket(wsconn, routerMock, messageStore, nil)
 }
 
-func Test_AnIncommingMessageIsDelivered(t *testing.T) {
+func Test_AnIncomingMessageIsDelivered(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
@@ -106,7 +106,7 @@ func Test_AnIncommingMessageIsDelivered(t *testing.T) {
 	time.Sleep(time.Millisecond * 2)
 }
 
-func Test_AnIncommingMessageIsNotAllowed(t *testing.T) {
+func Test_AnIncomingMessageIsNotAllowed(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 

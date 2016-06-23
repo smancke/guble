@@ -1,11 +1,11 @@
 package server
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
+
+	"errors"
+	"fmt"
 )
 
 var (

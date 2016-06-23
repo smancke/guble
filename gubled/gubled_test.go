@@ -18,7 +18,7 @@ func TestValidateStoragePath(t *testing.T) {
 	valid := os.TempDir()
 	invalid := os.TempDir() + "/non-existing-directory-for-guble-test"
 
-	*config.MSBackend = "file"
+	*config.MS = "file"
 
 	*config.StoragePath = valid
 	a.NoError(ValidateStoragePath())
@@ -26,20 +26,20 @@ func TestValidateStoragePath(t *testing.T) {
 
 	a.Error(ValidateStoragePath())
 
-	*config.KVBackend = "file"
+	*config.KVS = "file"
 	a.Error(ValidateStoragePath())
 }
 
 func TestCreateKVStoreBackend(t *testing.T) {
 	a := assert.New(t)
-	*config.KVBackend = "memory"
+	*config.KVS = "memory"
 	memory := CreateKVStore()
 	a.Equal("*store.MemoryKVStore", reflect.TypeOf(memory).String())
 
 	dir, _ := ioutil.TempDir("", "guble_test")
 	defer os.RemoveAll(dir)
 
-	*config.KVBackend = "file"
+	*config.KVS = "file"
 	*config.StoragePath = dir
 	sqlite := CreateKVStore()
 	a.Equal("*store.SqliteKVStore", reflect.TypeOf(sqlite).String())
@@ -97,7 +97,7 @@ func TestCreateStoreBackendPanicInvalidBackend(t *testing.T) {
 			p = recover()
 		}()
 
-		*config.KVBackend = "foo bar"
+		*config.KVS = "foo bar"
 		CreateKVStore()
 	}()
 	a.NotNil(p)
