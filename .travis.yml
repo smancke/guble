@@ -10,12 +10,12 @@ before_install:
   - go get golang.org/x/tools/cmd/cover
 script:
   - go test -v ./...
-  - CGO_ENABLED=0 GOOS=linux go build -a -tags netgo -ldflags '-w' .
+  - CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-w' .
   - docker build -t cosminrentea/guble .
 after_success:
   - scripts/generate_coverage.sh
   - goveralls -coverprofile=full_cov.out -service=travis-ci
-  - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
-  - docker push cosminrentea/guble;
+  - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+  - docker push cosminrentea/guble
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
     fi
