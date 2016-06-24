@@ -32,8 +32,8 @@ func createService(storagePath, nodeID, nodePort, httpListen string, remotes str
 	return service
 }
 
-func Test_Cluster(t *testing.T) {
-	a := assert.New(t)
+func BenchmarkCluster(b *testing.B) {
+	a := assert.New(b)
 	//defer testutil.EnableDebugForMethod()()
 
 	dir1, err1 := ioutil.TempDir("", "guble_cluster_integration_test")
