@@ -16,7 +16,7 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 * Batteries included: usable as front-facing server, without the need of a proxy layer
 * Self-contained: no mandatory dependencies to other services
 
-## Working Features (0.1)
+## Working Features (0.2)
 
 * Publishing and subscription of messages to topics and subtopics
 * Persistent message store with transparent live and offline fetching
@@ -24,9 +24,14 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 * Commandline client and Go client library
 * Google Cloud Messaging adapter: delivery of messages as GCM push notifications
 * Docker image for client and server
+* Simple Authentication and Access-Management
+* Clean shutdown
+* Improved logging using [logrus](https://github.com/Sirupsen/logrus) and logstash formatter
+* Health-Check with Endpoint
+* Collection of Basic Metrics, with Endpoint
 
 ## Throughput
-Measured on an old notebook with i5-2520M, dual core and SSD. Payload was 'Hello Word'.
+Measured on an old notebook with i5-2520M, dual core and SSD. Message payload was 'Hello Word'.
 Load driver and server were set up on the same machine, so 50% of the cpu was allocated to the load driver.
 
 * End-2-End: Delivery of ~35.000 persistent messages per second
@@ -37,9 +42,9 @@ During the tests, the memory consumption of the server was around ~25 MB.
 ## Table of Contents
 
 - [Roadmap](#roadmap)
-  - [Roadmap Release 0.2](#roadmap-release-02)
   - [Roadmap Release 0.3](#roadmap-release-03)
   - [Roadmap Release 0.4](#roadmap-release-04)
+  - [Roadmap Release 0.5](#roadmap-release-05)
 - [Guble Docker Image](#guble-docker-image)
   - [Start the Guble Server](#start-the-guble-server)
   - [Connecting with the Guble Client](#connecting-with-the-guble-client)
@@ -62,29 +67,19 @@ During the tests, the memory consumption of the server was around ~25 MB.
 # Roadmap
 This is the current (and fast changing) roadmap and todo list:
 
-## Roadmap Release 0.2
-This release contains a lot of small changes and the JavaScript API.
-
-* Authentication and access management
-* ~~Clean shutdown~~
-* ~~Improve logging (Maybe use of https://github.com/Sirupsen/logrus)~~
-* ~~Rename package "guble" to "protocol"~~
-* ~~Change time from ISO 8601 to unix timestamp~~
-* ~~Remove `userId` from route~~
-
 ## Roadmap Release 0.3
-* ~~Introduce Health Check Resource~~
-* ~~Introduce Basic Metrics API~~
 * Replication across multiple servers
 * Stable JavaScript client: https://github.com/smancke/guble-js
-* Add Consul as KV Backend strategy
-* Storing the sequence Id of topics in KV store, if we turn of persistence
+* Add Postgresql as KV Backend
+* Add Consul as KV Backend
+* Storing the sequence-Id of topics in KV store, if we turn off persistence
 * Cleanup, documentation, and test coverage of the GCM connector
 * Make notification messages optional by client configuration
 * Load testing with 5000 connections per instance
+* Improved authentication and access-management
 
 ## Roadmap Release 0.4
-* Change sqlite to bolt
+* Change KV backend from sqlite to bolt
 * (TBD) Index-based search of messages using [GoLucene](https://github.com/balzaczyy/golucene)
 * (TBD) Acknowledgement of message delivery
 * Correct behaviour of receive command with `maxCount` on subtopics
@@ -94,7 +89,7 @@ This release contains a lot of small changes and the JavaScript API.
 * Delivery semantics: user must read on one device, deliver only to one device, notify if not connected, etc.
 * HTTPS support in the service
 * Cancel of fetch in the message store and multiple concurrent fetch commands for the same topic
-* Minimal example chat application
+* Minimal example: chat application
 * User-specific persistent subscriptions across all clients of the user
 * Client: (re-)setup of subscriptions after client reconnect
 * Message size limit configurable by the client with fetching by URL
@@ -124,11 +119,10 @@ or
 docker run -e GUBLE_LOG=info smancke/guble
 ```
 
-The Docker image has a volume mount point at `/var/lib/guble`. So you should use
+The Docker image has a volume mount point at `/var/lib/guble`, so if you want to bind-mount the persistent storage from your host you should use:
 ```
 docker run -p 8080:8080 -v /host/storage/path:/var/lib/guble smancke/guble
 ```
-if you want to bind-mount the persistent storage from your host.
 
 ## Connecting with the Guble Client
 The Docker image includes the guble commandline client `guble-cli`.
@@ -141,7 +135,7 @@ Visit the [`guble-cli` documentation](https://github.com/smancke/guble/tree/mast
 
 # Build and Run
 Since Go makes it very easy to build from source, you can compile guble using a single command.
-A requisite is having an installed Go environment and an empty directory:
+A prerequisite is having an installed Go environment and an empty directory:
 ```
 sudo apt-get install golang
 mkdir guble && cd guble
@@ -149,10 +143,10 @@ export GOPATH=`pwd`
 ```
 
 ## Build and Start the Server
-Build and start guble with the following commands:
+Build and start guble with the following commands (assuming that directory `/var/lib/guble` is already created with read-write rights for the current user):
 ```
 go get github.com/smancke/guble
-bin/guble --log-info
+bin/guble --log=info
 ```
 
 ## Run All Tests
@@ -235,7 +229,7 @@ example:
 Hello World
 ```
 
-#### Receive
+#### Subscribe/Receive
 Receive messages from a path (e.g. a topic or subtopic).
 This command can be used to subscribe for incoming messages on a topic,
 as well as for replaying the message history.
@@ -315,7 +309,7 @@ Depending on the type of `+` (receive) command, up to three different notificati
 Be aware, that a server may send more receive notifications that you would have expected in first place, e.g. when:
 * Additional messages are stored, while the first fetching is in progress
 * The server decides to meanwhile stop the online subscription and change to fetching,
-  because your client is to slow to read all incoming messages.
+  because your client is too slow to read all incoming messages.
 
 1. When the fetch operation starts:
 
@@ -338,8 +332,8 @@ Be aware, that a server may send more receive notifications that you would have 
     ```
     * `path`: the topic path
 
-#### Cancel Success Notification
-A cancel operation is confirmed by the following notification:
+#### Unsubscribe Success Notification
+An unsubscribe/cancel operation is confirmed by the following notification:
 ```
 #canceled <path>
 ```
@@ -372,7 +366,7 @@ subscription paths.
 
 ### Subtopics
 The path delimiter gives the semantic of subtopics. With this, a subscription to a parent topic (e.g. `/foo`)
-also results in receiving all message of the sub topics (e.g. `/foo/bar`).
+also results in receiving all messages of the subtopics (e.g. `/foo/bar`).
 
 ### User Topics
 Each user has its own topic namespace.
