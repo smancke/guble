@@ -121,7 +121,7 @@ docker run smancke/guble --log=info
 ```
 or
 ```
-docker run -e GUBLE_LOG=true smancke/guble
+docker run -e GUBLE_LOG=info smancke/guble
 ```
 
 The Docker image has a volume mount point at `/var/lib/guble`. So you should use
