@@ -9,6 +9,7 @@ import (
 
 	"io/ioutil"
 	"net/http"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -145,4 +146,9 @@ func CreateRoundTripperWithJsonResponse(httpStatusCode int, messageBodyAsJSON st
 		resp.Header.Add("Content-Type", "application/json")
 		return resp
 	})
+}
+
+func SyncStorage() error {
+	cmdSync := exec.Command("sync")
+	return cmdSync.Run()
 }

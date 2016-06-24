@@ -1,7 +1,10 @@
 package store
 
 import (
+	"github.com/smancke/guble/testutil"
+
 	"github.com/stretchr/testify/assert"
+
 	"io/ioutil"
 	"os"
 	"path"
@@ -124,11 +127,13 @@ func Benchmark_Storing_HelloWorld_Messages(b *testing.B) {
 	defer os.RemoveAll(dir)
 	store, _ := NewMessagePartition(dir, "myMessages")
 
+	a.NoError(testutil.SyncStorage())
 	b.ResetTimer()
 	for i := 1; i <= b.N; i++ {
 		a.NoError(store.Store(uint64(i), []byte("Hello World")))
 	}
 	a.NoError(store.Close())
+	a.NoError(testutil.SyncStorage())
 	b.StopTimer()
 }
 
@@ -143,11 +148,13 @@ func Benchmark_Storing_1Kb_Messages(b *testing.B) {
 		message[i] = 'a'
 	}
 
+	a.NoError(testutil.SyncStorage())
 	b.ResetTimer()
 	for i := 1; i <= b.N; i++ {
 		a.NoError(store.Store(uint64(i), message))
 	}
 	a.NoError(store.Close())
+	a.NoError(testutil.SyncStorage())
 	b.StopTimer()
 }
 
@@ -162,11 +169,13 @@ func Benchmark_Storing_1MB_Messages(b *testing.B) {
 		message[i] = 'a'
 	}
 
+	a.NoError(testutil.SyncStorage())
 	b.ResetTimer()
 	for i := 1; i <= b.N; i++ {
 		a.NoError(store.Store(uint64(i), message))
 	}
 	a.NoError(store.Close())
+	a.NoError(testutil.SyncStorage())
 	b.StopTimer()
 }
 

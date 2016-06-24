@@ -1,6 +1,8 @@
 package store
 
 import (
+	"github.com/smancke/guble/testutil"
+
 	"github.com/stretchr/testify/assert"
 
 	"crypto/rand"
@@ -128,6 +130,7 @@ loop:
 
 func CommonBenchPutGet(b *testing.B, s KVStore) {
 	a := assert.New(b)
+	a.NoError(testutil.SyncStorage())
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		data := randString(20)
@@ -137,6 +140,7 @@ func CommonBenchPutGet(b *testing.B, s KVStore) {
 		a.True(exist)
 		a.Equal(data, string(val))
 	}
+	a.NoError(testutil.SyncStorage())
 	b.StopTimer()
 }
 
