@@ -317,10 +317,10 @@ func (router *router) isStopping() error {
 }
 
 func (router *router) routeMessage(message *protocol.Message) {
-	logger.WithFields(log.Fields{
-		"msgMetadata": message.Metadata(),
-	}).Debug("Called routeMessage for data")
 	mTotalMessagesRouted.Add(1)
+	if logger.Level == log.DebugLevel {
+		logger.WithField("msgMetadata", message.Metadata()).Debug("Called routeMessage for data")
+	}
 
 	matched := false
 	for path, pathRoutes := range router.routes {
@@ -328,13 +328,12 @@ func (router *router) routeMessage(message *protocol.Message) {
 			matched = true
 			for _, route := range pathRoutes {
 				if err := route.Deliver(message); err == ErrInvalidRoute {
-					// Unsubscribe invalid routes
 					router.unsubscribe(route)
 				}
 			}
 		}
 	}
-	if matched {
+	if !matched {
 		mTotalMessagesNotMatchingTopic.Add(1)
 	}
 }
