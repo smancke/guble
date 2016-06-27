@@ -5,13 +5,13 @@ import (
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 
-	log "github.com/Sirupsen/logrus"
-
 	"errors"
 	"fmt"
 	"math"
 	"strconv"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 var logger = log.WithFields(log.Fields{
@@ -156,8 +156,7 @@ func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) e
 }
 
 func (rec *Receiver) subscribe() {
-	routeC := make(chan *server.MessageForRoute, 3)
-	rec.route = server.NewRoute(string(rec.path), rec.applicationId, rec.userId, routeC)
+	rec.route = server.NewRoute(string(rec.path), rec.applicationId, rec.userId, 3)
 	_, err := rec.router.Subscribe(rec.route)
 	if err != nil {
 		rec.sendError(protocol.ERROR_SUBSCRIBED_TO, string(rec.path), err.Error())
@@ -169,7 +168,7 @@ func (rec *Receiver) subscribe() {
 func (rec *Receiver) receiveFromSubscription() {
 	for {
 		select {
-		case msgAndRoute, ok := <-rec.route.MessagesC():
+		case m, ok := <-rec.route.MessagesChannel():
 			if !ok {
 
 				logger.WithFields(log.Fields{
@@ -180,17 +179,16 @@ func (rec *Receiver) receiveFromSubscription() {
 
 			logger.WithFields(log.Fields{
 				"applicationId":   rec.applicationId,
-				"messageMetadata": msgAndRoute.Message.Metadata(),
-			}).Debug("Deliver message")
+				"messageMetadata": m.Metadata(),
+			}).Debug("Delivering message")
 
-			if msgAndRoute.Message.ID > rec.lastSendId {
-				rec.lastSendId = msgAndRoute.Message.ID
-				rec.sendC <- msgAndRoute.Message.Bytes()
+			if m.ID > rec.lastSendId {
+				rec.lastSendId = m.ID
+				rec.sendC <- m.Bytes()
 			} else {
 				logger.WithFields(log.Fields{
-					"msgId": msgAndRoute.Message.ID,
-				}).Debug("Message already sent to client dropping message with id")
-
+					"msgId": m.ID,
+				}).Debug("Message already sent to client. Dropping message.")
 			}
 		case <-rec.cancelC:
 			rec.shouldStop = true
@@ -216,27 +214,28 @@ func (rec *Receiver) fetchOnlyLoop() {
 
 func (rec *Receiver) fetch() error {
 	fetch := store.FetchRequest{
-		Partition:     rec.path.Partition(),
-		MessageC:      make(chan store.MessageAndId, 3),
-		ErrorCallback: make(chan error),
-		StartCallback: make(chan int),
-		Prefix:        []byte(rec.path),
-		Count:         rec.maxCount,
+		Partition: rec.path.Partition(),
+		MessageC:  make(chan store.MessageAndID, 3),
+		ErrorC:    make(chan error),
+		StartC:    make(chan int),
+		Prefix:    []byte(rec.path),
+		Count:     rec.maxCount,
 	}
 
 	if rec.startId >= 0 {
 		fetch.Direction = 1
-		fetch.StartId = uint64(rec.startId)
+		fetch.StartID = uint64(rec.startId)
 		if rec.maxCount == 0 {
 			fetch.Count = math.MaxInt32
 		}
 	} else {
 		fetch.Direction = 1
-		maxId, err := rec.messageStore.MaxMessageId(rec.path.Partition())
+		maxId, err := rec.messageStore.MaxMessageID(rec.path.Partition())
 		if err != nil {
 			return err
 		}
-		fetch.StartId = maxId + 1 + uint64(rec.startId)
+
+		fetch.StartID = maxId + 1 + uint64(rec.startId)
 		if rec.maxCount == 0 {
 			fetch.Count = -1 * int(rec.startId)
 		}
@@ -246,22 +245,21 @@ func (rec *Receiver) fetch() error {
 
 	for {
 		select {
-		case numberOfResults := <-fetch.StartCallback:
+		case numberOfResults := <-fetch.StartC:
 			rec.sendOK(protocol.SUCCESS_FETCH_START, fmt.Sprintf("%v %v", rec.path, numberOfResults))
-		case msgAndId, open := <-fetch.MessageC:
+		case msgAndID, open := <-fetch.MessageC:
 			if !open {
 				rec.sendOK(protocol.SUCCESS_FETCH_END, string(rec.path))
 				return nil
 			}
-
 			logger.WithFields(log.Fields{
-				"msgId": msgAndId.Id,
-				"msg":   string(msgAndId.Message),
-			}).Debug("Reply sen to")
+				"msgId": msgAndID.ID,
+				"msg":   string(msgAndID.Message),
+			}).Debug("Reply sent")
 
-			rec.lastSendId = msgAndId.Id
-			rec.sendC <- msgAndId.Message
-		case err := <-fetch.ErrorCallback:
+			rec.lastSendId = msgAndID.ID
+			rec.sendC <- msgAndID.Message
+		case err := <-fetch.ErrorC:
 			return err
 		case <-rec.cancelC:
 			rec.shouldStop = true

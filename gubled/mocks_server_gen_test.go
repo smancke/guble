@@ -4,12 +4,12 @@
 package gubled
 
 import (
-	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server"
-	"github.com/smancke/guble/server/auth"
-	"github.com/smancke/guble/server/cluster"
-	"github.com/smancke/guble/store"
+	gomock "github.com/golang/mock/gomock"
+	protocol "github.com/smancke/guble/protocol"
+	server "github.com/smancke/guble/server"
+	auth "github.com/smancke/guble/server/auth"
+	cluster "github.com/smancke/guble/server/cluster"
+	store "github.com/smancke/guble/store"
 )
 
 // Mock of Router interface
@@ -52,6 +52,16 @@ func (_m *MockRouter) Cluster() *cluster.Cluster {
 
 func (_mr *_MockRouterRecorder) Cluster() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Cluster")
+}
+
+func (_m *MockRouter) Fetch(_param0 store.FetchRequest) error {
+	ret := _m.ctrl.Call(_m, "Fetch", _param0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockRouterRecorder) Fetch(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Fetch", arg0)
 }
 
 func (_m *MockRouter) HandleMessage(_param0 *protocol.Message) error {

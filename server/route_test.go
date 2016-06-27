@@ -41,7 +41,7 @@ func TestRouteDeliver_sendDirect(t *testing.T) {
 
 	for i := 0; i < chanSize; i++ {
 		select {
-		case _, open := <-r.MessagesC():
+		case _, open := <-r.MessagesChannel():
 			a.True(open)
 		case <-time.After(time.Millisecond * 10):
 			a.Fail("error not enough messages in channel")
@@ -50,10 +50,10 @@ func TestRouteDeliver_sendDirect(t *testing.T) {
 
 	// and the channel is closed
 	select {
-	case _, open := <-r.MessagesC():
+	case _, open := <-r.MessagesChannel():
 		a.False(open)
 	default:
-		logger.Debug("len(r.C): %v", len(r.MessagesC()))
+		logger.Debug("len(r.C): %v", len(r.MessagesChannel()))
 		a.Fail("channel was not closed")
 	}
 
@@ -150,5 +150,5 @@ func TestQueue_ShiftEmpty(t *testing.T) {
 }
 
 func testRoute() *Route {
-	return NewRoute(string(dummyPath), "appID", "userID", make(chan *MessageForRoute, chanSize))
+	return NewRoute(string(dummyPath), "appID", "userID", chanSize)
 }

@@ -27,7 +27,7 @@ func NewFileMessageStore(basedir string) *FileMessageStore {
 	}
 }
 
-func (fms *FileMessageStore) MaxMessageId(partition string) (uint64, error) {
+func (fms *FileMessageStore) MaxMessageID(partition string) (uint64, error) {
 	p, err := fms.partitionStore(partition)
 	if err != nil {
 		return 0, err
@@ -76,7 +76,7 @@ func (fms *FileMessageStore) Store(partition string, msgId uint64, msg []byte) e
 func (fms *FileMessageStore) Fetch(req FetchRequest) {
 	p, err := fms.partitionStore(req.Partition)
 	if err != nil {
-		req.ErrorCallback <- err
+		req.ErrorC <- err
 		return
 	}
 	p.Fetch(req)
