@@ -86,16 +86,17 @@ var CreateModules = func(router server.Router) []interface{} {
 	modules = append(modules, rest.NewRestMessageAPI(router, "/api/"))
 
 	if *config.GCM.Enabled {
+		logger.Info("Google cloud messaging: enabled")
+
 		if *config.GCM.APIKey == "" {
 			logger.Panic("GCM API Key has to be provided, if GCM is enabled")
 		}
 
-		logger.Info("Google cloud messaging: enabled")
-
 		logger.WithField("count", *config.GCM.Workers).Debug("GCM workers")
 
-		if gcm, err := gcm.NewGCMConnector(router, "/gcm/", *config.GCM.APIKey, *config.GCM.Workers); err != nil {
+		if gcm, err := gcm.New(router, "/gcm/", *config.GCM.APIKey, *config.GCM.Workers); err != nil {
 			logger.WithField("err", err).Error("Error loading GCMConnector:")
+
 		} else {
 			modules = append(modules, gcm)
 		}
@@ -135,6 +136,7 @@ func Main() {
 	})
 }
 
+// TODO: StartService should return an error in case it fails to start
 func StartService() *server.Service {
 	accessManager := auth.NewAllowAllAccessManager(true)
 	messageStore := CreateMessageStore()
