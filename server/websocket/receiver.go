@@ -186,9 +186,7 @@ func (rec *Receiver) receiveFromSubscription() {
 				rec.lastSendId = msgAndRoute.Message.ID
 				rec.sendC <- msgAndRoute.Message.Bytes()
 			} else {
-				logger.WithFields(log.Fields{
-					"msgId": msgAndRoute.Message.ID,
-				}).Debug("Message already sent to client dropping message with id")
+				logger.WithField("msgId", msgAndRoute.Message.ID).Debug("Message already sent to client dropping message with id")
 			}
 		case <-rec.cancelC:
 			rec.shouldStop = true
@@ -203,7 +201,6 @@ func (rec *Receiver) receiveFromSubscription() {
 func (rec *Receiver) fetchOnlyLoop() {
 	err := rec.fetch()
 	if err != nil {
-
 		logger.WithFields(log.Fields{
 			"rec": rec,
 			"err": err,
