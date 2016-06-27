@@ -10,7 +10,7 @@ before_install:
   - go get golang.org/x/tools/cmd/cover
 script:
   - go test -v ./...
-  - GOOS=linux go build -a -ldflags '-w -s' .
+  - GOOS=linux go build -a .
   - docker build -t cosminrentea/guble .
 after_success:
   - scripts/generate_coverage.sh
