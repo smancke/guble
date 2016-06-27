@@ -34,7 +34,6 @@ type kvEntry struct {
 }
 
 type SqliteKVStore struct {
-	data        map[string]map[string][]byte
 	db          *gorm.DB
 	filename    string
 	syncOnWrite bool
