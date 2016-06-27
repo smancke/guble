@@ -171,7 +171,6 @@ func (rec *Receiver) receiveFromSubscription() {
 		select {
 		case msgAndRoute, ok := <-rec.route.MessagesC():
 			if !ok {
-
 				logger.WithFields(log.Fields{
 					"applicationId": rec.applicationId,
 				}).Debug("Router closed the channel returning from subscription for")
@@ -190,7 +189,6 @@ func (rec *Receiver) receiveFromSubscription() {
 				logger.WithFields(log.Fields{
 					"msgId": msgAndRoute.Message.ID,
 				}).Debug("Message already sent to client dropping message with id")
-
 			}
 		case <-rec.cancelC:
 			rec.shouldStop = true

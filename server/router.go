@@ -146,12 +146,14 @@ func (router *router) Check() error {
 // HandleMessage stores the message in the MessageStore(and gets a new ID for it iff the message was created locally)
 // and then passes it to: the internal channel, and asynchronously to the cluster (if available).
 func (router *router) HandleMessage(message *protocol.Message) error {
-	logger.WithFields(log.Fields{
-		"userID": message.UserID,
-		"path":   message.Path,
-	}).Debug("HandleMessage")
-
 	mTotalMessagesIncoming.Add(1)
+	if logger.Level == log.DebugLevel {
+		logger.WithFields(log.Fields{
+			"userID": message.UserID,
+			"path":   message.Path,
+		}).Debug("HandleMessage")
+	}
+
 	if err := router.isStopping(); err != nil {
 		logger.WithFields(log.Fields{
 			"err": err,
