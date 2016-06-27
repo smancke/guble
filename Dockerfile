@@ -1,4 +1,4 @@
-FROM busybox
+FROM busybox:glibc
 ADD guble guble
 ENTRYPOINT ["/guble"]
 RUN mkdir -p /var/lib/guble
