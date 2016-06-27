@@ -3,6 +3,9 @@ package config
 // Config package contains the public config vars required in guble
 
 import (
+	"os"
+	"strings"
+
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 
@@ -28,7 +31,7 @@ var (
 	MS = kingpin.Flag("ms", "The message storage backend : file | memory").
 		Default(defaultMSBackend).HintOptions([]string{"file", "memory"}...).Envar("GUBLE_MS").String()
 	StoragePath = kingpin.Flag("storage-path", "The path for storing messages and key-value data if 'file' is selected").
-			Default(defaultStoragePath).Envar("GUBLE_STORAGE_PATH").String()
+			Default(defaultStoragePath).Envar("GUBLE_STORAGE_PATH").ExistingDir()
 	HealthEndpoint = kingpin.Flag("health-endpoint", `The health endpoint to be used by the HTTP server (value for disabling it: "")`).
 			Default(defaultHealthEndpoint).Envar("GUBLE_HEALTH_ENDPOINT").String()
 
@@ -74,8 +77,6 @@ var (
 		Default(log.ErrorLevel.String()).
 		Envar("GUBLE_LOG").
 		Enum(logLevels()...)
-
-	parsed = false
 )
 
 func logLevels() (levels []string) {
@@ -89,9 +90,13 @@ func logLevels() (levels []string) {
 // If there are missing or invalid arguments it will exit the application and display a
 // corresponding message
 func Parse() {
-	if parsed {
+	kingpin.Parse()
+}
+
+func init() {
+	// skip init if in test mode
+	if strings.HasSuffix(os.Args[0], ".test") {
 		return
 	}
-	kingpin.Parse()
-	parsed = true
+	Parse()
 }

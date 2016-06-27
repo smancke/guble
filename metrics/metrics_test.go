@@ -20,10 +20,10 @@ func TestNewInt_Disabled(t *testing.T) {
 }
 
 func TestNewInt_Enabled(t *testing.T) {
-	Enabled = true
+	*config.Metrics.Enabled = true
 	_, ok := NewInt("a_name").(expvar.Var)
 	assert.True(t, ok)
-	Enabled = false
+	*config.Metrics.Enabled = false
 }
 
 func TestHttpHandler_MetricsNotEnabled(t *testing.T) {

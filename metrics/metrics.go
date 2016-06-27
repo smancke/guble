@@ -9,10 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 )
-
-var Enabled = len(os.Getenv("GUBLE_METRICS")) > 0
 
 // IntVar is an interface for the operations defined on expvar.Int
 type IntVar interface {
@@ -30,7 +27,7 @@ func (v *emptyInt) Set(value int64) {}
 // NewInt returns an expvar.Int or a dummy emptyInt, depending on the Enabled flag
 func NewInt(name string) IntVar {
 	//TODO Cosmin Bogdan the condition should be instead on: *config.Metrics.Enabled
-	if Enabled {
+	if *config.Metrics.Enabled {
 		return expvar.NewInt(name)
 	}
 	return &emptyInt{}

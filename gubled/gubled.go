@@ -25,8 +25,7 @@ import (
 )
 
 const (
-	defaultStoragePath = "/var/lib/guble"
-	fileOption         = "file"
+	fileOption = "file"
 )
 
 var ValidateStoragePath = func() error {
@@ -39,12 +38,6 @@ var ValidateStoragePath = func() error {
 				"err":         err,
 			}).Error("Storage path not present/writeable.")
 
-			if *config.StoragePath == defaultStoragePath {
-				logger.WithFields(log.Fields{
-					"storagePath": *config.StoragePath,
-					"err":         err,
-				}).Error("Use --storage-path=<path> to override the default location, or create the directory with RW rights.")
-			}
 			return err
 		}
 		f.Close()
