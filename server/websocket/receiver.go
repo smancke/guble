@@ -248,12 +248,12 @@ func (rec *Receiver) fetch() error {
 				rec.sendOK(protocol.SUCCESS_FETCH_END, string(rec.path))
 				return nil
 			}
-
-			logger.WithFields(log.Fields{
-				"msgId": msgAndId.Id,
-				"msg":   string(msgAndId.Message),
-			}).Debug("Reply sen to")
-
+			if logger.Level == log.DebugLevel {
+				logger.WithFields(log.Fields{
+					"msgId": msgAndId.Id,
+					"msg":   string(msgAndId.Message),
+				}).Debug("Reply sent")
+			}
 			rec.lastSendId = msgAndId.Id
 			rec.sendC <- msgAndId.Message
 		case err := <-fetch.ErrorCallback:
