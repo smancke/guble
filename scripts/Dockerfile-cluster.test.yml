@@ -1,3 +1,4 @@
+# this Dockerfile requires u to build the app locally with the name `guble`
 FROM phusion/baseimage
 RUN mkdir -p /var/lib/guble
 

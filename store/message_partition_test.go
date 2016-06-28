@@ -37,12 +37,12 @@ func Test_MessagePartition_correctIdAfterRestart(t *testing.T) {
 
 	a.NoError(store.Store(uint64(1), []byte("aaaaaaaaaa")))
 	a.NoError(store.Store(uint64(2), []byte("aaaaaaaaaa")))
-	a.Equal(uint64(2), fne(store.MaxMessageId()))
+	a.Equal(uint64(2), fne(store.MaxMessageID()))
 	a.NoError(store.Close())
 
 	newStore, err := NewMessagePartition(dir, "myMessages")
 	a.NoError(err)
-	a.Equal(uint64(2), fne(newStore.MaxMessageId()))
+	a.Equal(uint64(2), fne(newStore.MaxMessageID()))
 }
 
 func TestCreateNextAppendFiles(t *testing.T) {
@@ -56,8 +56,8 @@ func TestCreateNextAppendFiles(t *testing.T) {
 	// when i create append files
 	a.NoError(store.createNextAppendFiles(uint64(424242)))
 
-	a.Equal(uint64(420000), store.appendFirstId)
-	a.Equal(uint64(429999), store.appendLastId)
+	a.Equal(uint64(420000), store.appendFirstID)
+	a.Equal(uint64(429999), store.appendLastID)
 	a.Equal(uint64(0x9), store.appendFileWritePosition)
 
 	// and close the store
@@ -187,14 +187,14 @@ func Test_calculateFetchList(t *testing.T) {
 
 	// when i store a message
 	store, _ := NewMessagePartition(dir, "myMessages")
-	store.maxMessageId = uint64(2) // hack, for test setup
+	store.maxMessageID = uint64(2) // hack, for test setup
 	a.NoError(store.Store(uint64(3), []byte("aaaaaaaaaa")))
 	a.NoError(store.Store(uint64(4), []byte("bbbbbbbbbb")))
-	store.maxMessageId = uint64(9) // hack, for test setup
+	store.maxMessageID = uint64(9) // hack, for test setup
 	a.NoError(store.Store(uint64(10), []byte("cccccccccc")))
-	store.maxMessageId = MESSAGES_PER_FILE - uint64(1) // hack, for test setup
+	store.maxMessageID = MESSAGES_PER_FILE - uint64(1) // hack, for test setup
 	a.NoError(store.Store(MESSAGES_PER_FILE, []byte("1111111111")))
-	store.maxMessageId = MESSAGES_PER_FILE + uint64(4) // hack, for test setup
+	store.maxMessageID = MESSAGES_PER_FILE + uint64(4) // hack, for test setup
 	a.NoError(store.Store(MESSAGES_PER_FILE+uint64(5), []byte("2222222222")))
 	defer a.NoError(store.Close())
 
@@ -276,14 +276,14 @@ func Test_Partition_Fetch(t *testing.T) {
 
 	// when i store a message
 	store, _ := NewMessagePartition(dir, "myMessages")
-	store.maxMessageId = uint64(2) // hack, for test setup
+	store.maxMessageID = uint64(2) // hack, for test setup
 	a.NoError(store.Store(uint64(3), []byte("aaaaaaaaaa")))
 	a.NoError(store.Store(uint64(4), []byte("bbbbbbbbbb")))
-	store.maxMessageId = uint64(9) // hack, for test setup
+	store.maxMessageID = uint64(9) // hack, for test setup
 	a.NoError(store.Store(uint64(10), []byte("cccccccccc")))
-	store.maxMessageId = MESSAGES_PER_FILE - uint64(1) // hack, for test setup
+	store.maxMessageID = MESSAGES_PER_FILE - uint64(1) // hack, for test setup
 	a.NoError(store.Store(MESSAGES_PER_FILE, []byte("1111111111")))
-	store.maxMessageId = MESSAGES_PER_FILE + uint64(4) // hack, for test setup
+	store.maxMessageID = MESSAGES_PER_FILE + uint64(4) // hack, for test setup
 	a.NoError(store.Store(MESSAGES_PER_FILE+uint64(5), []byte("2222222222")))
 	defer a.NoError(store.Close())
 
@@ -402,7 +402,7 @@ func Test_calculateMaxMessageIdFromIndex(t *testing.T) {
 	a.NoError(store.Store(uint64(1), []byte("aaaaaaaaaa")))
 	a.NoError(store.Store(uint64(2), []byte("bbbbbbbbbb")))
 
-	maxMessageId, err := store.calculateMaxMessageIdFromIndex(uint64(0))
+	maxMessageId, err := store.calculateMaxMessageIDFromIndex(uint64(0))
 	a.NoError(err)
 	a.Equal(uint64(2), maxMessageId)
 }

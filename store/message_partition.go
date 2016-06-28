@@ -33,7 +33,7 @@ const (
 )
 
 type fetchEntry struct {
-	messageId uint64
+	messageID uint64
 	fileId    uint64
 	offset    int64
 	size      int
@@ -44,10 +44,10 @@ type MessagePartition struct {
 	name                    string
 	appendFile              *os.File
 	indexFile               *os.File
-	appendFirstId           uint64
-	appendLastId            uint64
+	appendFirstID           uint64
+	appendLastID            uint64
 	appendFileWritePosition uint64
-	maxMessageId            uint64
+	maxMessageID            uint64
 	currentIndex            uint64
 	mutex                   *sync.RWMutex
 }
@@ -71,10 +71,10 @@ func (p *MessagePartition) initialize() error {
 		return err
 	}
 	if len(fileList) == 0 {
-		p.maxMessageId = 0
+		p.maxMessageID = 0
 	} else {
 		var err error
-		p.maxMessageId, err = p.calculateMaxMessageIdFromIndex(fileList[len(fileList)-1])
+		p.maxMessageID, err = p.calculateMaxMessageIDFromIndex(fileList[len(fileList)-1])
 		if err != nil {
 			messageStoreLogger.WithField("err", err).Error("MessagePartition error on calculateMaxMessageIdFromIndex")
 			return err
@@ -84,7 +84,7 @@ func (p *MessagePartition) initialize() error {
 }
 
 // calculateMaxMessageIdFromIndex returns the max message id for a message file
-func (p *MessagePartition) calculateMaxMessageIdFromIndex(fileId uint64) (uint64, error) {
+func (p *MessagePartition) calculateMaxMessageIDFromIndex(fileId uint64) (uint64, error) {
 	stat, err := os.Stat(p.indexFilenameByMessageId(fileId))
 	if err != nil {
 		return 0, err
@@ -114,11 +114,11 @@ func (p *MessagePartition) scanFiles() ([]uint64, error) {
 	return result, nil
 }
 
-func (p *MessagePartition) MaxMessageId() (uint64, error) {
+func (p *MessagePartition) MaxMessageID() (uint64, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	return p.maxMessageId, nil
+	return p.maxMessageID, nil
 }
 
 func (p *MessagePartition) closeAppendFiles() error {
@@ -172,8 +172,8 @@ func (p *MessagePartition) createNextAppendFiles(msgId uint64) error {
 
 	p.appendFile = appendfile
 	p.indexFile = indexfile
-	p.appendFirstId = firstMessageIdForFile
-	p.appendLastId = firstMessageIdForFile + MESSAGES_PER_FILE - 1
+	p.appendFirstID = firstMessageIdForFile
+	p.appendLastID = firstMessageIdForFile + MESSAGES_PER_FILE - 1
 	stat, err := appendfile.Stat()
 	if err != nil {
 		return err
@@ -216,7 +216,7 @@ func (p *MessagePartition) Close() error {
 func (p *MessagePartition) DoInTx(fnToExecute func(maxMessageId uint64) error) error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	return fnToExecute(p.maxMessageId)
+	return fnToExecute(p.maxMessageID)
 }
 
 func (p *MessagePartition) Store(msgId uint64, msg []byte) error {
@@ -232,7 +232,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 	//	return fmt.Errorf("MessagePartition: Invalid message id for partition %v. Next id should be %v, but was %q",
 	//		p.name, 1+p.maxMessageId, msgId)
 	//}
-	if msgId > p.appendLastId ||
+	if msgId > p.appendLastID ||
 		p.appendFile == nil ||
 		p.indexFile == nil {
 
@@ -270,7 +270,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 
 	p.appendFileWritePosition += uint64(len(sizeAndId) + len(msg))
 
-	p.maxMessageId = msgId
+	p.maxMessageID = msgId
 
 	return nil
 }
@@ -304,13 +304,13 @@ func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC cha
 	var lastMsgId uint64
 	for _, f := range fetchList {
 		if lastMsgId == 0 {
-			lastMsgId = f.messageId - 1
+			lastMsgId = f.messageID - 1
 		}
-		lastMsgId = f.messageId
+		lastMsgId = f.messageID
 
 		log.WithFields(log.Fields{
 			"lastMsgId":   lastMsgId,
-			"f.messageId": f.messageId,
+			"f.messageId": f.messageID,
 			"fileID":      f.fileId,
 		}).Debug("fetchByFetchlist for ")
 
@@ -331,7 +331,7 @@ func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC cha
 			log.WithField("err", err).Error("Error ReadAt")
 			return err
 		}
-		messageC <- MessageAndID{f.messageId, msg}
+		messageC <- MessageAndID{f.messageID, msg}
 	}
 	return nil
 }
@@ -407,7 +407,7 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 
 		if msgOffset != uint64(0) { // only append, if the message exists
 			result = append(result, fetchEntry{
-				messageId: nextId,
+				messageID: nextId,
 				fileId:    fileId,
 				offset:    int64(msgOffset),
 				size:      int(msgSize),
