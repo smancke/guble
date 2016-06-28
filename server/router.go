@@ -1,18 +1,18 @@
 package server
 
 import (
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/auth"
-	"github.com/smancke/guble/server/cluster"
-	"github.com/smancke/guble/store"
-
-	log "github.com/Sirupsen/logrus"
-
 	"fmt"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/smancke/guble/server/cluster"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/store"
 )
 
 const (
@@ -28,6 +28,8 @@ type Router interface {
 	MessageStore() (store.MessageStore, error)
 	KVStore() (store.KVStore, error)
 	Cluster() *cluster.Cluster
+
+	Fetch(store.FetchRequest) error
 
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
@@ -143,8 +145,8 @@ func (router *router) Check() error {
 	return nil
 }
 
-// HandleMessage stores the message in the MessageStore(and gets a new ID for it iff the message was created locally)
-// and then passes it to: the internal channel, and asynchronously to the cluster (if available).
+// HandleMessage stores the message in the MessageStore(and gets a new ID for it if the message was created locally)
+// and then passes it to the internal channel, and asynchronously to the cluster (if available).
 func (router *router) HandleMessage(message *protocol.Message) error {
 	logger.WithFields(log.Fields{
 		"userID": message.UserID,
@@ -170,16 +172,14 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 	if router.cluster == nil || (router.cluster != nil && message.NodeID == router.cluster.Config.ID) {
 
 		// for a new locally-generated message, we need to generate a new message-ID
-		id ,err := router.messageStore.GenerateNextMsgId(msgPathPartition)
+		id, err := router.messageStore.GenerateNextMsgId(msgPathPartition)
 		if err != nil {
-			logger.WithFields(log.Fields{
-				"err": err,
-			}).Error("Generation of id failed")
+			logger.WithFields(log.Fields{"err": err}).Error("Generation of id failed")
 			mTotalMessageStoreErrors.Add(1)
 			return err
 		}
 
-		message.ID =id
+		message.ID = id
 		message.Time = time.Now().Unix()
 
 		if err := router.messageStore.Store(msgPathPartition, message.ID, message.Bytes()); err != nil {
@@ -268,10 +268,7 @@ func (router *router) Unsubscribe(r *Route) {
 }
 
 func (router *router) subscribe(r *Route) {
-	logger.WithFields(log.Fields{
-		"userID": r.UserID,
-		"path":   r.Path,
-	}).Debug("Internal subscribe")
+	logger.WithFields(log.Fields{"userID": r.UserID, "path": r.Path}).Debug("Internal subscribe")
 	mTotalSubscriptionAttempts.Add(1)
 
 	slice, present := router.routes[r.Path]
@@ -295,10 +292,7 @@ func (router *router) subscribe(r *Route) {
 }
 
 func (router *router) unsubscribe(r *Route) {
-	logger.WithFields(log.Fields{
-		"userID": r.UserID,
-		"path":   r.Path,
-	}).Debug("Internal unsubscribe")
+	logger.WithFields(log.Fields{"userID": r.UserID, "path": r.Path}).Debug("Internal unsubscribe")
 	mTotalUnsubscriptionAttempts.Add(1)
 
 	slice, present := router.routes[r.Path]
@@ -356,7 +350,9 @@ func (router *router) routeMessage(message *protocol.Message) {
 			}
 		}
 	}
-	if matched {
+
+	if !matched {
+		logger.WithField("topic", message.Path).Debug("No route matched.")
 		mTotalMessagesNotMatchingTopic.Add(1)
 	}
 }
@@ -367,10 +363,7 @@ func (router *router) closeRoutes() {
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
 			router.unsubscribe(route)
-			log.WithFields(log.Fields{
-				"module": "router",
-				"route":  route.String(),
-			}).Debug("Closing route")
+			log.WithFields(log.Fields{"module": "router", "route": route.String()}).Debug("Closing route")
 			route.Close()
 		}
 	}
@@ -432,6 +425,14 @@ func (router *router) KVStore() (store.KVStore, error) {
 		return nil, ErrServiceNotProvided
 	}
 	return router.kvStore, nil
+}
+
+func (router *router) Fetch(req store.FetchRequest) error {
+	if err := router.isStopping(); err != nil {
+		return err
+	}
+	router.messageStore.Fetch(req)
+	return nil
 }
 
 // Cluster returns the `cluster` provided for the router, or nil if no cluster was set-up

@@ -2,13 +2,14 @@ package store
 
 import (
 	"errors"
-	log "github.com/Sirupsen/logrus"
+	"fmt"
 	"os"
 	"path"
 	"sync"
 	"syscall"
-	"fmt"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/gubled/config"
 )
 
@@ -17,7 +18,7 @@ var messageStoreLogger = log.WithFields(log.Fields{
 })
 
 const (
-	WorkerIdBits       = 5
+	WorkerIdBits = 5
 	//DatacenterIdBits   = 5
 	SequenceBits       = 12
 	WorkerIdShift      = SequenceBits
@@ -38,7 +39,7 @@ func NewFileMessageStore(basedir string) *FileMessageStore {
 	}
 }
 
-func (fms *FileMessageStore) MaxMessageId(partition string) (uint64, error) {
+func (fms *FileMessageStore) MaxMessageID(partition string) (uint64, error) {
 	p, err := fms.partitionStore(partition)
 	if err != nil {
 		return 0, err
@@ -49,7 +50,9 @@ func (fms *FileMessageStore) MaxMessageId(partition string) (uint64, error) {
 func (fms *FileMessageStore) Stop() error {
 	fms.mutex.Lock()
 	defer fms.mutex.Unlock()
+
 	messageStoreLogger.Info("Stop")
+
 	var returnError error
 	for key, partition := range fms.partitions {
 		if err := partition.Close(); err != nil {
@@ -57,41 +60,40 @@ func (fms *FileMessageStore) Stop() error {
 			messageStoreLogger.WithFields(log.Fields{
 				"key": key,
 				"err": err,
-			}).Error("Error on closing message store partition for")
+			}).Error("Error on closing message store partition")
 		}
 		delete(fms.partitions, key)
 	}
 	return returnError
 }
 
-func (fms *FileMessageStore) GenerateNextMsgId(msgPathPartition string) (uint64,error){
+func (fms *FileMessageStore) GenerateNextMsgId(msgPathPartition string) (uint64, error) {
 	fms.mutex.Lock()
 	defer fms.mutex.Unlock()
 
-	timestamp :=time.Now().Unix()
-	var  localSequenceNumber       uint64
+	timestamp := time.Now().Unix()
+	var localSequenceNumber uint64
 
 	partitionStore, exist := fms.partitions[msgPathPartition]
 	if !exist {
 		//first message i
 		localSequenceNumber = 0
-	}else {
-		localSequenceNumber= partitionStore.currentIndex
+	} else {
+		localSequenceNumber = partitionStore.currentIndex
 		partitionStore.currentIndex++
 	}
 
-	if timestamp < 1467024972  {
+	if timestamp < 1467024972 {
 		err := fmt.Errorf("Clock is moving backwards. Rejecting requests until %d.", timestamp)
 		return 1, err
 	}
 
-	id := ( uint64(timestamp - 1467024972) << TimestampLeftShift) |
-	(  uint64(*config.Cluster.NodeID) << WorkerIdShift) | localSequenceNumber
-
+	id := (uint64(timestamp-1467024972) << TimestampLeftShift) |
+		(uint64(*config.Cluster.NodeID) << WorkerIdShift) | localSequenceNumber
 
 	messageStoreLogger.WithFields(log.Fields{
-		"id": id,
-		"messagePartition":  msgPathPartition,
+		"id":                  id,
+		"messagePartition":    msgPathPartition,
 		"localSequenceNumber": localSequenceNumber,
 		//"lasTiDE": partitionStore.appendLastId,
 	}).Info("+Generated id ")
@@ -122,7 +124,7 @@ func (fms *FileMessageStore) Store(partition string, msgId uint64, msg []byte) e
 func (fms *FileMessageStore) Fetch(req FetchRequest) {
 	p, err := fms.partitionStore(req.Partition)
 	if err != nil {
-		req.ErrorCallback <- err
+		req.ErrorC <- err
 		return
 	}
 	p.Fetch(req)

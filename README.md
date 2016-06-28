@@ -2,7 +2,7 @@
 
 Guble is a simple user-facing messaging and data replication server written in Go.
 
-[![Release](https://img.shields.io/github/release/smancke/guble.svg)](https://github.com/smancke/guble/releases/latest) [![Docker](https://img.shields.io/docker/pulls/smancke/guble.svg)](https://hub.docker.com/r/smancke/guble/) [![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble) [![Coverage Status](https://coveralls.io/repos/smancke/guble/badge.svg?branch=master&service=github)](https://coveralls.io/github/smancke/guble?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/smancke/guble)](https://goreportcard.com/report/github.com/smancke/guble)
+[![Release](https://img.shields.io/github/release/smancke/guble.svg)](https://github.com/smancke/guble/releases/latest) [![Docker](https://img.shields.io/docker/pulls/smancke/guble.svg)](https://hub.docker.com/r/smancke/guble/) [![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble) [![Coverage Status](https://coveralls.io/repos/smancke/guble/badge.svg?branch=master&service=github)](https://coveralls.io/github/smancke/guble?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/smancke/guble)](https://goreportcard.com/report/github.com/smancke/guble) [![GoDoc](https://godoc.org/github.com/smancke/guble?status.svg)](https://godoc.org/github.com/smancke/guble)
 
 # Overview
 Guble is in an early state. It is already working well and is very useful, but the protocol, API and storage formats may
@@ -66,22 +66,22 @@ This is the current (and fast changing) roadmap and todo list:
 This release contains a lot of small changes and the JavaScript API.
 
 * Authentication and access management
-* Clean shutdown
-* Improve logging (Maybe use of https://github.com/Sirupsen/logrus)
-* ~~Rename package "guble" to "protocol" or "gublep"~~
+* ~~Clean shutdown~~
+* ~~Improve logging (Maybe use of https://github.com/Sirupsen/logrus)~~
+* ~~Rename package "guble" to "protocol"~~
 * ~~Change time from ISO 8601 to unix timestamp~~
-* Remove `userId` from route
+* ~~Remove `userId` from route~~
 
 ## Roadmap Release 0.3
+* ~~Introduce Health Check Resource~~
+* ~~Introduce Basic Metrics API~~
+* Replication across multiple servers
 * Stable JavaScript client: https://github.com/smancke/guble-js
 * Add Consul as KV Backend strategy
-* Storing the sequence Id of topics in kv store, if we turn of persistance
-* Replication across multiple servers
+* Storing the sequence Id of topics in KV store, if we turn of persistence
 * Cleanup, documentation, and test coverage of the GCM connector
 * Make notification messages optional by client configuration
 * Load testing with 5000 connections per instance
-* Introduce Health Check Ressource
-* Introduce Basic Metrics API
 
 ## Roadmap Release 0.4
 * Change sqlite to bolt
@@ -95,7 +95,7 @@ This release contains a lot of small changes and the JavaScript API.
 * HTTPS support in the service
 * Cancel of fetch in the message store and multiple concurrent fetch commands for the same topic
 * Minimal example chat application
-* Userspecific persistant subscriptions accross all clients of the user
+* User-specific persistent subscriptions across all clients of the user
 * Client: (re-)setup of subscriptions after client reconnect
 * Message size limit configurable by the client with fetching by URL
 
@@ -117,11 +117,11 @@ docker run smancke/guble --help
 All options can be supplied on the commandline or by a corresponding environment variable with the prefix `GUBLE_`.
 So to let guble be more verbose, you can either use:
 ```
-docker run smancke/guble --log-info
+docker run smancke/guble --log=info
 ```
 or
 ```
-docker run -e GUBLE_LOG_INFO=true smancke/guble
+docker run -e GUBLE_LOG=true smancke/guble
 ```
 
 The Docker image has a volume mount point at `/var/lib/guble`. So you should use

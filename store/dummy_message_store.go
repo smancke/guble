@@ -89,7 +89,7 @@ func (dms *DummyMessageStore) store(partition string, msgId uint64, msg []byte) 
 func (dms *DummyMessageStore) Fetch(req FetchRequest) {
 }
 
-func (dms *DummyMessageStore) MaxMessageId(partition string) (uint64, error) {
+func (dms *DummyMessageStore) MaxMessageID(partition string) (uint64, error) {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
 	return dms.maxMessageId(partition)

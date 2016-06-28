@@ -3,13 +3,14 @@ package store
 import (
 	"encoding/binary"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 var (
@@ -254,23 +255,18 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 
 // Fetch fetches a set of messages
 func (p *MessagePartition) Fetch(req FetchRequest) {
-	log.WithField("req", req.StartId).Error("Fetching ")
 	go func() {
 		fetchList, err := p.calculateFetchList(req)
 		if err != nil {
-			log.WithField("err", err).Error("Error calculating list")
-			req.ErrorCallback <- err
+			req.ErrorC <- err
 			return
 		}
 
-		log.WithField("fetchLIst", fetchList).Debug("FetchING ")
-		req.StartCallback <- len(fetchList)
+		req.StartC <- len(fetchList)
 
-		log.WithField("fetchLIst", fetchList).Debug("Fetch 2")
 		err = p.fetchByFetchlist(fetchList, req.MessageC)
 		if err != nil {
-			log.WithField("err", err).Error("Error calculating list")
-			req.ErrorCallback <- err
+			req.ErrorC <- err
 			return
 		}
 		close(req.MessageC)
@@ -279,7 +275,7 @@ func (p *MessagePartition) Fetch(req FetchRequest) {
 }
 
 // fetchByFetchlist fetches the messages in the supplied fetchlist and sends them to the message-channel
-func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC chan MessageAndId) error {
+func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC chan MessageAndID) error {
 	var fileId uint64
 	var file *os.File
 	var err error
@@ -313,7 +309,7 @@ func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC cha
 			log.WithField("err", err).Error("Error ReadAt")
 			return err
 		}
-		messageC <- MessageAndId{f.messageId, msg}
+		messageC <- MessageAndID{f.messageId, msg}
 	}
 	return nil
 }
@@ -327,7 +323,7 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 	if req.Direction == 0 {
 		req.Direction = 1
 	}
-	nextId := req.StartId
+	nextId := req.StartID
 	initialCap := req.Count
 	if initialCap > defaultInitialCapacity {
 		initialCap = defaultInitialCapacity

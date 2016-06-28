@@ -1,12 +1,13 @@
 package store
 
 import (
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_MessagePartition_scanFiles(t *testing.T) {
@@ -203,39 +204,39 @@ func Test_calculateFetchList(t *testing.T) {
 		expectedResults []fetchEntry
 	}{
 		{`direct match`,
-			FetchRequest{StartId: 3, Direction: 0, Count: 1},
+			FetchRequest{StartID: 3, Direction: 0, Count: 1},
 			[]fetchEntry{
 				{3, uint64(0), 21, 10}, // messageId, fileId, offset, size
 			},
 		},
 		{`direct match in second file`,
-			FetchRequest{StartId: MESSAGES_PER_FILE, Direction: 0, Count: 1},
+			FetchRequest{StartID: MESSAGES_PER_FILE, Direction: 0, Count: 1},
 			[]fetchEntry{
 				{MESSAGES_PER_FILE, MESSAGES_PER_FILE, 21, 10}, // messageId, fileId, offset, size
 			},
 		},
 		{`next entry matches`,
-			FetchRequest{StartId: 1, Direction: 0, Count: 1},
+			FetchRequest{StartID: 1, Direction: 0, Count: 1},
 			[]fetchEntry{
 				{3, uint64(0), 21, 10}, // messageId, fileId, offset, size
 			},
 		},
 		{`entry before matches`,
-			FetchRequest{StartId: 5, Direction: -1, Count: 1},
+			FetchRequest{StartID: 5, Direction: -1, Count: 1},
 			[]fetchEntry{
 				{4, uint64(0), 43, 10}, // messageId, fileId, offset, size
 			},
 		},
 		{`backward, no match`,
-			FetchRequest{StartId: 1, Direction: -1, Count: 1},
+			FetchRequest{StartID: 1, Direction: -1, Count: 1},
 			[]fetchEntry{},
 		},
 		{`forward, no match (out of files)`,
-			FetchRequest{StartId: 99999999999, Direction: 1, Count: 1},
+			FetchRequest{StartID: 99999999999, Direction: 1, Count: 1},
 			[]fetchEntry{},
 		},
 		{`forward, no match (after last id in last file)`,
-			FetchRequest{StartId: MESSAGES_PER_FILE + uint64(8), Direction: 1, Count: 1},
+			FetchRequest{StartID: MESSAGES_PER_FILE + uint64(8), Direction: 1, Count: 1},
 			[]fetchEntry{},
 		},
 		/*
@@ -292,31 +293,31 @@ func Test_Partition_Fetch(t *testing.T) {
 		expectedResults []string
 	}{
 		{`direct match`,
-			FetchRequest{StartId: 3, Direction: 0, Count: 1},
+			FetchRequest{StartID: 3, Direction: 0, Count: 1},
 			[]string{"aaaaaaaaaa"},
 		},
 		{`direct match in second file`,
-			FetchRequest{StartId: MESSAGES_PER_FILE, Direction: 0, Count: 1},
+			FetchRequest{StartID: MESSAGES_PER_FILE, Direction: 0, Count: 1},
 			[]string{"1111111111"},
 		},
 		{`next entry matches`,
-			FetchRequest{StartId: 1, Direction: 0, Count: 1},
+			FetchRequest{StartID: 1, Direction: 0, Count: 1},
 			[]string{"aaaaaaaaaa"},
 		},
 		{`entry before matches`,
-			FetchRequest{StartId: 5, Direction: -1, Count: 1},
+			FetchRequest{StartID: 5, Direction: -1, Count: 1},
 			[]string{"bbbbbbbbbb"},
 		},
 		{`backward, no match`,
-			FetchRequest{StartId: 1, Direction: -1, Count: 1},
+			FetchRequest{StartID: 1, Direction: -1, Count: 1},
 			[]string{},
 		},
 		{`forward, no match (out of files)`,
-			FetchRequest{StartId: 99999999999, Direction: 1, Count: 1},
+			FetchRequest{StartID: 99999999999, Direction: 1, Count: 1},
 			[]string{},
 		},
 		{`forward, no match (after last id in last file)`,
-			FetchRequest{StartId: MESSAGES_PER_FILE + uint64(8), Direction: 1, Count: 1},
+			FetchRequest{StartID: MESSAGES_PER_FILE + uint64(8), Direction: 1, Count: 1},
 			[]string{},
 		},
 		/*
@@ -331,16 +332,16 @@ func Test_Partition_Fetch(t *testing.T) {
 	}
 	for _, testcase := range testCases {
 		testcase.req.Partition = "myMessages"
-		testcase.req.MessageC = make(chan MessageAndId)
-		testcase.req.ErrorCallback = make(chan error)
-		testcase.req.StartCallback = make(chan int)
+		testcase.req.MessageC = make(chan MessageAndID)
+		testcase.req.ErrorC = make(chan error)
+		testcase.req.StartC = make(chan int)
 
 		messages := []string{}
 
 		store.Fetch(testcase.req)
 
 		select {
-		case numberOfResults := <-testcase.req.StartCallback:
+		case numberOfResults := <-testcase.req.StartC:
 			a.Equal(len(testcase.expectedResults), numberOfResults)
 		case <-time.After(time.Second):
 			a.Fail("timeout")
@@ -355,7 +356,7 @@ func Test_Partition_Fetch(t *testing.T) {
 					break loop
 				}
 				messages = append(messages, string(msg.Message))
-			case err := <-testcase.req.ErrorCallback:
+			case err := <-testcase.req.ErrorC:
 				a.Fail(err.Error())
 				break loop
 			case <-time.After(time.Second):
@@ -406,12 +407,14 @@ func Test_calculateMaxMessageIdFromIndex(t *testing.T) {
 	a.Equal(uint64(2), maxMessageId)
 }
 
-func Test_MessagePartition_ErrorOnWrongMessageId(t *testing.T) {
-	a := assert.New(t)
-	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
-	defer os.RemoveAll(dir)
+// Test is absolute, message ids cannot be sequential anymore, they depend on
+// a timestamp and other variables
+// func Test_MessagePartition_ErrorOnWrongMessageId(t *testing.T) {
+// 	a := assert.New(t)
+// 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
+// 	defer os.RemoveAll(dir)
 
-	// when i store a message
-	store, _ := NewMessagePartition(dir, "myMessages")
-	a.Error(store.Store(42, []byte{}))
-}
+// 	// when i store a message
+// 	store, _ := NewMessagePartition(dir, "myMessages")
+// 	a.Error(store.Store(42, []byte{}))
+// }
