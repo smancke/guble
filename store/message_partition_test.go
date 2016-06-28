@@ -405,13 +405,3 @@ func Test_calculateMaxMessageIdFromIndex(t *testing.T) {
 	a.NoError(err)
 	a.Equal(uint64(2), maxMessageId)
 }
-
-func Test_MessagePartition_ErrorOnWrongMessageId(t *testing.T) {
-	a := assert.New(t)
-	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
-	defer os.RemoveAll(dir)
-
-	// when i store a message
-	store, _ := NewMessagePartition(dir, "myMessages")
-	a.Error(store.Store(42, []byte{}))
-}

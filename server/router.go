@@ -170,7 +170,8 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 	if router.cluster == nil || (router.cluster != nil && message.NodeID == router.cluster.Config.ID) {
 
 		// for a new locally-generated message, we need to generate a new message-ID
-		id ,err := router.messageStore.GenerateNextMsgId(msgPathPartition)
+		ts := time.Now().Unix()
+		id, err := router.messageStore.GenerateNextMsgId(msgPathPartition, ts)
 		if err != nil {
 			logger.WithFields(log.Fields{
 				"err": err,
@@ -179,8 +180,8 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 			return err
 		}
 
-		message.ID =id
-		message.Time = time.Now().Unix()
+		message.ID = id
+		message.Time = ts
 
 		if err := router.messageStore.Store(msgPathPartition, message.ID, message.Bytes()); err != nil {
 			logger.WithFields(log.Fields{
@@ -190,20 +191,6 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 			mTotalMessageStoreErrors.Add(1)
 			return err
 		}
-
-		//txCallback := func(msgId uint64) []byte {
-		//	message.ID = msgId
-		//	message.Time = time.Now().Unix()
-		//	return message.Bytes()
-		//}
-		//if err := router.messageStore.StoreTx(msgPathPartition, txCallback); err != nil {
-		//	logger.WithFields(log.Fields{
-		//		"err":          err,
-		//		"msgPartition": msgPathPartition,
-		//	}).Error("Error storing new local message in partition")
-		//	mTotalMessageStoreErrors.Add(1)
-		//	return err
-		//}
 	} else {
 		if err := router.messageStore.Store(msgPathPartition, message.ID, message.Bytes()); err != nil {
 			logger.WithFields(log.Fields{

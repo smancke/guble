@@ -9,10 +9,6 @@ type MessageStore interface {
 	// fetching an id and storing the message.
 	Store(partition string, msgId uint64, msg []byte) error
 
-	// StoreTx retrieves the next available id and stores the message in one atomic transaction
-	StoreTx(partition string,
-		callback func(msgId uint64) (msg []byte)) error
-
 	// Fetch fetches a set of messages.
 	// The results, as well as errors are communicated asynchronously using
 	// the channels, supplied by the FetchRequest.
@@ -26,7 +22,8 @@ type MessageStore interface {
 	// The error result if the fnToExecute or an error while locking will be returned by DoInTx.
 	DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error
 
-	GenerateNextMsgId(msgPathPartition string) (uint64, error)
+	// GenerateNextMsgId generates a new message ID based on a timestamp in a strictly monotonically order
+	GenerateNextMsgId(msgPathPartition string, timestamp int64) (uint64, error)
 
 	//Check if the current messageStore is having enough space to save on Disk
 	Check() error

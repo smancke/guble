@@ -165,27 +165,6 @@ func Test_DoInTxError(t *testing.T) {
 	a.NotNil(err)
 }
 
-func Test_StoreTx(t *testing.T) {
-	a := assert.New(t)
-
-	dir, _ := ioutil.TempDir("", "guble_message_store_test")
-	store := NewFileMessageStore(dir)
-	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
-
-	actualStored := store.StoreTx("p1", func(maxId uint64) []byte {
-		return nil
-	})
-	a.Nil(actualStored)
-}
-
-func Test_StoreTxError(t *testing.T) {
-	a := assert.New(t)
-	store := NewFileMessageStore("/TestDir")
-
-	err := store.StoreTx("p2", nil)
-	a.NotNil(err)
-}
-
 func Test_Check(t *testing.T) {
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_store_test")
