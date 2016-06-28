@@ -24,11 +24,12 @@ import (
 	"syscall"
 )
 
-var logger = log.WithFields(log.Fields{
-	"module": "gubled",
-})
+const (
+	fileOption = "file"
+)
+
 var ValidateStoragePath = func() error {
-	if *config.KVS == "file" || *config.MS == "file" {
+	if *config.KVS == fileOption || *config.MS == fileOption {
 		testfile := path.Join(*config.StoragePath, "write-test-file")
 		f, err := os.Create(testfile)
 		if err != nil {
@@ -37,12 +38,6 @@ var ValidateStoragePath = func() error {
 				"err":         err,
 			}).Error("Storage path not present/writeable.")
 
-			if *config.StoragePath == "/var/lib/guble" {
-				logger.WithFields(log.Fields{
-					"storagePath": *config.StoragePath,
-					"err":         err,
-				}).Error("Use --storage-path=<path> to override the default location, or create the directory with RW rights.")
-			}
 			return err
 		}
 		f.Close()
@@ -128,7 +123,7 @@ func Main() {
 	log.SetLevel(level)
 
 	if err := ValidateStoragePath(); err != nil {
-		logger.Fatal("Fatal error in gubled in validation for storage path")
+		logger.Fatal("Fatal error in gubled in validation of storage path")
 	}
 
 	service := StartService()
