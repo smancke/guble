@@ -105,7 +105,9 @@ func (kvStore *SqliteKVStore) Check() error {
 
 func (kvStore *SqliteKVStore) Stop() error {
 	if kvStore.db != nil {
-		return kvStore.db.Close()
+		err := kvStore.db.Close()
+		kvStore.db = nil
+		return err
 	}
 	return nil
 }
