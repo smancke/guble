@@ -225,6 +225,7 @@ func (p *MessagePartition) Store(msgId uint64, msg []byte) error {
 }
 
 func (p *MessagePartition) store(msgId uint64, msg []byte) error {
+	// TODO MARIAN remove this after finishing the priority queue
 	//if msgId != 1+p.maxMessageId {
 	//	return fmt.Errorf("MessagePartition: Invalid message id for partition %v. Next id should be %v, but was %q",
 	//		p.name, 1+p.maxMessageId, msgId)
