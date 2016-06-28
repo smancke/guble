@@ -1,12 +1,12 @@
 package store
 
 import (
+	log "github.com/Sirupsen/logrus"
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
 
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"path"
@@ -131,7 +131,7 @@ func (kvStore *SqliteKVStore) Open() error {
 		sqliteLogger.WithFields(log.Fields{
 			"dbFilename": kvStore.filename,
 			"err":        err,
-		}).Error("DB Directory not writeable")
+		}).Error("DB Directory is not writeable")
 		return err
 	}
 
@@ -181,8 +181,9 @@ func (kvStore *SqliteKVStore) Open() error {
 
 func (kvStore *SqliteKVStore) Check() error {
 	if kvStore.db == nil {
-		sqliteLogger.Error("Error: Database is not initialized (nil)")
-		return errors.New("Db service is null.")
+		errorMessage := "Error: Database is not initialized (nil)"
+		sqliteLogger.Error(errorMessage)
+		return errors.New(errorMessage)
 	}
 	if err := kvStore.db.DB().Ping(); err != nil {
 		sqliteLogger.WithFields(log.Fields{
