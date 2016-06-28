@@ -4,8 +4,8 @@
 package server
 
 import (
-	gomock "github.com/golang/mock/gomock"
-	store "github.com/smancke/guble/store"
+	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/store"
 )
 
 // Mock of MessageStore interface

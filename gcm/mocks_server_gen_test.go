@@ -4,12 +4,12 @@
 package gcm
 
 import (
-	gomock "github.com/golang/mock/gomock"
-	protocol "github.com/smancke/guble/protocol"
-	server "github.com/smancke/guble/server"
-	auth "github.com/smancke/guble/server/auth"
-	cluster "github.com/smancke/guble/server/cluster"
-	store "github.com/smancke/guble/store"
+	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/server/cluster"
+	"github.com/smancke/guble/store"
 )
 
 // Mock of Router interface

@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	fileOption = "file"
+	fileOption            = "file"
 	defaultSqliteFilename = "kv-store.db"
 )
 
