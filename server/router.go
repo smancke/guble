@@ -140,12 +140,10 @@ func (router *router) Check() error {
 // and then passes it to: the internal channel, and asynchronously to the cluster (if available).
 func (router *router) HandleMessage(message *protocol.Message) error {
 	mTotalMessagesIncoming.Add(1)
-	if logger.Level == log.DebugLevel {
-		logger.WithFields(log.Fields{
-			"userID": message.UserID,
-			"path":   message.Path,
-		}).Debug("HandleMessage")
-	}
+	logger.WithFields(log.Fields{
+		"userID": message.UserID,
+		"path":   message.Path,
+	}).Debug("HandleMessage")
 
 	if err := router.isStopping(); err != nil {
 		logger.WithField("err", err).Error("Router is stopping")
@@ -205,7 +203,6 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 		"userID":        r.UserID,
 		"path":          r.Path,
 	}).Debug("Subscribe")
-
 	if err := router.isStopping(); err != nil {
 		return nil, err
 	}
@@ -239,11 +236,11 @@ func (router *router) Unsubscribe(r *Route) {
 }
 
 func (router *router) subscribe(r *Route) {
+	mTotalSubscriptionAttempts.Add(1)
 	logger.WithFields(log.Fields{
 		"userID": r.UserID,
 		"path":   r.Path,
 	}).Debug("Internal subscribe")
-	mTotalSubscriptionAttempts.Add(1)
 
 	slice, present := router.routes[r.Path]
 	var removed bool
@@ -266,11 +263,11 @@ func (router *router) subscribe(r *Route) {
 }
 
 func (router *router) unsubscribe(r *Route) {
+	mTotalUnsubscriptionAttempts.Add(1)
 	logger.WithFields(log.Fields{
 		"userID": r.UserID,
 		"path":   r.Path,
 	}).Debug("Internal unsubscribe")
-	mTotalUnsubscriptionAttempts.Add(1)
 
 	slice, present := router.routes[r.Path]
 	if !present {
@@ -312,7 +309,7 @@ func (router *router) isStopping() error {
 func (router *router) routeMessage(message *protocol.Message) {
 	mTotalMessagesRouted.Add(1)
 	if logger.Level == log.DebugLevel {
-		logger.WithField("msgMetadata", message.Metadata()).Debug("Called routeMessage for data")
+		logger.WithField("msgMetadata", message.Metadata()).Debug("routeMessage")
 	}
 
 	matched := false
@@ -332,15 +329,12 @@ func (router *router) routeMessage(message *protocol.Message) {
 }
 
 func (router *router) closeRoutes() {
-	logger.Debug("Called closeRoutes")
+	logger.Info("closeRoutes in router")
 
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
 			router.unsubscribe(route)
-			log.WithFields(log.Fields{
-				"module": "router",
-				"route":  route.String(),
-			}).Debug("Closing route")
+			logger.WithField("route", route.String()).Debug("Closing route")
 			route.Close()
 		}
 	}
