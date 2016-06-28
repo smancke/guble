@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/smancke/guble/gubled/config"
+
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -22,6 +24,12 @@ var (
 
 const (
 	defaultInitialCapacity = 128
+	WorkerIdBits           = 5
+	//DatacenterIdBits   = 5
+	SequenceBits       = 12
+	WorkerIdShift      = SequenceBits
+	TimestampLeftShift = SequenceBits + WorkerIdBits //+ DatacenterIdBits
+	GubleEpoch         = 1467024972
 )
 
 type fetchEntry struct {
@@ -175,6 +183,29 @@ func (p *MessagePartition) createNextAppendFiles(msgId uint64) error {
 	return nil
 }
 
+func (p *MessagePartition) generateNextMsgId(timestamp int64) (uint64, error) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	if timestamp < GubleEpoch {
+		err := fmt.Errorf("Clock is moving backwards. Rejecting requests until %d.", timestamp)
+		return 0, err
+	}
+
+	id := (uint64(timestamp-GubleEpoch) << TimestampLeftShift) |
+		(uint64(*config.Cluster.NodeID) << WorkerIdShift) | p.currentIndex
+
+	p.currentIndex++
+
+	messageStoreLogger.WithFields(log.Fields{
+		"id":                  id,
+		"messagePartition":    p.basedir,
+		"localSequenceNumber": p.currentIndex,
+	}).Info("+Generated id")
+
+	return id, nil
+}
+
 func (p *MessagePartition) Close() error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -188,16 +219,6 @@ func (p *MessagePartition) DoInTx(fnToExecute func(maxMessageId uint64) error) e
 	return fnToExecute(p.maxMessageId)
 }
 
-func (p *MessagePartition) StoreTx(partition string,
-	callback func(msgId uint64) (msg []byte)) error {
-
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
-	msgId := p.maxMessageId + 1
-	return p.store(msgId, callback(msgId))
-}
-
 func (p *MessagePartition) Store(msgId uint64, msg []byte) error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -206,6 +227,7 @@ func (p *MessagePartition) Store(msgId uint64, msg []byte) error {
 }
 
 func (p *MessagePartition) store(msgId uint64, msg []byte) error {
+	// TODO MARIAN remove this after finishing the priority queue
 	//if msgId != 1+p.maxMessageId {
 	//	return fmt.Errorf("MessagePartition: Invalid message id for partition %v. Next id should be %v, but was %q",
 	//		p.name, 1+p.maxMessageId, msgId)

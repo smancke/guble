@@ -95,25 +95,24 @@ func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 	amMock.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(false)
 
 	// when i send a message to the route
-	e := router.HandleMessage(&protocol.Message{
+	testMsg := &protocol.Message{
 		Path:   r.Path,
 		Body:   aTestByteMessage,
 		UserID: r.UserID,
-	})
+	}
+	e := router.HandleMessage(testMsg)
 
 	// an error shall be returned
 	a.NotNil(e)
 
 	// and when permission is granted
+	id := uint64(2)
 	amMock.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(true)
-	msMock.EXPECT().StoreTx(r.Path.Partition(), gomock.Any()).Return(nil)
+	msMock.EXPECT().GenerateNextMsgId(gomock.Any(), gomock.Any()).Return(id, nil)
+	msMock.EXPECT().Store("blah", id, gomock.Any()).Return(nil)
 
 	// sending message
-	e = router.HandleMessage(&protocol.Message{
-		Path:   r.Path,
-		Body:   aTestByteMessage,
-		UserID: r.UserID,
-	})
+	e = router.HandleMessage(testMsg)
 
 	// shall give no error
 	a.Nil(e)
@@ -145,7 +144,10 @@ func TestRouter_SimpleMessageSending(t *testing.T) {
 	router, r := aRouterRoute(chanSize)
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
-	msMock.EXPECT().StoreTx(r.Path.Partition(), gomock.Any()).Return(nil)
+
+	id := uint64(2)
+	msMock.EXPECT().GenerateNextMsgId(gomock.Any(), gomock.Any()).Return(id, nil)
+	msMock.EXPECT().Store(r.Path.Partition(), id, gomock.Any()).Return(nil)
 
 	// when i send a message to the route
 	router.HandleMessage(&protocol.Message{Path: r.Path, Body: aTestByteMessage})
@@ -165,8 +167,11 @@ func TestRouter_RoutingWithSubTopics(t *testing.T) {
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
 	// expect a message to `blah` partition first and `blahblub` second
-	msMock.EXPECT().StoreTx("blah", gomock.Any()).Return(nil)
-	msMock.EXPECT().StoreTx("blahblub", gomock.Any()).Return(nil)
+	id := uint64(2)
+	msMock.EXPECT().GenerateNextMsgId("blah", gomock.Any()).Return(id, nil)
+	msMock.EXPECT().GenerateNextMsgId("blahblub", gomock.Any()).Return(id+1, nil)
+	msMock.EXPECT().Store("blah", id, gomock.Any()).Return(nil)
+	msMock.EXPECT().Store("blahblub", id+1, gomock.Any()).Return(nil)
 
 	r, _ := router.Subscribe(NewRoute("/blah", "appid01", "user01", chanSize))
 
@@ -213,7 +218,9 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
-	msMock.EXPECT().StoreTx(gomock.Any(), gomock.Any()).MaxTimes(chanSize + 1)
+
+	msMock.EXPECT().GenerateNextMsgId(gomock.Any(), gomock.Any()).MaxTimes(chanSize + 1)
+	msMock.EXPECT().Store(gomock.Any(), gomock.Any(), gomock.Any()).MaxTimes(chanSize + 1)
 
 	// where the channel is full of messages
 	for i := 0; i < chanSize; i++ {
@@ -256,41 +263,6 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 	}
 }
 
-func TestRouter_storeInTxAndHandle(t *testing.T) {
-	ctrl, finish := testutil.NewMockCtrl(t)
-	defer finish()
-	a := assert.New(t)
-	startTime := time.Now()
-
-	msg := &protocol.Message{Path: protocol.Path("/topic1")}
-	var storedMsg []byte
-
-	am := auth.NewAllowAllAccessManager(true)
-	msMock := NewMockMessageStore(ctrl)
-	router := NewRouter(am, msMock, nil, nil).(*router)
-
-	msMock.EXPECT().StoreTx("topic1", gomock.Any()).
-		Do(func(topic string, callback func(msgId uint64) []byte) {
-			storedMsg = callback(uint64(42))
-		})
-
-	receive := make(chan *protocol.Message)
-	go func() {
-		msg := <-router.handleC
-
-		a.Equal(uint64(42), msg.ID)
-		t := time.Unix(msg.Time, 0) // publishing time
-		a.True(t.After(startTime.Add(-1 * time.Second)))
-		a.True(t.Before(time.Now().Add(time.Second)))
-
-		receive <- msg
-	}()
-	router.HandleMessage(msg)
-	routedMsg := <-receive
-
-	a.Equal(routedMsg.Bytes(), storedMsg)
-}
-
 // Router should handle the buffered messages also after the closing of the route
 func TestRouter_CleanShutdown(t *testing.T) {
 	//testutil.EnableDebugForMethod()
@@ -302,7 +274,7 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	var ID uint64
 
 	msMock := NewMockMessageStore(ctrl)
-	msMock.EXPECT().StoreTx("blah", gomock.Any()).
+	msMock.EXPECT().Store("blah", gomock.Any(),gomock.Any()).
 		Return(nil).
 		Do(func(partition string, callback func(msgID uint64) []byte) error {
 			ID++

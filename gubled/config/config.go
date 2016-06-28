@@ -9,7 +9,6 @@ import (
 	"net"
 	"runtime"
 	"strconv"
-	"time"
 )
 
 const (
@@ -71,12 +70,6 @@ var (
 			TCPList(),
 	}
 
-	//  GubleEpoch represent the start of the guble Cluster
-	GubleEpoch = kingpin.Flag("epoch", "This guble node's own unix timestamp (used in cluster mode): a strictly positive integer number which must be the same at cluster").
-			Default(strconv.FormatInt(time.Now().Unix(), 10)).
-			Envar("GUBLE_NODE_ID").
-			Int64()
-
 	// Log level
 	Log = kingpin.Flag("log", "Log level").
 		Default(log.ErrorLevel.String()).
@@ -107,6 +100,5 @@ func Parse() {
 
 	if *Logstash {
 		log.SetFormatter(&LogstashGubleFormatter{})
-
 	}
 }

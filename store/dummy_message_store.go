@@ -52,20 +52,6 @@ func (dms *DummyMessageStore) Stop() error {
 	return nil
 }
 
-func (dms *DummyMessageStore) StoreTx(partition string,
-	callback func(msgId uint64) (msg []byte)) error {
-
-	dms.topicSequencesLock.Lock()
-	defer dms.topicSequencesLock.Unlock()
-
-	msgId, err := dms.maxMessageId(partition)
-	if err != nil {
-		return err
-	}
-	msgId++
-	return dms.store(partition, msgId, callback(msgId))
-}
-
 func (dms *DummyMessageStore) Store(partition string, msgId uint64, msg []byte) error {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
@@ -105,11 +91,11 @@ func (dms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessa
 	return fnToExecute(maxId)
 }
 
-func (dms *DummyMessageStore) GenerateNextMsgId(msgPathPartition string) (uint64,error)  {
-        // TODO MARIAN better implemente this
+func (dms *DummyMessageStore) GenerateNextMsgId(msgPathPartition string, timestamp int64) (uint64, error) {
+	// TODO MARIAN better implemente this
+
 	return dms.maxMessageId(msgPathPartition)
 }
-
 
 func (dms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
 	sequenceValue, exist := dms.topicSequences[partition]

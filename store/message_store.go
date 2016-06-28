@@ -2,27 +2,17 @@ package store
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path"
 	"sync"
 	"syscall"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/gubled/config"
 )
 
 var messageStoreLogger = log.WithFields(log.Fields{
 	"module": "messageStore",
 })
-
-const (
-	WorkerIDBits       = 5
-	SequenceBits       = 12
-	WorkerIDShift      = SequenceBits
-	TimestampLeftShift = SequenceBits + WorkerIDBits
-)
 
 // FileMessageStore is an implementation of the MessageStore interface based on files
 type FileMessageStore struct {
@@ -66,48 +56,12 @@ func (fms *FileMessageStore) Stop() error {
 	return returnError
 }
 
-func (fms *FileMessageStore) GenerateNextMsgId(msgPathPartition string) (uint64, error) {
-	fms.mutex.Lock()
-	defer fms.mutex.Unlock()
-
-	timestamp := time.Now().Unix()
-	var localSequenceNumber uint64
-
-	partitionStore, exist := fms.partitions[msgPathPartition]
-	if !exist {
-		//first message i
-		localSequenceNumber = 0
-	} else {
-		localSequenceNumber = partitionStore.currentIndex
-		partitionStore.currentIndex++
-	}
-
-	if timestamp < 1467024972 {
-		err := fmt.Errorf("Clock is moving backwards. Rejecting requests until %d.", timestamp)
-		return 1, err
-	}
-
-	id := (uint64(timestamp-1467024972) << TimestampLeftShift) |
-		(uint64(*config.Cluster.NodeID) << WorkerIDShift) | localSequenceNumber
-
-	messageStoreLogger.WithFields(log.Fields{
-		"id":                  id,
-		"messagePartition":    msgPathPartition,
-		"localSequenceNumber": localSequenceNumber,
-		//"lasTiDE": partitionStore.appendLastId,
-	}).Info("+Generated id ")
-
-	return id, nil
-}
-
-func (fms *FileMessageStore) StoreTx(partition string,
-	callback func(msgId uint64) (msg []byte)) error {
-
-	p, err := fms.partitionStore(partition)
+func (fms *FileMessageStore) GenerateNextMsgId(msgPathPartition string, timestamp int64) (uint64, error) {
+	p, err := fms.partitionStore(msgPathPartition)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return p.StoreTx(partition, callback)
+	return p.generateNextMsgId(timestamp)
 }
 
 // Store stores a message within a partition
