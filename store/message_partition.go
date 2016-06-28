@@ -3,6 +3,7 @@ package store
 import (
 	"encoding/binary"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -38,6 +39,7 @@ type MessagePartition struct {
 	appendLastId            uint64
 	appendFileWritePosition uint64
 	maxMessageId            uint64
+	currentIndex            uint64
 	mutex                   *sync.RWMutex
 }
 
@@ -203,10 +205,10 @@ func (p *MessagePartition) Store(msgId uint64, msg []byte) error {
 }
 
 func (p *MessagePartition) store(msgId uint64, msg []byte) error {
-	if msgId != 1+p.maxMessageId {
-		return fmt.Errorf("MessagePartition: Invalid message id for partition %v. Next id should be %v, but was %q",
-			p.name, 1+p.maxMessageId, msgId)
-	}
+	//if msgId != 1+p.maxMessageId {
+	//	return fmt.Errorf("MessagePartition: Invalid message id for partition %v. Next id should be %v, but was %q",
+	//		p.name, 1+p.maxMessageId, msgId)
+	//}
 	if msgId > p.appendLastId ||
 		p.appendFile == nil ||
 		p.indexFile == nil {
@@ -252,22 +254,28 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 
 // Fetch fetches a set of messages
 func (p *MessagePartition) Fetch(req FetchRequest) {
+	log.WithField("req", req.StartId).Error("Fetching ")
 	go func() {
 		fetchList, err := p.calculateFetchList(req)
 		if err != nil {
+			log.WithField("err", err).Error("Error calculating list")
 			req.ErrorCallback <- err
 			return
 		}
 
+		log.WithField("fetchLIst", fetchList).Debug("FetchING ")
 		req.StartCallback <- len(fetchList)
 
+		log.WithField("fetchLIst", fetchList).Debug("Fetch 2")
 		err = p.fetchByFetchlist(fetchList, req.MessageC)
 		if err != nil {
+			log.WithField("err", err).Error("Error calculating list")
 			req.ErrorCallback <- err
 			return
 		}
 		close(req.MessageC)
 	}()
+	//log.WithField("req", req.StartId).Error("End Fetch")
 }
 
 // fetchByFetchlist fetches the messages in the supplied fetchlist and sends them to the message-channel
@@ -282,10 +290,17 @@ func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC cha
 		}
 		lastMsgId = f.messageId
 
+		log.WithFields(log.Fields{
+			"lastMsgId":   lastMsgId,
+			"f.messageId": f.messageId,
+			"fileID":      f.fileId,
+		}).Debug("fetchByFetchlist for ")
+
 		// ensure, that we read from the correct file
 		if file == nil || fileId != f.fileId {
 			file, err = p.checkoutMessagefile(f.fileId)
 			if err != nil {
+				log.WithField("err", err).Error("Error checkoutMessagefile")
 				return err
 			}
 			defer p.releaseMessagefile(f.fileId, file)
@@ -295,6 +310,7 @@ func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC cha
 		msg := make([]byte, f.size, f.size)
 		_, err = file.ReadAt(msg, f.offset)
 		if err != nil {
+			log.WithField("err", err).Error("Error ReadAt")
 			return err
 		}
 		messageC <- MessageAndId{f.messageId, msg}
@@ -304,6 +320,10 @@ func (p *MessagePartition) fetchByFetchlist(fetchList []fetchEntry, messageC cha
 
 // calculateFetchList returns a list of fetchEntry records for all messages in the fetch request.
 func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, error) {
+
+	log.WithFields(log.Fields{
+		"req": req,
+	}).Debug("calculateFetchList ")
 	if req.Direction == 0 {
 		req.Direction = 1
 	}
@@ -315,8 +335,23 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 	result := make([]fetchEntry, 0, initialCap)
 	var file *os.File
 	var fileId uint64
+
+	log.WithFields(log.Fields{
+		"nextId":     nextId,
+		"initialCap": initialCap,
+		"len_resutl": len(result),
+		"reqCount":   req.Count,
+	}).Debug("Fetch Before for")
+
 	for len(result) < req.Count && nextId >= 0 {
 		nextFileId := p.firstMessageIdForFile(nextId)
+
+		log.WithFields(log.Fields{
+			"nextId":     nextId,
+			"nextFileId": nextFileId,
+			"fileId":     fileId,
+			"initialCap": initialCap,
+		}).Debug("calculateFetchList FOR")
 
 		// ensure, that we read from the correct file
 		if file == nil || nextFileId != fileId {
@@ -324,8 +359,10 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 			file, err = p.checkoutIndexfile(nextFileId)
 			if err != nil {
 				if os.IsNotExist(err) {
+					log.WithField("result", req).Error("IsNotExist")
 					return result, nil
 				}
+				log.WithField("err", err).Error("checkoutIndexfile")
 				return nil, err
 			}
 			defer p.releaseIndexfile(fileId, file)
@@ -335,10 +372,18 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 		indexPosition := int64(uint64(INDEX_ENTRY_SIZE) * (nextId % MESSAGES_PER_FILE))
 
 		msgOffset, msgSize, err := readIndexEntry(file, indexPosition)
+		log.WithFields(log.Fields{
+			"indexPosition": indexPosition,
+			"msgOffset":     msgOffset,
+			"msgSize":       msgSize,
+			"err":           err,
+		}).Debug("readIndexEntry")
+
 		if err != nil {
 			if err.Error() == "EOF" {
 				return result, nil // we reached the end of the index
 			}
+			log.WithField("err", err).Error("EOF")
 			return nil, err
 		}
 
@@ -353,6 +398,10 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 
 		nextId += uint64(req.Direction)
 	}
+
+	log.WithFields(log.Fields{
+		"result": result,
+	}).Debug("Exit result ")
 	return result, nil
 }
 

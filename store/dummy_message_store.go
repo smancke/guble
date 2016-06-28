@@ -105,6 +105,12 @@ func (dms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessa
 	return fnToExecute(maxId)
 }
 
+func (dms *DummyMessageStore) GenerateNextMsgId(msgPathPartition string) (uint64,error)  {
+        // TODO MARIAN better implemente this
+	return dms.maxMessageId(msgPathPartition)
+}
+
+
 func (dms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
 	sequenceValue, exist := dms.topicSequences[partition]
 	if !exist {
