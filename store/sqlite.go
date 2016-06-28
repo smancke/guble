@@ -16,22 +16,7 @@ import (
 
 var WriteTestFilename = "db_testfile"
 
-const (
-	maxIdleConns        = 2
-	maxOpenConns        = 5
-	responseChannelSize = 100
-)
-
-var sqliteLogger = log.WithFields(log.Fields{
-	"module": "kv-sqlite",
-})
-
-type kvEntry struct {
-	Schema    string    `gorm:"primary_key"sql:"type:varchar(200)"`
-	Key       string    `gorm:"primary_key"sql:"type:varchar(200)"`
-	Value     []byte    `sql:"type:bytea"`
-	UpdatedAt time.Time ``
-}
+var sqliteLogger = log.WithField("module", "kv-sqlite")
 
 type SqliteKVStore struct {
 	db          *gorm.DB
@@ -44,6 +29,78 @@ func NewSqliteKVStore(filename string, syncOnWrite bool) *SqliteKVStore {
 	kvStore.filename = filename
 	kvStore.syncOnWrite = syncOnWrite
 	return kvStore
+}
+
+// Open opens the database file.
+// If the directory does not exist, it will be created.
+func (kvStore *SqliteKVStore) Open() error {
+	directoryPath := filepath.Dir(kvStore.filename)
+	if err := ensureWriteableDirectory(directoryPath); err != nil {
+		sqliteLogger.WithFields(log.Fields{
+			"dbFilename": kvStore.filename,
+			"err":        err,
+		}).Error("DB Directory is not writeable")
+		return err
+	}
+
+	sqliteLogger.WithField("dbFilename", kvStore.filename).Info("Opening database")
+
+	gormdb, err := gorm.Open("sqlite3", kvStore.filename)
+	if err != nil {
+		sqliteLogger.WithFields(log.Fields{
+			"dbFilename": kvStore.filename,
+			"err":        err,
+		}).Error("Error opening database")
+		return err
+	}
+
+	if err := gormdb.DB().Ping(); err != nil {
+		sqliteLogger.WithFields(log.Fields{
+			"dbFilename": kvStore.filename,
+			"err":        err,
+		}).Error("Error pinging database")
+
+	} else {
+		sqliteLogger.WithField("dbFilename", kvStore.filename).Info("Ping reply from database")
+	}
+
+	//gormdb.LogMode(true)
+	gormdb.SingularTable(true)
+	gormdb.DB().SetMaxIdleConns(maxIdleConns)
+	gormdb.DB().SetMaxOpenConns(maxOpenConns)
+
+	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
+		sqliteLogger.WithField("err", err).Error("Error in schema migration")
+		return err
+	}
+
+	sqliteLogger.Info("Ensured database schema")
+
+	if !kvStore.syncOnWrite {
+		sqliteLogger.Info("Setting db: PRAGMA synchronous = OFF")
+		if err := gormdb.Exec("PRAGMA synchronous = OFF").Error; err != nil {
+			sqliteLogger.WithField("err", err).Error("Error setting PRAGMA synchronous = OFF")
+			return err
+		}
+	}
+	kvStore.db = gormdb
+	return nil
+}
+
+func (kvStore *SqliteKVStore) Check() error {
+	if kvStore.db == nil {
+		errorMessage := "Error: Database is not initialized (nil)"
+		sqliteLogger.Error(errorMessage)
+		return errors.New(errorMessage)
+	}
+	if err := kvStore.db.DB().Ping(); err != nil {
+		sqliteLogger.WithFields(log.Fields{
+			"db_filename": kvStore.filename,
+			"err":         err,
+		}).Error("Error pinging database")
+		return err
+	}
+	return nil
 }
 
 func (kvStore *SqliteKVStore) Stop() error {
@@ -121,78 +178,6 @@ func (kvStore *SqliteKVStore) IterateKeys(schema string, keyPrefix string) chan 
 
 func (kvStore *SqliteKVStore) Delete(schema, key string) error {
 	return kvStore.db.Delete(&kvEntry{Schema: schema, Key: key}).Error
-}
-
-// Open opens the database file.
-// If the directory does not exist, it will be created.
-func (kvStore *SqliteKVStore) Open() error {
-	directoryPath := filepath.Dir(kvStore.filename)
-	if err := ensureWriteableDirectory(directoryPath); err != nil {
-		sqliteLogger.WithFields(log.Fields{
-			"dbFilename": kvStore.filename,
-			"err":        err,
-		}).Error("DB Directory is not writeable")
-		return err
-	}
-
-	sqliteLogger.WithField("dbFilename", kvStore.filename).Info("Opening sqlite db")
-
-	gormdb, err := gorm.Open("sqlite3", kvStore.filename)
-	if err != nil {
-		sqliteLogger.WithFields(log.Fields{
-			"dbFilename": kvStore.filename,
-			"err":        err,
-		}).Error("Error opening sqlite db")
-		return err
-	}
-
-	if err := gormdb.DB().Ping(); err != nil {
-		sqliteLogger.WithFields(log.Fields{
-			"dbFilename": kvStore.filename,
-			"err":        err,
-		}).Error("Error pinging database")
-
-	} else {
-		sqliteLogger.WithField("dbFilename", kvStore.filename).Info("Ping reply from database")
-	}
-
-	//gormdb.LogMode(true)
-	gormdb.SingularTable(true)
-	gormdb.DB().SetMaxIdleConns(maxIdleConns)
-	gormdb.DB().SetMaxOpenConns(maxOpenConns)
-
-	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
-		sqliteLogger.WithField("err", err).Error("Error in schema migration")
-		return err
-	}
-
-	sqliteLogger.Info("Ensured db schema")
-
-	if !kvStore.syncOnWrite {
-		sqliteLogger.Info("Setting db: PRAGMA synchronous = OFF")
-		if err := gormdb.Exec("PRAGMA synchronous = OFF").Error; err != nil {
-			sqliteLogger.WithField("err", err).Error("Error setting PRAGMA synchronous = OFF")
-			return err
-		}
-	}
-	kvStore.db = gormdb
-	return nil
-}
-
-func (kvStore *SqliteKVStore) Check() error {
-	if kvStore.db == nil {
-		errorMessage := "Error: Database is not initialized (nil)"
-		sqliteLogger.Error(errorMessage)
-		return errors.New(errorMessage)
-	}
-	if err := kvStore.db.DB().Ping(); err != nil {
-		sqliteLogger.WithFields(log.Fields{
-			"db_filename": kvStore.filename,
-			"err":         err,
-		}).Error("Error pinging database")
-		return err
-	}
-	return nil
 }
 
 func ensureWriteableDirectory(dir string) error {
