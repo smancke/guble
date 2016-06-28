@@ -18,11 +18,10 @@ var messageStoreLogger = log.WithFields(log.Fields{
 })
 
 const (
-	WorkerIdBits = 5
-	//DatacenterIdBits   = 5
+	WorkerIDBits       = 5
 	SequenceBits       = 12
-	WorkerIdShift      = SequenceBits
-	TimestampLeftShift = SequenceBits + WorkerIdBits //+ DatacenterIdBits
+	WorkerIDShift      = SequenceBits
+	TimestampLeftShift = SequenceBits + WorkerIDBits
 )
 
 // FileMessageStore is an implementation of the MessageStore interface based on files
@@ -89,7 +88,7 @@ func (fms *FileMessageStore) GenerateNextMsgId(msgPathPartition string) (uint64,
 	}
 
 	id := (uint64(timestamp-1467024972) << TimestampLeftShift) |
-		(uint64(*config.Cluster.NodeID) << WorkerIdShift) | localSequenceNumber
+		(uint64(*config.Cluster.NodeID) << WorkerIDShift) | localSequenceNumber
 
 	messageStoreLogger.WithFields(log.Fields{
 		"id":                  id,

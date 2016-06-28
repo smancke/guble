@@ -70,16 +70,20 @@ var (
 		Remotes: kingpin.Arg("tcplist", `The list of TCP addresses of some other guble nodes (used in cluster mode; format: "IP:port")`).
 			TCPList(),
 	}
+
 	//  GubleEpoch represent the start of the guble Cluster
 	GubleEpoch = kingpin.Flag("epoch", "This guble node's own unix timestamp (used in cluster mode): a strictly positive integer number which must be the same at cluster").
-			Default(   strconv.FormatInt(time.Now().Unix(),10)).
+			Default(strconv.FormatInt(time.Now().Unix(), 10)).
 			Envar("GUBLE_NODE_ID").
 			Int64()
+
 	// Log level
 	Log = kingpin.Flag("log", "Log level").
 		Default(log.ErrorLevel.String()).
 		Envar("GUBLE_LOG").
 		Enum(logLevels()...)
+
+	Logstash = kingpin.Flag("logstash", "Enable logstash formatter").Envar("GUBLE_LOGSTASH").Bool()
 
 	parsed = false
 )
@@ -100,4 +104,9 @@ func Parse() {
 	}
 	kingpin.Parse()
 	parsed = true
+
+	if *Logstash {
+		log.SetFormatter(&LogstashGubleFormatter{})
+
+	}
 }

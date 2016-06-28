@@ -1,0 +1,6 @@
+FROM golang:1.6.2-onbuild
+
+RUN mkdir -p /var/lib/guble
+
+EXPOSE 10000 8080
+VOLUME /var/lib/guble

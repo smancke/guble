@@ -1,6 +1,8 @@
 package cluster
 
 import (
+	"io/ioutil"
+
 	"github.com/smancke/guble/protocol"
 
 	log "github.com/Sirupsen/logrus"
@@ -8,7 +10,6 @@ import (
 
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"strconv"
 )
@@ -38,6 +39,10 @@ type Cluster struct {
 	name       string
 	memberlist *memberlist.Memberlist
 	broadcasts [][]byte
+
+	numJoins   int
+	numLeaves  int
+	numUpdates int
 }
 
 //New returns a new instance of the cluster, created using the given Config.
@@ -48,7 +53,6 @@ func New(config *Config) (*Cluster, error) {
 	memberlistConfig.Name = c.name
 	memberlistConfig.BindAddr = config.Host
 	memberlistConfig.BindPort = config.Port
-	memberlistConfig.Events = &eventDelegate{}
 
 	//TODO Cosmin temporarily disabling any logging from memberlist, we might want to enable it again using logrus?
 	memberlistConfig.LogOutput = ioutil.Discard
@@ -61,6 +65,7 @@ func New(config *Config) (*Cluster, error) {
 	c.memberlist = memberlist
 	memberlistConfig.Delegate = c
 	memberlistConfig.Conflict = c
+	memberlistConfig.Events = c
 	return c, nil
 }
 
@@ -101,55 +106,6 @@ func (cluster *Cluster) Check() error {
 	return nil
 }
 
-// NotifyMsg is invoked each time a message is received by this node of the cluster; it decodes and dispatches the messages.
-func (cluster *Cluster) NotifyMsg(msg []byte) {
-	logger.WithField("msgAsBytes", msg).Debug("NotifyMsg")
-
-	cmsg, err := decode(msg)
-	if err != nil {
-		logger.WithField("err", err).Error("Decoding of cluster message failed")
-		return
-	}
-	logger.WithFields(log.Fields{
-		"senderNodeID": cmsg.NodeID,
-		"type":         cmsg.Type,
-		"body":         string(cmsg.Body),
-	}).Debug("NotifyMsg: Received cluster message")
-
-	if cluster.MessageHandler != nil && cmsg.Type == gubleMessage {
-		pMessage, err := protocol.ParseMessage(cmsg.Body)
-		if err != nil {
-			logger.WithField("err", err).Error("Parsing of guble-message contained in cluster-message failed")
-			return
-		}
-		cluster.MessageHandler.HandleMessage(pMessage)
-	}
-}
-
-func (cluster *Cluster) GetBroadcasts(overhead, limit int) [][]byte {
-	b := cluster.broadcasts
-	cluster.broadcasts = nil
-	return b
-}
-
-func (cluster *Cluster) NodeMeta(limit int) []byte {
-	return nil
-}
-
-func (cluster *Cluster) LocalState(join bool) []byte {
-	return nil
-}
-
-func (cluster *Cluster) MergeRemoteState(s []byte, join bool) {
-}
-
-func (cluster *Cluster) NotifyConflict(existing, other *memberlist.Node) {
-	logger.WithFields(log.Fields{
-		"existing": *existing,
-		"other":    *other,
-	}).Panic("NotifyConflict")
-}
-
 // BroadcastString broadcasts a string to all the other nodes in the guble cluster
 func (cluster *Cluster) BroadcastString(sMessage *string) error {
 	logger.WithField("string", sMessage).Debug("BroadcastString")
@@ -170,6 +126,86 @@ func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) error {
 		Body:   pMessage.Bytes(),
 	}
 	return cluster.broadcastClusterMessage(cMessage)
+}
+
+// ===================================
+// memberslist.Delegate implementation
+// ===================================
+
+// NotifyMsg is invoked each time a message is received by this node of the cluster; it decodes and dispatches the messages.
+func (cluster *Cluster) NotifyMsg(msg []byte) {
+	logger.WithField("msgAsBytes", msg).Debug("NotifyMsg")
+
+	cmsg, err := decode(msg)
+	if err != nil {
+		logger.WithField("err", err).Error("Decoding of cluster message failed")
+		return
+	}
+	logger.WithFields(log.Fields{
+		"senderNodeID": cmsg.NodeID,
+		"type":         cmsg.Type,
+		"body":         string(cmsg.Body),
+	}).Debug("NotifyMsg: Received cluster message")
+
+	if cluster.MessageHandler != nil && cmsg.Type == gubleMessage {
+		message, err := protocol.ParseMessage(cmsg.Body)
+		if err != nil {
+			logger.WithField("err", err).Error("Parsing of guble-message contained in cluster-message failed")
+			return
+		}
+		cluster.MessageHandler.HandleMessage(message)
+	}
+}
+
+func (cluster *Cluster) GetBroadcasts(overhead, limit int) [][]byte {
+	b := cluster.broadcasts
+	cluster.broadcasts = nil
+	return b
+}
+
+func (cluster *Cluster) NodeMeta(limit int) []byte { return nil }
+
+func (cluster *Cluster) LocalState(join bool) []byte { return nil }
+
+func (cluster *Cluster) MergeRemoteState(s []byte, join bool) {}
+
+// ===================================
+// memberlist.EventDelegate implementation for cluster structure
+// ===================================
+
+func (cluster *Cluster) NotifyJoin(node *memberlist.Node) {
+	cluster.numJoins++
+	cluster.log(node, "Cluster Node Join")
+}
+
+func (cluster *Cluster) NotifyLeave(node *memberlist.Node) {
+	cluster.numLeaves++
+	cluster.log(node, "Cluster Node Leave")
+}
+
+func (cluster *Cluster) NotifyUpdate(node *memberlist.Node) {
+	cluster.numUpdates++
+	cluster.log(node, "Cluster Node Update")
+}
+
+// ==========================================
+// memberlist.ConflictDelegate implementation
+// ==========================================
+
+func (cluster *Cluster) NotifyConflict(existing, other *memberlist.Node) {
+	logger.WithFields(log.Fields{
+		"existing": *existing,
+		"other":    *other,
+	}).Panic("NotifyConflict")
+}
+
+func (cluster *Cluster) log(node *memberlist.Node, message string) {
+	logger.WithFields(log.Fields{
+		"node":       *node,
+		"numJoins":   cluster.numJoins,
+		"numLeaves":  cluster.numLeaves,
+		"numUpdates": cluster.numUpdates,
+	}).Debug(message)
 }
 
 func (cluster *Cluster) broadcastClusterMessage(cMessage *message) error {

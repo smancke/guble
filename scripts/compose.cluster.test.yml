@@ -1,0 +1,26 @@
+version: '2'
+services:
+  cluster_1:
+    image: guble:latest
+    entrypoint:
+      - /go/bin/app
+      - localhost:10000
+    environment:
+      - GUBLE_NODE_ID=1
+      - GUBLE_LOG=debug
+    ports:
+      - "8080:8080"
+
+
+  cluster_2:
+    image: guble:latest
+    entrypoint:
+      - /go/bin/app
+      - localhost:10000
+    environment:
+      - GUBLE_NODE_ID=2
+      - GUBLE_LOG=debug
+    ports:
+      - "8081:8080"
+
+
