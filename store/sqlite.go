@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-var WriteTestFilename = "db_testfile"
+var writeTestFilename = "db_testfile"
 
 var sqliteLogger = log.WithField("module", "kv-sqlite")
 
@@ -59,7 +59,6 @@ func (kvStore *SqliteKVStore) Open() error {
 			"dbFilename": kvStore.filename,
 			"err":        err,
 		}).Error("Error pinging database")
-
 	} else {
 		sqliteLogger.WithField("dbFilename", kvStore.filename).Info("Ping reply from database")
 	}
@@ -103,6 +102,7 @@ func (kvStore *SqliteKVStore) Check() error {
 	return nil
 }
 
+//TODO should Stop be invoked from Router, Service, or gubled?
 func (kvStore *SqliteKVStore) Stop() error {
 	if kvStore.db != nil {
 		err := kvStore.db.Close()
@@ -189,7 +189,7 @@ func ensureWriteableDirectory(dir string) error {
 		return fmt.Errorf("kv-sqlite: not a directory %v", dir)
 	}
 
-	writeTest := path.Join(dir, WriteTestFilename)
+	writeTest := path.Join(dir, writeTestFilename)
 	if err := ioutil.WriteFile(writeTest, []byte("writeTest"), 0644); err != nil {
 		return err
 	}
