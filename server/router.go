@@ -1,18 +1,18 @@
 package server
 
 import (
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/auth"
-	"github.com/smancke/guble/server/cluster"
-	"github.com/smancke/guble/store"
-
-	log "github.com/Sirupsen/logrus"
-
 	"fmt"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/smancke/guble/server/cluster"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/store"
 )
 
 const (
@@ -28,6 +28,8 @@ type Router interface {
 	MessageStore() (store.MessageStore, error)
 	KVStore() (store.KVStore, error)
 	Cluster() *cluster.Cluster
+
+	Fetch(store.FetchRequest) error
 
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
@@ -120,17 +122,24 @@ func (router *router) Stop() error {
 
 func (router *router) Check() error {
 	if router.accessManager == nil || router.messageStore == nil || router.kvStore == nil {
-		logger.WithField("err", ErrServiceNotProvided).Error("Some mandatory services are not provided")
+		logger.WithFields(log.Fields{
+			"err": ErrServiceNotProvided,
+		}).Error("Some mandatory services are not provided")
 		return ErrServiceNotProvided
 	}
 	err := router.messageStore.Check()
 	if err != nil {
-		logger.WithField("err", err).Error("MessageStore check failed")
+		logger.WithFields(log.Fields{
+			"err": err,
+		}).Error("MessageStore check failed")
 		return err
 	}
 	err = router.kvStore.Check()
 	if err != nil {
-		logger.WithField("err", err).Error("KVStore check failed")
+		log.WithFields(log.Fields{
+			"module": "router",
+			"err":    err,
+		}).Error("KVStore check failed")
 		return err
 	}
 	return nil
@@ -139,14 +148,16 @@ func (router *router) Check() error {
 // HandleMessage stores the message in the MessageStore(and gets a new ID for it iff the message was created locally)
 // and then passes it to: the internal channel, and asynchronously to the cluster (if available).
 func (router *router) HandleMessage(message *protocol.Message) error {
-	mTotalMessagesIncoming.Add(1)
 	logger.WithFields(log.Fields{
 		"userID": message.UserID,
 		"path":   message.Path,
 	}).Debug("HandleMessage")
 
+	mTotalMessagesIncoming.Add(1)
 	if err := router.isStopping(); err != nil {
-		logger.WithField("err", err).Error("Router is stopping")
+		logger.WithFields(log.Fields{
+			"err": err,
+		}).Error("Router is stopping")
 		return err
 	}
 
@@ -203,6 +214,7 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 		"userID":        r.UserID,
 		"path":          r.Path,
 	}).Debug("Subscribe")
+
 	if err := router.isStopping(); err != nil {
 		return nil, err
 	}
@@ -236,11 +248,8 @@ func (router *router) Unsubscribe(r *Route) {
 }
 
 func (router *router) subscribe(r *Route) {
+	logger.WithFields(log.Fields{"userID": r.UserID, "path": r.Path}).Debug("Internal subscribe")
 	mTotalSubscriptionAttempts.Add(1)
-	logger.WithFields(log.Fields{
-		"userID": r.UserID,
-		"path":   r.Path,
-	}).Debug("Internal subscribe")
 
 	slice, present := router.routes[r.Path]
 	var removed bool
@@ -263,11 +272,8 @@ func (router *router) subscribe(r *Route) {
 }
 
 func (router *router) unsubscribe(r *Route) {
+	logger.WithFields(log.Fields{"userID": r.UserID, "path": r.Path}).Debug("Internal unsubscribe")
 	mTotalUnsubscriptionAttempts.Add(1)
-	logger.WithFields(log.Fields{
-		"userID": r.UserID,
-		"path":   r.Path,
-	}).Debug("Internal unsubscribe")
 
 	slice, present := router.routes[r.Path]
 	if !present {
@@ -307,10 +313,10 @@ func (router *router) isStopping() error {
 }
 
 func (router *router) routeMessage(message *protocol.Message) {
+	logger.WithFields(log.Fields{
+		"msgMetadata": message.Metadata(),
+	}).Debug("Called routeMessage for data")
 	mTotalMessagesRouted.Add(1)
-	if logger.Level == log.DebugLevel {
-		logger.WithField("msgMetadata", message.Metadata()).Debug("routeMessage")
-	}
 
 	matched := false
 	for path, pathRoutes := range router.routes {
@@ -318,23 +324,26 @@ func (router *router) routeMessage(message *protocol.Message) {
 			matched = true
 			for _, route := range pathRoutes {
 				if err := route.Deliver(message); err == ErrInvalidRoute {
+					// Unsubscribe invalid routes
 					router.unsubscribe(route)
 				}
 			}
 		}
 	}
+
 	if !matched {
+		logger.WithField("topic", message.Path).Debug("No route matched.")
 		mTotalMessagesNotMatchingTopic.Add(1)
 	}
 }
 
 func (router *router) closeRoutes() {
-	logger.Info("closeRoutes in router")
+	logger.Debug("Called closeRoutes")
 
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
 			router.unsubscribe(route)
-			logger.WithField("route", route.String()).Debug("Closing route")
+			log.WithFields(log.Fields{"module": "router", "route": route.String()}).Debug("Closing route")
 			route.Close()
 		}
 	}
@@ -396,6 +405,14 @@ func (router *router) KVStore() (store.KVStore, error) {
 		return nil, ErrServiceNotProvided
 	}
 	return router.kvStore, nil
+}
+
+func (router *router) Fetch(req store.FetchRequest) error {
+	if err := router.isStopping(); err != nil {
+		return err
+	}
+	router.messageStore.Fetch(req)
+	return nil
 }
 
 // Cluster returns the `cluster` provided for the router, or nil if no cluster was set-up

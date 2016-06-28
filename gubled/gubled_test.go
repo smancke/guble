@@ -64,7 +64,7 @@ func TestGcmOnlyStartedIfEnabled(t *testing.T) {
 
 func containsGcmModule(modules []interface{}) bool {
 	for _, module := range modules {
-		if reflect.TypeOf(module).String() == "*gcm.GCMConnector" {
+		if reflect.TypeOf(module).String() == "*gcm.Connector" {
 			return true
 		}
 	}

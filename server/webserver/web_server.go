@@ -8,10 +8,6 @@ import (
 	"time"
 )
 
-var logger = log.WithFields(log.Fields{
-	"module": "webserver",
-})
-
 type WebServer struct {
 	server *http.Server
 	ln     net.Listener
