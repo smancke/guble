@@ -51,6 +51,7 @@ func (kvStore *PostgresKVStore) Open() error {
 	return nil
 }
 
+//TODO Cosmin should Stop be invoked from Router, Service, or gubled?
 func (kvStore *PostgresKVStore) Stop() error {
 	if kvStore.db != nil {
 		err := kvStore.db.Close()

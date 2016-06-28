@@ -102,7 +102,7 @@ func (kvStore *SqliteKVStore) Check() error {
 	return nil
 }
 
-//TODO should Stop be invoked from Router, Service, or gubled?
+//TODO Cosmin should Stop be invoked from Router, Service, or gubled?
 func (kvStore *SqliteKVStore) Stop() error {
 	if kvStore.db != nil {
 		err := kvStore.db.Close()
