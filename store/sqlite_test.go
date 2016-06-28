@@ -44,7 +44,7 @@ func BenchmarkSqlitePutGet(b *testing.B) {
 	CommonBenchPutGet(b, db)
 }
 
-func Test_CheckSqlKvStore(t *testing.T) {
+func TestCheck_SqlKVStore(t *testing.T) {
 	a := assert.New(t)
 	f := tempFilename()
 	defer os.Remove(f)
@@ -62,5 +62,5 @@ func Test_CheckSqlKvStore(t *testing.T) {
 
 	//check should throw an error
 	err = store.Check()
-	a.NotNil(err, "Db ping should not work.Db is closed")
+	a.NotNil(err, "Db ping should not work. Db is closed")
 }

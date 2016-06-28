@@ -120,24 +120,17 @@ func (router *router) Stop() error {
 
 func (router *router) Check() error {
 	if router.accessManager == nil || router.messageStore == nil || router.kvStore == nil {
-		logger.WithFields(log.Fields{
-			"err": ErrServiceNotProvided,
-		}).Error("Some mandatory services are not provided")
+		logger.WithField("err", ErrServiceNotProvided).Error("Some mandatory services are not provided")
 		return ErrServiceNotProvided
 	}
 	err := router.messageStore.Check()
 	if err != nil {
-		logger.WithFields(log.Fields{
-			"err": err,
-		}).Error("MessageStore check failed")
+		logger.WithField("err", err).Error("MessageStore check failed")
 		return err
 	}
 	err = router.kvStore.Check()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"module": "router",
-			"err":    err,
-		}).Error("KVStore check failed")
+		logger.WithField("err", err).Error("KVStore check failed")
 		return err
 	}
 	return nil
@@ -155,9 +148,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 	}
 
 	if err := router.isStopping(); err != nil {
-		logger.WithFields(log.Fields{
-			"err": err,
-		}).Error("Router is stopping")
+		logger.WithField("err", err).Error("Router is stopping")
 		return err
 	}
 

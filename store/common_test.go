@@ -26,7 +26,6 @@ func CommonTestPutGetDelete(t *testing.T, s KVStore) {
 	assertGet(a, s, "s2", "a", test3)
 	assertGetNoExist(a, s, "no", "thing")
 
-	// delete
 	s.Delete("s1", "b")
 	assertGet(a, s, "s1", "a", test1)
 	assertGetNoExist(a, s, "s1", "b")
@@ -41,33 +40,33 @@ func CommonTestIterate(t *testing.T, s KVStore) {
 	a.NoError(s.Put("s1", "buu", test3))
 	a.NoError(s.Put("s2", "bli", test2))
 
-	asserChannelContainsEntries(a, s.Iterate("s1", "bl"),
+	assertChannelContainsEntries(a, s.Iterate("s1", "bl"),
 		[2]string{"bli", string(test1)},
 		[2]string{"bla", string(test2)})
 
-	asserChannelContainsEntries(a, s.Iterate("s1", ""),
+	assertChannelContainsEntries(a, s.Iterate("s1", ""),
 		[2]string{"bli", string(test1)},
 		[2]string{"bla", string(test2)},
 		[2]string{"buu", string(test3)})
 
-	asserChannelContainsEntries(a, s.Iterate("s1", "bla"),
+	assertChannelContainsEntries(a, s.Iterate("s1", "bla"),
 		[2]string{"bla", string(test2)})
 
-	asserChannelContainsEntries(a, s.Iterate("s1", "nothing"))
+	assertChannelContainsEntries(a, s.Iterate("s1", "nothing"))
 
-	asserChannelContainsEntries(a, s.Iterate("s2", ""),
+	assertChannelContainsEntries(a, s.Iterate("s2", ""),
 		[2]string{"bli", string(test2)})
 }
 
-func asserChannelContainsEntries(a *assert.Assertions, entryC chan [2]string, expectedEntries ...[2]string) {
+func assertChannelContainsEntries(a *assert.Assertions, entryC chan [2]string, expectedEntries ...[2]string) {
 	allEntries := make([][2]string, 0)
 
-loop:
+WAITLOOP:
 	for {
 		select {
 		case entry, ok := <-entryC:
 			if !ok {
-				break loop
+				break WAITLOOP
 			}
 			allEntries = append(allEntries, entry)
 		case <-time.After(time.Second):
@@ -89,30 +88,30 @@ func CommonTestIterateKeys(t *testing.T, s KVStore) {
 	a.NoError(s.Put("s1", "buu", test3))
 	a.NoError(s.Put("s2", "bli", test2))
 
-	asserChannelContains(a, s.IterateKeys("s1", "bl"),
+	assertChannelContains(a, s.IterateKeys("s1", "bl"),
 		"bli", "bla")
 
-	asserChannelContains(a, s.IterateKeys("s1", ""),
+	assertChannelContains(a, s.IterateKeys("s1", ""),
 		"bli", "bla", "buu")
 
-	asserChannelContains(a, s.IterateKeys("s1", "bla"),
+	assertChannelContains(a, s.IterateKeys("s1", "bla"),
 		"bla")
 
-	asserChannelContains(a, s.IterateKeys("s1", "nothing"))
+	assertChannelContains(a, s.IterateKeys("s1", "nothing"))
 
-	asserChannelContains(a, s.IterateKeys("s2", ""),
+	assertChannelContains(a, s.IterateKeys("s2", ""),
 		"bli")
 }
 
-func asserChannelContains(a *assert.Assertions, entryC chan string, expectedEntries ...string) {
+func assertChannelContains(a *assert.Assertions, entryC chan string, expectedEntries ...string) {
 	allEntries := make([]string, 0)
 
-loop:
+WAITLOOP:
 	for {
 		select {
 		case entry, ok := <-entryC:
 			if !ok {
-				break loop
+				break WAITLOOP
 			}
 			allEntries = append(allEntries, entry)
 		case <-time.After(time.Second):
@@ -165,7 +164,7 @@ func randString(n int) string {
 }
 
 func tempFilename() string {
-	file, err := ioutil.TempFile("/tmp", "guble_sqlite_unittest")
+	file, err := ioutil.TempFile("/tmp", "guble_store_unittest")
 	if err != nil {
 		panic(err)
 	}
