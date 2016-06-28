@@ -63,6 +63,7 @@ var CreateKVStore = func() store.KVStore {
 			"user":     *config.Postgres.User,
 			"password": *config.Postgres.Password,
 			"dbname":   *config.Postgres.DbName,
+			"sslmode":  "disable",
 		})
 		if err := db.Open(); err != nil {
 			logger.WithField("err", err).Panic("Could not open postgres database connection")
