@@ -24,9 +24,12 @@ import (
 	"syscall"
 )
 
-var logger = log.WithFields(log.Fields{
-	"module": "gubled",
-})
+var logger = log.WithField("module", "gubled")
+
+const (
+	defaultSqliteFilename = "kv-store.db"
+)
+
 var ValidateStoragePath = func() error {
 	if *config.KVS == "file" || *config.MS == "file" {
 		testfile := path.Join(*config.StoragePath, "write-test-file")
@@ -56,9 +59,20 @@ var CreateKVStore = func() store.KVStore {
 	case "memory":
 		return store.NewMemoryKVStore()
 	case "file":
-		db := store.NewSqliteKVStore(path.Join(*config.StoragePath, "kv-store.db"), true)
+		db := store.NewSqliteKVStore(path.Join(*config.StoragePath, defaultSqliteFilename), true)
 		if err := db.Open(); err != nil {
-			logger.WithField("err", err).Panic("Could not open database connection")
+			logger.WithField("err", err).Panic("Could not open sqlite database connection")
+		}
+		return db
+	case "postgres":
+		db := store.NewPostgresKVStore(store.PostgresConfig{
+			"host":     *config.Postgres.Host,
+			"user":     *config.Postgres.User,
+			"password": *config.Postgres.Password,
+			"dbname":   *config.Postgres.DbName,
+		})
+		if err := db.Open(); err != nil {
+			logger.WithField("err", err).Panic("Could not open postgres database connection")
 		}
 		return db
 	default:

@@ -25,12 +25,23 @@ var (
 			Default(defaultHttp).Envar("GUBLE_HTTP").String()
 	StoragePath = kingpin.Flag("storage-path", "The path for storing messages and key-value data if 'file' is enabled (default: /var/lib/guble)").
 			Default(defaultStoragePath).Envar("GUBLE_STORAGE_PATH").String()
-	KVS = kingpin.Flag("kvs", "The storage backend for the key-value store to use: file|memory (file)").
+	KVS = kingpin.Flag("kvs", "The storage backend for the key-value store to use: file|postgres|memory (file)").
 		Default(defaultKVBackend).Envar("GUBLE_KVS").String()
 	MS = kingpin.Flag("ms", "The message storage backend : file|memory (file)").
 		Default(defaultMSBackend).Envar("GUBLE_MS").String()
 	HealthEndpoint = kingpin.Flag("health-endpoint", `The health endpoint to be used by the HTTP server (default: /_health; value for disabling it: "")`).
 			Default(defaultHealthEndpoint).Envar("GUBLE_HEALTH_ENDPOINT").String()
+	Postgres = struct {
+		Host     *string
+		User     *string
+		Password *string
+		DbName   *string
+	}{
+		Host:     kingpin.Flag("postgres-host", "The postgres hostname").Default("localhost").Envar("GUBLE_POSTGRES_HOST").String(),
+		User:     kingpin.Flag("postgres-user", "The postgres user").Default("guble").Envar("GUBLE_POSTGRES_USER").String(),
+		Password: kingpin.Flag("postgres-password", "The postgres password").Default("guble").Envar("GUBLE_POSTGRES_PASSWORD").String(),
+		DbName:   kingpin.Flag("postgres-dbname", "The postgres database name").Default("guble").Envar("GUBLE_POSTGRES_DBNAME").String(),
+	}
 
 	Metrics = struct {
 		Enabled  *bool
