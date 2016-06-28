@@ -22,8 +22,6 @@ func NewPostgresKVStore(postgresConfig PostgresConfig) *PostgresKVStore {
 	return postgresKVStore
 }
 
-// Open opens the database file.
-// If the directory does not exist, it will be created.
 func (kvStore *PostgresKVStore) Open() error {
 	postgresWithConfigLogger := postgresLogger.WithField("config", kvStore.config)
 	postgresWithConfigLogger.Info("Opening database")
@@ -40,10 +38,10 @@ func (kvStore *PostgresKVStore) Open() error {
 		postgresWithConfigLogger.Info("Ping reply from database")
 	}
 
-	//gormdb.LogMode(true)
+	gormdb.LogMode(gormLogMode)
 	gormdb.SingularTable(true)
-	gormdb.DB().SetMaxIdleConns(maxIdleConns)
-	gormdb.DB().SetMaxOpenConns(maxOpenConns)
+	gormdb.DB().SetMaxIdleConns(dbMaxIdleConns)
+	gormdb.DB().SetMaxOpenConns(dbMaxOpenConns)
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
 		postgresWithConfigLogger.WithField("err", err).Error("Error in schema migration")
 		return err
@@ -103,7 +101,7 @@ func (kvStore *PostgresKVStore) Iterate(schema string, keyPrefix string) chan [2
 		rows, err := kvStore.db.Raw("select key, value from kv_entry where schema = ? and key LIKE ?", schema, keyPrefix+"%").
 			Rows()
 		if err != nil {
-			postgresLogger.WithField("err", err).Error("Error fetching keys from db")
+			kvLogger.WithField("err", err).Error("Error fetching keys from database")
 		} else {
 			defer rows.Close()
 			for rows.Next() {
@@ -120,12 +118,10 @@ func (kvStore *PostgresKVStore) Iterate(schema string, keyPrefix string) chan [2
 func (kvStore *PostgresKVStore) IterateKeys(schema string, keyPrefix string) chan string {
 	responseC := make(chan string, responseChannelSize)
 	go func() {
-
 		rows, err := kvStore.db.Raw("select key from kv_entry where schema = ? and key LIKE ?", schema, keyPrefix+"%").
 			Rows()
-
 		if err != nil {
-			postgresLogger.WithField("err", err).Error("Error fetching keys from db")
+			kvLogger.WithField("err", err).Error("Error fetching keys from database")
 		} else {
 			defer rows.Close()
 			for rows.Next() {

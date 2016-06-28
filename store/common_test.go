@@ -27,9 +27,16 @@ func CommonTestPutGetDelete(t *testing.T, s KVStore) {
 	assertGetNoExist(a, s, "no", "thing")
 
 	s.Delete("s1", "b")
-	assertGet(a, s, "s1", "a", test1)
 	assertGetNoExist(a, s, "s1", "b")
+	assertGet(a, s, "s1", "a", test1)
 	assertGet(a, s, "s2", "a", test3)
+
+	s.Delete("s1", "a")
+	assertGetNoExist(a, s, "s1", "a")
+	assertGet(a, s, "s2", "a", test3)
+
+	s.Delete("s2", "a")
+	assertGetNoExist(a, s, "s2", "a")
 }
 
 func CommonTestIterate(t *testing.T, s KVStore) {

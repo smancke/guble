@@ -1,6 +1,8 @@
 package store
 
 import (
+	log "github.com/Sirupsen/logrus"
+
 	"time"
 )
 
@@ -12,7 +14,10 @@ type kvEntry struct {
 }
 
 const (
-	maxIdleConns        = 2
-	maxOpenConns        = 5
+	gormLogMode         = false
+	dbMaxIdleConns      = 2
+	dbMaxOpenConns      = 5
 	responseChannelSize = 100
 )
+
+var kvLogger = log.WithField("module", "kv-gorm")

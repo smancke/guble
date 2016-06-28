@@ -64,10 +64,10 @@ func (kvStore *SqliteKVStore) Open() error {
 		sqliteLogger.WithField("dbFilename", kvStore.filename).Info("Ping reply from database")
 	}
 
-	//gormdb.LogMode(true)
+	gormdb.LogMode(gormLogMode)
 	gormdb.SingularTable(true)
-	gormdb.DB().SetMaxIdleConns(maxIdleConns)
-	gormdb.DB().SetMaxOpenConns(maxOpenConns)
+	gormdb.DB().SetMaxIdleConns(dbMaxIdleConns)
+	gormdb.DB().SetMaxOpenConns(dbMaxOpenConns)
 
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
 		sqliteLogger.WithField("err", err).Error("Error in schema migration")
@@ -95,8 +95,8 @@ func (kvStore *SqliteKVStore) Check() error {
 	}
 	if err := kvStore.db.DB().Ping(); err != nil {
 		sqliteLogger.WithFields(log.Fields{
-			"db_filename": kvStore.filename,
-			"err":         err,
+			"dbFilename": kvStore.filename,
+			"err":        err,
 		}).Error("Error pinging database")
 		return err
 	}
@@ -134,14 +134,11 @@ func (kvStore *SqliteKVStore) Get(schema, key string) ([]byte, bool, error) {
 
 func (kvStore *SqliteKVStore) Iterate(schema string, keyPrefix string) chan [2]string {
 	responseC := make(chan [2]string, responseChannelSize)
-
 	go func() {
-
 		rows, err := kvStore.db.Raw("select key, value from kv_entry where schema = ? and key LIKE ?", schema, keyPrefix+"%").
 			Rows()
-
 		if err != nil {
-			sqliteLogger.WithField("err", err).Error("Error fetching keys from db")
+			kvLogger.WithField("err", err).Error("Error fetching keys from database")
 		} else {
 			defer rows.Close()
 			for rows.Next() {
@@ -157,14 +154,11 @@ func (kvStore *SqliteKVStore) Iterate(schema string, keyPrefix string) chan [2]s
 
 func (kvStore *SqliteKVStore) IterateKeys(schema string, keyPrefix string) chan string {
 	responseC := make(chan string, responseChannelSize)
-
 	go func() {
-
 		rows, err := kvStore.db.Raw("select key from kv_entry where schema = ? and key LIKE ?", schema, keyPrefix+"%").
 			Rows()
-
 		if err != nil {
-			sqliteLogger.WithField("err", err).Error("Error fetching keys from db")
+			kvLogger.WithField("err", err).Error("Error fetching keys from database")
 		} else {
 			defer rows.Close()
 			for rows.Next() {

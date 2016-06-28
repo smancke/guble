@@ -34,6 +34,7 @@ var (
 			Default(defaultStoragePath).Envar("GUBLE_STORAGE_PATH").ExistingDir()
 	HealthEndpoint = kingpin.Flag("health-endpoint", `The health endpoint to be used by the HTTP server (value for disabling it: "")`).
 			Default(defaultHealthEndpoint).Envar("GUBLE_HEALTH_ENDPOINT").String()
+
 	Postgres = struct {
 		Host     *string
 		User     *string
