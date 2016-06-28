@@ -14,7 +14,8 @@ after_success:
   - scripts/generate_coverage.sh
   - goveralls -coverprofile=full_cov.out -service=travis-ci
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
-      GOOS=linux go build -a . ;
+#      other possible ldflags to decrease executable size at the cost of trace/debug: -s -w
+      GOOS=linux go build -a --ldflags '-extldflags "-static"' . ;
       docker build -t cosminrentea/guble . ;
       docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" ;
       docker push cosminrentea/guble ;
