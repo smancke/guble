@@ -53,12 +53,12 @@ func (fms *FileMessageStore) Stop() error {
 	return returnError
 }
 
-func (fms *FileMessageStore) GenerateNextMsgId(msgPathPartition string, timestamp int64) (uint64, error) {
+func (fms *FileMessageStore) GenerateNextMsgId(msgPathPartition string, nodeID int) (uint64,int64, error) {
 	p, err := fms.partitionStore(msgPathPartition)
 	if err != nil {
-		return 0, err
+		return 0,0, err
 	}
-	return p.generateNextMsgId(timestamp)
+	return p.generateNextMsgId(nodeID)
 }
 
 // Store stores a message within a partition

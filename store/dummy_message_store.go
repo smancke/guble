@@ -91,10 +91,10 @@ func (dms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessa
 	return fnToExecute(maxId)
 }
 
-func (dms *DummyMessageStore) GenerateNextMsgId(msgPathPartition string, timestamp int64) (uint64, error) {
+func (dms *DummyMessageStore) GenerateNextMsgId(msgPathPartition string, timestamp int) (uint64,int64, error) {
 	// TODO MARIAN better implemente this
 
-	return dms.maxMessageId(msgPathPartition)
+	return 0,0,nil
 }
 
 func (dms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {

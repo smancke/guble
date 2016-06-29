@@ -1,7 +1,6 @@
 package websocket
 
 import (
-	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
@@ -258,7 +257,6 @@ func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
 		UserID:        ws.userID,
 		HeaderJSON:    cmd.HeaderJSON,
 		Body:          cmd.Body,
-		NodeID:        *config.Cluster.NodeID,
 	}
 	if len(args) == 2 {
 		msg.OptionalID = args[1]

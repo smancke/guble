@@ -7,6 +7,7 @@ import (
 	"path"
 	"testing"
 	"time"
+	"github.com/smancke/guble/testutil"
 )
 
 func Test_MessagePartition_scanFiles(t *testing.T) {
@@ -405,3 +406,18 @@ func Test_calculateMaxMessageIdFromIndex(t *testing.T) {
 	a.NoError(err)
 	a.Equal(uint64(2), maxMessageId)
 }
+
+
+func Test_ReadIndex(t *testing.T) {
+	a := assert.New(t)
+	defer testutil.EnableDebugForMethod() ()
+
+	// when i store a message
+	store, _ := NewMessagePartition("/tmp/s4/testTopic", "testTopic")
+
+	err :=store.loadIndexFileInMemory("/tmp/s4/testTopic/testTopic-00000000000000000000.idx")
+	a.Nil(err)
+
+	store.indexFilePQ.PrintPq()
+}
+

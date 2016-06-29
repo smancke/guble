@@ -2,7 +2,6 @@ package rest
 
 import (
 	"errors"
-	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 
@@ -60,7 +59,6 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ApplicationID: xid.New().String(),
 		OptionalID:    q(r, `messageId`),
 		HeaderJSON:    headersToJSON(r.Header),
-		NodeID:        *config.Cluster.NodeID,
 	}
 
 	api.router.HandleMessage(msg)
