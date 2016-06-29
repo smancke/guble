@@ -32,7 +32,11 @@ func createService(storagePath, nodeID, nodePort, httpListen string, remotes str
 	return service
 }
 
-func Test_Integration_Cluster(t *testing.T) {
+func Test_Cluster_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	a := assert.New(t)
 	//defer testutil.EnableDebugForMethod()()
 
