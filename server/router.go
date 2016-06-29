@@ -166,13 +166,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 	mTotalMessagesIncomingBytes.Add(lenMessage)
 
 	msgPathPartition := message.Path.Partition()
-	logger.WithFields(log.Fields{
-		"message.NodeID":         message.NodeID,
-		"ts": message.Time,
-		"msgPartition": msgPathPartition,
-		"userId": message.UserID,
-		"nodeId": router.cluster.Config.ID,
-	}).Info("Bedore if")
+
 	if router.cluster == nil || (router.cluster != nil && message.NodeID == 0) {
 
 		// for a new locally-generated message, we need to generate a new message-ID

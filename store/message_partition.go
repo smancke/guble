@@ -48,7 +48,8 @@ type MessagePartition struct {
 	appendLastId            uint64
 	appendFileWritePosition uint64
 	maxMessageId            uint64
-	currentIndex            uint64
+	localSequenceNumber     uint64
+	noOfEntriesInIndexFile  uint64 //TODO  MAYBE USE ONLY ONE  FROM THE noOfEntriesInIndexFile AND localSequenceNumber
 	mutex                   *sync.RWMutex
 	indexFilePQ             *PriorityQueue
 }
@@ -199,14 +200,14 @@ func (p *MessagePartition) generateNextMsgId(nodeId int) (uint64 ,int64, error) 
 	}
 
 	id := (uint64(timestamp-GubleEpoch) << TimestampLeftShift) |
-		(uint64(nodeId) << WorkerIdShift) | p.currentIndex
+		(uint64(nodeId) << WorkerIdShift) | p.localSequenceNumber
 
-	p.currentIndex++
+	p.localSequenceNumber++
 
 	messageStoreLogger.WithFields(log.Fields{
 		"id":                  id,
 		"messagePartition":    p.basedir,
-		"localSequenceNumber": p.currentIndex,
+		"localSequenceNumber": p.localSequenceNumber,
 		"currentNode": nodeId,
 	}).Info("+Generated id")
 
@@ -245,6 +246,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 	//p.mutex.Lock()
 	//defer p.mutex.Unlock()
 
+
 	if msgId > p.appendLastId ||
 		p.appendFile == nil ||
 		p.indexFile == nil {
@@ -271,7 +273,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 	}
 
 	// write the index entry to the index file
-	indexPosition := int64(uint64(INDEX_ENTRY_SIZE) * (p.currentIndex))
+	indexPosition := int64(uint64(INDEX_ENTRY_SIZE) * p.noOfEntriesInIndexFile)
 	messageOffset := p.appendFileWritePosition + uint64(len(sizeAndId))
 	messageOffsetBuff := make([]byte, INDEX_ENTRY_SIZE)
 	binary.LittleEndian.PutUint64(messageOffsetBuff, msgId)
@@ -281,15 +283,17 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 	if _, err := p.indexFile.WriteAt(messageOffsetBuff, indexPosition); err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
-			"p.curIndex": p.currentIndex,
+			"p.curIndex": p.localSequenceNumber,
 			"indexPOs": indexPosition,
 			"messageOffsetBuff" :messageOffsetBuff,
 		}).Error("ERROR p.indexFile.WriteAt")
 		return err
 	}
 
+	p.noOfEntriesInIndexFile++
+
 	log.WithFields(log.Fields{
-		"p.curIndex": p.currentIndex,
+		"p.curIndex": p.localSequenceNumber,
 		"indexPOs": indexPosition,
 		"messageOffsetBuff" :messageOffsetBuff,
 		"msgSize":   uint32(len(msg)),
@@ -306,13 +310,6 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 		messageOffset: messageOffset,
 	}
 	heap.Push(p.indexFilePQ, e)
-
-	//messageStoreLogger.WithFields(log.Fields{
-	//	"msgSize":   e.msgSize,
-	//	"msgId":     e.msgId,
-	//	"msgOffset": e.messageOffset,
-	//	"filename":  e.filename,
-	//}).Debug("Printing element")
 
 	p.appendFileWritePosition += uint64(len(sizeAndId) + len(msg))
 
@@ -490,7 +487,7 @@ func  (p *MessagePartition) loadIndexFileInMemory(filename string) error{
 	}
 
 	for  i:=uint64(0) ;i< entriesInIndex ;i++  {
-		msgID, msgOffset, msgSize, err := readIndexEntry(file,  int64(i))
+		msgID, msgOffset, msgSize, err := readIndexEntry(file,  int64(i* uint64(INDEX_ENTRY_SIZE)))
 		log.WithFields(log.Fields{
 			"msgOffset":     msgOffset,
 			"msgSize":       msgSize,
@@ -554,9 +551,9 @@ func (p *MessagePartition) firstMessageIdForFile(messageId uint64) uint64 {
 }
 
 func (p *MessagePartition) filenameByMessageId(messageId uint64) string {
-	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.msg", p.name, uint64(p.currentIndex/uint64(INDEX_ENTRY_SIZE))))
+	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.msg", p.name, uint64(p.localSequenceNumber /uint64(INDEX_ENTRY_SIZE))))
 }
 
 func (p *MessagePartition) indexFilenameByMessageId(messageId uint64) string {
-	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.name, uint64(p.currentIndex/uint64(INDEX_ENTRY_SIZE))))
+	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.name, uint64(p.localSequenceNumber /uint64(INDEX_ENTRY_SIZE))))
 }
