@@ -11,18 +11,11 @@ import (
 
 type messageType int
 
-var (
-	mh codec.MsgpackHandle
-	h  = &mh // or mh to use msgpack
-)
+var h = &codec.MsgpackHandle{}
 
 const (
-	nextIdResponse messageType = iota
-
-	nextIdRequest
-
 	// Guble protocol.Message
-	gubleMessage
+	gubleMessage messageType = iota
 
 	stringMessage
 )
@@ -66,13 +59,6 @@ func decode(cmsgBytes []byte) (*message, error) {
 // The parsed messages can have one of the types: *Message or *NextID
 func parseMessage(cmsg *message) (interface{}, error) {
 	switch cmsg.Type {
-	case nextIdRequest:
-		response, err := decodeNextID(cmsg.Body)
-		if err != nil {
-			logger.WithField("err", err).Error("Decoding of NextId Message failed")
-			return nil, err
-		}
-		return response, nil
 	case gubleMessage:
 		response, err := protocol.Decode(cmsg.Body)
 		if err != nil {

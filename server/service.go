@@ -64,7 +64,7 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 	cluster := router.Cluster()
 	if cluster != nil {
 		s.RegisterModules(cluster)
-		router.Cluster().MessageHandler = router
+		router.Cluster().Router = router
 	}
 	s.RegisterModules(s.router, s.webserver)
 	return s
