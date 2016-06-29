@@ -1,9 +1,10 @@
-// ==========================================================
-// memberlist.EventDelegate implementation for cluster struct
-// ==========================================================
 package cluster
 
 import "github.com/hashicorp/memberlist"
+
+// ==========================================================
+// memberlist.EventDelegate implementation for cluster struct
+// ==========================================================
 
 func (cluster *Cluster) NotifyJoin(node *memberlist.Node) {
 	cluster.numJoins++

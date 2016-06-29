@@ -1,6 +1,3 @@
-// ======================================================
-// memberslist.Delegate implementation for cluster struct
-// ======================================================
 package cluster
 
 import (
@@ -9,15 +6,20 @@ import (
 	"github.com/smancke/guble/protocol"
 )
 
+// ======================================================
+// memberslist.Delegate implementation for cluster struct
+// ======================================================
+
 // NotifyMsg is invoked each time a message is received by this node of the cluster; it decodes and dispatches the messages.
 func (cluster *Cluster) NotifyMsg(msg []byte) {
 	logger.WithField("msgAsBytes", msg).Debug("NotifyMsg")
 
 	cmsg, err := decode(msg)
 	if err != nil {
-		logger.WithField("err", err).Error("Decoding of cluster message failed")
+		logger.WithField("ergr", err).Error("Decoding of cluster message failed")
 		return
 	}
+
 	logger.WithFields(log.Fields{
 		"senderNodeID": cmsg.NodeID,
 		"type":         cmsg.Type,
