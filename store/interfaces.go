@@ -7,11 +7,11 @@ type MessageStore interface {
 	// The message id must be equal to MaxMessageId +1.
 	// So the caller has to maintain the consistence between
 	// fetching an id and storing the message.
-	Store(partition string, msgId uint64, msg []byte) error
+	Store(partition string, msgID uint64, msg []byte) error
 
 	// StoreTx retrieves the next available id and stores the message in one atomic transaction
 	StoreTx(partition string,
-		callback func(msgId uint64) (msg []byte)) error
+		callback func(msgID uint64) (msg []byte)) error
 
 	// Fetch fetches a set of messages.
 	// The results, as well as errors are communicated asynchronously using
@@ -19,7 +19,7 @@ type MessageStore interface {
 	Fetch(FetchRequest)
 
 	// MaxMessageId returns the highest message id for a particular partition
-	MaxMessageId(partition string) (uint64, error)
+	MaxMessageID(partition string) (uint64, error)
 
 	// DoInTx executes the supplied function within the locking context of the message partition.
 	// This ensures, that wile the code is executed, no change to the supplied maxMessageId can occur.
@@ -30,8 +30,8 @@ type MessageStore interface {
 	Check() error
 }
 
-type MessageAndId struct {
-	Id      uint64
+type MessageAndID struct {
+	ID      uint64
 	Message []byte
 }
 
@@ -41,8 +41,8 @@ type FetchRequest struct {
 	// Partition is the Store name to search for messages
 	Partition string
 
-	// StartId is the message sequence id to start
-	StartId uint64
+	// StartID is the message sequence id to start
+	StartID uint64
 
 	// Direction has 3 possible values:
 	// Direction == 0: Only the Message with StartId
@@ -57,15 +57,15 @@ type FetchRequest struct {
 	Prefix []byte
 
 	// MessageC is the channel to send the message back to the receiver
-	MessageC chan MessageAndId
+	MessageC chan MessageAndID
 
 	// ErrorCallback is a Callback if an error occurs
-	ErrorCallback chan error
+	ErrorC chan error
 
 	// Through the start callback, the total number or result
 	// is returned, before sending the first message.
 	// The Fetch() methods blocks on putting the number to the start callback.
-	StartCallback chan int
+	StartC chan int
 }
 
 // KVStore is an interface for a persistence backend, storing key-value pairs.

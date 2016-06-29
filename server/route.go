@@ -23,7 +23,7 @@ var (
 
 // Route represents a topic for subscription that has a channel to receive messages.
 type Route struct {
-	messagesC chan *MessageForRoute
+	messagesC chan *protocol.Message
 	// queue that will store the messages in correct order
 	//
 	// The queue can have a settable size and if it reaches the capacity the
@@ -48,11 +48,11 @@ type Route struct {
 }
 
 // NewRoute creates a new route pointer
-func NewRoute(path, applicationID, userID string, c chan *MessageForRoute) *Route {
+// 	- `size` is the channel buffer size
+func NewRoute(path, applicationID, userID string, size int) *Route {
 	queueSize := 0
-
 	route := &Route{
-		messagesC:     c,
+		messagesC:     make(chan *protocol.Message, size),
 		queue:         newQueue(queueSize),
 		queueSize:     queueSize,
 		timeout:       -1,
@@ -87,12 +87,6 @@ func (r *Route) String() string {
 	return fmt.Sprintf("%s:%s:%s", r.Path, r.UserID, r.ApplicationID)
 }
 
-// MessagesC returns the route channel to receive messages. To send messages through
-// a route use the `Deliver` method
-func (r *Route) MessagesC() chan *MessageForRoute {
-	return r.messagesC
-}
-
 // Deliver takes a messages and adds it to the queue to be delivered in to the
 // channel
 func (r *Route) Deliver(msg *protocol.Message) error {
@@ -123,6 +117,11 @@ func (r *Route) Deliver(msg *protocol.Message) error {
 
 	r.consume()
 	return nil
+}
+
+// MessagesChannel returns the route channel to send or receive messages.
+func (r *Route) MessagesChannel() <-chan *protocol.Message {
+	return r.messagesC
 }
 
 // Close closes the route channel.
@@ -231,13 +230,13 @@ func (r *Route) send(msg *protocol.Message) error {
 
 	// no timeout, means we don't close the channel
 	if r.timeout == -1 {
-		r.messagesC <- r.format(msg)
+		r.messagesC <- msg
 		r.logger.WithField("size", len(r.messagesC)).Debug("Channel size")
 		return nil
 	}
 
 	select {
-	case r.messagesC <- r.format(msg):
+	case r.messagesC <- msg:
 		return nil
 	case <-r.closeC:
 		return ErrInvalidRoute
@@ -257,15 +256,10 @@ func (r *Route) invalidRecover() error {
 	return nil
 }
 
-// format message according to the channel format
-func (r *Route) format(m *protocol.Message) *MessageForRoute {
-	return &MessageForRoute{Message: m, Route: r}
-}
-
 // sendDirect sends the message directly in the channel
-func (r *Route) sendDirect(m *protocol.Message) error {
+func (r *Route) sendDirect(msg *protocol.Message) error {
 	select {
-	case r.messagesC <- r.format(m):
+	case r.messagesC <- msg:
 		return nil
 	default:
 		r.logger.Debug("Closing route because of full channel")
