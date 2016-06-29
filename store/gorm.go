@@ -2,8 +2,9 @@ package store
 
 import (
 	log "github.com/Sirupsen/logrus"
-
 	"github.com/jinzhu/gorm"
+
+	"errors"
 	"time"
 )
 
@@ -19,7 +20,7 @@ const (
 	responseChannelSize = 100
 )
 
-var kvLogger = log.WithField("module", "kv-gorm")
+var gormLogger = log.WithField("module", "kv-gorm")
 
 type gormKVStore struct {
 	db *gorm.DB
@@ -50,7 +51,7 @@ func (kvStore *gormKVStore) Iterate(schema string, keyPrefix string) chan [2]str
 		rows, err := kvStore.db.Raw("select key, value from kv_entry where schema = ? and key LIKE ?", schema, keyPrefix+"%").
 			Rows()
 		if err != nil {
-			kvLogger.WithField("err", err).Error("Error fetching keys from database")
+			gormLogger.WithField("err", err).Error("Error fetching keys from database")
 		} else {
 			defer rows.Close()
 			for rows.Next() {
@@ -70,7 +71,7 @@ func (kvStore *gormKVStore) IterateKeys(schema string, keyPrefix string) chan st
 		rows, err := kvStore.db.Raw("select key from kv_entry where schema = ? and key LIKE ?", schema, keyPrefix+"%").
 			Rows()
 		if err != nil {
-			kvLogger.WithField("err", err).Error("Error fetching keys from database")
+			gormLogger.WithField("err", err).Error("Error fetching keys from database")
 		} else {
 			defer rows.Close()
 			for rows.Next() {
@@ -93,6 +94,19 @@ func (kvStore *gormKVStore) Stop() error {
 	if kvStore.db != nil {
 		err := kvStore.db.Close()
 		kvStore.db = nil
+		return err
+	}
+	return nil
+}
+
+func (kvStore *gormKVStore) Check() error {
+	if kvStore.db == nil {
+		errorMessage := "Error: Database is not initialized (nil)"
+		gormLogger.Error(errorMessage)
+		return errors.New(errorMessage)
+	}
+	if err := kvStore.db.DB().Ping(); err != nil {
+		gormLogger.WithField("err", err).Error("Error pinging database")
 		return err
 	}
 	return nil

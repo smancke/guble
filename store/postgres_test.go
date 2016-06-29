@@ -5,31 +5,35 @@ import (
 	"testing"
 )
 
-func TestPostgresPutGetDelete(t *testing.T) {
-	db := NewPostgresKVStore(aPostgresConfig())
-	db.Open()
-	CommonTestPutGetDelete(t, db)
-}
-
-func TestPostgresIterate(t *testing.T) {
-	db := NewPostgresKVStore(aPostgresConfig())
-	db.Open()
-	CommonTestIterate(t, db)
-}
-
-func TestPostgresIterateKeys(t *testing.T) {
-	db := NewPostgresKVStore(aPostgresConfig())
-	db.Open()
-	CommonTestIterateKeys(t, db)
-}
-
 func BenchmarkPostgresPutGet(b *testing.B) {
 	db := NewPostgresKVStore(aPostgresConfig())
 	db.Open()
 	CommonBenchPutGet(b, db)
 }
 
+func TestPostgresPutGetDelete(t *testing.T) {
+	skipIfShort(t)
+	db := NewPostgresKVStore(aPostgresConfig())
+	db.Open()
+	CommonTestPutGetDelete(t, db)
+}
+
+func TestPostgresIterate(t *testing.T) {
+	skipIfShort(t)
+	db := NewPostgresKVStore(aPostgresConfig())
+	db.Open()
+	CommonTestIterate(t, db)
+}
+
+func TestPostgresIterateKeys(t *testing.T) {
+	skipIfShort(t)
+	db := NewPostgresKVStore(aPostgresConfig())
+	db.Open()
+	CommonTestIterateKeys(t, db)
+}
+
 func TestPostgresKVStore_Check(t *testing.T) {
+	skipIfShort(t)
 	a := assert.New(t)
 
 	kvs := NewPostgresKVStore(aPostgresConfig())
@@ -53,5 +57,11 @@ func aPostgresConfig() PostgresConfig {
 		"password": "guble",
 		"dbname":   "guble",
 		"sslmode":  "disable",
+	}
+}
+
+func skipIfShort(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
 	}
 }

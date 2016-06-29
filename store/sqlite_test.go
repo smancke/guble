@@ -6,6 +6,15 @@ import (
 	"testing"
 )
 
+func BenchmarkSqlitePutGet(b *testing.B) {
+	f := tempFilename()
+	defer os.Remove(f)
+
+	db := NewSqliteKVStore(f, false)
+	db.Open()
+	CommonBenchPutGet(b, db)
+}
+
 func TestSqlitePutGetDelete(t *testing.T) {
 	f := tempFilename()
 	defer os.Remove(f)
@@ -33,15 +42,6 @@ func TestSqliteIterateKeys(t *testing.T) {
 	db.Open()
 
 	CommonTestIterateKeys(t, db)
-}
-
-func BenchmarkSqlitePutGet(b *testing.B) {
-	f := tempFilename()
-	defer os.Remove(f)
-
-	db := NewSqliteKVStore(f, false)
-	db.Open()
-	CommonBenchPutGet(b, db)
 }
 
 func TestCheck_SqlKVStore(t *testing.T) {

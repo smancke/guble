@@ -4,8 +4,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
-
-	"errors"
 )
 
 const (
@@ -52,21 +50,5 @@ func (kvStore *PostgresKVStore) Open() error {
 	}
 	postgresWithConfigLogger.Info("Ensured database schema")
 	kvStore.gormKVStore = gormKVStore{gormdb}
-	return nil
-}
-
-func (kvStore *PostgresKVStore) Check() error {
-	if kvStore.db == nil {
-		errorMessage := "Error: Database is not initialized (nil)"
-		postgresLogger.WithField("config", kvStore.config).Error(errorMessage)
-		return errors.New(errorMessage)
-	}
-	if err := kvStore.db.DB().Ping(); err != nil {
-		postgresLogger.WithFields(log.Fields{
-			"config": kvStore.config,
-			"err":    err,
-		}).Error("Error pinging database")
-		return err
-	}
 	return nil
 }
