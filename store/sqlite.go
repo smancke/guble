@@ -133,11 +133,10 @@ func (kvStore *SqliteKVStore) Get(schema, key string) ([]byte, bool, error) {
 		}
 		return nil, false, err
 	}
-
 	return entry.Value, true, nil
 }
 
-func (kvStore *SqliteKVStore) Iterate(schema string, keyPrefix string) chan [2]string {
+func (kvStore *SqliteKVStore) Iterate(schema, keyPrefix string) chan [2]string {
 	responseC := make(chan [2]string, responseChannelSize)
 	go func() {
 		rows, err := kvStore.db.Raw("select key, value from kv_entry where schema = ? and key LIKE ?", schema, keyPrefix+"%").
@@ -157,7 +156,7 @@ func (kvStore *SqliteKVStore) Iterate(schema string, keyPrefix string) chan [2]s
 	return responseC
 }
 
-func (kvStore *SqliteKVStore) IterateKeys(schema string, keyPrefix string) chan string {
+func (kvStore *SqliteKVStore) IterateKeys(schema, keyPrefix string) chan string {
 	responseC := make(chan string, responseChannelSize)
 	go func() {
 		rows, err := kvStore.db.Raw("select key from kv_entry where schema = ? and key LIKE ?", schema, keyPrefix+"%").
@@ -189,11 +188,9 @@ func ensureWriteableDirectory(dir string) error {
 		}
 		dirInfo, err = os.Stat(dir)
 	}
-
 	if err != nil || !dirInfo.IsDir() {
 		return fmt.Errorf("kv-sqlite: not a directory %v", dir)
 	}
-
 	writeTest := path.Join(dir, writeTestFilename)
 	if err := ioutil.WriteFile(writeTest, []byte("writeTest"), 0644); err != nil {
 		return err

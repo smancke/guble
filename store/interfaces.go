@@ -84,9 +84,9 @@ type KVStore interface {
 	// The result will be sent to the channel, which is closed after the last entry.
 	// For simplicity, the return type is an string array with key, value.
 	// If you have binary values, you can safely cast back to []byte.
-	Iterate(schema string, keyPrefix string) (entries chan [2]string)
+	Iterate(schema, keyPrefix string) (entries chan [2]string)
 
 	// IterateKeys iterates over all keys in the key value store.
 	// The keys will be sent to the channel, which is closed after the last entry.
-	IterateKeys(schema string, keyPrefix string) (keys chan string)
+	IterateKeys(schema, keyPrefix string) (keys chan string)
 }
