@@ -67,7 +67,7 @@ func TestSub_Fetch(t *testing.T) {
 	go func() {
 		select {
 		case <-done:
-		// all good
+			// all good
 		case <-time.After(30 * time.Millisecond):
 			// taking too long, fail the test
 			a.Fail("Fetching messages and piping them took too long.")
