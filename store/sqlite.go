@@ -14,6 +14,11 @@ import (
 	"time"
 )
 
+const (
+	sqliteMaxIdleConns = 2
+	sqliteMaxOpenConns = 5
+)
+
 var writeTestFilename = "db_testfile"
 
 var sqliteLogger = log.WithField("module", "kv-sqlite")
@@ -65,8 +70,8 @@ func (kvStore *SqliteKVStore) Open() error {
 
 	gormdb.LogMode(gormLogMode)
 	gormdb.SingularTable(true)
-	gormdb.DB().SetMaxIdleConns(dbMaxIdleConns)
-	gormdb.DB().SetMaxOpenConns(dbMaxOpenConns)
+	gormdb.DB().SetMaxIdleConns(sqliteMaxIdleConns)
+	gormdb.DB().SetMaxOpenConns(sqliteMaxOpenConns)
 
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
 		sqliteLogger.WithField("err", err).Error("Error in schema migration")

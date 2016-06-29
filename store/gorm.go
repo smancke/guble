@@ -15,8 +15,6 @@ type kvEntry struct {
 
 const (
 	gormLogMode         = false
-	dbMaxIdleConns      = 2
-	dbMaxOpenConns      = 5
 	responseChannelSize = 100
 )
 

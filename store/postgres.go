@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+const (
+	postgresMaxIdleConns = 4
+	postgresMaxOpenConns = 10
+)
+
 var postgresLogger = log.WithField("module", "kv-postgres")
 
 type PostgresKVStore struct {
@@ -40,8 +45,8 @@ func (kvStore *PostgresKVStore) Open() error {
 
 	gormdb.LogMode(gormLogMode)
 	gormdb.SingularTable(true)
-	gormdb.DB().SetMaxIdleConns(dbMaxIdleConns)
-	gormdb.DB().SetMaxOpenConns(dbMaxOpenConns)
+	gormdb.DB().SetMaxIdleConns(postgresMaxIdleConns)
+	gormdb.DB().SetMaxOpenConns(postgresMaxOpenConns)
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
 		postgresWithConfigLogger.WithField("err", err).Error("Error in schema migration")
 		return err
