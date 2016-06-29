@@ -10,6 +10,7 @@ import (
 	"github.com/smancke/guble/server/cluster"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/docker/distribution/health"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/store"
@@ -125,18 +126,19 @@ func (router *router) Check() error {
 		logger.WithField("err", ErrServiceNotProvided).Error("Some mandatory services are not provided")
 		return ErrServiceNotProvided
 	}
-	err := router.messageStore.Check()
-	if err != nil {
-		logger.WithField("err", err).Error("MessageStore check failed")
-		return err
+	if checkable, ok := router.messageStore.(health.Checker); ok {
+		err := checkable.Check()
+		if err != nil {
+			logger.WithField("err", err).Error("MessageStore check failed")
+			return err
+		}
 	}
-	err = router.kvStore.Check()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"module": "router",
-			"err":    err,
-		}).Error("KVStore check failed")
-		return err
+	if checkable, ok := router.kvStore.(health.Checker); ok {
+		err := checkable.Check()
+		if err != nil {
+			logger.WithField("err", err).Error("KVStore check failed")
+			return err
+		}
 	}
 	return nil
 }
