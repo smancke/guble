@@ -46,6 +46,8 @@ type Cluster struct {
 	numJoins   int
 	numLeaves  int
 	numUpdates int
+
+	synchornizer *synchornizer
 }
 
 //New returns a new instance of the cluster, created using the given Config.
@@ -65,10 +67,12 @@ func New(config *Config) (*Cluster, error) {
 		logger.WithField("error", err).Error("Error when creating the internal memberlist of the cluster")
 		return nil, err
 	}
+
 	c.memberlist = memberlist
 	memberlistConfig.Delegate = c
 	memberlistConfig.Conflict = c
 	memberlistConfig.Events = c
+
 	return c, nil
 }
 
@@ -109,6 +113,15 @@ func (cluster *Cluster) Check() error {
 	return nil
 }
 
+// newMessage returns a *message to be used in broadcasting or sending to a node
+func (cluster *Cluster) newMessage(t messageType, body []byte) *message {
+	return &message{
+		NodeID: cluster.Config.ID,
+		Type:   t,
+		Body:   body,
+	}
+}
+
 // BroadcastString broadcasts a string to all the other nodes in the guble cluster
 func (cluster *Cluster) BroadcastString(sMessage *string) error {
 	logger.WithField("string", sMessage).Debug("BroadcastString")
@@ -131,26 +144,19 @@ func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) error {
 	return cluster.broadcastClusterMessage(cMessage)
 }
 
-func (cluster *Cluster) log(node *memberlist.Node, message string) {
-	logger.WithFields(log.Fields{
-		"node":       *node,
-		"numJoins":   cluster.numJoins,
-		"numLeaves":  cluster.numLeaves,
-		"numUpdates": cluster.numUpdates,
-	}).Debug(message)
-}
-
 func (cluster *Cluster) broadcastClusterMessage(cMessage *message) error {
 	if cMessage == nil {
 		errorMessage := "Could not broadcast a nil cluster-message"
 		logger.Error(errorMessage)
 		return errors.New(errorMessage)
 	}
+
 	cMessageBytes, err := cMessage.encode()
 	if err != nil {
-		logger.WithField("err", err).Error("Could not encode and broadcast cluster-message")
+		logger.WithError(err).Error("Could not encode and broadcast cluster-message")
 		return err
 	}
+
 	for _, node := range cluster.memberlist.Members() {
 		if cluster.name == node.Name {
 			continue
@@ -160,15 +166,37 @@ func (cluster *Cluster) broadcastClusterMessage(cMessage *message) error {
 	return nil
 }
 
-func (cluster *Cluster) sendToNode(node *memberlist.Node, msgBytes []byte) {
-	logger.WithField("nodeName", node.Name).Debug("Sending cluster-message to a node")
+func (cluster *Cluster) sendToNode(node *memberlist.Node, msgBytes []byte) error {
+	logger.WithField("node", node.Name).Debug("Sending cluster-message to a node")
+
 	err := cluster.memberlist.SendToTCP(node, msgBytes)
 	if err != nil {
 		logger.WithFields(log.Fields{
 			"err":  err,
 			"node": node,
 		}).Error("Error sending cluster-message to a node")
+
+		return err
 	}
+
+	return nil
+}
+
+func (cluster *Cluster) sendMessageToNode(node *memberlist.Node, cmsg *message) error {
+	logger.WithField("node", node.Name).Debug("Sending message to a node")
+
+	bytes, err := cmsg.encode()
+	if err != nil {
+		logger.WithError(err).Error("Could not encode and broadcast cluster-message")
+		return err
+	}
+
+	if err = cluster.memberlist.SendToTCP(node, bytes); err != nil {
+		logger.WithField("node", node.Name).WithError(err).Error("Error send message to node")
+		return err
+	}
+
+	return nil
 }
 
 func (cluster *Cluster) remotesAsStrings() (strings []string) {

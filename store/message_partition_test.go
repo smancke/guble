@@ -373,7 +373,7 @@ func TestFilenameGeneration(t *testing.T) {
 
 	store := &MessagePartition{
 		basedir: "/foo/bar/",
-		name:    "myMessages",
+		Name:    "myMessages",
 	}
 
 	a.Equal("/foo/bar/myMessages-00000000000000000042.msg", store.filenameByMessageId(42))

@@ -23,7 +23,6 @@ func (cluster *Cluster) NotifyMsg(msg []byte) {
 	logger.WithFields(log.Fields{
 		"senderNodeID": cmsg.NodeID,
 		"type":         cmsg.Type,
-		"body":         string(cmsg.Body),
 	}).Debug("NotifyMsg: Received cluster message")
 
 	if cluster.Router != nil && cmsg.Type == gubleMessage {

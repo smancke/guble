@@ -40,8 +40,8 @@ type fetchEntry struct {
 }
 
 type MessagePartition struct {
+	Name                    string
 	basedir                 string
-	name                    string
 	appendFile              *os.File
 	indexFile               *os.File
 	appendFirstID           uint64
@@ -49,14 +49,13 @@ type MessagePartition struct {
 	appendFileWritePosition uint64
 	maxMessageID            uint64
 	currentIndex            uint64
-	mutex                   *sync.RWMutex
+	mutex                   sync.RWMutex
 }
 
 func NewMessagePartition(basedir string, storeName string) (*MessagePartition, error) {
 	p := &MessagePartition{
+		Name:    storeName,
 		basedir: basedir,
-		name:    storeName,
-		mutex:   &sync.RWMutex{},
 	}
 	return p, p.initialize()
 }
@@ -103,9 +102,9 @@ func (p *MessagePartition) scanFiles() ([]uint64, error) {
 		return nil, err
 	}
 	for _, fileInfo := range allFiles {
-		if strings.HasPrefix(fileInfo.Name(), p.name+"-") &&
+		if strings.HasPrefix(fileInfo.Name(), p.Name+"-") &&
 			strings.HasSuffix(fileInfo.Name(), ".idx") {
-			fileIdString := fileInfo.Name()[len(p.name)+1 : len(fileInfo.Name())-4]
+			fileIdString := fileInfo.Name()[len(p.Name)+1 : len(fileInfo.Name())-4]
 			if fileId, err := strconv.ParseUint(fileIdString, 10, 64); err == nil {
 				result = append(result, fileId)
 			}
@@ -458,9 +457,9 @@ func (p *MessagePartition) firstMessageIdForFile(messageId uint64) uint64 {
 }
 
 func (p *MessagePartition) filenameByMessageId(messageId uint64) string {
-	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.msg", p.name, messageId))
+	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.msg", p.Name, messageId))
 }
 
 func (p *MessagePartition) indexFilenameByMessageId(messageId uint64) string {
-	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.name, messageId))
+	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.Name, messageId))
 }

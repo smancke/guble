@@ -14,6 +14,10 @@ const (
 	// Guble protocol.Message
 	gubleMessage messageType = iota
 
+	// A node will send this message type when the body contains the partitions
+	// in it's store with the max message id for each ([]partitions)
+	syncPartitions
+
 	stringMessage
 )
 
