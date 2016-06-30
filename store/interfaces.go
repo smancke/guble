@@ -25,6 +25,8 @@ type MessageStore interface {
 	// GenerateNextMsgId generates a new message ID based on a timestamp in a strictly monotonically order
 	GenerateNextMsgId(msgPathPartition string, timestamp int64) (uint64, error)
 
+	Partitions() ([]*MessagePartition, error)
+
 	//Check if the current messageStore is having enough space to save on Disk
 	Check() error
 }

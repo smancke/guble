@@ -46,11 +46,7 @@ func (cluster *Cluster) sendPartitions(node *memberlist.Node) {
 		return
 	}
 
-	partitions, err := store.Partitions()
-	if err != nil {
-		logger.WithError(err).Error("Error retriving partitions")
-		return
-	}
+	partitions := partitionsFromStore(store)
 
 	// sending partitions
 	cmsg := cluster.newMessage(syncPartitions, partitions.bytes())

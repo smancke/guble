@@ -2,8 +2,10 @@ package store
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -91,6 +93,27 @@ func (fms *FileMessageStore) DoInTx(partition string, fnToExecute func(maxMessag
 	return p.DoInTx(fnToExecute)
 }
 
+// Partitions will walk the filesystem and return all message partitions
+func (fms *FileMessageStore) Partitions() (partitions []*MessagePartition, err error) {
+	entries, err := ioutil.ReadDir(fms.basedir)
+	if err != nil {
+		messageStoreLogger.WithError(err).Error("Error reading partitions")
+		return nil, err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			partition, err := fms.partitionStore(entry.Name())
+			if err != nil {
+				continue
+			}
+
+			partitions = append(partitions, partition)
+		}
+	}
+	return
+}
+
 func (fms *FileMessageStore) partitionStore(partition string) (*MessagePartition, error) {
 	fms.mutex.Lock()
 	defer fms.mutex.Unlock()
@@ -143,4 +166,15 @@ func (fms *FileMessageStore) Check() error {
 	}
 
 	return nil
+}
+
+// extractPartitionName returns the partition name from a filepath
+// The files would have this format /basepath/partition-number.extenstion
+// if filepath is not in the right format empty string is returned
+func extractPartitionName(p string) string {
+	s := strings.SplitN(path.Base(p), "-", 2)
+	if len(s) <= 2 {
+		return ""
+	}
+	return s[0]
 }
