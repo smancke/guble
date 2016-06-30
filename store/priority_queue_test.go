@@ -19,7 +19,7 @@ func Test_Limit(t *testing.T){
 		msgID :=   uint64(rand.Intn(14))
 		entry := &IndexFileEntry{
 			msgSize: 3,
-			msgId: msgID,
+			msgID: msgID,
 			filename: "file",
 			//index:i,
 			messageOffset: 128,
@@ -33,39 +33,56 @@ func Test_Limit(t *testing.T){
 
 
 	pq.PrintPq()
+	logrus.Info("----------------+++-------------------------------")
+	pq.Clear()
+	logrus.Info("----------------+++-------------------------------")
 
-	pp, en := pq.GetIndexEntryFromID(9)
+	entry := &IndexFileEntry{
+		msgSize: 3,
+		msgID: 21,
+		filename: "file",
+		//index:i,
+		messageOffset: 128,
+	}
+	heap.Push(pq, entry)
+	entry.msgID = 24
+	heap.Push(pq, entry)
+	pq.PrintPq()
 	logrus.WithFields(logrus.Fields{
-		"msgId": pp,
-		"index": en,
+		"len": pq.Len(),
 	}).Info("has 9")
-
-	pp, en = pq.GetIndexEntryFromID(1)
-
-	logrus.WithFields(logrus.Fields{
-		"msgId": pp,
-		"index": en,
-	}).Info("has 1")
-
-	pp, en = pq.GetIndexEntryFromID(13)
-	logrus.WithFields(logrus.Fields{
-		"msgId": pp,
-		"index": en,
-	}).Info("has 13")
-
-
-	pp, en = pq.GetIndexEntryFromID(2)
-	logrus.WithFields(logrus.Fields{
-		"msgId": pp,
-		"index": en,
-	}).Info("has 2")
-	a.False(pp)
-
-	tt:= pq.Peek()
-	logrus.WithFields(logrus.Fields{
-		"msgId": tt.msgId,
-		"index": tt.index,
-	}).Info("PEEK")
+	//pp, en := pq.GetIndexEntryFromID(9)
+	//logrus.WithFields(logrus.Fields{
+	//	"msgId": pp,
+	//	"index": en,
+	//}).Info("has 9")
+	//
+	//pp, en = pq.GetIndexEntryFromID(1)
+	//
+	//logrus.WithFields(logrus.Fields{
+	//	"msgId": pp,
+	//	"index": en,
+	//}).Info("has 1")
+	//
+	//pp, en = pq.GetIndexEntryFromID(13)
+	//logrus.WithFields(logrus.Fields{
+	//	"msgId": pp,
+	//	"index": en,
+	//}).Info("has 13")
+	//
+	//
+	//pp, en = pq.GetIndexEntryFromID(2)
+	//logrus.WithFields(logrus.Fields{
+	//	"msgId": pp,
+	//	"index": en,
+	//}).Info("has 2")
+	//a.False(pp)
+	//
+	//tt:= pq.Peek()
+	//logrus.WithFields(logrus.Fields{
+	//	"msgId": tt.msgID,
+	//	"index": tt.index,
+	//}).Info("PEEK")
 
 	//
 	//for pq.Len() > 0 {

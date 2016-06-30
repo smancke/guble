@@ -7,12 +7,12 @@ import (
 
 // An Item is something we manage in a priority queue.
 type IndexFileEntry struct {
-	msgSize uint32 // The value of the item; arbitrary.
-	msgId   uint64 // The priority of the item in the queue.
-	// The index is needed by update and is maintained by the heap.Interface methods.
-	index int // The index of the item in the heap.
+	msgSize       uint32 // The value of the item; arbitrary.
+	msgID         uint64 // The priority of the item in the queue.
+			     // The index is needed by update and is maintained by the heap.Interface methods.
+	index         int    // The index of the item in the heap.
 
-	filename string
+	filename      string
 
 	messageOffset uint64
 }
@@ -24,7 +24,7 @@ func (pq PriorityQueue) Len() int { return len(pq) }
 
 func (pq PriorityQueue) Less(i, j int) bool {
 	// We want Pop to give us the highest , not highest, priority so we use greater than here.
-	return pq[i].msgId < pq[j].msgId
+	return pq[i].msgID < pq[j].msgID
 }
 
 func (pq PriorityQueue) Swap(i, j int) {
@@ -49,15 +49,22 @@ func (pq *PriorityQueue) Pop() interface{} {
 	return item
 }
 
+func (pq *PriorityQueue) Clear()  {
+	*pq = nil
+	*pq = make(PriorityQueue, 0)
+	heap.Init(pq)
+	//return  pq
+}
+
 // GetIndexEntryFromID performs a binarySearch retrieving the index
 func (pq *PriorityQueue) GetIndexEntryFromID(searchedId uint64) (bool, *IndexFileEntry) {
 	h := pq.Len()
 	l := 0
 	for l <= h {
 	     mid := l +(h-l)/2
-		if (*pq)[mid].msgId == searchedId {
+		if (*pq)[mid].msgID == searchedId {
 			return true, (*pq)[mid]
-		}else if (*pq)[mid].msgId < searchedId {
+		}else if (*pq)[mid].msgID < searchedId {
 		       l = mid +1
 		}else {
 			h = mid-1
@@ -67,7 +74,6 @@ func (pq *PriorityQueue) GetIndexEntryFromID(searchedId uint64) (bool, *IndexFil
 	return false, nil
 }
 
-// performs a binarySearch retrieving the index
 func (pq *PriorityQueue) Peek() *IndexFileEntry {
 	if pq.Len() == 0 {
 		return nil
@@ -75,11 +81,18 @@ func (pq *PriorityQueue) Peek() *IndexFileEntry {
 	return (*pq)[pq.Len()-1]
 }
 
+func (pq *PriorityQueue) Get(pos int) *IndexFileEntry {
+	if pq.Len() < pos || pos < 0{
+		return nil
+	}
+	return (*pq)[pos]
+}
+
 func (pq *PriorityQueue) PrintPq() {
 	for i:=0 ;i< pq.Len(); i++  {
 		messageStoreLogger.WithFields(logrus.Fields{
 			"msgSize": (*pq)[i].msgSize,
-			"msgId": (*pq)[i].msgId,
+			"msgId": (*pq)[i].msgID,
 			"index": (*pq)[i].index,
 			"msgOffset": (*pq)[i].messageOffset,
 			"filename": (*pq)[i].filename,

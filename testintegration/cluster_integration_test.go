@@ -14,7 +14,7 @@ import (
 	"os"
 	"testing"
 	"time"
-	"github.com/smancke/guble/testutil"
+	//"github.com/smancke/guble/testutil"
 	"github.com/smancke/guble/protocol"
 )
 
@@ -36,7 +36,7 @@ func createService(storagePath, nodeID, nodePort, httpListen string, remotes str
 
 func Test_Cluster(t *testing.T) {
 	a := assert.New(t)
-	defer testutil.EnableDebugForMethod()()
+	//defer testutil.EnableDebugForMethod()()
 
 	dir1, err1 := ioutil.TempDir("", "guble_cluster_integration_test")
 	a.NoError(err1)

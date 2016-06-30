@@ -5,31 +5,28 @@ import (
 	"encoding/binary"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/gubled/config"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
 var (
-	MAGIC_NUMBER        = []byte{42, 249, 180, 108, 82, 75, 222, 182}
+	MAGIC_NUMBER = []byte{42, 249, 180, 108, 82, 75, 222, 182}
 	FILE_FORMAT_VERSION = []byte{1}
-	MESSAGES_PER_FILE   = uint64(10000)
-	INDEX_ENTRY_SIZE    = 20
+	MESSAGES_PER_FILE = uint64(10)
+	INDEX_ENTRY_SIZE = 20
 )
 
 const (
 	defaultInitialCapacity = 128
-	WorkerIdBits           = 5
-	//DatacenterIdBits   = 5
-	SequenceBits       = 12
-	WorkerIdShift      = SequenceBits
-	TimestampLeftShift = SequenceBits + WorkerIdBits //+ DatacenterIdBits
-	GubleEpoch         = 1467024972
+	GubleNodeIdBits = 5
+	SequenceBits = 12
+	GubleNodeIdShift = SequenceBits
+	TimestampLeftShift = SequenceBits + GubleNodeIdBits
+	GubleEpoch = 1467024972
 )
 
 type fetchEntry struct {
@@ -39,19 +36,23 @@ type fetchEntry struct {
 	size      int
 }
 
+type FileCacheEntry struct {
+	minMsgID uint64
+	maxMsgID uint64
+}
+
 type MessagePartition struct {
 	basedir                 string
 	name                    string
 	appendFile              *os.File
 	indexFile               *os.File
-	appendFirstId           uint64
-	appendLastId            uint64
 	appendFileWritePosition uint64
 	maxMessageId            uint64
 	localSequenceNumber     uint64
 	noOfEntriesInIndexFile  uint64 //TODO  MAYBE USE ONLY ONE  FROM THE noOfEntriesInIndexFile AND localSequenceNumber
 	mutex                   *sync.RWMutex
 	indexFilePQ             *PriorityQueue
+	fileCache               []*FileCacheEntry
 }
 
 func NewMessagePartition(basedir string, storeName string) (*MessagePartition, error) {
@@ -60,6 +61,7 @@ func NewMessagePartition(basedir string, storeName string) (*MessagePartition, e
 		name:        storeName,
 		mutex:       &sync.RWMutex{},
 		indexFilePQ: createIndexPriorityQueue(),
+		fileCache:   make([]*FileCacheEntry, 0),
 	}
 	return p, p.initialize()
 }
@@ -68,29 +70,18 @@ func (p *MessagePartition) initialize() error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	fileList, err := p.scanFiles()
+	err := p.readIdxFiles()
 	if err != nil {
 		messageStoreLogger.WithField("err", err).Error("MessagePartition error on scanFiles")
 		return err
 	}
-	if len(fileList) == 0 {
-		p.maxMessageId = 0
-	} else {
 
-		// TODO  Marian read from indexFIle and put all entries in the indexFilePq
-		var err error
-		p.maxMessageId, err = p.calculateMaxMessageIdFromIndex(fileList[len(fileList)-1])
-		if err != nil {
-			messageStoreLogger.WithField("err", err).Error("MessagePartition error on calculateMaxMessageIdFromIndex")
-			return err
-		}
-	}
 	return nil
 }
 
 // calculateMaxMessageIdFromIndex returns the max message id for a message file
 func (p *MessagePartition) calculateMaxMessageIdFromIndex(fileId uint64) (uint64, error) {
-	stat, err := os.Stat(p.indexFilenameByMessageId(fileId))
+	stat, err := os.Stat(p.composeIndexFilename())
 	if err != nil {
 		return 0, err
 	}
@@ -101,22 +92,58 @@ func (p *MessagePartition) calculateMaxMessageIdFromIndex(fileId uint64) (uint64
 
 // Returns the start messages ids for all available message files
 // in a sorted list
-func (p *MessagePartition) scanFiles() ([]uint64, error) {
-	result := []uint64{}
+func (p *MessagePartition) readIdxFiles() error {
 	allFiles, err := ioutil.ReadDir(p.basedir)
 	if err != nil {
-		return nil, err
+		return err
 	}
+
+	indexFilesName := make([]string, 0)
 	for _, fileInfo := range allFiles {
-		if strings.HasPrefix(fileInfo.Name(), p.name+"-") &&
-			strings.HasSuffix(fileInfo.Name(), ".idx") {
-			fileIdString := fileInfo.Name()[len(p.name)+1 : len(fileInfo.Name())-4]
-			if fileId, err := strconv.ParseUint(fileIdString, 10, 64); err == nil {
-				result = append(result, fileId)
-			}
+		if strings.HasPrefix(fileInfo.Name(), p.name + "-") && strings.HasSuffix(fileInfo.Name(), ".idx") {
+			fileIdString := filepath.Join(p.basedir, fileInfo.Name())
+			messageStoreLogger.WithField("IDXname", fileIdString).Info("IDX NAME")
+			indexFilesName = append(indexFilesName, fileIdString)
 		}
 	}
-	return result, nil
+	// if no .idx file are found.. there is nothing to load
+	if len(indexFilesName) == 0 {
+		messageStoreLogger.Info("No .idx files found")
+		return nil
+	}
+
+	//load the filecache from all the files
+	messageStoreLogger.WithField("filenames", indexFilesName).Info("Found files")
+	for i := 0; i < len(indexFilesName) - 1; i++ {
+		min, max, err := readMinMaxMsgIdFromIndexFile(indexFilesName[i])
+		if err != nil {
+			messageStoreLogger.WithFields(log.Fields{
+				"idxFilename": indexFilesName[i],
+				"err":         err,
+			}).Error("Error loading existing .idxFile")
+			return err
+		}
+
+		p.fileCache = append(p.fileCache, &FileCacheEntry{
+			minMsgID: min,
+			maxMsgID: max,
+		})
+
+	}
+	// read the  idx file with   biggest id and load in the sorted cache
+	err = p.loadIndexFileInMemory(indexFilesName[len(indexFilesName) - 1])
+	if err != nil {
+		messageStoreLogger.WithFields(log.Fields{
+			"idxFilename": indexFilesName[(len(indexFilesName) - 1)],
+			"err":         err,
+		}).Error("Error loading last .idx file")
+		return err
+	}
+	//messageStoreLogger.Info("--------------------")
+	//p.indexFilePQ.PrintPq()
+	messageStoreLogger.WithField("LEN_cACHE", p.noOfEntriesInIndexFile).Info("--------------------")
+
+	return nil
 }
 
 func (p *MessagePartition) MaxMessageId() (uint64, error) {
@@ -145,10 +172,35 @@ func (p *MessagePartition) closeAppendFiles() error {
 	return nil
 }
 
-func (p *MessagePartition) createNextAppendFiles(msgId uint64) error {
-	firstMessageIdForFile := p.firstMessageIdForFile(msgId)
+func readMinMaxMsgIdFromIndexFile(filename string) (minMsgID, maxMsgID uint64, err error) {
 
-	appendfile, err := os.OpenFile(p.filenameByMessageId(firstMessageIdForFile), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	entriesInIndex, err := calculateNumberOfEntries(filename)
+	if err != nil {
+		return
+	}
+
+	file, err := os.Open(filename)
+	defer file.Close()
+	if err != nil {
+		return
+	}
+
+	minMsgID, _, _, err = readIndexEntry(file, 0)
+	if err != nil {
+		return
+	}
+	maxMsgID, _, _, err = readIndexEntry(file, int64((entriesInIndex - 1) * uint64(INDEX_ENTRY_SIZE)))
+	if err != nil {
+		return
+	}
+	return minMsgID, maxMsgID, err
+}
+
+func (p *MessagePartition) createNextAppendFiles() error {
+
+	messageStoreLogger.WithField("NEW_FILENAME", p.composeMsgFilename()).Info("++CreateNextIndexAPppendFIles")
+
+	appendfile, err := os.OpenFile(p.composeMsgFilename(), os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
 	if err != nil {
 		return err
 	}
@@ -168,7 +220,7 @@ func (p *MessagePartition) createNextAppendFiles(msgId uint64) error {
 		}
 	}
 
-	indexfile, errIndex := os.OpenFile(p.indexFilenameByMessageId(firstMessageIdForFile), os.O_RDWR|os.O_CREATE, 0666)
+	indexfile, errIndex := os.OpenFile(p.composeIndexFilename(), os.O_RDWR | os.O_CREATE, 0666)
 	if errIndex != nil {
 		defer appendfile.Close()
 		defer os.Remove(appendfile.Name())
@@ -177,8 +229,6 @@ func (p *MessagePartition) createNextAppendFiles(msgId uint64) error {
 
 	p.appendFile = appendfile
 	p.indexFile = indexfile
-	p.appendFirstId = firstMessageIdForFile
-	p.appendLastId = firstMessageIdForFile + MESSAGES_PER_FILE - 1
 	stat, err := appendfile.Stat()
 	if err != nil {
 		return err
@@ -188,19 +238,19 @@ func (p *MessagePartition) createNextAppendFiles(msgId uint64) error {
 	return nil
 }
 
-func (p *MessagePartition) generateNextMsgId(nodeId int) (uint64 ,int64, error) {
+func (p *MessagePartition) generateNextMsgId(nodeId int) (uint64, int64, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	timestamp :=  time.Now().Unix()
+	timestamp := time.Now().Unix()
 
 	if timestamp < GubleEpoch {
 		err := fmt.Errorf("Clock is moving backwards. Rejecting requests until %d.", timestamp)
-		return 0,0, err
+		return 0, 0, err
 	}
 
-	id := (uint64(timestamp-GubleEpoch) << TimestampLeftShift) |
-		(uint64(nodeId) << WorkerIdShift) | p.localSequenceNumber
+	id := (uint64(timestamp - GubleEpoch) << TimestampLeftShift) |
+	(uint64(nodeId) << GubleNodeIdShift) | p.localSequenceNumber
 
 	p.localSequenceNumber++
 
@@ -208,17 +258,15 @@ func (p *MessagePartition) generateNextMsgId(nodeId int) (uint64 ,int64, error) 
 		"id":                  id,
 		"messagePartition":    p.basedir,
 		"localSequenceNumber": p.localSequenceNumber,
-		"currentNode": nodeId,
+		"currentNode":         nodeId,
 	}).Info("+Generated id")
 
-	return id, timestamp,nil
+	return id, timestamp, nil
 }
 
 func (p *MessagePartition) Close() error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-
-	p.indexFilePQ.PrintPq()
 
 	return p.closeAppendFiles()
 }
@@ -243,18 +291,49 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 	//		p.name, 1+p.maxMessageId, msgId)
 	//}
 
-	//p.mutex.Lock()
-	//defer p.mutex.Unlock()
+	if p.noOfEntriesInIndexFile == MESSAGES_PER_FILE ||
+	p.appendFile == nil ||
+	p.indexFile == nil {
 
-
-	if msgId > p.appendLastId ||
-		p.appendFile == nil ||
-		p.indexFile == nil {
+		messageStoreLogger.WithFields(log.Fields{
+			"msgId": msgId,
+			"p.noOfEntriew": p.noOfEntriesInIndexFile,
+			"p.appendfile":p.appendFile,
+			"p.indexFile": p.indexFile,
+			"fileCache":  p.fileCache,
+		}).Info("iN Store")
 
 		if err := p.closeAppendFiles(); err != nil {
 			return err
 		}
-		if err := p.createNextAppendFiles(msgId); err != nil {
+
+		if p.noOfEntriesInIndexFile == MESSAGES_PER_FILE {
+
+			messageStoreLogger.WithFields(log.Fields{
+				"msgId": msgId,
+				"p.noOfEntriew": p.noOfEntriesInIndexFile,
+				"fileCache":  p.fileCache,
+			}).Info("iDUmping current file ")
+
+			//sort the indexFile
+			err := p.dumpSortedIndexFile(p.composeIndexFilename())
+			if err != nil {
+				return err
+			}
+			//Add items in the filecache
+			messageStoreLogger.Info("Se ajugne aici")
+			p.fileCache = append(p.fileCache, &FileCacheEntry{
+				minMsgID: p.indexFilePQ.Get(0).msgID,
+				maxMsgID: p.indexFilePQ.Peek().msgID,
+			})
+			messageStoreLogger.Info("Se ajugne aici")
+
+			//clear the current sorted cache
+			p.indexFilePQ.Clear()
+			p.noOfEntriesInIndexFile = 0
+		}
+
+		if err := p.createNextAppendFiles(); err != nil {
 			return err
 		}
 	}
@@ -273,41 +352,26 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 	}
 
 	// write the index entry to the index file
-	indexPosition := int64(uint64(INDEX_ENTRY_SIZE) * p.noOfEntriesInIndexFile)
 	messageOffset := p.appendFileWritePosition + uint64(len(sizeAndId))
-	messageOffsetBuff := make([]byte, INDEX_ENTRY_SIZE)
-	binary.LittleEndian.PutUint64(messageOffsetBuff, msgId)
-	binary.LittleEndian.PutUint64(messageOffsetBuff[8:], messageOffset)
-	binary.LittleEndian.PutUint32(messageOffsetBuff[16:], uint32(len(msg)))
-
-	if _, err := p.indexFile.WriteAt(messageOffsetBuff, indexPosition); err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-			"p.curIndex": p.localSequenceNumber,
-			"indexPOs": indexPosition,
-			"messageOffsetBuff" :messageOffsetBuff,
-		}).Error("ERROR p.indexFile.WriteAt")
+	err := writeIndexEntry(p.indexFile, msgId, messageOffset, uint32(len(msg)), p.noOfEntriesInIndexFile)
+	if err != nil {
 		return err
 	}
-
 	p.noOfEntriesInIndexFile++
 
 	log.WithFields(log.Fields{
-		"p.curIndex": p.localSequenceNumber,
-		"indexPOs": indexPosition,
-		"messageOffsetBuff" :messageOffsetBuff,
-		"msgSize":   uint32(len(msg)),
-		"msgOffset": messageOffset,
-		"currentNode": *config.Cluster.NodeID,
-		"filename":  p.indexFile.Name(),
+		"p.noOfEntriesInIndexFile": p.noOfEntriesInIndexFile,
+		"msgSize":                  uint32(len(msg)),
+		"msgOffset":                messageOffset,
+		"filename":                 p.indexFile.Name(),
 	}).Debug("Wrote on indexFile")
 
 	//create entry for pq
 	e := &IndexFileEntry{
-		msgSize:       uint32(len(msg)),
-		msgId:         msgId,
-		filename:      p.indexFile.Name(),
+		msgID:         msgId,
 		messageOffset: messageOffset,
+		msgSize:       uint32(len(msg)),
+		filename:      p.indexFile.Name(),
 	}
 	heap.Push(p.indexFilePQ, e)
 
@@ -410,19 +474,19 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 	}).Debug("Fetch Before for")
 
 	for len(result) < req.Count && nextId >= 0 {
-		nextFileId := p.firstMessageIdForFile(nextId)
+		//nextFileId := p.firstMessageIdForFile()
 
 		log.WithFields(log.Fields{
-			"nextId":     nextId,
-			"nextFileId": nextFileId,
+			"nextId": nextId,
+			//"nextFileId": nextFileId,
 			"fileId":     fileId,
 			"initialCap": initialCap,
 		}).Debug("calculateFetchList FOR")
 
 		// ensure, that we read from the correct file
-		if file == nil || nextFileId != fileId {
+		if file == nil {
 			var err error
-			file, err = p.checkoutIndexfile(nextFileId)
+			file, err = p.checkoutIndexfile()
 			if err != nil {
 				if os.IsNotExist(err) {
 					log.WithField("result", req).Error("IsNotExist")
@@ -432,7 +496,7 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 				return nil, err
 			}
 			defer p.releaseIndexfile(fileId, file)
-			fileId = nextFileId
+			//fileId = nextFileId
 		}
 
 		indexPosition := int64(uint64(INDEX_ENTRY_SIZE) * (nextId % MESSAGES_PER_FILE))
@@ -454,7 +518,8 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 			return nil, err
 		}
 
-		if msgOffset != uint64(0) { // only append, if the message exists
+		if msgOffset != uint64(0) {
+			// only append, if the message exists
 			result = append(result, fetchEntry{
 				messageId: nextId,
 				fileId:    fileId,
@@ -472,51 +537,102 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 	return result, nil
 }
 
-func  (p *MessagePartition) loadIndexFileInMemory(filename string) error{
+func (p *MessagePartition) dumpSortedIndexFile(filename string) error {
+
+	file, err := os.OpenFile(p.composeIndexFilename(), os.O_RDWR | os.O_CREATE, 0666)
+	defer file.Close()
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < p.indexFilePQ.Len(); i++ {
+		item := p.indexFilePQ.Get(i)
+		err := writeIndexEntry(file, item.msgID, item.messageOffset, item.msgSize, uint64(i))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+
+}
+
+func writeIndexEntry(file *os.File, msgID uint64, messageOffset uint64, msgSize uint32, pos uint64) error {
+
+	indexPosition := int64(uint64(INDEX_ENTRY_SIZE) * pos)
+	messageOffsetBuff := make([]byte, INDEX_ENTRY_SIZE)
+	binary.LittleEndian.PutUint64(messageOffsetBuff, msgID)
+	binary.LittleEndian.PutUint64(messageOffsetBuff[8:], messageOffset)
+	binary.LittleEndian.PutUint32(messageOffsetBuff[16:], msgSize)
+
+	if _, err := file.WriteAt(messageOffsetBuff, indexPosition); err != nil {
+		messageStoreLogger.WithFields(log.Fields{
+			"err":           err,
+			"indexPosition": indexPosition,
+			"msgID":         msgID,
+		}).Error("ERROR writeIndexEntry")
+		return err
+	}
+	return nil
+}
+
+func calculateNumberOfEntries(filename string) (uint64, error) {
 	stat, err := os.Stat(filename)
 	if err != nil {
-		log.WithField("err", err).Error("Stat failed")
+		messageStoreLogger.WithField("err", err).Error("Stat failed")
+		return 0, err
+	}
+	entriesInIndex := uint64(stat.Size() / int64(INDEX_ENTRY_SIZE))
+	return entriesInIndex, nil
+}
+
+func (p *MessagePartition) loadIndexFileInMemory(filename string) error {
+	messageStoreLogger.WithField("filename", filename).Info("loadIndexFileInMemory")
+
+	entriesInIndex, err := calculateNumberOfEntries(filename)
+
+	if err != nil {
 		return err
 	}
-	entriesInIndex := uint64(stat.Size() / int64(INDEX_ENTRY_SIZE) )
 
-	file,err := os.Open(filename)
-	if err   !=nil {
-		log.WithField("err", err).Error("os.Open failed")
+	file, err := os.Open(filename)
+	defer file.Close()
+	if err != nil {
+		messageStoreLogger.WithField("err", err).Error("os.Open failed")
 		return err
 	}
 
-	for  i:=uint64(0) ;i< entriesInIndex ;i++  {
-		msgID, msgOffset, msgSize, err := readIndexEntry(file,  int64(i* uint64(INDEX_ENTRY_SIZE)))
-		log.WithFields(log.Fields{
-			"msgOffset":     msgOffset,
-			"msgSize":       msgSize,
-			"msgID":         msgID,
-			"err":           err,
-		}).Debug("readIndexEntry")
+	for i := uint64(0); i < entriesInIndex; i++ {
+		msgID, msgOffset, msgSize, err := readIndexEntry(file, int64(i * uint64(INDEX_ENTRY_SIZE)))
+		messageStoreLogger.WithFields(log.Fields{
+			"msgOffset": msgOffset,
+			"msgSize":   msgSize,
+			"msgID":     msgID,
+			"err":       err,
+		}).Info("readIndexEntry")
 
 		if err != nil {
 			log.WithField("err", err).Error("Read error")
-			return  err
+			return err
 		}
 
-		e:= &IndexFileEntry{
-			msgSize:   msgSize,
-			msgId:         msgID,
+		e := &IndexFileEntry{
+			msgSize:       msgSize,
+			msgID:         msgID,
 			filename:      filename,
 			messageOffset: msgOffset,
 		}
 		heap.Push(p.indexFilePQ, e)
 	}
+	p.noOfEntriesInIndexFile = entriesInIndex
 	return nil
 }
 
 func readIndexEntry(file *os.File, indexPosition int64) (uint64, uint64, uint32, error) {
 	msgOffsetBuff := make([]byte, INDEX_ENTRY_SIZE)
 	if _, err := file.ReadAt(msgOffsetBuff, indexPosition); err != nil {
-		log.WithFields(log.Fields{
+		messageStoreLogger.WithFields(log.Fields{
 			"err": err,
-		}).Debug("EreadIndexEntry failed ")
+		}).Error("ReadIndexEntry failed ")
 		return 0, 0, 0, err
 	}
 
@@ -528,7 +644,7 @@ func readIndexEntry(file *os.File, indexPosition int64) (uint64, uint64, uint32,
 
 // checkoutMessagefile returns a file handle to the message file with the supplied file id. The returned file handle may be shared for multiple go routines.
 func (p *MessagePartition) checkoutMessagefile(fileId uint64) (*os.File, error) {
-	return os.Open(p.filenameByMessageId(fileId))
+	return os.Open(p.composeMsgFilename())
 }
 
 // releaseMessagefile releases a message file handle
@@ -537,8 +653,8 @@ func (p *MessagePartition) releaseMessagefile(fileId uint64, file *os.File) {
 }
 
 // checkoutIndexfile returns a file handle to the index file with the supplied file id. The returned file handle may be shared for multiple go routines.
-func (p *MessagePartition) checkoutIndexfile(fileId uint64) (*os.File, error) {
-	return os.Open(p.indexFilenameByMessageId(fileId))
+func (p *MessagePartition) checkoutIndexfile() (*os.File, error) {
+	return os.Open(p.composeIndexFilename())
 }
 
 // releaseIndexfile releases an index file handle
@@ -546,14 +662,10 @@ func (p *MessagePartition) releaseIndexfile(fileId uint64, file *os.File) {
 	file.Close()
 }
 
-func (p *MessagePartition) firstMessageIdForFile(messageId uint64) uint64 {
-	return messageId - messageId%MESSAGES_PER_FILE
+func (p *MessagePartition) composeMsgFilename() string {
+	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.msg", p.name, uint64(len(p.fileCache))))
 }
 
-func (p *MessagePartition) filenameByMessageId(messageId uint64) string {
-	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.msg", p.name, uint64(p.localSequenceNumber /uint64(INDEX_ENTRY_SIZE))))
-}
-
-func (p *MessagePartition) indexFilenameByMessageId(messageId uint64) string {
-	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.name, uint64(p.localSequenceNumber /uint64(INDEX_ENTRY_SIZE))))
+func (p *MessagePartition) composeIndexFilename() string {
+	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.name, uint64(len(p.fileCache))))
 }
