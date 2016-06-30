@@ -54,6 +54,18 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_NODE_PORT", "10000")
 	defer os.Unsetenv("GUBLE_NODE_PORT")
 
+	os.Setenv("GUBLE_PG_HOST", "pg-host")
+	defer os.Unsetenv("GUBLE_PG_HOST")
+
+	os.Setenv("GUBLE_PG_USER", "pg-user")
+	defer os.Unsetenv("GUBLE_PG_USER")
+
+	os.Setenv("GUBLE_PG_PASSWORD", "pg-password")
+	defer os.Unsetenv("GUBLE_PG_PASSWORD")
+
+	os.Setenv("GUBLE_PG_DBNAME", "pg-dbname")
+	defer os.Unsetenv("GUBLE_PG_DBNAME")
+
 	// when we parse the arguments from environment variables
 	Parse()
 
@@ -83,6 +95,10 @@ func TestParsingArgs(t *testing.T) {
 		"--gcm-workers", "3",
 		"--node-id", "1",
 		"--node-port", "10000",
+		"--pg-host", "pg-host",
+		"--pg-user", "pg-user",
+		"--pg-password", "pg-password",
+		"--pg-dbname", "pg-dbname",
 	}
 
 	// when we parse the arguments from command-line flags
@@ -108,6 +124,11 @@ func assertArguments(a *assert.Assertions) {
 
 	a.Equal(1, *Cluster.NodeID)
 	a.Equal(10000, *Cluster.NodePort)
+
+	a.Equal("pg-host", *Postgres.Host)
+	a.Equal("pg-user", *Postgres.User)
+	a.Equal("pg-password", *Postgres.Password)
+	a.Equal("pg-dbname", *Postgres.DbName)
 
 	a.Equal("debug", *Log)
 }
