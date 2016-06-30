@@ -12,7 +12,7 @@ func BenchmarkSqlitePutGet(b *testing.B) {
 
 	db := NewSqliteKVStore(f, false)
 	db.Open()
-	CommonBenchPutGet(b, db)
+	CommonBenchmarkPutGet(b, db)
 }
 
 func TestSqlitePutGetDelete(t *testing.T) {

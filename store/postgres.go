@@ -6,11 +6,6 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
-const (
-	postgresMaxIdleConns = 4
-	postgresMaxOpenConns = 10
-)
-
 var postgresLogger = log.WithField("module", "kv-postgres")
 
 type PostgresKVStore struct {
@@ -28,7 +23,7 @@ func (kvStore *PostgresKVStore) Open() error {
 	postgresWithConfigLogger := postgresLogger.WithField("config", kvStore.config)
 	postgresWithConfigLogger.Info("Opening database")
 
-	gormdb, err := gorm.Open("postgres", kvStore.config.String())
+	gormdb, err := gorm.Open("postgres", kvStore.config.connectionString())
 	if err != nil {
 		postgresWithConfigLogger.WithField("err", err).Error("Error opening database")
 		return err
@@ -42,8 +37,8 @@ func (kvStore *PostgresKVStore) Open() error {
 
 	gormdb.LogMode(gormLogMode)
 	gormdb.SingularTable(true)
-	gormdb.DB().SetMaxIdleConns(postgresMaxIdleConns)
-	gormdb.DB().SetMaxOpenConns(postgresMaxOpenConns)
+	gormdb.DB().SetMaxIdleConns(kvStore.config.MaxIdleConns)
+	gormdb.DB().SetMaxOpenConns(kvStore.config.MaxOpenConns)
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
 		postgresWithConfigLogger.WithField("err", err).Error("Error in schema migration")
 		return err

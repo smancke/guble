@@ -17,5 +17,5 @@ func TestMemoryIterate(t *testing.T) {
 }
 
 func BenchmarkMemoryPutGet(b *testing.B) {
-	CommonBenchPutGet(b, NewMemoryKVStore())
+	CommonBenchmarkPutGet(b, NewMemoryKVStore())
 }

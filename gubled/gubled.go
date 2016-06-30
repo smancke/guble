@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"runtime"
 	"syscall"
 )
 
@@ -59,11 +60,15 @@ var CreateKVStore = func() store.KVStore {
 		return db
 	case "postgres":
 		db := store.NewPostgresKVStore(store.PostgresConfig{
-			"host":     *config.Postgres.Host,
-			"user":     *config.Postgres.User,
-			"password": *config.Postgres.Password,
-			"dbname":   *config.Postgres.DbName,
-			"sslmode":  "disable",
+			ConnParams: map[string]string{
+				"host":     *config.Postgres.Host,
+				"user":     *config.Postgres.User,
+				"password": *config.Postgres.Password,
+				"dbname":   *config.Postgres.DbName,
+				"sslmode":  "disable",
+			},
+			MaxIdleConns: 1,
+			MaxOpenConns: runtime.GOMAXPROCS(0),
 		})
 		if err := db.Open(); err != nil {
 			logger.WithField("err", err).Panic("Could not open postgres database connection")

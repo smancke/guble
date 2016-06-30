@@ -8,7 +8,7 @@ import (
 func BenchmarkPostgresPutGet(b *testing.B) {
 	db := NewPostgresKVStore(aPostgresConfig())
 	db.Open()
-	CommonBenchPutGet(b, db)
+	CommonBenchmarkPutGet(b, db)
 }
 
 func TestPostgresPutGetDelete(t *testing.T) {
@@ -52,11 +52,15 @@ func TestPostgresKVStore_Check(t *testing.T) {
 
 func aPostgresConfig() PostgresConfig {
 	return PostgresConfig{
-		"host":     "localhost",
-		"user":     "guble",
-		"password": "guble",
-		"dbname":   "guble",
-		"sslmode":  "disable",
+		map[string]string{
+			"host":     "localhost",
+			"user":     "guble",
+			"password": "guble",
+			"dbname":   "guble",
+			"sslmode":  "disable",
+		},
+		1,
+		1,
 	}
 }
 
