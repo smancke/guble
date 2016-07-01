@@ -116,15 +116,10 @@ func (s *Service) Start() error {
 	for _, module := range s.modules {
 		name := reflect.TypeOf(module).String()
 		if startable, ok := module.(Startable); ok {
-			loggerService.WithFields(log.Fields{
-				"name": name,
-			}).Info("Starting module")
+			loggerService.WithField("name", name).Info("Starting module")
 
 			if err := startable.Start(); err != nil {
-				loggerService.WithFields(log.Fields{
-					"name": name,
-					"err":  err,
-				}).Error("Error while starting module")
+				loggerService.WithError(err).WithField("name", name).Error("Error while starting module")
 				el.Add(err)
 			}
 		}

@@ -27,12 +27,12 @@ func (kvStore *PostgresKVStore) Open() error {
 
 	gormdb, err := gorm.Open("postgres", kvStore.config.connectionString())
 	if err != nil {
-		postgresWithConfigLogger.WithField("err", err).Error("Error opening postgres database")
+		postgresWithConfigLogger.WithError(err).Error("Error opening postgres database")
 		return err
 	}
 
 	if err := gormdb.DB().Ping(); err != nil {
-		postgresWithConfigLogger.WithField("err", err).Error("Error pinging postgres database")
+		postgresWithConfigLogger.WithError(err).Error("Error pinging postgres database")
 	}
 
 	gormdb.LogMode(postgresGormLogMode)
@@ -40,7 +40,7 @@ func (kvStore *PostgresKVStore) Open() error {
 	gormdb.DB().SetMaxIdleConns(kvStore.config.MaxIdleConns)
 	gormdb.DB().SetMaxOpenConns(kvStore.config.MaxOpenConns)
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
-		postgresWithConfigLogger.WithField("err", err).Error("Error in postgres schema migration")
+		postgresWithConfigLogger.WithError(err).Error("Error in postgres schema migration")
 		return err
 	}
 	kvStore.gormKVStore = gormKVStore{gormdb}

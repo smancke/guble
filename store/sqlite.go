@@ -39,10 +39,7 @@ func NewSqliteKVStore(filename string, syncOnWrite bool) *SqliteKVStore {
 func (kvStore *SqliteKVStore) Open() error {
 	directoryPath := filepath.Dir(kvStore.filename)
 	if err := ensureWriteableDirectory(directoryPath); err != nil {
-		sqliteLogger.WithFields(log.Fields{
-			"dbFilename": kvStore.filename,
-			"err":        err,
-		}).Error("Sqlite database directory is not writeable")
+		sqliteLogger.WithError(err).WithField("dbFilename", kvStore.filename).Error("Sqlite database directory is not writeable")
 		return err
 	}
 
@@ -50,18 +47,12 @@ func (kvStore *SqliteKVStore) Open() error {
 
 	gormdb, err := gorm.Open("sqlite3", kvStore.filename)
 	if err != nil {
-		sqliteLogger.WithFields(log.Fields{
-			"dbFilename": kvStore.filename,
-			"err":        err,
-		}).Error("Error opening sqlite database")
+		sqliteLogger.WithError(err).WithField("dbFilename", kvStore.filename).Error("Error opening sqlite database")
 		return err
 	}
 
 	if err := gormdb.DB().Ping(); err != nil {
-		sqliteLogger.WithFields(log.Fields{
-			"dbFilename": kvStore.filename,
-			"err":        err,
-		}).Error("Error pinging sqlite database")
+		sqliteLogger.WithError(err).WithField("dbFilename", kvStore.filename).Error("Error pinging sqlite database")
 	}
 
 	gormdb.LogMode(sqliteGormLogMode)
@@ -77,7 +68,7 @@ func (kvStore *SqliteKVStore) Open() error {
 	if !kvStore.syncOnWrite {
 		sqliteLogger.Info("Setting db: PRAGMA synchronous = OFF")
 		if err := gormdb.Exec("PRAGMA synchronous = OFF").Error; err != nil {
-			sqliteLogger.WithField("err", err).Error("Error setting PRAGMA synchronous = OFF")
+			sqliteLogger.WithError(err).Error("Error setting PRAGMA synchronous = OFF")
 			return err
 		}
 	}

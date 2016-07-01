@@ -50,7 +50,7 @@ func (kvStore *gormKVStore) Iterate(schema string, keyPrefix string) chan [2]str
 		rows, err := kvStore.db.Raw("select key, value from kv_entry where schema = ? and key LIKE ?", schema, keyPrefix+"%").
 			Rows()
 		if err != nil {
-			gormLogger.WithField("err", err).Error("Error fetching keys from database")
+			gormLogger.WithError(err).Error("Error fetching keys from database")
 		} else {
 			defer rows.Close()
 			for rows.Next() {
@@ -70,7 +70,7 @@ func (kvStore *gormKVStore) IterateKeys(schema string, keyPrefix string) chan st
 		rows, err := kvStore.db.Raw("select key from kv_entry where schema = ? and key LIKE ?", schema, keyPrefix+"%").
 			Rows()
 		if err != nil {
-			gormLogger.WithField("err", err).Error("Error fetching keys from database")
+			gormLogger.WithError(err).Error("Error fetching keys from database")
 		} else {
 			defer rows.Close()
 			for rows.Next() {
@@ -104,7 +104,7 @@ func (kvStore *gormKVStore) Check() error {
 		return errors.New(errorMessage)
 	}
 	if err := kvStore.db.DB().Ping(); err != nil {
-		gormLogger.WithField("err", err).Error("Error pinging database")
+		gormLogger.WithError(err).Error("Error pinging database")
 		return err
 	}
 	return nil
