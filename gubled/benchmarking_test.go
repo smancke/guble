@@ -38,7 +38,11 @@ func newTestgroup(t *testing.T, groupID int, addr string, messagesToSend int) *t
 }
 
 func TestThroughput(t *testing.T) {
-	//testutil.EnableDebugForMethod()
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	//testutil.EnableDebugForMethod()()
 	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	dir, _ := ioutil.TempDir("", "guble_benchmarking_test")
