@@ -150,12 +150,12 @@ func Main() {
 		if err != nil {
 			logger.WithError(err).Error("Error when getting MessageStore for closing it")
 		}
-		close(ms)
+		stop(ms)
 		kvs, err := r.KVStore()
 		if err != nil {
 			logger.WithError(err).Error("Error when getting KVStore for closing it")
 		}
-		close(kvs)
+		stop(kvs)
 	})
 }
 
@@ -212,7 +212,7 @@ func exitIfInvalidClusterParams(nodeID int, nodePort int, remotes []*net.TCPAddr
 	}
 }
 
-func close(iface interface{}) {
+func stop(iface interface{}) {
 	if stoppable, ok := iface.(server.Stopable); ok {
 		name := reflect.TypeOf(iface).String()
 		logger.WithField("name", name).Info("Stopping")

@@ -66,7 +66,7 @@ func (kvStore *SqliteKVStore) Open() error {
 	}
 
 	if !kvStore.syncOnWrite {
-		sqliteLogger.Info("Setting db: PRAGMA synchronous = OFF")
+		sqliteLogger.Info("Setting sqlite database: PRAGMA synchronous = OFF")
 		if err := gormdb.Exec("PRAGMA synchronous = OFF").Error; err != nil {
 			sqliteLogger.WithError(err).Error("Error setting PRAGMA synchronous = OFF")
 			return err
