@@ -1,9 +1,12 @@
 package store
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"github.com/jinzhu/gorm"
+	// needed because of gorm / sql
 	_ "github.com/mattn/go-sqlite3"
+
+	"github.com/jinzhu/gorm"
+
+	log "github.com/Sirupsen/logrus"
 
 	"fmt"
 	"io/ioutil"

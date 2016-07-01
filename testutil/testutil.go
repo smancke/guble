@@ -164,6 +164,7 @@ func responseBuilder(statusCode int, body string) *http.Response {
 	}
 }
 
+//SkipIfShort skips a test if the `-short` flag is given to `go test`
 func SkipIfShort(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")

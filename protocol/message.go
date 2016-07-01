@@ -143,8 +143,8 @@ func (msg *NotificationMessage) Bytes() []byte {
 	return buff.Bytes()
 }
 
-// ParseMessage parses a message, sent from the server to the client.
-// The parsed messages can have one of the types: *Message or *NotificationMessage
+// Decode decodes a message, sent from the server to the client.
+// The decoded messages can have one of the types: *Message or *NotificationMessage
 func Decode(message []byte) (interface{}, error) {
 	if len(message) >= 1 && (message[0] == '#' || message[0] == '!') {
 		return parseNotificationMessage(message)

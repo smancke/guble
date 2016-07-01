@@ -159,8 +159,10 @@ func Main() {
 	})
 }
 
-// TODO: StartService should return an error in case it fails to start
+// StartService starts a server.Service after first creating the router (and its dependencies), the webserver.
 func StartService() *server.Service {
+	//TODO StartService could return an error in case it fails to start
+
 	accessManager := auth.NewAllowAllAccessManager(true)
 	messageStore := CreateMessageStore()
 	kvStore := CreateKVStore()
