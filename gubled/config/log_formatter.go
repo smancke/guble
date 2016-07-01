@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Formatter generates json in logstash format.
+// LogstashGubleFormatter generates json in logstash format.
 // Logstash site: http://logstash.net/
 type LogstashGubleFormatter struct {
 

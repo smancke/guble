@@ -101,11 +101,7 @@ func (rec *Receiver) subscriptionLoop() {
 		if rec.doFetch {
 
 			if err := rec.fetch(); err != nil {
-
-				logger.WithFields(log.Fields{
-					"rec": rec,
-					"err": err,
-				}).Error("Error while fetching subscription")
+				logger.WithError(err).WithField("rec", rec).Error("Error while fetching subscription")
 				rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
 				return
 			}
@@ -116,12 +112,8 @@ func (rec *Receiver) subscriptionLoop() {
 					rec.startId = int64(rec.lastSendId + 1)
 					continue // fetch again
 				} else {
-
-					logger.WithFields(log.Fields{
-						"recStartId": rec.startId,
-						"err":        err,
-					}).Error("Error while subscribeIfNoUnreadMessagesAvailable")
-
+					logger.WithError(err).WithField("recStartId", rec.startId).
+						Error("Error while subscribeIfNoUnreadMessagesAvailable")
 					rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
 					return
 				}
@@ -199,11 +191,7 @@ func (rec *Receiver) receiveFromSubscription() {
 func (rec *Receiver) fetchOnlyLoop() {
 	err := rec.fetch()
 	if err != nil {
-
-		logger.WithFields(log.Fields{
-			"rec": rec,
-			"err": err,
-		}).Error("Error while fetching")
+		logger.WithError(err).WithField("rec", rec).Error("Error while fetching")
 		rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
 	}
 }

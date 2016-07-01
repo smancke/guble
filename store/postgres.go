@@ -1,9 +1,12 @@
 package store
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"github.com/jinzhu/gorm"
+	// needed because of gorm / sql
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+
+	"github.com/jinzhu/gorm"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 const postgresGormLogMode = false

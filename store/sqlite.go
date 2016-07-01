@@ -1,9 +1,12 @@
 package store
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"github.com/jinzhu/gorm"
+	// needed because of gorm / sql
 	_ "github.com/mattn/go-sqlite3"
+
+	"github.com/jinzhu/gorm"
+
+	log "github.com/Sirupsen/logrus"
 
 	"fmt"
 	"io/ioutil"
@@ -61,12 +64,12 @@ func (kvStore *SqliteKVStore) Open() error {
 	gormdb.DB().SetMaxOpenConns(sqliteMaxOpenConns)
 
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
-		sqliteLogger.WithField("err", err).Error("Error in schema migration")
+		sqliteLogger.WithError(err).Error("Error in schema migration")
 		return err
 	}
 
 	if !kvStore.syncOnWrite {
-		sqliteLogger.Info("Setting db: PRAGMA synchronous = OFF")
+		sqliteLogger.Info("Setting sqlite database: PRAGMA synchronous = OFF")
 		if err := gormdb.Exec("PRAGMA synchronous = OFF").Error; err != nil {
 			sqliteLogger.WithError(err).Error("Error setting PRAGMA synchronous = OFF")
 			return err

@@ -68,10 +68,9 @@ func initSubscription(gcm *Connector, topic, userID, gcmID string, lastID uint64
 
 func (s *subscription) subscribe() error {
 	if _, err := s.gcm.router.Subscribe(s.route); err != nil {
-		s.logger.WithField("err", err).Error("Error subscribing")
+		s.logger.WithError(err).Error("Error subscribing")
 		return err
 	}
-
 	s.logger.Debug("Subscribed")
 	return nil
 }
@@ -163,7 +162,7 @@ func (s *subscription) subscriptionLoop() {
 					return
 				}
 
-				s.logger.WithField("err", err).Error("Error pipelining message")
+				s.logger.WithError(err).Error("Error pipelining message")
 			}
 		case <-s.gcm.stopC:
 			return
@@ -175,7 +174,7 @@ func (s *subscription) subscriptionLoop() {
 		return
 	}
 
-	// assume that the route channel has been closed cause of slow processing
+	// assume that the route channel has been closed because of slow processing
 	// try restarting, by fetching from lastId and then subscribing again
 	if err := s.restart(); err != nil {
 		if stoppingErr, ok := err.(*server.ModuleStoppingError); ok {
@@ -216,18 +215,16 @@ func (s *subscription) fetch() error {
 			if err != nil {
 				return err
 			}
-
 			s.logger.WithFields(log.Fields{"ID": msgAndID.ID, "parsedID": message.ID}).Debug("Fetched message")
 			// Pipe message into gcm connector
 			s.pipe(message)
 		case err := <-req.ErrorC:
 			return err
 		case <-s.gcm.stopC:
-			s.logger.Debug("Stopping fetch cause service is shutting down")
+			s.logger.Debug("Stopping fetch because service is shutting down")
 			return nil
 		}
 	}
-	return nil
 }
 
 func (s *subscription) createFetchRequest() store.FetchRequest {
@@ -242,18 +239,17 @@ func (s *subscription) createFetchRequest() store.FetchRequest {
 	}
 }
 
-// returns true if we are actually stopping the service
+// isStopping returns true if we are actually stopping the service
 func (s *subscription) isStopping() bool {
 	select {
 	case <-s.gcm.stopC:
 		return true
 	default:
 	}
-
 	return false
 }
 
-// return bytes data to store in kvStore
+// bytes data to store in kvStore
 func (s *subscription) bytes() []byte {
 	return []byte(strings.Join([]string{
 		s.route.UserID,
@@ -267,7 +263,7 @@ func (s *subscription) store() error {
 	s.logger.WithField("lastID", s.lastID).Debug("Storing subscription")
 	err := s.gcm.kvStore.Put(schema, s.route.ApplicationID, s.bytes())
 	if err != nil {
-		s.logger.WithField("err", err).Error("Error storing in KVStore")
+		s.logger.WithError(err).Error("Error storing in KVStore")
 	}
 	return err
 }
@@ -278,25 +274,22 @@ func (s *subscription) setLastID(ID uint64) error {
 	return s.store()
 }
 
-// sends a message into the pipeline and waits for response saving the last id
-// in the kvstore
+// pipe sends a message into the pipeline and waits for response saving the last id in the kvstore
 func (s *subscription) pipe(m *protocol.Message) error {
-	pm := newPipeMessage(s, m)
-	defer pm.close()
+	pipeMessage := newPipeMessage(s, m)
+	defer pipeMessage.close()
 
-	// send pipeMessage into pipeline
-	s.gcm.pipelineC <- pm
+	s.gcm.pipelineC <- pipeMessage
 
 	// wait for response
 	select {
-	case response := <-pm.resultC:
-		if err := s.setLastID(pm.message.ID); err != nil {
+	case response := <-pipeMessage.resultC:
+		if err := s.setLastID(pipeMessage.message.ID); err != nil {
 			return err
 		}
-
 		return s.handleGCMResponse(response)
-	case err := <-pm.errC:
-		s.logger.WithField("err", err).Error("Error sending message to GCM")
+	case err := <-pipeMessage.errC:
+		s.logger.WithError(err).Error("Error sending message to GCM")
 		return err
 	}
 }
@@ -305,9 +298,7 @@ func (s *subscription) handleGCMResponse(response *gcm.Response) error {
 	if err := s.handleJSONError(response); err != nil {
 		return err
 	}
-
 	s.logger.WithField("count", response.Success).Debug("Delivered messages to GCM")
-
 	if response.CanonicalIDs != 0 {
 		// we only send to one receiver,
 		// so we know that we can replace the old id with the first registration id (=canonical id)
@@ -329,12 +320,11 @@ func (s *subscription) handleJSONError(response *gcm.Response) error {
 			s.logger.WithField("jsonError", errText).Error("Unexpected error while sending to GCM")
 		}
 	}
-
 	return nil
 }
 
-// replace subscription with cannoical id, creates a new subscription but alters the route to
-// have the new ApplicationID
+// replaceCanonical replaces subscription with canonical id,
+// creates a new subscription but alters the route to have the new ApplicationID
 func (s *subscription) replaceCanonical(newGCMID string) error {
 	s.logger.WithField("newGCMID", newGCMID).Info("Replacing with canonicalID")
 

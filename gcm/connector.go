@@ -97,7 +97,7 @@ func (conn *Connector) Check() error {
 	payload := messageMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
 	_, err := conn.Sender.Send(gcm.NewMessage(payload, ""), sendRetries)
 	if err != nil {
-		logger.WithField("err", err).Error("Error sending ping message")
+		logger.WithError(err).Error("Error sending ping message")
 		return err
 	}
 	return nil

@@ -150,17 +150,19 @@ func Main() {
 		if err != nil {
 			logger.WithError(err).Error("Error when getting MessageStore for closing it")
 		}
-		close(ms)
+		stop(ms)
 		kvs, err := r.KVStore()
 		if err != nil {
 			logger.WithError(err).Error("Error when getting KVStore for closing it")
 		}
-		close(kvs)
+		stop(kvs)
 	})
 }
 
-// TODO: StartService should return an error in case it fails to start
+// StartService starts a server.Service after first creating the router (and its dependencies), the webserver.
 func StartService() *server.Service {
+	//TODO StartService could return an error in case it fails to start
+
 	accessManager := auth.NewAllowAllAccessManager(true)
 	messageStore := CreateMessageStore()
 	kvStore := CreateKVStore()
@@ -212,7 +214,7 @@ func exitIfInvalidClusterParams(nodeID int, nodePort int, remotes []*net.TCPAddr
 	}
 }
 
-func close(iface interface{}) {
+func stop(iface interface{}) {
 	if stoppable, ok := iface.(server.Stopable); ok {
 		name := reflect.TypeOf(iface).String()
 		logger.WithField("name", name).Info("Stopping")
