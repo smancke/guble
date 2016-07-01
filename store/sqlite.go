@@ -15,6 +15,7 @@ import (
 const (
 	sqliteMaxIdleConns = 2
 	sqliteMaxOpenConns = 5
+	sqliteGormLogMode  = false
 )
 
 var writeTestFilename = "db_testfile"
@@ -65,7 +66,7 @@ func (kvStore *SqliteKVStore) Open() error {
 		sqliteLogger.WithField("dbFilename", kvStore.filename).Info("Ping reply from database")
 	}
 
-	gormdb.LogMode(gormLogMode)
+	gormdb.LogMode(sqliteGormLogMode)
 	gormdb.SingularTable(true)
 	gormdb.DB().SetMaxIdleConns(sqliteMaxIdleConns)
 	gormdb.DB().SetMaxOpenConns(sqliteMaxOpenConns)

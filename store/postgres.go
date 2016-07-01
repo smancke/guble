@@ -6,6 +6,8 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
+const postgresGormLogMode = false
+
 var postgresLogger = log.WithField("module", "kv-postgres")
 
 type PostgresKVStore struct {
@@ -35,7 +37,7 @@ func (kvStore *PostgresKVStore) Open() error {
 		postgresWithConfigLogger.Info("Ping reply from database")
 	}
 
-	gormdb.LogMode(gormLogMode)
+	gormdb.LogMode(postgresGormLogMode)
 	gormdb.SingularTable(true)
 	gormdb.DB().SetMaxIdleConns(kvStore.config.MaxIdleConns)
 	gormdb.DB().SetMaxOpenConns(kvStore.config.MaxOpenConns)

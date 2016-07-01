@@ -16,7 +16,6 @@ type kvEntry struct {
 }
 
 const (
-	gormLogMode         = false
 	responseChannelSize = 100
 )
 
