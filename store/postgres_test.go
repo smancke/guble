@@ -16,7 +16,7 @@ func TestPostgresKVStore_PutGetDelete(t *testing.T) {
 	testutil.SkipIfShort(t)
 	kvs := NewPostgresKVStore(aPostgresConfig())
 	kvs.Open()
-	CommonTestPutGetDelete(t, kvs)
+	CommonTestPutGetDelete(t, kvs, kvs)
 }
 
 func TestPostgresKVStore_Iterate(t *testing.T) {
@@ -68,6 +68,7 @@ func TestPostgresKVStore_ParallelUsage(t *testing.T) {
 	err = kvs2.Open()
 	a.NoError(err)
 
+	CommonTestPutGetDelete(t, kvs1, kvs2)
 	CommonTestIterate(t, kvs1, kvs2)
 	CommonTestIterateKeys(t, kvs1, kvs2)
 }

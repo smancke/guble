@@ -14,29 +14,29 @@ var test1 = []byte("Test1")
 var test2 = []byte("Test2")
 var test3 = []byte("Test3")
 
-func CommonTestPutGetDelete(t *testing.T, s KVStore) {
+func CommonTestPutGetDelete(t *testing.T, kvs1 KVStore, kvs2 KVStore) {
 	a := assert.New(t)
 
-	a.NoError(s.Put("s1", "a", test1))
-	a.NoError(s.Put("s1", "b", test2))
-	a.NoError(s.Put("s2", "a", test3))
+	a.NoError(kvs1.Put("s1", "a", test1))
+	a.NoError(kvs1.Put("s1", "b", test2))
+	a.NoError(kvs1.Put("s2", "a", test3))
 
-	assertGet(a, s, "s1", "a", test1)
-	assertGet(a, s, "s1", "b", test2)
-	assertGet(a, s, "s2", "a", test3)
-	assertGetNoExist(a, s, "no", "thing")
+	assertGet(a, kvs2, "s1", "a", test1)
+	assertGet(a, kvs2, "s1", "b", test2)
+	assertGet(a, kvs2, "s2", "a", test3)
+	assertGetNoExist(a, kvs2, "no", "thing")
 
-	s.Delete("s1", "b")
-	assertGetNoExist(a, s, "s1", "b")
-	assertGet(a, s, "s1", "a", test1)
-	assertGet(a, s, "s2", "a", test3)
+	kvs2.Delete("s1", "b")
+	assertGetNoExist(a, kvs1, "s1", "b")
+	assertGet(a, kvs1, "s1", "a", test1)
+	assertGet(a, kvs1, "s2", "a", test3)
 
-	s.Delete("s1", "a")
-	assertGetNoExist(a, s, "s1", "a")
-	assertGet(a, s, "s2", "a", test3)
+	kvs2.Delete("s1", "a")
+	assertGetNoExist(a, kvs1, "s1", "a")
+	assertGet(a, kvs1, "s2", "a", test3)
 
-	s.Delete("s2", "a")
-	assertGetNoExist(a, s, "s2", "a")
+	kvs2.Delete("s2", "a")
+	assertGetNoExist(a, kvs1, "s2", "a")
 }
 
 func CommonTestIterate(t *testing.T, kvs1 KVStore, kvs2 KVStore) {
