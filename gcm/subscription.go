@@ -215,7 +215,6 @@ func (s *subscription) fetch() error {
 			if err != nil {
 				return err
 			}
-
 			s.logger.WithFields(log.Fields{"ID": msgAndID.ID, "parsedID": message.ID}).Debug("Fetched message")
 			// Pipe message into gcm connector
 			s.pipe(message)
@@ -226,7 +225,6 @@ func (s *subscription) fetch() error {
 			return nil
 		}
 	}
-	return nil
 }
 
 func (s *subscription) createFetchRequest() store.FetchRequest {
