@@ -50,16 +50,13 @@ func TestCheck_SqlKVStore(t *testing.T) {
 	defer os.Remove(f)
 
 	kvs := NewSqliteKVStore(f, false)
-	//start the DB
 	kvs.Open()
 
-	//check should work
 	err := kvs.Check()
 	a.Nil(err, "Db ping should work")
 
 	kvs.Stop()
 
-	//check should throw an error, after the KVStore is closed
 	err = kvs.Check()
-	a.NotNil(err, "Db ping should not work. Db is closed")
+	a.NotNil(err, "Check should fail because db was already closed")
 }
