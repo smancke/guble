@@ -35,6 +35,18 @@ var (
 	HealthEndpoint = kingpin.Flag("health-endpoint", `The health endpoint to be used by the HTTP server (value for disabling it: "")`).
 			Default(defaultHealthEndpoint).Envar("GUBLE_HEALTH_ENDPOINT").String()
 
+	Postgres = struct {
+		Host     *string
+		User     *string
+		Password *string
+		DbName   *string
+	}{
+		Host:     kingpin.Flag("pg-host", "The PostgreSQL hostname").Default("localhost").Envar("GUBLE_PG_HOST").String(),
+		User:     kingpin.Flag("pg-user", "The PostgreSQL user").Default("guble").Envar("GUBLE_PG_USER").String(),
+		Password: kingpin.Flag("pg-password", "The PostgreSQL password").Default("guble").Envar("GUBLE_PG_PASSWORD").String(),
+		DbName:   kingpin.Flag("pg-dbname", "The PostgreSQL database name").Default("guble").Envar("GUBLE_PG_DBNAME").String(),
+	}
+
 	Metrics = struct {
 		Enabled  *bool
 		Endpoint *string

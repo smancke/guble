@@ -1,13 +1,10 @@
 package gubled
 
 import (
-	"fmt"
-
-	"github.com/smancke/guble/gubled/config"
-
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/smancke/guble/gcm"
+	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/metrics"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
@@ -17,15 +14,19 @@ import (
 	"github.com/smancke/guble/server/websocket"
 	"github.com/smancke/guble/store"
 
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
 	"path"
+	"reflect"
+	"runtime"
 	"syscall"
 )
 
 const (
-	fileOption = "file"
+	fileOption            = "file"
+	defaultSqliteFilename = "kv-store.db"
 )
 
 var ValidateStoragePath = func() error {
@@ -51,9 +52,25 @@ var CreateKVStore = func() store.KVStore {
 	case "memory":
 		return store.NewMemoryKVStore()
 	case "file":
-		db := store.NewSqliteKVStore(path.Join(*config.StoragePath, "kv-store.db"), true)
+		db := store.NewSqliteKVStore(path.Join(*config.StoragePath, defaultSqliteFilename), true)
 		if err := db.Open(); err != nil {
-			logger.WithField("err", err).Panic("Could not open database connection")
+			logger.WithField("err", err).Panic("Could not open sqlite database connection")
+		}
+		return db
+	case "postgres":
+		db := store.NewPostgresKVStore(store.PostgresConfig{
+			ConnParams: map[string]string{
+				"host":     *config.Postgres.Host,
+				"user":     *config.Postgres.User,
+				"password": *config.Postgres.Password,
+				"dbname":   *config.Postgres.DbName,
+				"sslmode":  "disable",
+			},
+			MaxIdleConns: 1,
+			MaxOpenConns: runtime.GOMAXPROCS(0),
+		})
+		if err := db.Open(); err != nil {
+			logger.WithField("err", err).Panic("Could not open postgres database connection")
 		}
 		return db
 	default:
@@ -67,7 +84,6 @@ var CreateMessageStore = func() store.MessageStore {
 		return store.NewDummyMessageStore(store.NewMemoryKVStore())
 	case "file":
 		logger.WithField("storagePath", *config.StoragePath).Info("Using FileMessageStore in directory")
-
 		return store.NewFileMessageStore(*config.StoragePath)
 	default:
 		panic(fmt.Errorf("Unknown message-store backend: %q", *config.MS))
@@ -133,6 +149,17 @@ func Main() {
 		if err != nil {
 			logger.WithField("err", err).Error("Error when stopping service")
 		}
+		r := service.Router()
+		ms, err := r.MessageStore()
+		if err != nil {
+			logger.WithField("err", err).Error("Error when getting MessageStore for closing it")
+		}
+		close(ms)
+		kvs, err := r.KVStore()
+		if err != nil {
+			logger.WithField("err", err).Error("Error when getting KVStore for closing it")
+		}
+		close(kvs)
 	})
 }
 
@@ -186,6 +213,20 @@ func exitIfInvalidClusterParams(nodeID int, nodePort int, remotes []*net.TCPAddr
 			"nodePort":        nodePort,
 			"numberOfRemotes": len(remotes),
 		}).Fatal(errorMessage)
+	}
+}
+
+func close(iface interface{}) {
+	if stoppable, ok := iface.(server.Stopable); ok {
+		name := reflect.TypeOf(iface).String()
+		logger.WithField("name", name).Info("Stopping")
+		err := stoppable.Stop()
+		if err != nil {
+			logger.WithFields(log.Fields{
+				"err":  err,
+				"name": name,
+			}).Error("Failed to Stop")
+		}
 	}
 }
 

@@ -39,7 +39,6 @@ func NewDummyMessageStore(kvStore KVStore) *DummyMessageStore {
 func (dms *DummyMessageStore) Start() error {
 	go dms.startSequenceSync()
 	dms.isSyncStarted = true
-
 	return nil
 }
 
@@ -122,7 +121,7 @@ func (dms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
 	return sequenceValue, nil
 }
 
-// the the id to a new value
+// the id to a new value
 func (dms *DummyMessageStore) setId(partition string, id uint64) {
 	dms.topicSequences[partition] = id
 }
@@ -158,8 +157,4 @@ func (dms *DummyMessageStore) startSequenceSync() {
 		}
 	}
 	dms.stoppedC <- true
-}
-
-func (dms *DummyMessageStore) Check() error {
-	return nil
 }

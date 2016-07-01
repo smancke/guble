@@ -15,6 +15,30 @@ import (
 
 var aTestByteMessage = []byte("Hello World!")
 
+type msChecker struct {
+	*MockMessageStore
+	*MockChecker
+}
+
+func newMSChecker() *msChecker {
+	return &msChecker{
+		NewMockMessageStore(testutil.MockCtrl),
+		NewMockChecker(testutil.MockCtrl),
+	}
+}
+
+type kvsChecker struct {
+	*MockKVStore
+	*MockChecker
+}
+
+func newKVSChecker() *kvsChecker {
+	return &kvsChecker{
+		NewMockKVStore(testutil.MockCtrl),
+		NewMockChecker(testutil.MockCtrl),
+	}
+}
+
 func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 	a := assert.New(t)
 
@@ -374,6 +398,8 @@ func TestRouter_Check(t *testing.T) {
 	amMock := NewMockAccessManager(ctrl)
 	msMock := NewMockMessageStore(ctrl)
 	kvsMock := NewMockKVStore(ctrl)
+	msCheckerMock := newMSChecker()
+	kvsCheckerMock := newKVSChecker()
 
 	// Given a Multiplexer with route
 	router, _, _, _ := aStartedRouter()
@@ -401,25 +427,25 @@ func TestRouter_Check(t *testing.T) {
 
 	// Test 2: Given mocked store dependencies, both healthy
 	router.accessManager = amMock
-	router.messageStore = msMock
-	router.kvStore = kvsMock
+	router.messageStore = msCheckerMock
+	router.kvStore = kvsCheckerMock
 
-	msMock.EXPECT().Check().Return(nil)
-	kvsMock.EXPECT().Check().Return(nil)
+	msCheckerMock.MockChecker.EXPECT().Check().Return(nil)
+	kvsCheckerMock.MockChecker.EXPECT().Check().Return(nil)
 
 	// Then the aggregated router health check will return "no error" / nil
 	a.Nil(router.Check())
 
 	// Test 3: Given a mocked messageStore which returns error on Check(),
 	// Then router's aggregated Check() should return error
-	msMock.EXPECT().Check().Return(errors.New("HDD Disk is almost full."))
+	msCheckerMock.MockChecker.EXPECT().Check().Return(errors.New("HDD Disk is almost full."))
 	a.NotNil(router.Check())
 
 	// Test 4: Given a mocked kvStore which returns an error on Check()
 	// and a healthy messageStore,
 	// Then router's aggregated Check should return error
-	kvsMock.EXPECT().Check().Return(errors.New("DB closed"))
-	msMock.EXPECT().Check().Return(nil)
+	msCheckerMock.MockChecker.EXPECT().Check().Return(nil)
+	kvsCheckerMock.MockChecker.EXPECT().Check().Return(errors.New("DB closed"))
 	a.NotNil(router.Check())
 }
 
@@ -438,7 +464,7 @@ func aStartedRouter() (*router, auth.AccessManager, store.MessageStore, store.KV
 	return router, am, ms, kvs
 }
 
-func aRouterRoute(chSize int) (*router, *Route) {
+func aRouterRoute(unused int) (*router, *Route) {
 	router, _, _, _ := aStartedRouter()
 	route, _ := router.Subscribe(
 		NewRoute("/blah", "appid01", "user01", chanSize),

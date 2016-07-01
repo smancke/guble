@@ -199,3 +199,8 @@ func (s *Service) Modules() []interface{} {
 func (s *Service) WebServer() *webserver.WebServer {
 	return s.webserver
 }
+
+// Router returns the service Router instance
+func (s *Service) Router() Router {
+	return s.router
+}

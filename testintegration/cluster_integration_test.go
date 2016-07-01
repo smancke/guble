@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/alecthomas/kingpin.v2"
 
+	"github.com/smancke/guble/testutil"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -33,9 +34,7 @@ func createService(storagePath, nodeID, nodePort, httpListen string, remotes str
 }
 
 func Test_Cluster_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
+	testutil.SkipIfShort(t)
 
 	a := assert.New(t)
 	//defer testutil.EnableDebugForMethod()()

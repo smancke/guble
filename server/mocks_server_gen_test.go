@@ -6,7 +6,7 @@ package server
 import (
 	gomock "github.com/golang/mock/gomock"
 	protocol "github.com/smancke/guble/protocol"
-	
+
 	auth "github.com/smancke/guble/server/auth"
 	cluster "github.com/smancke/guble/server/cluster"
 	store "github.com/smancke/guble/store"
