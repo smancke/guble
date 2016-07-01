@@ -45,7 +45,7 @@ func TestPostgresKVStore_Check(t *testing.T) {
 
 	kvs.Stop()
 
-	//check should throw an error
+	//check should throw an error, after the KVStore is stopped
 	err = kvs.Check()
 	a.NotNil(err, "Db ping should not work. Db is closed")
 }

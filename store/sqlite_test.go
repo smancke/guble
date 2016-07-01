@@ -49,18 +49,17 @@ func TestCheck_SqlKVStore(t *testing.T) {
 	f := tempFilename()
 	defer os.Remove(f)
 
-	store := NewSqliteKVStore(f, false)
+	kvs := NewSqliteKVStore(f, false)
 	//start the DB
-	store.Open()
+	kvs.Open()
 
 	//check should work
-	err := store.Check()
+	err := kvs.Check()
 	a.Nil(err, "Db ping should work")
 
-	//close DB
-	store.Stop()
+	kvs.Stop()
 
-	//check should throw an error
-	err = store.Check()
+	//check should throw an error, after the KVStore is closed
+	err = kvs.Check()
 	a.NotNil(err, "Db ping should not work. Db is closed")
 }

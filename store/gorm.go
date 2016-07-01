@@ -88,7 +88,6 @@ func (kvStore *gormKVStore) Delete(schema, key string) error {
 	return kvStore.db.Delete(&kvEntry{Schema: schema, Key: key}).Error
 }
 
-//TODO Cosmin should Stop be invoked from somewhere in our code - e.g. "service" ?
 func (kvStore *gormKVStore) Stop() error {
 	if kvStore.db != nil {
 		err := kvStore.db.Close()
