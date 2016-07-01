@@ -1,6 +1,7 @@
 package store
 
 import (
+	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -12,28 +13,28 @@ func BenchmarkPostgresPutGet(b *testing.B) {
 }
 
 func TestPostgresPutGetDelete(t *testing.T) {
-	skipIfShort(t)
+	testutil.SkipIfShort(t)
 	db := NewPostgresKVStore(aPostgresConfig())
 	db.Open()
 	CommonTestPutGetDelete(t, db)
 }
 
 func TestPostgresIterate(t *testing.T) {
-	skipIfShort(t)
+	testutil.SkipIfShort(t)
 	db := NewPostgresKVStore(aPostgresConfig())
 	db.Open()
 	CommonTestIterate(t, db)
 }
 
 func TestPostgresIterateKeys(t *testing.T) {
-	skipIfShort(t)
+	testutil.SkipIfShort(t)
 	db := NewPostgresKVStore(aPostgresConfig())
 	db.Open()
 	CommonTestIterateKeys(t, db)
 }
 
 func TestPostgresKVStore_Check(t *testing.T) {
-	skipIfShort(t)
+	testutil.SkipIfShort(t)
 	a := assert.New(t)
 
 	kvs := NewPostgresKVStore(aPostgresConfig())
@@ -61,11 +62,5 @@ func aPostgresConfig() PostgresConfig {
 		},
 		1,
 		1,
-	}
-}
-
-func skipIfShort(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
 	}
 }

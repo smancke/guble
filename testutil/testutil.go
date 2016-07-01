@@ -163,3 +163,9 @@ func responseBuilder(statusCode int, body string) *http.Response {
 		StatusCode: statusCode,
 	}
 }
+
+func SkipIfShort(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+}
