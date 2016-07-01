@@ -39,29 +39,29 @@ func CommonTestPutGetDelete(t *testing.T, s KVStore) {
 	assertGetNoExist(a, s, "s2", "a")
 }
 
-func CommonTestIterate(t *testing.T, s KVStore) {
+func CommonTestIterate(t *testing.T, kvs1 KVStore, kvs2 KVStore) {
 	a := assert.New(t)
 
-	a.NoError(s.Put("s1", "bli", test1))
-	a.NoError(s.Put("s1", "bla", test2))
-	a.NoError(s.Put("s1", "buu", test3))
-	a.NoError(s.Put("s2", "bli", test2))
+	a.NoError(kvs1.Put("s1", "bli", test1))
+	a.NoError(kvs1.Put("s1", "bla", test2))
+	a.NoError(kvs1.Put("s1", "buu", test3))
+	a.NoError(kvs1.Put("s2", "bli", test2))
 
-	assertChannelContainsEntries(a, s.Iterate("s1", "bl"),
+	assertChannelContainsEntries(a, kvs2.Iterate("s1", "bl"),
 		[2]string{"bli", string(test1)},
 		[2]string{"bla", string(test2)})
 
-	assertChannelContainsEntries(a, s.Iterate("s1", ""),
+	assertChannelContainsEntries(a, kvs2.Iterate("s1", ""),
 		[2]string{"bli", string(test1)},
 		[2]string{"bla", string(test2)},
 		[2]string{"buu", string(test3)})
 
-	assertChannelContainsEntries(a, s.Iterate("s1", "bla"),
+	assertChannelContainsEntries(a, kvs2.Iterate("s1", "bla"),
 		[2]string{"bla", string(test2)})
 
-	assertChannelContainsEntries(a, s.Iterate("s1", "nothing"))
+	assertChannelContainsEntries(a, kvs2.Iterate("s1", "nothing"))
 
-	assertChannelContainsEntries(a, s.Iterate("s2", ""),
+	assertChannelContainsEntries(a, kvs2.Iterate("s2", ""),
 		[2]string{"bli", string(test2)})
 }
 
@@ -87,26 +87,26 @@ WAITLOOP:
 	}
 }
 
-func CommonTestIterateKeys(t *testing.T, s KVStore) {
+func CommonTestIterateKeys(t *testing.T, kvs1 KVStore, kvs2 KVStore) {
 	a := assert.New(t)
 
-	a.NoError(s.Put("s1", "bli", test1))
-	a.NoError(s.Put("s1", "bla", test2))
-	a.NoError(s.Put("s1", "buu", test3))
-	a.NoError(s.Put("s2", "bli", test2))
+	a.NoError(kvs1.Put("s1", "bli", test1))
+	a.NoError(kvs1.Put("s1", "bla", test2))
+	a.NoError(kvs1.Put("s1", "buu", test3))
+	a.NoError(kvs1.Put("s2", "bli", test2))
 
-	assertChannelContains(a, s.IterateKeys("s1", "bl"),
+	assertChannelContains(a, kvs2.IterateKeys("s1", "bl"),
 		"bli", "bla")
 
-	assertChannelContains(a, s.IterateKeys("s1", ""),
+	assertChannelContains(a, kvs2.IterateKeys("s1", ""),
 		"bli", "bla", "buu")
 
-	assertChannelContains(a, s.IterateKeys("s1", "bla"),
+	assertChannelContains(a, kvs2.IterateKeys("s1", "bla"),
 		"bla")
 
-	assertChannelContains(a, s.IterateKeys("s1", "nothing"))
+	assertChannelContains(a, kvs2.IterateKeys("s1", "nothing"))
 
-	assertChannelContains(a, s.IterateKeys("s2", ""),
+	assertChannelContains(a, kvs2.IterateKeys("s2", ""),
 		"bli")
 }
 

@@ -31,7 +31,7 @@ func TestSqliteIterate(t *testing.T) {
 	db := NewSqliteKVStore(f, false)
 	db.Open()
 
-	CommonTestIterate(t, db)
+	CommonTestIterate(t, db, db)
 }
 
 func TestSqliteIterateKeys(t *testing.T) {
@@ -41,7 +41,7 @@ func TestSqliteIterateKeys(t *testing.T) {
 	db := NewSqliteKVStore(f, false)
 	db.Open()
 
-	CommonTestIterateKeys(t, db)
+	CommonTestIterateKeys(t, db, db)
 }
 
 func TestCheck_SqlKVStore(t *testing.T) {

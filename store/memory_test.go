@@ -9,11 +9,13 @@ func TestMemoryPutGetDelete(t *testing.T) {
 }
 
 func TestMemoryIterateKeys(t *testing.T) {
-	CommonTestIterateKeys(t, NewMemoryKVStore())
+	mkvs := NewMemoryKVStore()
+	CommonTestIterateKeys(t, mkvs, mkvs)
 }
 
 func TestMemoryIterate(t *testing.T) {
-	CommonTestIterate(t, NewMemoryKVStore())
+	mkvs := NewMemoryKVStore()
+	CommonTestIterate(t, mkvs, mkvs)
 }
 
 func BenchmarkMemoryPutGet(b *testing.B) {

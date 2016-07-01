@@ -6,31 +6,31 @@ import (
 	"testing"
 )
 
-func BenchmarkPostgresPutGet(b *testing.B) {
-	db := NewPostgresKVStore(aPostgresConfig())
-	db.Open()
-	CommonBenchmarkPutGet(b, db)
+func BenchmarkPostgresKVStore_PutGet(b *testing.B) {
+	kvs := NewPostgresKVStore(aPostgresConfig())
+	kvs.Open()
+	CommonBenchmarkPutGet(b, kvs)
 }
 
-func TestPostgresPutGetDelete(t *testing.T) {
+func TestPostgresKVStore_PutGetDelete(t *testing.T) {
 	testutil.SkipIfShort(t)
-	db := NewPostgresKVStore(aPostgresConfig())
-	db.Open()
-	CommonTestPutGetDelete(t, db)
+	kvs := NewPostgresKVStore(aPostgresConfig())
+	kvs.Open()
+	CommonTestPutGetDelete(t, kvs)
 }
 
-func TestPostgresIterate(t *testing.T) {
+func TestPostgresKVStore_Iterate(t *testing.T) {
 	testutil.SkipIfShort(t)
-	db := NewPostgresKVStore(aPostgresConfig())
-	db.Open()
-	CommonTestIterate(t, db)
+	kvs := NewPostgresKVStore(aPostgresConfig())
+	kvs.Open()
+	CommonTestIterate(t, kvs, kvs)
 }
 
-func TestPostgresIterateKeys(t *testing.T) {
+func TestPostgresKVStore_IterateKeys(t *testing.T) {
 	testutil.SkipIfShort(t)
-	db := NewPostgresKVStore(aPostgresConfig())
-	db.Open()
-	CommonTestIterateKeys(t, db)
+	kvs := NewPostgresKVStore(aPostgresConfig())
+	kvs.Open()
+	CommonTestIterateKeys(t, kvs, kvs)
 }
 
 func TestPostgresKVStore_Check(t *testing.T) {
@@ -49,6 +49,29 @@ func TestPostgresKVStore_Check(t *testing.T) {
 	a.NotNil(err, "Check should fail because db was already closed")
 }
 
+func TestPostgresKVStore_Open(t *testing.T) {
+	testutil.SkipIfShort(t)
+	kvs := NewPostgresKVStore(invalidPostgresConfig())
+	err := kvs.Open()
+	assert.NotNil(t, err)
+}
+
+func TestPostgresKVStore_ParallelUsage(t *testing.T) {
+	testutil.SkipIfShort(t)
+	a := assert.New(t)
+
+	kvs1 := NewPostgresKVStore(aPostgresConfig())
+	err := kvs1.Open()
+	a.NoError(err)
+
+	kvs2 := NewPostgresKVStore(aPostgresConfig())
+	err = kvs2.Open()
+	a.NoError(err)
+
+	CommonTestIterate(t, kvs1, kvs2)
+	CommonTestIterateKeys(t, kvs1, kvs2)
+}
+
 func aPostgresConfig() PostgresConfig {
 	return PostgresConfig{
 		map[string]string{
@@ -56,6 +79,20 @@ func aPostgresConfig() PostgresConfig {
 			"user":     "guble",
 			"password": "guble",
 			"dbname":   "guble",
+			"sslmode":  "disable",
+		},
+		1,
+		1,
+	}
+}
+
+func invalidPostgresConfig() PostgresConfig {
+	return PostgresConfig{
+		map[string]string{
+			"host":     "localhost",
+			"user":     "",
+			"password": "",
+			"dbname":   "",
 			"sslmode":  "disable",
 		},
 		1,
