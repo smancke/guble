@@ -23,18 +23,16 @@ func NewPostgresKVStore(postgresConfig PostgresConfig) *PostgresKVStore {
 
 func (kvStore *PostgresKVStore) Open() error {
 	postgresWithConfigLogger := postgresLogger.WithField("config", kvStore.config)
-	postgresWithConfigLogger.Info("Opening database")
+	postgresWithConfigLogger.Info("Opening postgres database")
 
 	gormdb, err := gorm.Open("postgres", kvStore.config.connectionString())
 	if err != nil {
-		postgresWithConfigLogger.WithField("err", err).Error("Error opening database")
+		postgresWithConfigLogger.WithField("err", err).Error("Error opening postgres database")
 		return err
 	}
 
 	if err := gormdb.DB().Ping(); err != nil {
-		postgresWithConfigLogger.WithField("err", err).Error("Error pinging database")
-	} else {
-		postgresWithConfigLogger.Info("Ping reply from database")
+		postgresWithConfigLogger.WithField("err", err).Error("Error pinging postgres database")
 	}
 
 	gormdb.LogMode(postgresGormLogMode)
@@ -42,10 +40,9 @@ func (kvStore *PostgresKVStore) Open() error {
 	gormdb.DB().SetMaxIdleConns(kvStore.config.MaxIdleConns)
 	gormdb.DB().SetMaxOpenConns(kvStore.config.MaxOpenConns)
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
-		postgresWithConfigLogger.WithField("err", err).Error("Error in schema migration")
+		postgresWithConfigLogger.WithField("err", err).Error("Error in postgres schema migration")
 		return err
 	}
-	postgresWithConfigLogger.Info("Ensured database schema")
 	kvStore.gormKVStore = gormKVStore{gormdb}
 	return nil
 }

@@ -42,18 +42,18 @@ func (kvStore *SqliteKVStore) Open() error {
 		sqliteLogger.WithFields(log.Fields{
 			"dbFilename": kvStore.filename,
 			"err":        err,
-		}).Error("DB Directory is not writeable")
+		}).Error("Sqlite database directory is not writeable")
 		return err
 	}
 
-	sqliteLogger.WithField("dbFilename", kvStore.filename).Info("Opening database")
+	sqliteLogger.WithField("dbFilename", kvStore.filename).Info("Opening sqlite database")
 
 	gormdb, err := gorm.Open("sqlite3", kvStore.filename)
 	if err != nil {
 		sqliteLogger.WithFields(log.Fields{
 			"dbFilename": kvStore.filename,
 			"err":        err,
-		}).Error("Error opening database")
+		}).Error("Error opening sqlite database")
 		return err
 	}
 
@@ -61,9 +61,7 @@ func (kvStore *SqliteKVStore) Open() error {
 		sqliteLogger.WithFields(log.Fields{
 			"dbFilename": kvStore.filename,
 			"err":        err,
-		}).Error("Error pinging database")
-	} else {
-		sqliteLogger.WithField("dbFilename", kvStore.filename).Info("Ping reply from database")
+		}).Error("Error pinging sqlite database")
 	}
 
 	gormdb.LogMode(sqliteGormLogMode)
@@ -75,8 +73,6 @@ func (kvStore *SqliteKVStore) Open() error {
 		sqliteLogger.WithField("err", err).Error("Error in schema migration")
 		return err
 	}
-
-	sqliteLogger.Info("Ensured database schema")
 
 	if !kvStore.syncOnWrite {
 		sqliteLogger.Info("Setting db: PRAGMA synchronous = OFF")
