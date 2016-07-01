@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
-
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/gubled/config"
@@ -93,7 +91,7 @@ func serviceSetUp(t *testing.T) *server.Service {
 	defer func() {
 		errRemove := os.RemoveAll(dir)
 		if errRemove != nil {
-			logger.WithFields(log.Fields{"module": "testing", "err": errRemove}).Error("Could not remove directory")
+			logger.WithError(errRemove).WithField("module", "testing").Error("Could not remove directory")
 		}
 	}()
 	assert.NoError(t, errTempDir)

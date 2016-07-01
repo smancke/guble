@@ -142,12 +142,12 @@ func (c *client) startWithReconnect() {
 		if err != nil {
 			c.setIsConnected(false)
 
-			logger.WithField("err", err).Error("Error on connect, retry in 50 ms")
+			logger.WithError(err).Error("Error on connect, retry in 50 ms")
 
 			time.Sleep(time.Millisecond * 50)
 		} else {
 			c.setIsConnected(true)
-			logger.WithField("err", "Reconnected").Warn("Reconnected again")
+			logger.Warn("Reconnected again")
 		}
 	}
 }
@@ -161,7 +161,7 @@ func (c *client) readLoop() error {
 				return nil
 			}
 
-			logger.WithField("err", err).Error("Reading error from ws")
+			logger.WithError(err).Error("Error when reading from websocket")
 
 			c.errors <- clientErrorMessage(err.Error())
 			return err
@@ -188,7 +188,7 @@ func (c *client) shouldStop() bool {
 func (c *client) handleIncomingMessage(msg []byte) {
 	parsed, err := protocol.Decode(msg)
 	if err != nil {
-		logger.WithField("err", err).Error("Error on parsing of incoming message")
+		logger.WithError(err).Error("Error on parsing of incoming message")
 		c.errors <- clientErrorMessage(err.Error())
 		return
 	}

@@ -186,7 +186,7 @@ func (params *benchParams) setUp() {
 	defer func() {
 		errRemove := os.RemoveAll(dir)
 		if errRemove != nil {
-			logger.WithFields(log.Fields{"module": "testing", "err": errRemove}).Error("Could not remove directory")
+			logger.WithError(errRemove).WithField("module", "testing").Error("Could not remove directory")
 		}
 	}()
 	a.NoError(errTempDir)

@@ -35,18 +35,10 @@ func (ws *WebServer) Start() (err error) {
 
 	go func() {
 		err = ws.server.Serve(tcpKeepAliveListener{TCPListener: ws.ln.(*net.TCPListener)})
-
 		if err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
-
-			logger.WithFields(log.Fields{
-				"err": err,
-			}).Error("ListenAndServe")
-
+			logger.WithError(err).Error("ListenAndServe")
 		}
-
-		logger.WithFields(log.Fields{
-			"address": ws.addr,
-		}).Info("Http server stopped")
+		logger.WithField("address", ws.addr).Info("Http server stopped")
 	}()
 	return
 }

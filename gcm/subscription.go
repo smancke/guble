@@ -68,10 +68,9 @@ func initSubscription(gcm *Connector, topic, userID, gcmID string, lastID uint64
 
 func (s *subscription) subscribe() error {
 	if _, err := s.gcm.router.Subscribe(s.route); err != nil {
-		s.logger.WithField("err", err).Error("Error subscribing")
+		s.logger.WithError(err).Error("Error subscribing")
 		return err
 	}
-
 	s.logger.Debug("Subscribed")
 	return nil
 }
@@ -163,7 +162,7 @@ func (s *subscription) subscriptionLoop() {
 					return
 				}
 
-				s.logger.WithField("err", err).Error("Error pipelining message")
+				s.logger.WithError(err).Error("Error pipelining message")
 			}
 		case <-s.gcm.stopC:
 			return
@@ -267,7 +266,7 @@ func (s *subscription) store() error {
 	s.logger.WithField("lastID", s.lastID).Debug("Storing subscription")
 	err := s.gcm.kvStore.Put(schema, s.route.ApplicationID, s.bytes())
 	if err != nil {
-		s.logger.WithField("err", err).Error("Error storing in KVStore")
+		s.logger.WithError(err).Error("Error storing in KVStore")
 	}
 	return err
 }
@@ -293,10 +292,9 @@ func (s *subscription) pipe(m *protocol.Message) error {
 		if err := s.setLastID(pm.message.ID); err != nil {
 			return err
 		}
-
 		return s.handleGCMResponse(response)
 	case err := <-pm.errC:
-		s.logger.WithField("err", err).Error("Error sending message to GCM")
+		s.logger.WithError(err).Error("Error sending message to GCM")
 		return err
 	}
 }

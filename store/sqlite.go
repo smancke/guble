@@ -61,7 +61,7 @@ func (kvStore *SqliteKVStore) Open() error {
 	gormdb.DB().SetMaxOpenConns(sqliteMaxOpenConns)
 
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
-		sqliteLogger.WithField("err", err).Error("Error in schema migration")
+		sqliteLogger.WithError(err).Error("Error in schema migration")
 		return err
 	}
 
