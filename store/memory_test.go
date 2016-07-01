@@ -5,7 +5,8 @@ import (
 )
 
 func TestMemoryPutGetDelete(t *testing.T) {
-	CommonTestPutGetDelete(t, NewMemoryKVStore())
+	mkvs := NewMemoryKVStore()
+	CommonTestPutGetDelete(t, mkvs, mkvs)
 }
 
 func TestMemoryIterateKeys(t *testing.T) {

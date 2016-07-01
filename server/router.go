@@ -123,20 +123,20 @@ func (router *router) Stop() error {
 
 func (router *router) Check() error {
 	if router.accessManager == nil || router.messageStore == nil || router.kvStore == nil {
-		logger.WithField("err", ErrServiceNotProvided).Error("Some mandatory services are not provided")
+		logger.WithError(ErrServiceNotProvided).Error("Some mandatory services are not provided")
 		return ErrServiceNotProvided
 	}
 	if checkable, ok := router.messageStore.(health.Checker); ok {
 		err := checkable.Check()
 		if err != nil {
-			logger.WithField("err", err).Error("MessageStore check failed")
+			logger.WithError(err).Error("MessageStore check failed")
 			return err
 		}
 	}
 	if checkable, ok := router.kvStore.(health.Checker); ok {
 		err := checkable.Check()
 		if err != nil {
-			logger.WithField("err", err).Error("KVStore check failed")
+			logger.WithError(err).Error("KVStore check failed")
 			return err
 		}
 	}
@@ -153,9 +153,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 
 	mTotalMessagesIncoming.Add(1)
 	if err := router.isStopping(); err != nil {
-		logger.WithFields(log.Fields{
-			"err": err,
-		}).Error("Router is stopping")
+		logger.WithError(err).Error("Router is stopping")
 		return err
 	}
 
@@ -175,19 +173,13 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 			return message.Bytes()
 		}
 		if err := router.messageStore.StoreTx(msgPathPartition, txCallback); err != nil {
-			logger.WithFields(log.Fields{
-				"err":          err,
-				"msgPartition": msgPathPartition,
-			}).Error("Error storing new local message in partition")
+			logger.WithError(err).WithField("msgPartition", msgPathPartition).Error("Error storing new local message in partition")
 			mTotalMessageStoreErrors.Add(1)
 			return err
 		}
 	} else {
 		if err := router.messageStore.Store(msgPathPartition, message.ID, message.Bytes()); err != nil {
-			logger.WithFields(log.Fields{
-				"err":          err,
-				"msgPartition": msgPathPartition,
-			}).Error("Error storing message from cluster in partition")
+			logger.WithError(err).WithField("msgPartition", msgPathPartition).Error("Error storing message from cluster in partition")
 			mTotalMessageStoreErrors.Add(1)
 			return err
 		}
@@ -311,9 +303,7 @@ func (router *router) isStopping() error {
 }
 
 func (router *router) routeMessage(message *protocol.Message) {
-	logger.WithFields(log.Fields{
-		"msgMetadata": message.Metadata(),
-	}).Debug("Called routeMessage for data")
+	logger.WithField("msgMetadata", message.Metadata()).Debug("Called routeMessage for data")
 	mTotalMessagesRouted.Add(1)
 
 	matched := false

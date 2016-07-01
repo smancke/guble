@@ -34,11 +34,7 @@ var ValidateStoragePath = func() error {
 		testfile := path.Join(*config.StoragePath, "write-test-file")
 		f, err := os.Create(testfile)
 		if err != nil {
-			logger.WithFields(log.Fields{
-				"storagePath": *config.StoragePath,
-				"err":         err,
-			}).Error("Storage path not present/writeable.")
-
+			logger.WithError(err).WithField("storagePath", *config.StoragePath).Error("Storage path not present/writeable.")
 			return err
 		}
 		f.Close()
@@ -54,7 +50,7 @@ var CreateKVStore = func() store.KVStore {
 	case "file":
 		db := store.NewSqliteKVStore(path.Join(*config.StoragePath, defaultSqliteFilename), true)
 		if err := db.Open(); err != nil {
-			logger.WithField("err", err).Panic("Could not open sqlite database connection")
+			logger.WithError(err).Panic("Could not open sqlite database connection")
 		}
 		return db
 	case "postgres":
@@ -70,7 +66,7 @@ var CreateKVStore = func() store.KVStore {
 			MaxOpenConns: runtime.GOMAXPROCS(0),
 		})
 		if err := db.Open(); err != nil {
-			logger.WithField("err", err).Panic("Could not open postgres database connection")
+			logger.WithError(err).Panic("Could not open postgres database connection")
 		}
 		return db
 	default:
@@ -94,7 +90,7 @@ var CreateModules = func(router server.Router) []interface{} {
 	modules := make([]interface{}, 0, 3)
 
 	if wsHandler, err := websocket.NewWSHandler(router, "/stream/"); err != nil {
-		logger.WithField("err", err).Error("Error loading WSHandler module:")
+		logger.WithError(err).Error("Error loading WSHandler module:")
 	} else {
 		modules = append(modules, wsHandler)
 	}
@@ -111,7 +107,7 @@ var CreateModules = func(router server.Router) []interface{} {
 		logger.WithField("count", *config.GCM.Workers).Debug("GCM workers")
 
 		if gcm, err := gcm.New(router, "/gcm/", *config.GCM.APIKey, *config.GCM.Workers); err != nil {
-			logger.WithField("err", err).Error("Error loading GCMConnector:")
+			logger.WithError(err).Error("Error loading GCMConnector:")
 
 		} else {
 			modules = append(modules, gcm)
@@ -134,7 +130,7 @@ func Main() {
 	// set log level
 	level, err := log.ParseLevel(*config.Log)
 	if err != nil {
-		logger.WithField("error", err).Fatal("Invalid log level")
+		logger.WithError(err).Fatal("Invalid log level")
 	}
 	log.SetLevel(level)
 
@@ -147,17 +143,17 @@ func Main() {
 	waitForTermination(func() {
 		err := service.Stop()
 		if err != nil {
-			logger.WithField("err", err).Error("Error when stopping service")
+			logger.WithError(err).Error("Error when stopping service")
 		}
 		r := service.Router()
 		ms, err := r.MessageStore()
 		if err != nil {
-			logger.WithField("err", err).Error("Error when getting MessageStore for closing it")
+			logger.WithError(err).Error("Error when getting MessageStore for closing it")
 		}
 		close(ms)
 		kvs, err := r.KVStore()
 		if err != nil {
-			logger.WithField("err", err).Error("Error when getting KVStore for closing it")
+			logger.WithError(err).Error("Error when getting KVStore for closing it")
 		}
 		close(kvs)
 	})
@@ -180,7 +176,7 @@ func StartService() *server.Service {
 			Remotes: *config.Cluster.Remotes,
 		})
 		if err != nil {
-			logger.WithField("err", err).Fatal("Service could not be started (cluster)")
+			logger.WithError(err).Fatal("Service could not be started (cluster)")
 		}
 	} else {
 		logger.Info("Starting in standalone-mode")
@@ -197,9 +193,9 @@ func StartService() *server.Service {
 
 	if err = service.Start(); err != nil {
 		if err = service.Stop(); err != nil {
-			logger.WithField("err", err).Error("Error when stopping service after Start() failed")
+			logger.WithError(err).Error("Error when stopping service after Start() failed")
 		}
-		logger.WithField("err", err).Fatal("Service could not be started")
+		logger.WithError(err).Fatal("Service could not be started")
 	}
 
 	return service
@@ -222,10 +218,7 @@ func close(iface interface{}) {
 		logger.WithField("name", name).Info("Stopping")
 		err := stoppable.Stop()
 		if err != nil {
-			logger.WithFields(log.Fields{
-				"err":  err,
-				"name": name,
-			}).Error("Failed to Stop")
+			logger.WithError(err).WithField("name", name).Error("Failed to Stop")
 		}
 	}
 }

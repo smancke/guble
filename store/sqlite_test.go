@@ -21,7 +21,7 @@ func TestSqlitePutGetDelete(t *testing.T) {
 
 	db := NewSqliteKVStore(f, false)
 	db.Open()
-	CommonTestPutGetDelete(t, db)
+	CommonTestPutGetDelete(t, db, db)
 }
 
 func TestSqliteIterate(t *testing.T) {
