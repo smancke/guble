@@ -2,6 +2,7 @@ package rest
 
 import (
 	"errors"
+
 	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"

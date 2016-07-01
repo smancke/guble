@@ -10,13 +10,15 @@ import (
 // memberslist.Delegate implementation for cluster struct
 // ======================================================
 
-// NotifyMsg is invoked each time a message is received by this node of the cluster; it decodes and dispatches the messages.
-func (cluster *Cluster) NotifyMsg(msg []byte) {
-	logger.WithField("msgAsBytes", msg).Debug("NotifyMsg")
+// NotifyMsg is invoked each time a message is received by this node of the cluster;
+// it decodes and dispatches the messages.
+func (cluster *Cluster) NotifyMsg(data []byte) {
+	logger.WithField("msgAsBytes", data).Debug("NotifyMsg")
 
-	cmsg, err := decode(msg)
+	cmsg := new(message)
+	err := cmsg.decode(data)
 	if err != nil {
-		logger.WithField("ergr", err).Error("Decoding of cluster message failed")
+		logger.WithError(err).Error("Decoding of cluster message failed")
 		return
 	}
 
@@ -25,13 +27,11 @@ func (cluster *Cluster) NotifyMsg(msg []byte) {
 		"type":         cmsg.Type,
 	}).Debug("NotifyMsg: Received cluster message")
 
-	if cluster.Router != nil && cmsg.Type == gubleMessage {
-		message, err := protocol.ParseMessage(cmsg.Body)
-		if err != nil {
-			logger.WithField("err", err).Error("Parsing of guble-message contained in cluster-message failed")
-			return
-		}
-		cluster.Router.HandleMessage(message)
+	switch cmsg.Type {
+	case mtGubleMessage:
+		cluster.handleGubleMessage(cmsg)
+	case mtSyncPartitions:
+		cluster.handleSyncPartitions(cmsg)
 	}
 }
 
@@ -46,3 +46,38 @@ func (cluster *Cluster) NodeMeta(limit int) []byte { return nil }
 func (cluster *Cluster) LocalState(join bool) []byte { return nil }
 
 func (cluster *Cluster) MergeRemoteState(s []byte, join bool) {}
+
+// handles message received with type `mtGubleMessage`
+func (cluster *Cluster) handleGubleMessage(cmsg *message) {
+	if cluster.Router == nil {
+		return
+	}
+	message, err := protocol.ParseMessage(cmsg.Body)
+	if err != nil {
+		logger.WithField("err", err).Error("Parsing of guble-message contained in cluster-message failed")
+		return
+	}
+	cluster.Router.HandleMessage(message)
+}
+
+// handles message received with type `mtSyncPartitions`
+func (cluster *Cluster) handleSyncPartitions(cmsg *message) {
+	logger.WithField("message", cmsg).Debug("Received sync partitions message")
+
+	// Decode message
+	partitionsSlice := make(partitions, 0)
+	// Decode data into the new slice
+	err := partitionsSlice.decode(cmsg.Body)
+	if err != nil {
+		logger.WithError(err).Error("Error decoding partitions")
+		return
+	}
+
+	logger.WithFields(log.Fields{
+		"partitions": partitionsSlice,
+		"nodeID":     cmsg.NodeID,
+	}).Debug("Partitions received")
+
+	// add to synchronizer
+	cluster.synchronizer.sync(cmsg.NodeID, partitionsSlice)
+}

@@ -35,7 +35,7 @@ type Message struct {
 	// The message payload
 	Body []byte
 
-	NodeID int
+	NodeID uint8
 }
 
 // Metadata returns the first line of a serialized message, without the newline
@@ -88,7 +88,7 @@ func (msg *Message) writeMetadata(buff *bytes.Buffer) {
 	buff.WriteString(",")
 	buff.WriteString(strconv.FormatInt(msg.Time, 10))
 	buff.WriteString(",")
-	buff.WriteString(strconv.Itoa(msg.NodeID))
+	buff.WriteString(strconv.FormatUint(uint64(msg.NodeID), 10))
 }
 
 // Valid constants for the NotificationMessage.Name
@@ -178,7 +178,7 @@ func ParseMessage(message []byte) (*Message, error) {
 		return nil, fmt.Errorf("message metadata to have an integer (publishing time) as sixth field, but was %v", meta[5])
 	}
 
-	nodeID, err := strconv.Atoi(meta[6])
+	nodeID, err := strconv.ParseUint(meta[6], 10, 8)
 	if err != nil {
 		return nil, fmt.Errorf("message metadata to have an integer (nodeID) as seventh field, but was %v", meta[6])
 	}
@@ -190,7 +190,7 @@ func ParseMessage(message []byte) (*Message, error) {
 		ApplicationID: meta[3],
 		OptionalID:    meta[4],
 		Time:          publishingTime,
-		NodeID:        nodeID,
+		NodeID:        uint8(nodeID),
 	}
 
 	if len(parts) >= 2 {

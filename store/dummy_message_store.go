@@ -155,3 +155,7 @@ func (dms *DummyMessageStore) startSequenceSync() {
 func (dms *DummyMessageStore) Check() error {
 	return nil
 }
+
+func (dms *DummyMessageStore) Partitions() ([]*MessagePartition, error) {
+	return nil, nil
+}

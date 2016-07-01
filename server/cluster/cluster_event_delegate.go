@@ -37,6 +37,11 @@ func (cluster *Cluster) eventLog(node *memberlist.Node, message string) {
 }
 
 func (cluster *Cluster) sendPartitions(node *memberlist.Node) {
+	if cluster.synchronizer.inSync(node.Name) {
+		logger.WithField("node", node.Name).Debug("Already in sync with node")
+		return
+	}
+
 	logger.WithField("node", node.Name).Debug("Sending partitions info")
 
 	// Send message partitions to the new node
@@ -46,27 +51,19 @@ func (cluster *Cluster) sendPartitions(node *memberlist.Node) {
 		return
 	}
 
-	partitions := partitionsFromStore(store)
+	partitionsSlice := partitionsFromStore(store)
 
 	// sending partitions
-	cmsg := cluster.newMessage(syncPartitions, partitions.bytes())
+	data, err := partitionsSlice.encode()
+	if err != nil {
+		logger.WithError(err).Error("Error encoding partitions")
+		return
+	}
+	cmsg := cluster.newMessage(mtSyncPartitions, data)
 
 	// send message to node
 	err = cluster.sendMessageToNode(node, cmsg)
 	if err != nil {
 		logger.WithField("node", node.Name).WithError(err).Error("Error sending partitions info to node")
 	}
-}
-
-func (cluster *Cluster) getSynchornizer() (*synchornizer, error) {
-	if cluster.synchornizer == nil {
-		store, err := cluster.Router.MessageStore()
-		if err != nil {
-			logger.WithError(err).Error("Error retriving message store for synchronizer")
-			return nil, err
-		}
-		cluster.synchornizer = newSynchornizer(cluster, store)
-	}
-
-	return cluster.synchornizer, nil
 }

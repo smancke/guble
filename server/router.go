@@ -28,6 +28,7 @@ type Router interface {
 	MessageStore() (store.MessageStore, error)
 	KVStore() (store.KVStore, error)
 	Cluster() *cluster.Cluster
+	SetCluster(*cluster.Cluster)
 
 	Fetch(store.FetchRequest) error
 
@@ -58,7 +59,7 @@ type router struct {
 }
 
 // NewRouter returns a pointer to Router
-func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore, cluster *cluster.Cluster) Router {
+func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore) Router {
 	return &router{
 		routes: make(map[protocol.Path][]*Route),
 
@@ -70,7 +71,6 @@ func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore
 		accessManager: accessManager,
 		messageStore:  messageStore,
 		kvStore:       kvStore,
-		cluster:       cluster,
 	}
 }
 
@@ -425,4 +425,8 @@ func (router *router) Fetch(req store.FetchRequest) error {
 // Cluster returns the `cluster` provided for the router, or nil if no cluster was set-up
 func (router *router) Cluster() *cluster.Cluster {
 	return router.cluster
+}
+
+func (router *router) SetCluster(c *cluster.Cluster) {
+	router.cluster = c
 }

@@ -60,12 +60,12 @@ var (
 
 	// Cluster settings related to activating the cluster module
 	Cluster = struct {
-		NodeID   *int
+		NodeID   *uint8
 		NodePort *int
 		Remotes  *[]*net.TCPAddr
 	}{
 		NodeID: kingpin.Flag("node-id", "(cluster mode) This guble node's own ID: a strictly positive integer number which must be unique in cluster").
-			Envar("GUBLE_NODE_ID").Int(),
+			Envar("GUBLE_NODE_ID").Uint8(),
 		NodePort: kingpin.Flag("node-port", "(cluster mode) This guble node's own local port: a strictly positive integer number").
 			Default(defaultNodePort).Envar("GUBLE_NODE_PORT").Int(),
 		Remotes: kingpin.Arg("tcplist", `(cluster mode) The list of TCP addresses of some other guble nodes (format: "IP:port")`).

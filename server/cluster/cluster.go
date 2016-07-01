@@ -17,7 +17,7 @@ import (
 
 // Config is a struct used by the local node when creating and running the guble cluster
 type Config struct {
-	ID                   int
+	ID                   uint8
 	Host                 string
 	Port                 int
 	Remotes              []*net.TCPAddr
@@ -47,12 +47,16 @@ type Cluster struct {
 	numLeaves  int
 	numUpdates int
 
-	synchornizer *synchornizer
+	synchronizer *synchronizer
 }
 
 //New returns a new instance of the cluster, created using the given Config.
-func New(config *Config) (*Cluster, error) {
-	c := &Cluster{Config: config, name: fmt.Sprintf("%d", config.ID)}
+func New(router router, config *Config) (*Cluster, error) {
+	c := &Cluster{
+		Config: config,
+		Router: router,
+		name:   fmt.Sprintf("%d", config.ID),
+	}
 
 	memberlistConfig := memberlist.DefaultLANConfig()
 	memberlistConfig.Name = c.name
@@ -72,6 +76,13 @@ func New(config *Config) (*Cluster, error) {
 	memberlistConfig.Delegate = c
 	memberlistConfig.Conflict = c
 	memberlistConfig.Events = c
+
+	synchronizer, err := newSynchronizer(c)
+	if err != nil {
+		logger.WithError(err).Error("Error creating cluster synchronizer")
+		return nil, err
+	}
+	c.synchronizer = synchronizer
 
 	return c, nil
 }
@@ -95,6 +106,7 @@ func (cluster *Cluster) Start() error {
 		return errors.New(errorMessage)
 	}
 	logger.Debug("Started Cluster")
+	// go cluster.
 	return nil
 }
 
@@ -127,7 +139,7 @@ func (cluster *Cluster) BroadcastString(sMessage *string) error {
 	logger.WithField("string", sMessage).Debug("BroadcastString")
 	cMessage := &message{
 		NodeID: cluster.Config.ID,
-		Type:   stringMessage,
+		Type:   mtStringMessage,
 		Body:   []byte(*sMessage),
 	}
 	return cluster.broadcastClusterMessage(cMessage)
@@ -138,7 +150,7 @@ func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) error {
 	logger.WithField("message", pMessage).Debug("BroadcastMessage")
 	cMessage := &message{
 		NodeID: cluster.Config.ID,
-		Type:   gubleMessage,
+		Type:   mtGubleMessage,
 		Body:   pMessage.Bytes(),
 	}
 	return cluster.broadcastClusterMessage(cMessage)
