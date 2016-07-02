@@ -1,7 +1,6 @@
 package store
 
 import (
-	//"container/heap"
 	"encoding/binary"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
@@ -533,7 +532,6 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 }
 
 func (p *MessagePartition) dumpSortedIndexFile(filename string) error {
-	//p.mutex.Lock()
 	messageStoreLogger.WithFields( log.Fields{
 		"filename": filename,
 	}).Info("Dumping Sorted list ")
@@ -541,8 +539,6 @@ func (p *MessagePartition) dumpSortedIndexFile(filename string) error {
 	messageStoreLogger.Info("++++++++++++++++++++++")
 	p.indexFileSortedList.PrintPq()
 	messageStoreLogger.Info("++++++++++++++--------------++++++++")
-	//p.mutex.Unlock()
-
 
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0666)
 	defer file.Close()
@@ -754,7 +750,7 @@ func binarySearchMsgIDInFile(filename string, msgID uint64) (entry *fetchEntry, 
 	}
 	messageStoreLogger.WithField("entriesInIndex", entriesInIndex).Info("Entries")
 	l := uint64(0 )
-	h := entriesInIndex
+	h := entriesInIndex-1
 	for l <= h {
 		mid := l + (h-l)/2
 		messageStoreLogger.WithField("mid", mid).Info("mid")
