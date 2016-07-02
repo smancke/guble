@@ -536,10 +536,6 @@ func (p *MessagePartition) dumpSortedIndexFile(filename string) error {
 		"filename": filename,
 	}).Info("Dumping Sorted list ")
 
-	messageStoreLogger.Info("++++++++++++++++++++++")
-	p.indexFileSortedList.PrintPq()
-	messageStoreLogger.Info("++++++++++++++--------------++++++++")
-
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0666)
 	defer file.Close()
 	if err != nil {
@@ -695,7 +691,9 @@ func readIndexEntry(file *os.File, indexPosition int64) (uint64, uint64, uint32,
 	msgOffsetBuff := make([]byte, INDEX_ENTRY_SIZE)
 	if _, err := file.ReadAt(msgOffsetBuff, indexPosition); err != nil {
 		messageStoreLogger.WithFields(log.Fields{
-			"err": err,
+			"err":      err,
+			"file":     file.Name(),
+			"indexPos": indexPosition,
 		}).Error("ReadIndexEntry failed ")
 		return 0, 0, 0, err
 	}
@@ -730,8 +728,16 @@ func (p *MessagePartition) composeMsgFilename() string {
 	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.msg", p.name, uint64(len(p.fileCache))))
 }
 
+func (p *MessagePartition) composeMsgFilenameWithValue(value uint64) string {
+	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.msg", p.name, value))
+}
+
 func (p *MessagePartition) composeIndexFilename() string {
 	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.name, uint64(len(p.fileCache))))
+}
+
+func (p *MessagePartition) composeIndexFilenameWithValue(value uint64) string {
+	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.name, value))
 }
 
 //binary Search the idx File retrieving the fetchEntry associated or error if msgID not found in file
@@ -748,21 +754,17 @@ func binarySearchMsgIDInFile(filename string, msgID uint64) (entry *fetchEntry, 
 		messageStoreLogger.WithField("err", err).Error("os.Open failed")
 		return nil, -1, err
 	}
-	messageStoreLogger.WithField("noOfEntries", entriesInIndex).Info("binarySearchMsgIDInFile")
 	l := uint64(0)
 	h := entriesInIndex - 1
 	for l <= h {
 		mid := l + (h-l)/2
-		messageStoreLogger.WithField("mid", mid).Info("mid")
+		messageStoreLogger.WithFields(
+			log.Fields{
+				"mid": mid,
+				"l":   l,
+				"h":   h,
+			}).Info("mid")
 		m, off, size, err := readIndexEntry(file, int64(mid*uint64(INDEX_ENTRY_SIZE)))
-
-		messageStoreLogger.WithFields(log.Fields{
-			"searchedId": msgID,
-			"currentId":  m,
-			"l":          l,
-			"h":          h,
-			"mid":        mid,
-		}).Info("mid")
 
 		if err != nil {
 			return nil, -1, err

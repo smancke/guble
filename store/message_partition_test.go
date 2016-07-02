@@ -449,6 +449,11 @@ func Test_ReadIndex(t *testing.T) {
 		a.Equal(id, entry.messageId)
 	}
 
-	a.Nil(err)
+	entry, pos, err := binarySearchMsgIDInFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx", uint64(125415151))
+
+	a.NotNil(err)
+	a.NotEqual(pos, -1)
+
+	a.Nil(entry)
 
 }
