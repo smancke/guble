@@ -1,14 +1,14 @@
 package store
 
 import (
+	"github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
 	"time"
-	"github.com/smancke/guble/testutil"
-	"github.com/Sirupsen/logrus"
 )
 
 func Test_MessagePartition_scanFiles(t *testing.T) {
@@ -408,74 +408,47 @@ func Test_calculateMaxMessageIdFromIndex(t *testing.T) {
 	a.Equal(uint64(2), maxMessageId)
 }
 
-
 func Test_ReadIndex(t *testing.T) {
 	a := assert.New(t)
-	defer testutil.EnableDebugForMethod() ()
+	defer testutil.EnableDebugForMethod()()
 
 	//// when i store a message
-	//store, _ := NewMessagePartition("/tmp/s4/testTopic", "testTopic")
-	//
-	////err := store.loadIndexFileInMemory("/tmp/s4/testTopic/testTopic-00000000000000000000.idx")
-	////a.Nil(err)
-	//store.indexFilePQ.PrintPq()
+	store, _ := NewMessagePartition("/tmp/s4/testTopic", "testTopic")
+
+	pq, err := ForTestPurposecheckIndexFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx")
+	pq.PrintPq()
+
+	store.fileCache = make([]*FileCacheEntry, 0)
+	store.indexFileSortedList = pq
+	generatedIds := make([]uint64, 0)
+
+	for i := 0; i < pq.Len(); i++ {
+		generatedIds = append(generatedIds, pq.Get(i).msgID)
+	}
 
 	//
-	//
-	//logrus.Info("-----------------------------------------------")
-	//err = store.dumpSortedIndexFile("")
-	////a.Nil(err)
-	////
-	logrus.Info("----------------+++-------------------------------")
-	//err = store.loadIndexFileInMemory("/tmp/s4/testTopic/testTopic-00000000000000000000.idx")
-	////a.Nil(err)
-	//
-	//min,max,err := readMinMaxMsgIdFromIndexFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx")
-	//
-	//logrus.WithFields(logrus.Fields{
-	//	"mind": min,
-	//	"max": max,
-	//}).Debug()
+	logrus.Info("----------------StartDumping-------------------------------")
 
-	//min,max,err := readMinMaxMsgIdFromIndexFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx")
-	//logrus.WithFields(logrus.Fields{
-	//	"mind": min,
-	//	"max": max,
-	//}).Debug("00000  file")
-	//store.indexFilePQ.PrintPq()
-
-	 pq,err := ForTestPurposecheckIndexFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx")
-	 pq.PrintPq()
-
-	//store.fileCache = make([]*FileCacheEntry, 0)
-	//store.indexFileSortedList = pq
-	//
-	//store.dumpSortedIndexFile("tmp/s4/testTopic/testTopic-00000000000000000000.idx")
-	//
-	//pq2,err := ForTestPurposecheckIndexFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx")
+	err = store.dumpSortedIndexFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx")
+	a.Nil(err)
+	//pq2, err := ForTestPurposecheckIndexFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx")
 	//pq2.PrintPq()
 
+	logrus.Info("----------------EndDumping-------------------------------")
+	min, max, err := readMinMaxMsgIdFromIndexFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx")
+	logrus.WithFields(logrus.Fields{
+		"mind": min,
+		"max":  max,
+	}).Info("11111 file")
 
-	//min,max,err = readMinMaxMsgIdFromIndexFile("/tmp/s4/testTopic/testTopic-00000000000000000001.idx")
-	//logrus.WithFields(logrus.Fields{
-	//	"mind": min,
-	//	"max": max,
-	//}).Debug("11111 file")
-	//
-	//
-	//entry,pos,err := binarySearchMsgIDInFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx", uint64(47405469698))
-	//a.Nil(err)
-	//logrus.WithField("entry",entry).Info("Found")
-	//logrus.WithField("pos",pos).Info("Found")
-	//entry,pos,err  = binarySearchMsgIDInFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx", uint64(47405469696))
-	//a.Nil(err)
-	//logrus.WithField("entry",entry).Info("Found")
-	//logrus.WithField("pos",pos).Info("Found")
-	//entry,pos,err  =binarySearchMsgIDInFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx", uint64(47405469709))
-	//logrus.WithField("entry",entry).Info("Found")
-	//logrus.WithField("pos",pos).Info("Found")
+	for _, id := range generatedIds {
+		entry, pos, err := binarySearchMsgIDInFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx", id)
+
+		a.Nil(err)
+		a.NotEqual(pos, -1)
+		a.Equal(id, entry.messageId)
+	}
 
 	a.Nil(err)
 
 }
-

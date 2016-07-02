@@ -2,6 +2,7 @@ package store
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
@@ -10,13 +11,12 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"errors"
 )
 
 var (
 	MAGIC_NUMBER        = []byte{42, 249, 180, 108, 82, 75, 222, 182}
 	FILE_FORMAT_VERSION = []byte{1}
-	MESSAGES_PER_FILE   = uint64(4)
+	MESSAGES_PER_FILE   = uint64(10)
 	INDEX_ENTRY_SIZE    = 20
 )
 
@@ -58,11 +58,11 @@ type MessagePartition struct {
 
 func NewMessagePartition(basedir string, storeName string) (*MessagePartition, error) {
 	p := &MessagePartition{
-		basedir:     basedir,
-		name:        storeName,
-		mutex:       &sync.RWMutex{},
+		basedir:             basedir,
+		name:                storeName,
+		mutex:               &sync.RWMutex{},
 		indexFileSortedList: createIndexPriorityQueue(600),
-		fileCache:   make([]*FileCacheEntry, 0),
+		fileCache:           make([]*FileCacheEntry, 0),
 	}
 	return p, p.initialize()
 }
@@ -314,7 +314,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 			//sort the indexFile
 			err := p.dumpSortedIndexFile(p.composeIndexFilename())
 			if err != nil {
-				messageStoreLogger.WithField("err",err).Error("Error dumping file")
+				messageStoreLogger.WithField("err", err).Error("Error dumping file")
 				return err
 			}
 			//Add items in the filecache
@@ -532,7 +532,7 @@ func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]fetchEntry, e
 }
 
 func (p *MessagePartition) dumpSortedIndexFile(filename string) error {
-	messageStoreLogger.WithFields( log.Fields{
+	messageStoreLogger.WithFields(log.Fields{
 		"filename": filename,
 	}).Info("Dumping Sorted list ")
 
@@ -549,26 +549,26 @@ func (p *MessagePartition) dumpSortedIndexFile(filename string) error {
 	lastMsgID := uint64(0)
 	for i := 0; i < p.indexFileSortedList.Len(); i++ {
 		item := p.indexFileSortedList.Get(i)
-		messageStoreLogger.WithFields( log.Fields{
-			"curMsgId": item.msgID,
-			"lastMsgID":lastMsgID,
-			"i": i,
-			"filename": filename,
-		}).Debug("Dumping Sorted list ")
 
-
-		if  lastMsgID >= item.msgID {
+		if lastMsgID >= item.msgID {
 			messageStoreLogger.WithFields(log.Fields{
-				"err":err,
+				"err":      err,
 				"filename": filename,
 			}).Error("Sorted list is not sorted")
 
-			return  err
+			return err
 		}
 		lastMsgID = item.msgID
 		err := writeIndexEntry(file, item.msgID, item.messageOffset, item.msgSize, uint64(i))
+		messageStoreLogger.WithFields(log.Fields{
+			"curMsgId": item.msgID,
+			"err":      err,
+			"pos":      i,
+			"filename": file.Name(),
+		}).Info("Wrote while dumpSortedIndexFile")
+
 		if err != nil {
-			messageStoreLogger.WithField("err",err).Error("Error writing indexfile in sorted way.")
+			messageStoreLogger.WithField("err", err).Error("Error writing indexfile in sorted way.")
 			return err
 		}
 	}
@@ -647,21 +647,21 @@ func (p *MessagePartition) loadIndexFileInMemory(filename string) error {
 }
 
 //TODO remove after test  //Momentan nu merge scrierea inapoi in fisierul sortat..Asta ramanand nesortat...pt ca dimensiunea listei ...nu e corecta..INsert prost
-func ForTestPurposecheckIndexFile(filename string) (*SortedIndexList,error) {
+func ForTestPurposecheckIndexFile(filename string) (*SortedIndexList, error) {
 
 	pq := createIndexPriorityQueue(1000)
 	messageStoreLogger.WithField("filename", filename).Info("checkIndexFile")
 
 	entriesInIndex, err := calculateNumberOfEntries(filename)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	file, err := os.Open(filename)
 	defer file.Close()
 	if err != nil {
 		messageStoreLogger.WithField("err", err).Error("os.Open failed")
-		return nil,err
+		return nil, err
 	}
 
 	for i := uint64(0); i < entriesInIndex; i++ {
@@ -675,7 +675,7 @@ func ForTestPurposecheckIndexFile(filename string) (*SortedIndexList,error) {
 
 		if err != nil {
 			log.WithField("err", err).Error("Read error")
-			return nil,err
+			return nil, err
 		}
 
 		e := &IndexFileEntry{
@@ -738,43 +738,50 @@ func (p *MessagePartition) composeIndexFilename() string {
 func binarySearchMsgIDInFile(filename string, msgID uint64) (entry *fetchEntry, position int64, err error) {
 
 	entriesInIndex, err := calculateNumberOfEntries(filename)
-	if err != nil {
-		return nil,-1, err
+	if err != nil || entriesInIndex < 1 { //if there is an error or there are not any entries in the file
+		return nil, -1, err
 	}
 
 	file, err := os.Open(filename)
 	defer file.Close()
 	if err != nil {
 		messageStoreLogger.WithField("err", err).Error("os.Open failed")
-		return nil,-1,err
+		return nil, -1, err
 	}
-	messageStoreLogger.WithField("entriesInIndex", entriesInIndex).Info("Entries")
-	l := uint64(0 )
-	h := entriesInIndex-1
+	messageStoreLogger.WithField("noOfEntries", entriesInIndex).Info("binarySearchMsgIDInFile")
+	l := uint64(0)
+	h := entriesInIndex - 1
 	for l <= h {
 		mid := l + (h-l)/2
 		messageStoreLogger.WithField("mid", mid).Info("mid")
-		m, off, size, err := readIndexEntry(file, int64(mid*uint64(INDEX_ENTRY_SIZE))  )
+		m, off, size, err := readIndexEntry(file, int64(mid*uint64(INDEX_ENTRY_SIZE)))
 
-		messageStoreLogger.WithField("msgID", m).Info("msgID read")
+		messageStoreLogger.WithFields(log.Fields{
+			"searchedId": msgID,
+			"currentId":  m,
+			"l":          l,
+			"h":          h,
+			"mid":        mid,
+		}).Info("mid")
+
 		if err != nil {
-			return nil,-1 , err
+			return nil, -1, err
 		}
 		if m == msgID {
-
 			entry = &fetchEntry{
 				messageId: m,
 				//filename:  msgFilename,
-				offset:    int64(off),
-				size:      int(size),
+				offset: int64(off),
+				size:   int(size),
 			}
-			return entry,int64(mid*uint64(INDEX_ENTRY_SIZE)),nil
-		} else if m < msgID{
-			l = mid +1
+			messageStoreLogger.WithField("msgID", m).Info("Found ID")
+			return entry, int64(mid * uint64(INDEX_ENTRY_SIZE)), nil
+		} else if m < msgID {
+			l = mid + 1
 		} else {
 			h = mid - 1
 		}
 	}
 
-	return nil,-1, errors.New("MsgId NOT FOUND")
+	return nil, -1, errors.New("MsgId NOT FOUND")
 }
