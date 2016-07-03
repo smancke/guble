@@ -4,7 +4,7 @@ import (
 	"github.com/Sirupsen/logrus"
 )
 
-// An Item is something we manage in a priority queue.
+// An IndexFileEntry is something we manage in the sorted list
 type IndexFileEntry struct {
 	msgSize uint32 // The value of the item; arbitrary.
 	msgID   uint64 // The priority of the item in the queue.
@@ -34,10 +34,10 @@ func (pq *SortedIndexList) Insert(newElement *IndexFileEntry) {
 			*pq = append(SortedIndexList{newElement}, *pq...)
 			return
 			//to optimize the performance check if the new element is having a bigger ID than the last one
-		}   else if (*pq)[pq.Len()-1].msgID <= newElement.msgID {
+		} else if (*pq)[pq.Len()-1].msgID <= newElement.msgID {
 			*pq = append(*pq, newElement)
 			return
-		}else {
+		} else {
 			//found the correct position to make an insertion sort
 			for i := 1; i <= pq.Len()-1; i++ {
 				if (*pq)[i].msgID > newElement.msgID {
@@ -64,18 +64,18 @@ func (pq *SortedIndexList) Clear() {
 // GetIndexEntryFromID performs a binarySearch retrieving the
 // true, the position and list and the actual entry if found
 // false , -1 ,nil if position is not found
-func (pq *SortedIndexList) GetIndexEntryFromID(searchedId uint64) (bool, int ,*IndexFileEntry) {
+func (pq *SortedIndexList) GetIndexEntryFromID(searchedId uint64) (bool, int, *IndexFileEntry) {
 	//messageStoreLogger.WithField("searchedId", searchedId).Info("GetIndexEntryFromID")
 
-	if(pq.Len() == 0) {
-		return false,-1,nil
+	if pq.Len() == 0 {
+		return false, -1, nil
 	}
-	h := pq.Len()-1
+	h := pq.Len() - 1
 	l := 0
 	for l <= h {
-		mid := l + (h-l)/2
+		mid := (h + l) / 2
 		if (*pq)[mid].msgID == searchedId {
-			return true,mid, (*pq)[mid]
+			return true, mid, (*pq)[mid]
 		} else if (*pq)[mid].msgID < searchedId {
 			l = mid + 1
 		} else {
@@ -83,7 +83,7 @@ func (pq *SortedIndexList) GetIndexEntryFromID(searchedId uint64) (bool, int ,*I
 		}
 	}
 
-	return false,-1, nil
+	return false, -1, nil
 }
 
 //Back retrieves the element with the biggest id or nil if list is empty
@@ -104,7 +104,7 @@ func (pq *SortedIndexList) Front() *IndexFileEntry {
 
 //Front retrieves the element at the given index or nil if position is incorrect or list is empty
 func (pq *SortedIndexList) Get(pos int) *IndexFileEntry {
-	if pq.Len() ==0 ||  pos < 0 || pos >= pq.Len()  {
+	if pq.Len() == 0 || pos < 0 || pos >= pq.Len() {
 		return nil
 	}
 	return (*pq)[pos]

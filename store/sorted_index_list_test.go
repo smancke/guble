@@ -17,7 +17,7 @@ func Test_SortedListSanity(t *testing.T) {
 	generatedIds := make([]uint64, 0, 11)
 
 	for i := 0; i < 11; i++ {
-		msgID := uint64(rand.Intn(60))
+		msgID := uint64(rand.Intn(50))
 		generatedIds = append(generatedIds, msgID)
 
 		entry := &IndexFileEntry{
@@ -48,7 +48,7 @@ func Test_SortedListSanity(t *testing.T) {
 	a.Equal(min, pq.Front().msgID)
 	a.Equal(max, pq.Back().msgID)
 
-	found, pos, foundEntry := pq.GetIndexEntryFromID(uint64(100))
+	found, pos, foundEntry := pq.GetIndexEntryFromID(uint64(1))
 	a.False(found, "Element should not be found since is a number greater than the random generated upper limit")
 	a.Equal(pos, -1)
 	a.Nil(foundEntry)

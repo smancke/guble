@@ -754,17 +754,17 @@ func binarySearchMsgIDInFile(filename string, msgID uint64) (entry *fetchEntry, 
 		messageStoreLogger.WithField("err", err).Error("os.Open failed")
 		return nil, -1, err
 	}
-	l := uint64(0)
-	h := entriesInIndex - 1
+	l := int64(0)
+	h := int64(entriesInIndex - 1)
 	for l <= h {
-		mid := l + (h-l)/2
+		mid := (h + l) / 2
 		messageStoreLogger.WithFields(
 			log.Fields{
 				"mid": mid,
 				"l":   l,
 				"h":   h,
 			}).Info("mid")
-		m, off, size, err := readIndexEntry(file, int64(mid*uint64(INDEX_ENTRY_SIZE)))
+		m, off, size, err := readIndexEntry(file, int64(mid*int64(INDEX_ENTRY_SIZE)))
 
 		if err != nil {
 			return nil, -1, err
@@ -777,7 +777,7 @@ func binarySearchMsgIDInFile(filename string, msgID uint64) (entry *fetchEntry, 
 				size:   int(size),
 			}
 			messageStoreLogger.WithField("msgID", m).Info("Found ID")
-			return entry, int64(mid * uint64(INDEX_ENTRY_SIZE)), nil
+			return entry, int64(mid * int64(INDEX_ENTRY_SIZE)), nil
 		} else if m < msgID {
 			l = mid + 1
 		} else {
