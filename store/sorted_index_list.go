@@ -4,18 +4,16 @@ import (
 	"github.com/Sirupsen/logrus"
 )
 
-
 // A PriorityQueue implements heap.Interface and holds Items.
 type SortedIndexList []*FetchEntry
 
 func (pq *SortedIndexList) Len() int { return len(*pq) }
 
-func (pq *SortedIndexList) InsertMany(newElements ...*FetchEntry) {
-	for _, el := range newElements {
+func (pq *SortedIndexList) InsertList(list *SortedIndexList) {
+	for _, el := range *list {
 		pq.Insert(el)
 	}
 }
-
 
 //Insert  adds in the sorted list a new element
 func (pq *SortedIndexList) Insert(newElement *FetchEntry) {
@@ -58,22 +56,22 @@ func (pq *SortedIndexList) Clear() {
 
 }
 
-func abs( m1,m2 uint64)  uint64 {
-	if  m1 >m2 {
-		return m1-m2
+func abs(m1, m2 uint64) uint64 {
+	if m1 > m2 {
+		return m1 - m2
 	}
 
-	return m2-m1
+	return m2 - m1
 }
 
 // GetIndexEntryFromID performs a binarySearch retrieving the
 // true, the position and list and the actual entry if found
 // false , -1 ,nil if position is not found
-func (pq *SortedIndexList) GetIndexEntryFromID(searchedId uint64) (bool, int,int, *FetchEntry) {
+func (pq *SortedIndexList) GetIndexEntryFromID(searchedId uint64) (bool, int, int, *FetchEntry) {
 	//messageStoreLogger.WithField("searchedId", searchedId).Info("GetIndexEntryFromID")
 
 	if pq.Len() == 0 {
-		return false, -1,-1, nil
+		return false, -1, -1, nil
 	}
 	h := pq.Len() - 1
 	l := 0
@@ -81,19 +79,19 @@ func (pq *SortedIndexList) GetIndexEntryFromID(searchedId uint64) (bool, int,int
 	for l <= h {
 		mid := (h + l) / 2
 		if (*pq)[mid].messageId == searchedId {
-			return true, mid,bestIndex, (*pq)[mid]
+			return true, mid, bestIndex, (*pq)[mid]
 		} else if (*pq)[mid].messageId < searchedId {
 			l = mid + 1
 		} else {
 			h = mid - 1
 		}
 
-		if abs( (*pq)[mid].messageId, searchedId ) <=  abs( (*pq)[bestIndex].messageId, searchedId ) {
+		if abs((*pq)[mid].messageId, searchedId) <= abs((*pq)[bestIndex].messageId, searchedId) {
 			bestIndex = mid
 		}
 	}
 
-	return false, -1,bestIndex, nil
+	return false, -1, bestIndex, nil
 }
 
 //Back retrieves the element with the biggest id or nil if list is empty
@@ -132,6 +130,6 @@ func (pq *SortedIndexList) PrintPq() {
 }
 
 func createIndexPriorityQueue(size int) *SortedIndexList {
-	pq := make(SortedIndexList, 0,size)
+	pq := make(SortedIndexList, 0, size)
 	return &pq
 }
