@@ -250,6 +250,7 @@ func (p *MessagePartition) createNextAppendFiles() error {
 		return err
 	}
 	p.appendFileWritePosition = uint64(stat.Size())
+	messageStoreLogger.WithField("appendPosition", p.appendFileWritePosition).Error("DAFUQ")
 
 	return nil
 }
@@ -381,6 +382,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 		messageId: msgId,
 		offset:    messageOffset,
 		size:      uint32(len(msg)),
+		fileID:    len(p.fileCache),
 	}
 	p.indexFileSortedList.Insert(e)
 
@@ -484,8 +486,12 @@ func (p *MessagePartition) calculateFetchListNew(req *FetchRequest) (*SortedInde
 	potentialEntries := createIndexPriorityQueue(0)
 
 	//reading from IndexFiles
+	// TODO: fix this prev shit
+	prev := false
 	for i, fce := range p.fileCache {
-		if fce.hasStartID(req) {
+		if fce.hasStartID(req) || (prev && potentialEntries.Len() < req.Count) {
+			prev = true
+
 			pq, err := loadIndexFile(p.composeIndexFilenameWithValue(uint64(i)), i)
 			if err != nil {
 				messageStoreLogger.WithError(err).Info("Error loading idx file in memory")
@@ -494,6 +500,8 @@ func (p *MessagePartition) calculateFetchListNew(req *FetchRequest) (*SortedInde
 
 			currentEntries := retrieveFromList(pq, req)
 			potentialEntries.InsertList(currentEntries)
+		} else {
+			prev = false
 		}
 	}
 
@@ -502,7 +510,7 @@ func (p *MessagePartition) calculateFetchListNew(req *FetchRequest) (*SortedInde
 		minMsgID: p.indexFileSortedList.Front().messageId,
 		maxMsgID: p.indexFileSortedList.Back().messageId,
 	}
-	if fce.hasStartID(req) {
+	if fce.hasStartID(req) || (prev && potentialEntries.Len() < req.Count) {
 		currentEntries := retrieveFromList(p.indexFileSortedList, req)
 		potentialEntries.InsertList(currentEntries)
 	}
@@ -671,7 +679,7 @@ func calculateNumberOfEntries(filename string) (uint64, error) {
 func (p *MessagePartition) loadLastIndexFile(filename string) error {
 	messageStoreLogger.WithField("filename", filename).Info("loadIndexFileInMemory")
 
-	pq, err := loadIndexFile(filename, -1)
+	pq, err := loadIndexFile(filename, len(p.fileCache))
 	if err != nil {
 		messageStoreLogger.WithError(err).Error("Error loading filename")
 		return err
