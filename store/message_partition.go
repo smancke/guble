@@ -395,7 +395,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 func (p *MessagePartition) Fetch(req FetchRequest) {
 	log.WithField("req", req.StartID).Error("Fetching ")
 	go func() {
-		fetchList, err := p.calculateFetchList(req)
+		fetchList, err := p.calculateFetchListNew(req)
 
 		if err != nil {
 			log.WithField("err", err).Error("Error calculating list")
@@ -419,44 +419,24 @@ func (p *MessagePartition) Fetch(req FetchRequest) {
 }
 
 // fetchByFetchlist fetches the messages in the supplied fetchlist and sends them to the message-channel
-//func (p *MessagePartition) fetchByFetchlist(fetchList []FetchEntry, messageC chan MessageAndId) error {
-//	var fileId uint64
-//	var file *os.File
-//	var err error
-//	var lastMsgId uint64
-//	for _, f := range fetchList {
-//		if lastMsgId == 0 {
-//			lastMsgId = f.messageId - 1
-//		}
-//		lastMsgId = f.messageId
-//
-//		log.WithFields(log.Fields{
-//			"lastMsgId":   lastMsgId,
-//			"f.messageId": f.messageId,
-//			//"fileID":      f.fileId,
-//		}).Debug("fetchByFetchlist for ")
-//
-//		// ensure, that we read from the correct file
-//		if file == nil { //|| fileId != f.fileId {
-//			file, err = p.checkoutMessagefile(f.fileId)
-//			if err != nil {
-//				log.WithField("err", err).Error("Error checkoutMessagefile")
-//				return err
-//			}
-//			defer p.releaseMessagefile(f.fileId, file)
-//			fileId = f.fileId
-//		}
-//
-//		msg := make([]byte, f.size, f.size)
-//		_, err = file.ReadAt(msg, f.offset)
-//		if err != nil {
-//			log.WithField("err", err).Error("Error ReadAt")
-//			return err
-//		}
-//		messageC <- MessageAndId{f.messageId, msg}
-//	}
-//	return nil
-//}
+func (p *MessagePartition) fetchByFetchlist(fetchList *SortedIndexList, messageC chan MessageAndId) error {
+	for _, f := range fetchList {
+
+		file, err := p.checkoutMessagefile(f.fileID)
+
+
+		msg := make([]byte, f.size, f.size)
+		_, err = file.ReadAt(msg, f.offset)
+		if err != nil {
+			log.WithField("err", err).Error("Error ReadAt")
+			file.Close()
+			return err
+		}
+		messageC <- MessageAndId{f.messageId, msg}
+		file.Close()
+	}
+	return nil
+}
 
 func retrieveFromList(pq *SortedIndexList, req *FetchRequest) *SortedIndexList {
 	potentialEntries := createIndexPriorityQueue(0)
@@ -746,7 +726,7 @@ func readIndexEntry(file *os.File, indexPosition int64) (uint64, uint64, uint32,
 
 // checkoutMessagefile returns a file handle to the message file with the supplied file id. The returned file handle may be shared for multiple go routines.
 func (p *MessagePartition) checkoutMessagefile(fileId uint64) (*os.File, error) {
-	return os.Open(p.composeMsgFilename())
+	return os.Open(p.composeMsgFilenameWithValue(fileId))
 }
 
 // releaseMessagefile releases a message file handle
