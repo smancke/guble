@@ -2,15 +2,15 @@ package store
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 	//"math"
 )
 
@@ -34,7 +34,7 @@ type FetchEntry struct {
 	messageId uint64
 	offset    uint64
 	size      uint32
-	fileID  int
+	fileID    int
 }
 
 type FileCacheEntry struct {
@@ -42,72 +42,14 @@ type FileCacheEntry struct {
 	maxMsgID uint64
 }
 
-func (f *FileCacheEntry) hasID(searchedID uint64) bool {
-	return f.minMsgID <= searchedID && searchedID <= f.maxMsgID
-}
-
-func (p *MessagePartition) fetchRangeUp(fileID int, req *FetchRequest,f *FileCacheEntry) (entries []*FetchEntry) {
-	hasStartID := f.hasID(req.StartID)
-	hasEndID := req.EndID != 0 && f.hasID(req.EndID)
-	if !(hasStartID || hasEndID) {
-		return
+func (f *FileCacheEntry) hasID(req *FetchRequest) bool {
+	if req.EndID == 0 {
+		return req.StartID <= f.maxMsgID
+	} else if req.StartID > f.maxMsgID {
+		return false
 	}
 
-	idxFilename := p.composeIndexFilenameWithValue(uint64(fileID) )
-	if hasStartID {
-		entry, pos, err := binarySearchMsgIDInFile(idxFilename, req.StartID)
-		if err == nil {
-			entries = append(entries,entry)
-
-			file,err := os.Open(idxFilename)
-
-			if     err != nil {
-				    return
-			}
-			defer file.Close()
-
-			for len(entries) <= req.Count && ( req.EndID == 0 || req.EndID >= entry.messageId ) {
-				m, off, size, err := readIndexEntry(file, pos+1 )
-				if err  != nil {
-					 break
-				}
-				entry = &FetchEntry{
-					messageId:m,
-					offset:off,
-					size : size,
-					fileID:   fileID,
-				}
-				entries = append(entries, entry)
-				pos++
-			}
-		} else if (pos == -1) {
-			//currentPos := 0
-			//file, err := os.Open(idxFilename)
-			//
-			//if err != nil {
-			//	messageStoreLogger.WithError(err).Error("Error opening file")
-			//	return
-			//}
-			//defer file.Close()
-			//
-			//noOfEntries, err := calculateNumberOfEntries(idxFilename)
-			//if err != nil {
-			//	messageStoreLogger.WithError(err).Error("Error calculateNumberOfEntries")
-			//	return
-			//}
-			//for currentPos < noOfEntries {
-			//	m, off, size, err := readIndexEntry(file, int64(currentPos * int64(INDEX_ENTRY_SIZE)))
-			//}
-		}
-
-		return
-	}
-
-	if hasEndID {
-
-	}
-
-	return
+	return req.EndID >= f.minMsgID
 }
 
 type MessagePartition struct {
@@ -119,10 +61,10 @@ type MessagePartition struct {
 	maxMessageId            uint64
 	localSequenceNumber     uint64
 
-	noOfEntriesInIndexFile  uint64 //TODO  MAYBE USE ONLY ONE  FROM THE noOfEntriesInIndexFile AND localSequenceNumber
-	mutex                   *sync.RWMutex
-	indexFileSortedList     *SortedIndexList
-	fileCache               []*FileCacheEntry
+	noOfEntriesInIndexFile uint64 //TODO  MAYBE USE ONLY ONE  FROM THE noOfEntriesInIndexFile AND localSequenceNumber
+	mutex                  *sync.RWMutex
+	indexFileSortedList    *SortedIndexList
+	fileCache              []*FileCacheEntry
 }
 
 func NewMessagePartition(basedir string, storeName string) (*MessagePartition, error) {
@@ -201,7 +143,7 @@ func (p *MessagePartition) readIdxFiles() error {
 
 	}
 	// read the  idx file with   biggest id and load in the sorted cache
-	err = p.loadIndexFileInMemory(indexFilesName[len(indexFilesName)-1])
+	err = p.loadLastIndexFile(indexFilesName[len(indexFilesName)-1])
 	if err != nil {
 		messageStoreLogger.WithFields(log.Fields{
 			"idxFilename": indexFilesName[(len(indexFilesName) - 1)],
@@ -468,7 +410,6 @@ func (p *MessagePartition) Fetch(req FetchRequest) {
 		}
 		close(req.MessageC)
 	}()
-	//log.WithField("req", req.StartId).Error("End Fetch")
 }
 
 // fetchByFetchlist fetches the messages in the supplied fetchlist and sends them to the message-channel
@@ -510,31 +451,15 @@ func (p *MessagePartition) Fetch(req FetchRequest) {
 //	}
 //	return nil
 //}
+
 // calculateFetchList returns a list of fetchEntry records for all messages in the fetch request.
 func (p *MessagePartition) calculateFetchListNew(req FetchRequest) ([]FetchEntry, error) {
-
-	log.WithFields(log.Fields{
-		"req": req,
-	}).Debug("calculateFetchList ")
-	if req.Direction == 0 {
-		req.Direction = 1
-	}
-
-	if req.EndID != 0 {
-
-	}
-
-	result := createIndexPriorityQueue(0)
-	for i, fce := range p.fileCache {
-		result.InsertMany(p.fetchRangeUp(i, &req,fce)...)
-	}
 
 	return nil, nil
 }
 
 // calculateFetchList returns a list of fetchEntry records for all messages in the fetch request.
 func (p *MessagePartition) calculateFetchList(req FetchRequest) ([]FetchEntry, error) {
-
 	log.WithFields(log.Fields{
 		"req": req,
 	}).Debug("calculateFetchList ")
@@ -661,9 +586,9 @@ func (p *MessagePartition) dumpSortedIndexFile(filename string) error {
 }
 
 func writeIndexEntry(file *os.File, msgID uint64, messageOffset uint64, msgSize uint32, pos uint64) error {
-
 	indexPosition := int64(uint64(INDEX_ENTRY_SIZE) * pos)
 	messageOffsetBuff := make([]byte, INDEX_ENTRY_SIZE)
+
 	binary.LittleEndian.PutUint64(messageOffsetBuff, msgID)
 	binary.LittleEndian.PutUint64(messageOffsetBuff[8:], messageOffset)
 	binary.LittleEndian.PutUint32(messageOffsetBuff[16:], msgSize)
@@ -689,49 +614,23 @@ func calculateNumberOfEntries(filename string) (uint64, error) {
 	return entriesInIndex, nil
 }
 
-func (p *MessagePartition) loadIndexFileInMemory(filename string) error {
+func (p *MessagePartition) loadLastIndexFile(filename string) error {
 	messageStoreLogger.WithField("filename", filename).Info("loadIndexFileInMemory")
 
-	entriesInIndex, err := calculateNumberOfEntries(filename)
+	pq, err := loadIndexFile(filename)
 	if err != nil {
+		messageStoreLogger.WithError(err).Error("Error loading filename")
 		return err
 	}
 
-	file, err := os.Open(filename)
-	defer file.Close()
-	if err != nil {
-		messageStoreLogger.WithField("err", err).Error("os.Open failed")
-		return err
-	}
+	p.indexFileSortedList = pq
+	p.noOfEntriesInIndexFile = uint64(pq.Len())
 
-	for i := uint64(0); i < entriesInIndex; i++ {
-		msgID, msgOffset, msgSize, err := readIndexEntry(file, int64(i*uint64(INDEX_ENTRY_SIZE)))
-		messageStoreLogger.WithFields(log.Fields{
-			"msgOffset": msgOffset,
-			"msgSize":   msgSize,
-			"msgID":     msgID,
-			"err":       err,
-		}).Info("readIndexEntry")
-
-		if err != nil {
-			log.WithField("err", err).Error("Read error")
-			return err
-		}
-
-		e := &FetchEntry{
-			size:      msgSize,
-			messageId: msgID,
-			offset:    msgOffset,
-		}
-		p.indexFileSortedList.Insert(e)
-	}
-	p.noOfEntriesInIndexFile = entriesInIndex
 	return nil
 }
 
 //TODO remove after test  //Momentan nu merge scrierea inapoi in fisierul sortat..Asta ramanand nesortat...pt ca dimensiunea listei ...nu e corecta..INsert prost
-func ForTestPurposecheckIndexFile(filename string) (*SortedIndexList, error) {
-
+func loadIndexFile(filename string) (*SortedIndexList, error) {
 	pq := createIndexPriorityQueue(1000)
 	messageStoreLogger.WithField("filename", filename).Info("checkIndexFile")
 
@@ -825,46 +724,4 @@ func (p *MessagePartition) composeIndexFilename() string {
 
 func (p *MessagePartition) composeIndexFilenameWithValue(value uint64) string {
 	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.name, value))
-}
-
-//binary Search the idx File retrieving the fetchEntry associated or error if msgID not found in file
-func binarySearchMsgIDInFile(filename string, msgID uint64) (entry *FetchEntry, position int64,err error) {
-
-	entriesInIndex, err := calculateNumberOfEntries(filename)
-	if err != nil || entriesInIndex < 1 { //if there is an error or there are not any entries in the file
-		return nil, -1, err
-	}
-
-	file, err := os.Open(filename)
-	defer file.Close()
-	if err != nil {
-		messageStoreLogger.WithField("err", err).Error("os.Open failed")
-		return nil, -1, err
-	}
-	l := int64(0)
-	h := int64(entriesInIndex - 1)
-	for l <= h {
-
-		mid := (h + l) / 2
-		m, off, size, err := readIndexEntry(file, int64(mid*int64(INDEX_ENTRY_SIZE)))
-
-		if err != nil {
-			return nil, -1, err
-		}
-		if m == msgID {
-			entry = &FetchEntry{
-				messageId: m,
-				offset: uint64(off),
-				size:   uint32(size),
-			}
-			messageStoreLogger.WithField("msgID", m).Info("Found ID")
-			return entry,int64(mid * int64(INDEX_ENTRY_SIZE)), nil
-		} else if m < msgID {
-			l = mid + 1
-		} else {
-			h = mid - 1
-		}
-	}
-
-	return nil,-1, errors.New("MsgId NOT FOUND")
 }

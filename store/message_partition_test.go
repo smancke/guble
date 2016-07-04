@@ -1,15 +1,15 @@
 package store
 
 import (
-	"github.com/Sirupsen/logrus"
+
 	//"github.com/smancke/guble/testutil"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
 	"time"
-	"github.com/smancke/guble/testutil"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_MessagePartition_scanFiles(t *testing.T) {
@@ -208,25 +208,25 @@ func Test_calculateFetchList(t *testing.T) {
 		{`direct match`,
 			FetchRequest{StartID: 3, Direction: 0, Count: 1},
 			[]FetchEntry{
-				{3, 21, 10,0}, // messageId, fileId, offset, size
+				{3, 21, 10, 0}, // messageId, fileId, offset, size
 			},
 		},
 		{`direct match in second file`,
 			FetchRequest{StartID: MESSAGES_PER_FILE, Direction: 0, Count: 1},
 			[]FetchEntry{
-				{MESSAGES_PER_FILE, 21, 10,0}, // messageId, fileId, offset, size
+				{MESSAGES_PER_FILE, 21, 10, 0}, // messageId, fileId, offset, size
 			},
 		},
 		{`next entry matches`,
 			FetchRequest{StartID: 1, Direction: 0, Count: 1},
 			[]FetchEntry{
-				{3,  21, 10,0}, // messageId, fileId, offset, size
+				{3, 21, 10, 0}, // messageId, fileId, offset, size
 			},
 		},
 		{`entry before matches`,
 			FetchRequest{StartID: 5, Direction: -1, Count: 1},
 			[]FetchEntry{
-				{4,  43, 10,0}, // messageId, fileId, offset, size
+				{4, 43, 10, 0}, // messageId, fileId, offset, size
 			},
 		},
 		{`backward, no match`,
@@ -407,59 +407,4 @@ func Test_calculateMaxMessageIdFromIndex(t *testing.T) {
 	maxMessageId, err := store.calculateMaxMessageIdFromIndex(uint64(0))
 	a.NoError(err)
 	a.Equal(uint64(2), maxMessageId)
-}
-
-func Test_ReadIndex(t *testing.T) {
-	a := assert.New(t)
-	defer testutil.EnableDebugForMethod()()
-	//
-	////// when i store a message
-	//store, _ := NewMessagePartition("/tmp/s4/testTopic", "testTopic")
-	//
-	//pq, err := ForTestPurposecheckIndexFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx")
-	//pq.PrintPq()
-	//
-	//store.fileCache = make([]*FileCacheEntry, 0)
-	//store.indexFileSortedList = pq
-	//generatedIds := make([]uint64, 0)
-	//
-	//for i := 0; i < pq.Len(); i++ {
-	//	generatedIds = append(generatedIds, pq.Get(i).messageId)
-	//}
-	//
-	////
-	logrus.Info("----------------StartDumping-------------------------------")
-	//
-	//err = store.dumpSortedIndexFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx")
-	//a.Nil(err)
-	////pq2, err := ForTestPurposecheckIndexFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx")
-	////pq2.PrintPq()
-	//
-	//logrus.Info("----------------EndDumping-------------------------------")
-	//min, max, err := readMinMaxMsgIdFromIndexFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx")
-	//logrus.WithFields(logrus.Fields{
-	//	"mind": min,
-	//	"max":  max,
-	//}).Info("11111 file")
-	//
-	//for _, id := range generatedIds {
-	//	entry,_, pos, err := binarySearchMsgIDInFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx", id)
-	//
-	//	a.Nil(err)
-	//	a.NotEqual(pos, -1)
-	//	a.Equal(id, entry.messageId)
-	//}
-
-	entry, pos, err := binarySearchMsgIDInFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx", uint64(59376668673))
-
-	a.NotNil(err)
-	a.NotEqual(pos, -1)
-
-	entry, pos, err = binarySearchMsgIDInFile("/tmp/s4/testTopic/testTopic-00000000000000000000.idx", uint64(59376668671))
-
-	a.NotNil(err)
-	a.NotEqual(pos, -1)
-
-	a.Nil(entry)
-
 }
