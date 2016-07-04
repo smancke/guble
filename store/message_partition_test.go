@@ -405,7 +405,7 @@ func Test_Partition_Fetch(t *testing.T) {
 
 		messages := []string{}
 
-		store.Fetch(testcase.req)
+		store.Fetch(&testcase.req)
 
 		select {
 		case numberOfResults := <-testcase.req.StartCallback:

@@ -3,13 +3,14 @@ package store
 import (
 	"github.com/stretchr/testify/assert"
 
-	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"math"
 	"os"
 	"strconv"
 	"testing"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 func Test_MessagePartition_forConcurrentWriteAndReads(t *testing.T) {
@@ -68,7 +69,7 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 			"lastReadMsg": lastReadMessage + 1,
 		}).Debug("Start fetching at")
 
-		store.Fetch(FetchRequest{
+		store.Fetch(&FetchRequest{
 			Partition:     "myMessages",
 			StartID:       uint64(lastReadMessage + 1),
 			Direction:     1,
