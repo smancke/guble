@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/smancke/guble/testutil"
+	"github.com/Sirupsen/logrus"
 )
 
 func Test_MessagePartition_scanFiles(t *testing.T) {
@@ -393,6 +395,52 @@ func Test_Partition_Fetch(t *testing.T) {
 //	a.Equal(MESSAGES_PER_FILE, store.firstMessageIdForFile(MESSAGES_PER_FILE))
 //	a.Equal(MESSAGES_PER_FILE, store.firstMessageIdForFile(MESSAGES_PER_FILE+uint64(1)))
 //}
+
+
+func Test_calculateMaxMessageIdFromIndex2(t *testing.T) {
+	a := assert.New(t)
+	defer testutil.EnableDebugForMethod()()
+
+	f:= make([]*FileCacheEntry, 0)
+	f = append(f, &FileCacheEntry{
+		minMsgID: 1,
+		maxMsgID:9,
+	})
+
+	f = append(f, &FileCacheEntry{
+		minMsgID: 10,
+		maxMsgID:28,
+	})
+
+
+	f = append(f, &FileCacheEntry{
+		minMsgID: 29,
+		maxMsgID:35,
+	})
+
+	f = append(f, &FileCacheEntry{
+		minMsgID: 17,
+		maxMsgID: 30,
+	})
+
+	req := FetchRequest{StartID: 11,EndID:31, Direction: 0, Count: 1}
+
+	for _ ,ff := range f {
+		tt:=ff.hasStartID(&req)
+		logrus.WithField("dd",tt).Info()
+	}
+
+	req2 := FetchRequest{StartID: 11, Direction: -1, Count: 1}
+
+	for _ ,ff := range f {
+		tt:=ff.hasStartID(&req2)
+		logrus.WithField("dd",tt).Info()
+	}
+
+
+	a.Nil(nil)
+}
+
 
 func Test_calculateMaxMessageIdFromIndex(t *testing.T) {
 	a := assert.New(t)
