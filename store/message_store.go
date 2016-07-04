@@ -2,11 +2,12 @@ package store
 
 import (
 	"errors"
-	log "github.com/Sirupsen/logrus"
 	"os"
 	"path"
 	"sync"
 	"syscall"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 var messageStoreLogger = log.WithFields(log.Fields{
@@ -53,10 +54,10 @@ func (fms *FileMessageStore) Stop() error {
 	return returnError
 }
 
-func (fms *FileMessageStore) GenerateNextMsgId(msgPathPartition string, nodeID int) (uint64,int64, error) {
+func (fms *FileMessageStore) GenerateNextMsgId(msgPathPartition string, nodeID int) (uint64, int64, error) {
 	p, err := fms.partitionStore(msgPathPartition)
 	if err != nil {
-		return 0,0, err
+		return 0, 0, err
 	}
 	return p.generateNextMsgId(nodeID)
 }
@@ -71,7 +72,7 @@ func (fms *FileMessageStore) Store(partition string, msgId uint64, msg []byte) e
 }
 
 // Fetch asynchronously fetches a set of messages defined by the fetch request
-func (fms *FileMessageStore) Fetch(req FetchRequest) {
+func (fms *FileMessageStore) Fetch(req *FetchRequest) {
 	p, err := fms.partitionStore(req.Partition)
 	if err != nil {
 		req.ErrorCallback <- err

@@ -394,7 +394,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 }
 
 // Fetch fetches a set of messages
-func (p *MessagePartition) Fetch(req FetchRequest) {
+func (p *MessagePartition) Fetch(req *FetchRequest) {
 	log.WithField("req", req.StartID).Error("Fetching ")
 	go func() {
 		fetchList, err := p.calculateFetchListNew(req)
@@ -406,7 +406,7 @@ func (p *MessagePartition) Fetch(req FetchRequest) {
 		}
 
 		log.WithField("fetchLIst", fetchList).Debug("FetchING ")
-		req.StartCallback <- len(fetchList)
+		req.StartCallback <- fetchList.Len()
 
 		log.WithField("fetchLIst", fetchList).Debug("Fetch 2")
 		//err = p.fetchByFetchlist(fetchList, req.MessageC)
@@ -422,13 +422,11 @@ func (p *MessagePartition) Fetch(req FetchRequest) {
 
 // fetchByFetchlist fetches the messages in the supplied fetchlist and sends them to the message-channel
 func (p *MessagePartition) fetchByFetchlist(fetchList *SortedIndexList, messageC chan MessageAndId) error {
-	for _, f := range fetchList {
-
-		file, err := p.checkoutMessagefile(f.fileID)
-
+	for _, f := range *fetchList {
+		file, err := p.checkoutMessagefile(uint64(f.fileID))
 
 		msg := make([]byte, f.size, f.size)
-		_, err = file.ReadAt(msg, f.offset)
+		_, err = file.ReadAt(msg, int64(f.offset))
 		if err != nil {
 			log.WithField("err", err).Error("Error ReadAt")
 			file.Close()
