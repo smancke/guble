@@ -41,7 +41,10 @@ type FetchRequest struct {
 	Partition string
 
 	// StartId is the message sequence id to start
-	StartId uint64
+	StartID   uint64
+
+	//EndId is the message sequence id to finish. If0  will not be used.
+	EndID     uint64
 
 	// Direction has 3 possible values:
 	// Direction == 0: Only the Message with StartId
@@ -50,13 +53,13 @@ type FetchRequest struct {
 	Direction int
 
 	// Count is the maximum number of messages to return
-	Count int
+	Count     int
 
 	// Prefix is the message prefix to filter
-	Prefix []byte
+	Prefix    []byte
 
 	// MessageC is the channel to send the message back to the receiver
-	MessageC chan MessageAndId
+	MessageC  chan MessageAndId
 
 	// ErrorCallback is a Callback if an error occurs
 	ErrorCallback chan error

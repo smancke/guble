@@ -43,7 +43,7 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 		go func() {
 			a.Equal("foo", r.Partition)
 			a.Equal(1, r.Direction)
-			a.Equal(uint64(0), r.StartId)
+			a.Equal(uint64(0), r.StartID)
 			a.Equal(int(math.MaxInt32), r.Count)
 
 			r.StartCallback <- 2
@@ -66,7 +66,7 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 		go func() {
 			a.Equal("foo", r.Partition)
 			a.Equal(1, r.Direction)
-			a.Equal(uint64(3), r.StartId)
+			a.Equal(uint64(3), r.StartID)
 			a.Equal(int(math.MaxInt32), r.Count)
 
 			r.StartCallback <- 1
@@ -95,7 +95,7 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	// router closed, so we fetch again, starting at 6 (after meesages from subscribe)
 	fetchAfter := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
 		go func() {
-			a.Equal(uint64(6), r.StartId)
+			a.Equal(uint64(6), r.StartID)
 			a.Equal(int(math.MaxInt32), r.Count)
 
 			r.StartCallback <- 1
@@ -201,22 +201,22 @@ func Test_Receiver_Fetch_Produces_Correct_Fetch_Requests(t *testing.T) {
 		{desc: "simple forward fetch",
 			arg:    "/foo 0 20",
 			maxId:  -1,
-			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartId: uint64(0), Count: 20},
+			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartID: uint64(0), Count: 20},
 		},
 		{desc: "forward fetch without bounds",
 			arg:    "/foo 0",
 			maxId:  -1,
-			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartId: uint64(0), Count: math.MaxInt32},
+			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartID: uint64(0), Count: math.MaxInt32},
 		},
 		{desc: "backward fetch to top",
 			arg:    "/foo -20",
 			maxId:  42,
-			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartId: uint64(23), Count: 20},
+			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartID: uint64(23), Count: 20},
 		},
 		{desc: "backward fetch with count",
 			arg:    "/foo -1 10",
 			maxId:  42,
-			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartId: uint64(42), Count: 10},
+			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartID: uint64(42), Count: 10},
 		},
 	}
 
@@ -235,7 +235,7 @@ func Test_Receiver_Fetch_Produces_Correct_Fetch_Requests(t *testing.T) {
 		messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
 			a.Equal(test.expect.Partition, r.Partition, test.desc)
 			a.Equal(test.expect.Direction, r.Direction, test.desc)
-			a.Equal(test.expect.StartId, r.StartId, test.desc)
+			a.Equal(test.expect.StartID, r.StartID, test.desc)
 			a.Equal(test.expect.Count, r.Count, test.desc)
 			done <- true
 		})

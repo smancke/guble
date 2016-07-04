@@ -20,12 +20,10 @@ func Test_SortedListSanity(t *testing.T) {
 		msgID := uint64(rand.Intn(50))
 		generatedIds = append(generatedIds, msgID)
 
-		entry := &IndexFileEntry{
-			msgSize:  3,
-			msgID:    uint64(msgID),
-			filename: "file",
-			//index:i,
-			messageOffset: 128,
+		entry := &FetchEntry{
+			size:  3,
+			messageId:    uint64(msgID),
+			offset: 128,
 		}
 		pq.Insert(entry)
 	}
@@ -41,19 +39,19 @@ func Test_SortedListSanity(t *testing.T) {
 		}
 		found, pos, foundEntry := pq.GetIndexEntryFromID(id)
 		a.True(found)
-		a.Equal(foundEntry.msgID, id)
+		a.Equal(foundEntry.messageId, id)
 		a.True(pos >= 0 && pos <= len(generatedIds))
 	}
 
-	a.Equal(min, pq.Front().msgID)
-	a.Equal(max, pq.Back().msgID)
+	a.Equal(min, pq.Front().messageId)
+	a.Equal(max, pq.Back().messageId)
 
 	found, pos, foundEntry := pq.GetIndexEntryFromID(uint64(1))
 	a.False(found, "Element should not be found since is a number greater than the random generated upper limit")
 	a.Equal(pos, -1)
 	a.Nil(foundEntry)
 
-	a.Equal(pq.Front().msgID,pq.Get(0).msgID,"First element should contain the smallest element")
+	a.Equal(pq.Front().messageId,pq.Get(0).messageId,"First element should contain the smallest element")
 	a.Nil(pq.Get(-1), "Trying to get an invalid index will return nil")
 
 	pq.Clear()

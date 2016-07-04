@@ -226,7 +226,7 @@ func (rec *Receiver) fetch() error {
 
 	if rec.startId >= 0 {
 		fetch.Direction = 1
-		fetch.StartId = uint64(rec.startId)
+		fetch.StartID = uint64(rec.startId)
 		if rec.maxCount == 0 {
 			fetch.Count = math.MaxInt32
 		}
@@ -236,7 +236,7 @@ func (rec *Receiver) fetch() error {
 		if err != nil {
 			return err
 		}
-		fetch.StartId = maxId + 1 + uint64(rec.startId)
+		fetch.StartID = maxId + 1 + uint64(rec.startId)
 		if rec.maxCount == 0 {
 			fetch.Count = -1 * int(rec.startId)
 		}

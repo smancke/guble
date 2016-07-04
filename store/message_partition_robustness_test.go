@@ -70,7 +70,7 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 
 		store.Fetch(FetchRequest{
 			Partition:     "myMessages",
-			StartId:       uint64(lastReadMessage + 1),
+			StartID:       uint64(lastReadMessage + 1),
 			Direction:     1,
 			Count:         math.MaxInt32,
 			MessageC:      msgC,
