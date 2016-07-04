@@ -58,29 +58,42 @@ func (pq *SortedIndexList) Clear() {
 
 }
 
+func abs( m1,m2 uint64)  uint64 {
+	if  m1 >m2 {
+		return m1-m2
+	}
+
+	return m2-m1
+}
+
 // GetIndexEntryFromID performs a binarySearch retrieving the
 // true, the position and list and the actual entry if found
 // false , -1 ,nil if position is not found
-func (pq *SortedIndexList) GetIndexEntryFromID(searchedId uint64) (bool, int, *FetchEntry) {
+func (pq *SortedIndexList) GetIndexEntryFromID(searchedId uint64) (bool, int,int, *FetchEntry) {
 	//messageStoreLogger.WithField("searchedId", searchedId).Info("GetIndexEntryFromID")
 
 	if pq.Len() == 0 {
-		return false, -1, nil
+		return false, -1,-1, nil
 	}
 	h := pq.Len() - 1
 	l := 0
+	bestIndex := l
 	for l <= h {
 		mid := (h + l) / 2
 		if (*pq)[mid].messageId == searchedId {
-			return true, mid, (*pq)[mid]
+			return true, mid,bestIndex, (*pq)[mid]
 		} else if (*pq)[mid].messageId < searchedId {
 			l = mid + 1
 		} else {
 			h = mid - 1
 		}
+
+		if abs( (*pq)[mid].messageId, searchedId ) <=  abs( (*pq)[bestIndex].messageId, searchedId ) {
+			bestIndex = mid
+		}
 	}
 
-	return false, -1, nil
+	return false, -1,bestIndex, nil
 }
 
 //Back retrieves the element with the biggest id or nil if list is empty
