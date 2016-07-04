@@ -183,23 +183,42 @@ func Benchmark_Storing_1MB_Messages(b *testing.B) {
 //}
 
 func Test_calculateFetchList(t *testing.T) {
+	// allow five messages per file
+	MESSAGES_PER_FILE = uint64(5)
+
+	msgData := []byte("aaaaaaaaaa") // 10 bytes message
+
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 
-	// when i store a message
 	store, _ := NewMessagePartition(dir, "myMessages")
-	store.maxMessageId = uint64(2) // hack, for test setup
-	a.NoError(store.Store(uint64(3), []byte("aaaaaaaaaa")))
-	a.NoError(store.Store(uint64(4), []byte("bbbbbbbbbb")))
-	store.maxMessageId = uint64(9) // hack, for test setup
-	a.NoError(store.Store(uint64(10), []byte("cccccccccc")))
-	store.maxMessageId = MESSAGES_PER_FILE - uint64(1) // hack, for test setup
-	a.NoError(store.Store(MESSAGES_PER_FILE, []byte("1111111111")))
-	store.maxMessageId = MESSAGES_PER_FILE + uint64(4) // hack, for test setup
-	a.NoError(store.Store(MESSAGES_PER_FILE+uint64(5), []byte("2222222222")))
+
+	a.NoError(store.Store(uint64(3), msgData)) // stored offset 9, size: 10
+	a.NoError(store.Store(uint64(4), msgData)) // stored offset 19, size: 10
+
+	a.NoError(store.Store(uint64(10), msgData)) // stored offset 29
+
+	a.NoError(store.Store(uint64(9), msgData)) // stored offset 39
+	a.NoError(store.Store(uint64(5), msgData)) // stored offset 49
+
+	// here second file will start
+	a.NoError(store.Store(uint64(8), msgData))  // stored offset 9
+	a.NoError(store.Store(uint64(15), msgData)) // stored offset 19
+	a.NoError(store.Store(uint64(13), msgData)) // stored offset 29
+
+	a.NoError(store.Store(uint64(22), msgData)) // stored offset 39
+	a.NoError(store.Store(uint64(23), msgData)) // stored offset 49
+
+	// third file
+	a.NoError(store.Store(uint64(24), msgData)) // stored offset 9
+	a.NoError(store.Store(uint64(26), msgData)) // stored offset 19
+
+	a.NoError(store.Store(uint64(30), msgData)) // stored offset 29
+
 	defer a.NoError(store.Close())
 
+	// MAGIC_NUMBER + FILE_NUMBER_VERSION = 9 bytes in the file
 	testCases := []struct {
 		description     string
 		req             FetchRequest
@@ -208,25 +227,31 @@ func Test_calculateFetchList(t *testing.T) {
 		{`direct match`,
 			FetchRequest{StartID: 3, Direction: 0, Count: 1},
 			[]FetchEntry{
-				{3, 21, 10, 0}, // messageId, fileId, offset, size
+				{3, 9, 10, 0}, // messageId, offset, size, fileId
 			},
 		},
 		{`direct match in second file`,
-			FetchRequest{StartID: MESSAGES_PER_FILE, Direction: 0, Count: 1},
+			FetchRequest{StartID: 8, Direction: 0, Count: 1},
 			[]FetchEntry{
-				{MESSAGES_PER_FILE, 21, 10, 0}, // messageId, fileId, offset, size
+				{8, 19, 10, 0}, // messageId, offset, size, fileId,
+			},
+		},
+		{`direct match in second file, not first position`,
+			FetchRequest{StartID: 13, Direction: 0, Count: 1},
+			[]FetchEntry{
+				{13, 29, 10, 0}, // messageId, offset, size, fileId,
 			},
 		},
 		{`next entry matches`,
 			FetchRequest{StartID: 1, Direction: 0, Count: 1},
 			[]FetchEntry{
-				{3, 21, 10, 0}, // messageId, fileId, offset, size
+				{3, 9, 10, 0}, // messageId, offset, size, fileId
 			},
 		},
 		{`entry before matches`,
 			FetchRequest{StartID: 5, Direction: -1, Count: 1},
 			[]FetchEntry{
-				{4, 43, 10, 0}, // messageId, fileId, offset, size
+				{4, 19, 10, 0}, // messageId, offset, size, fileId
 			},
 		},
 		{`backward, no match`,
@@ -241,26 +266,38 @@ func Test_calculateFetchList(t *testing.T) {
 			FetchRequest{StartID: MESSAGES_PER_FILE + uint64(8), Direction: 1, Count: 1},
 			[]FetchEntry{},
 		},
-		/*
-			{`forward, overlapping files`,
-				FetchRequest{StartId: 9, Direction: 1, Count: 3},
-				[]fetchEntry{
-					fetchEntry{10, uint64(0), 65, 10},                                    // messageId, fileId, offset, size
-					fetchEntry{MESSAGES_PER_FILE, MESSAGES_PER_FILE, 21, 10},             // messageId, fileId, offset, size
-					fetchEntry{MESSAGES_PER_FILE + uint64(5), MESSAGES_PER_FILE, 43, 10}, // messageId, fileId, offset, size
-				},
+		{`forward, overlapping files`,
+			FetchRequest{StartID: 9, Direction: 1, Count: 3},
+			[]FetchEntry{
+				FetchEntry{9, 39, 10, 0},  // messageId, offset, size, fileId
+				FetchEntry{10, 29, 10, 1}, // messageId, offset, size, fileId
+				FetchEntry{13, 19, 10, 1}, // messageId, offset, size, fileId
 			},
-			{`backward, overlapping files`,
-				FetchRequest{StartId: MESSAGES_PER_FILE + uint64(100), Direction: -1, Count: 100},
-				[]fetchEntry{
-					fetchEntry{MESSAGES_PER_FILE + uint64(5), MESSAGES_PER_FILE, 43, 10}, // messageId, fileId, offset, size
-					fetchEntry{MESSAGES_PER_FILE, MESSAGES_PER_FILE, 21, 10},             // messageId, fileId, offset, size
-					fetchEntry{10, uint64(0), 65, 10},                                    // messageId, fileId, offset, size
-					fetchEntry{4, uint64(0), 43, 10},                                     // messageId, fileId, offset, size
-					fetchEntry{3, uint64(0), 21, 10},                                     // messageId, fileId, offset, size
-				},
+		},
+		{`backward, overlapping files`,
+			FetchRequest{StartID: 26, Direction: -1, Count: 4},
+			[]FetchEntry{
+				FetchEntry{15, 19, 10, 1}, // messageId, offset, size, fileId
+				FetchEntry{22, 39, 10, 1}, // messageId, offset, size, fileId
+				FetchEntry{23, 49, 10, 1}, // messageId, offset, size, fileId
+				FetchEntry{24, 9, 10, 2},  // messageId, offset, size, fileId
+				FetchEntry{26, 19, 10, 2}, // messageId, offset, size, fileId
 			},
-		*/
+		},
+		{`forward, over more then 2 files`,
+			FetchRequest{StartID: 5, Direction: 1, Count: 10},
+			[]FetchEntry{
+				FetchEntry{5, 49, 10, 0},  // messageId, offset, size, fileId
+				FetchEntry{9, 39, 10, 0},  // messageId, offset, size, fileId
+				FetchEntry{10, 29, 10, 1}, // messageId, offset, size, fileId
+				FetchEntry{13, 19, 10, 1}, // messageId, offset, size, fileId
+				FetchEntry{15, 19, 10, 1}, // messageId, offset, size, fileId
+				FetchEntry{22, 39, 10, 1}, // messageId, offset, size, fileId
+				FetchEntry{23, 49, 10, 1}, // messageId, offset, size, fileId
+				FetchEntry{24, 9, 10, 2},  // messageId, offset, size, fileId
+				FetchEntry{26, 19, 10, 2}, // messageId, offset, size, fileId
+			},
+		},
 	}
 
 	for _, testcase := range testCases {
