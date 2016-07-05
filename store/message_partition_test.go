@@ -1,15 +1,14 @@
 package store
 
 import (
-
-	"io/ioutil"
-	"os"
-	"testing"
-	"time"
+	"fmt"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
-	"fmt"
+	"io/ioutil"
+	"os"
 	"path"
+	"testing"
+	"time"
 )
 
 func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
@@ -20,16 +19,56 @@ func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
 	store, err := NewMessagePartition(dir, "node1")
 	a.Nil(err)
 
-	generatedIDs :=  make([]uint64,0)
-	lastId  := uint64(0)
+	generatedIDs := make([]uint64, 0)
+	lastId := uint64(0)
 
-	for i :=0 ;i < 1000 ; i++  {
-		id ,_,err := store.generateNextMsgId(1)
-		generatedIDs = append(generatedIDs,id)
-		a.True(id > lastId,"Ids should be monotonic")
-		lastId =id
+	for i := 0; i < 1000; i++ {
+		id, _, err := store.generateNextMsgId(1)
+		generatedIDs = append(generatedIDs, id)
+		a.True(id > lastId, "Ids should be monotonic")
+		lastId = id
 		a.Nil(err)
 	}
+}
+
+func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
+	a := assert.New(t)
+
+	//defer testutil.EnableDebugForMethod()()
+
+	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
+	defer os.RemoveAll(dir)
+	store, err := NewMessagePartition(dir, "node1")
+	a.Nil(err)
+
+	dir2, _ := ioutil.TempDir("", "guble_message_partition_test2")
+	defer os.RemoveAll(dir2)
+	store2, err := NewMessagePartition(dir2, "node1")
+	a.Nil(err)
+
+	generatedIDs := make([]uint64, 0)
+	lastId := uint64(0)
+
+	for i := 0; i < 1000; i++ {
+		id, _, err := store.generateNextMsgId(1)
+		id2, _, err := store2.generateNextMsgId(2)
+		a.True(id2 > id, "Ids should be monotonic")
+		generatedIDs = append(generatedIDs, id)
+		generatedIDs = append(generatedIDs, id2)
+		time.Sleep(1 * time.Millisecond)
+		a.True(id > lastId, "Ids should be monotonic")
+		a.True(id2 > lastId, "Ids should be monotonic")
+		lastId = id2
+		a.Nil(err)
+	}
+
+	for i :=0 ;i < len(generatedIDs)-1 ;i++ {
+		if generatedIDs[i] >= generatedIDs[i+1] {
+			a.FailNow("Not Sorted")
+		}
+	}
+
+
 }
 
 func Test_MessagePartition_loadFiles(t *testing.T) {
@@ -41,7 +80,7 @@ func Test_MessagePartition_loadFiles(t *testing.T) {
 	defer os.RemoveAll(dir)
 	store, _ := NewMessagePartition(dir, "myMessages")
 
-	msgData := []byte("aaaaaaaaaa") // 10 bytes message
+	msgData := []byte("aaaaaaaaaa")            // 10 bytes message
 	a.NoError(store.Store(uint64(3), msgData)) // stored offset 21, size: 10
 	a.NoError(store.Store(uint64(4), msgData)) // stored offset 21+10+12=43
 
@@ -65,12 +104,12 @@ func Test_MessagePartition_loadFiles(t *testing.T) {
 	a.NoError(store.Store(uint64(30), msgData)) // stored offset 65
 	a.NoError(store.Close())
 
-	err  := store.readIdxFiles()
+	err := store.readIdxFiles()
 	a.NoError(err)
 
-	min,max,err := readMinMaxMsgIdFromIndexFile(path.Join(dir,"myMessages-00000000000000000000.idx"))
-	a.Equal(uint64(3),min)
-	a.Equal(uint64(10),max)
+	min, max, err := readMinMaxMsgIdFromIndexFile(path.Join(dir, "myMessages-00000000000000000000.idx"))
+	a.Equal(uint64(3), min)
+	a.Equal(uint64(10), max)
 	a.NoError(err)
 
 }
@@ -379,7 +418,7 @@ func Test_Partition_Fetch(t *testing.T) {
 		},
 		{`backward, overlapping files`,
 			FetchRequest{StartID: 26, Direction: -1, Count: 4},
-			[]string{ "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa"},
+			[]string{"aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa"},
 		},
 		{`backward, all messages`,
 			FetchRequest{StartID: uint64(100), Direction: -1, Count: 100},
@@ -437,5 +476,3 @@ func TestFilenameGeneration(t *testing.T) {
 	a.Equal("/foo/bar/myMessages-00000000000000000000.idx", store.composeIndexFilenameWithValue(0))
 	a.Equal(fmt.Sprintf("/foo/bar/myMessages-%020d.idx", MESSAGES_PER_FILE), store.composeIndexFilenameWithValue(MESSAGES_PER_FILE))
 }
-
-
