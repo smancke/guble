@@ -2,35 +2,57 @@ package store
 
 import (
 
-	//"github.com/smancke/guble/testutil"
 	"io/ioutil"
 	"os"
-	"path"
 	"testing"
 	"time"
-
-	"github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
+	"fmt"
+	"path"
 )
 
-func Test_MessagePartition_scanFiles(t *testing.T) {
+func Test_MessagePartition_loadFiles(t *testing.T) {
 	a := assert.New(t)
+	// allow five messages per file
+	MESSAGES_PER_FILE = uint64(5)
+
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 	store, _ := NewMessagePartition(dir, "myMessages")
 
-	a.NoError(ioutil.WriteFile(path.Join(dir, "myMessages-00000000000000420000.idx"), []byte{}, 0777))
-	a.NoError(ioutil.WriteFile(path.Join(dir, "myMessages-00000000000000000000.idx"), []byte{}, 0777))
-	a.NoError(ioutil.WriteFile(path.Join(dir, "myMessages-00000000000000010000.idx"), []byte{}, 0777))
+	msgData := []byte("aaaaaaaaaa") // 10 bytes message
+	a.NoError(store.Store(uint64(3), msgData)) // stored offset 21, size: 10
+	a.NoError(store.Store(uint64(4), msgData)) // stored offset 21+10+12=43
 
-	err := store.readIdxFiles()
+	a.NoError(store.Store(uint64(10), msgData)) // stored offset 43+22=65
+
+	a.NoError(store.Store(uint64(9), msgData)) // stored offset 65+22=87
+	a.NoError(store.Store(uint64(5), msgData)) // stored offset 87+22=109
+
+	// here second file will start
+	a.NoError(store.Store(uint64(8), msgData))  // stored offset 21
+	a.NoError(store.Store(uint64(15), msgData)) // stored offset 43
+	a.NoError(store.Store(uint64(13), msgData)) // stored offset 65
+
+	a.NoError(store.Store(uint64(22), msgData)) // stored offset 87
+	a.NoError(store.Store(uint64(23), msgData)) // stored offset 109
+
+	// third file
+	a.NoError(store.Store(uint64(24), msgData)) // stored offset 21
+	a.NoError(store.Store(uint64(26), msgData)) // stored offset 43
+
+	a.NoError(store.Store(uint64(30), msgData)) // stored offset 65
+	a.NoError(store.Close())
+
+	err  := store.readIdxFiles()
 	a.NoError(err)
-	//a.Equal([]uint64{
-	//	0,
-	//	10000,
-	//	420000,
-	//}, fileIds)
+
+	min,max,err := readMinMaxMsgIdFromIndexFile(path.Join(dir,"myMessages-00000000000000000000.idx"))
+	a.Equal(uint64(3),min)
+	a.Equal(uint64(10),max)
+	a.NoError(err)
+
 }
 
 func Test_MessagePartition_correctIdAfterRestart(t *testing.T) {
@@ -47,80 +69,6 @@ func Test_MessagePartition_correctIdAfterRestart(t *testing.T) {
 	newStore, err := NewMessagePartition(dir, "myMessages")
 	a.NoError(err)
 	a.Equal(uint64(2), fne(newStore.MaxMessageId()))
-}
-
-func TestCreateNextAppendFiles(t *testing.T) {
-	a := assert.New(t)
-
-	// given: a store
-	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
-	defer os.RemoveAll(dir)
-	store, _ := NewMessagePartition(dir, "myMessages")
-
-	// when i create append files
-	a.NoError(store.createNextAppendFiles())
-
-	//a.Equal(uint64(420000), store.appendFirstId)
-	//a.Equal(uint64(429999), store.appendLastId)
-	a.Equal(uint64(0x9), store.appendFileWritePosition)
-
-	// and close the store
-	a.NoError(store.Close())
-
-	// then both files are empty
-	msgs, errRead := ioutil.ReadFile(dir + "/myMessages-00000000000000420000.msg")
-	a.NoError(errRead)
-	a.Equal(9, len(msgs))
-	a.Equal(MAGIC_NUMBER, msgs[0:8])
-	a.Equal(byte(1), msgs[8])
-
-	idx, errIdx := ioutil.ReadFile(dir + "/myMessages-00000000000000420000.idx")
-	a.NoError(errIdx)
-	a.Equal([]byte{}, idx)
-}
-
-func Test_Storing_Two_Messages_With_Append(t *testing.T) {
-	a := assert.New(t)
-
-	// given: a store
-	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
-	defer os.RemoveAll(dir)
-
-	// when i store a message
-	store, _ := NewMessagePartition(dir, "myMessages")
-	a.NoError(store.Store(0x1, []byte("abc")))
-	a.NoError(store.Close())
-
-	// and I add another message with a new store
-	store, _ = NewMessagePartition(dir, "myMessages")
-	a.NoError(store.Store(0x2, []byte("defgh")))
-	a.NoError(store.Close())
-
-	// then both files as expected
-	msgs, errRead := ioutil.ReadFile(dir + "/myMessages-00000000000000000000.msg")
-	a.NoError(errRead)
-	a.Equal(MAGIC_NUMBER, msgs[0:8])
-	a.Equal(byte(1), msgs[8])
-	a.Equal([]byte{
-		3, 0, 0, 0, // len(abc) == 3
-		1, 0, 0, 0, 0, 0, 0, 0, // id == 1
-		'a', 'b', 'c',
-
-		5, 0, 0, 0, // len(defgh) == 5
-		2, 0, 0, 0, 0, 0, 0, 0, // id == 3
-		'd', 'e', 'f', 'g', 'h', // defgh
-	}, msgs[9:])
-
-	idx, errIdx := ioutil.ReadFile(dir + "/myMessages-00000000000000000000.idx")
-	a.NoError(errIdx)
-	a.Equal([]byte{
-		0, 0, 0, 0, 0, 0, 0, 0, // id 0: not set
-		0, 0, 0, 0, // size == 0
-		21, 0, 0, 0, 0, 0, 0, 0, // id 1: offset
-		3, 0, 0, 0, // size == 0
-		36, 0, 0, 0, 0, 0, 0, 0, // id 2: offset
-		5, 0, 0, 0, // size == 5
-	}, idx)
 }
 
 func Benchmark_Storing_HelloWorld_Messages(b *testing.B) {
@@ -174,15 +122,6 @@ func Benchmark_Storing_1MB_Messages(b *testing.B) {
 	a.NoError(store.Close())
 	b.StopTimer()
 }
-
-//func TestFirstMessageIdForFile(t *testing.T) {
-//	a := assert.New(t)
-//	store := &MessagePartition{}
-//	a.Equal(uint64(0), store.firstMessageIdForFile(0))
-//	a.Equal(uint64(0), store.firstMessageIdForFile(1))
-//	a.Equal(uint64(0), store.firstMessageIdForFile(42))
-//	a.Equal(uint64(7680000), store.firstMessageIdForFile(7682334))
-//}
 
 func Test_calculateFetchList(t *testing.T) {
 	defer testutil.EnableDebugForMethod()()
@@ -247,7 +186,7 @@ func Test_calculateFetchList(t *testing.T) {
 				{13, uint64(65), 10, 1}, // messageId, offset, size, fileId,
 			},
 		},
-		// TODO
+		// TODO this is caused by hasStartID() functions.This will be done when implementing the EndID logic
 		// {`next entry matches`,
 		// 	FetchRequest{StartID: 1, Direction: 0, Count: 1},
 		// 	SortedIndexList{
@@ -338,20 +277,43 @@ func matchSortedList(t *testing.T, expected, actual SortedIndexList) bool {
 
 func Test_Partition_Fetch(t *testing.T) {
 	a := assert.New(t)
+	// allow five messages per file
+	MESSAGES_PER_FILE = uint64(5)
+
+	msgData := []byte("aaaaaaaaaa")  // 10 bytes message
+	msgData2 := []byte("1111111111") // 10 bytes message
+	msgData3 := []byte("bbbbbbbbbb") // 10 bytes message
+
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 
-	// when i store a message
 	store, _ := NewMessagePartition(dir, "myMessages")
-	store.maxMessageId = uint64(2) // hack, for test setup
-	a.NoError(store.Store(uint64(3), []byte("aaaaaaaaaa")))
-	a.NoError(store.Store(uint64(4), []byte("bbbbbbbbbb")))
-	store.maxMessageId = uint64(9) // hack, for test setup
-	a.NoError(store.Store(uint64(10), []byte("cccccccccc")))
-	store.maxMessageId = MESSAGES_PER_FILE - uint64(1) // hack, for test setup
-	a.NoError(store.Store(MESSAGES_PER_FILE, []byte("1111111111")))
-	store.maxMessageId = MESSAGES_PER_FILE + uint64(4) // hack, for test setup
-	a.NoError(store.Store(MESSAGES_PER_FILE+uint64(5), []byte("2222222222")))
+
+	// File header: MAGIC_NUMBER + FILE_NUMBER_VERSION = 9 bytes in the file
+	// For each stored message there is a 12 bytes write that contains the msgID and size
+
+	a.NoError(store.Store(uint64(3), msgData)) // stored offset 21, size: 10
+	a.NoError(store.Store(uint64(4), msgData)) // stored offset 21+10+12=43
+
+	a.NoError(store.Store(uint64(10), msgData)) // stored offset 43+22=65
+
+	a.NoError(store.Store(uint64(9), msgData2)) // stored offset 65+22=87
+	a.NoError(store.Store(uint64(5), msgData3)) // stored offset 87+22=109
+
+	// here second file will start
+	a.NoError(store.Store(uint64(8), msgData2))  // stored offset 21
+	a.NoError(store.Store(uint64(15), msgData))  // stored offset 43
+	a.NoError(store.Store(uint64(13), msgData3)) // stored offset 65
+
+	a.NoError(store.Store(uint64(22), msgData)) // stored offset 87
+	a.NoError(store.Store(uint64(23), msgData)) // stored offset 109
+
+	// third file
+	a.NoError(store.Store(uint64(24), msgData)) // stored offset 21
+	a.NoError(store.Store(uint64(26), msgData)) // stored offset 43
+
+	a.NoError(store.Store(uint64(30), msgData)) // stored offset 65
+
 	defer a.NoError(store.Close())
 
 	testCases := []struct {
@@ -364,16 +326,16 @@ func Test_Partition_Fetch(t *testing.T) {
 			[]string{"aaaaaaaaaa"},
 		},
 		{`direct match in second file`,
-			FetchRequest{StartID: MESSAGES_PER_FILE, Direction: 0, Count: 1},
+			FetchRequest{StartID: 8, Direction: 0, Count: 1},
 			[]string{"1111111111"},
 		},
 		{`next entry matches`,
-			FetchRequest{StartID: 1, Direction: 0, Count: 1},
-			[]string{"aaaaaaaaaa"},
+			FetchRequest{StartID: 13, Direction: 0, Count: 1},
+			[]string{"bbbbbbbbbb"},
 		},
 		{`entry before matches`,
-			FetchRequest{StartID: 5, Direction: -1, Count: 1},
-			[]string{"bbbbbbbbbb"},
+			FetchRequest{StartID: 5, Direction: -1, Count: 2},
+			[]string{"aaaaaaaaaa", "bbbbbbbbbb"},
 		},
 		{`backward, no match`,
 			FetchRequest{StartID: 1, Direction: -1, Count: 1},
@@ -384,18 +346,25 @@ func Test_Partition_Fetch(t *testing.T) {
 			[]string{},
 		},
 		{`forward, no match (after last id in last file)`,
-			FetchRequest{StartID: MESSAGES_PER_FILE + uint64(8), Direction: 1, Count: 1},
+			FetchRequest{StartID: store.maxMessageId + uint64(8), Direction: 1, Count: 1},
 			[]string{},
 		},
-		/*
-			{`forward, overlapping files`,
-				FetchRequest{StartId: 9, Direction: 1, Count: 3},
-				[]string{"cccccccccc", "1111111111", "2222222222"},
-			},
-			{`backward, overlapping files`,
-				FetchRequest{StartId: MESSAGES_PER_FILE + uint64(100), Direction: -1, Count: 100},
-				[]string{"2222222222", "1111111111", "cccccccccc", "bbbbbbbbbb", "aaaaaaaaaa"},
-			},*/
+		{`forward, overlapping files`,
+			FetchRequest{StartID: 9, Direction: 1, Count: 3},
+			[]string{"1111111111", "aaaaaaaaaa", "bbbbbbbbbb"},
+		},
+		{`forward, over more then 2 files`,
+			FetchRequest{StartID: 5, Direction: 1, Count: 10},
+			[]string{"bbbbbbbbbb", "1111111111", "1111111111", "aaaaaaaaaa", "bbbbbbbbbb", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa"},
+		},
+		{`backward, overlapping files`,
+			FetchRequest{StartID: 26, Direction: -1, Count: 4},
+			[]string{ "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa"},
+		},
+		{`backward, all messages`,
+			FetchRequest{StartID: uint64(100), Direction: -1, Count: 100},
+			[]string{"aaaaaaaaaa", "aaaaaaaaaa", "bbbbbbbbbb", "1111111111", "1111111111", "aaaaaaaaaa", "bbbbbbbbbb", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa"},
+		},
 	}
 	for _, testcase := range testCases {
 		testcase.req.Partition = "myMessages"
@@ -435,83 +404,18 @@ func Test_Partition_Fetch(t *testing.T) {
 	}
 }
 
-//func TestFilenameGeneration(t *testing.T) {
-//	a := assert.New(t)
-//
-//	store := &MessagePartition{
-//		basedir: "/foo/bar/",
-//		name:    "myMessages",
-//	}
-//
-//	a.Equal("/foo/bar/myMessages-00000000000000000042.msg", store.composeMsgFilename())
-//	a.Equal("/foo/bar/myMessages-00000000000000000042.idx", store.composeIndexFilename(42))
-//	a.Equal("/foo/bar/myMessages-00000000000000000000.idx", store.composeIndexFilename(0))
-//	a.Equal("/foo/bar/myMessages-00000000000000010000.idx", store.composeIndexFilename(MESSAGES_PER_FILE))
-//}
-
-//func Test_firstMessageIdForFile(t *testing.T) {
-//	a := assert.New(t)
-//	store := &MessagePartition{}
-//
-//	a.Equal(uint64(0), store.firstMessageIdForFile(0))
-//	a.Equal(uint64(0), store.firstMessageIdForFile(42))
-//	a.Equal(MESSAGES_PER_FILE, store.firstMessageIdForFile(MESSAGES_PER_FILE))
-//	a.Equal(MESSAGES_PER_FILE, store.firstMessageIdForFile(MESSAGES_PER_FILE+uint64(1)))
-//}
-
-func Test_calculateMaxMessageIdFromIndex2(t *testing.T) {
+func TestFilenameGeneration(t *testing.T) {
 	a := assert.New(t)
-	defer testutil.EnableDebugForMethod()()
 
-	f := make([]*FileCacheEntry, 0)
-	f = append(f, &FileCacheEntry{
-		minMsgID: 1,
-		maxMsgID: 9,
-	})
-
-	f = append(f, &FileCacheEntry{
-		minMsgID: 10,
-		maxMsgID: 28,
-	})
-
-	f = append(f, &FileCacheEntry{
-		minMsgID: 29,
-		maxMsgID: 35,
-	})
-
-	f = append(f, &FileCacheEntry{
-		minMsgID: 17,
-		maxMsgID: 30,
-	})
-
-	req := FetchRequest{StartID: 11, EndID: 31, Direction: 0, Count: 1}
-
-	for _, ff := range f {
-		tt := ff.hasStartID(&req)
-		logrus.WithField("dd", tt).Info()
+	store := &MessagePartition{
+		basedir: "/foo/bar/",
+		name:    "myMessages",
 	}
 
-	req2 := FetchRequest{StartID: 11, Direction: -1, Count: 1}
-
-	for _, ff := range f {
-		tt := ff.hasStartID(&req2)
-		logrus.WithField("dd", tt).Info()
-	}
-
-	a.Nil(nil)
+	a.Equal("/foo/bar/myMessages-00000000000000000000.msg", store.composeMsgFilename())
+	a.Equal("/foo/bar/myMessages-00000000000000000042.idx", store.composeIndexFilenameWithValue(42))
+	a.Equal("/foo/bar/myMessages-00000000000000000000.idx", store.composeIndexFilenameWithValue(0))
+	a.Equal(fmt.Sprintf("/foo/bar/myMessages-%020d.idx", MESSAGES_PER_FILE), store.composeIndexFilenameWithValue(MESSAGES_PER_FILE))
 }
 
-func Test_calculateMaxMessageIdFromIndex(t *testing.T) {
-	a := assert.New(t)
-	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
-	defer os.RemoveAll(dir)
 
-	// when i store a message
-	store, _ := NewMessagePartition(dir, "myMessages")
-	a.NoError(store.Store(uint64(1), []byte("aaaaaaaaaa")))
-	a.NoError(store.Store(uint64(2), []byte("bbbbbbbbbb")))
-
-	maxMessageId, err := store.calculateMaxMessageIdFromIndex(uint64(0))
-	a.NoError(err)
-	a.Equal(uint64(2), maxMessageId)
-}

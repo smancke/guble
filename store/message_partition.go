@@ -95,17 +95,6 @@ func (p *MessagePartition) initialize() error {
 	return nil
 }
 
-// calculateMaxMessageIdFromIndex returns the max message id for a message file
-func (p *MessagePartition) calculateMaxMessageIdFromIndex(fileId uint64) (uint64, error) {
-	stat, err := os.Stat(p.composeIndexFilename())
-	if err != nil {
-		return 0, err
-	}
-	entriesInIndex := uint64(stat.Size() / int64(INDEX_ENTRY_SIZE))
-
-	return entriesInIndex - 1 + fileId, nil
-}
-
 // Returns the start messages ids for all available message files
 // in a sorted list
 func (p *MessagePartition) readIdxFiles() error {
@@ -273,7 +262,7 @@ func (p *MessagePartition) generateNextMsgId(nodeId int) (uint64, int64, error) 
 		return 0, 0, err
 	}
 
-	id := (uint64(timestamp-GubleEpoch) << TimestampLeftShift) |
+	id := (uint64(timestamp - GubleEpoch) << TimestampLeftShift) |
 		(uint64(nodeId) << GubleNodeIdShift) | p.localSequenceNumber
 
 	p.localSequenceNumber++
@@ -283,7 +272,7 @@ func (p *MessagePartition) generateNextMsgId(nodeId int) (uint64, int64, error) 
 		"messagePartition":    p.basedir,
 		"localSequenceNumber": p.localSequenceNumber,
 		"currentNode":         nodeId,
-	}).Info("+Generated id")
+	}).Info("Generated id")
 
 	return id, timestamp, nil
 }
@@ -379,6 +368,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 
 	log.WithFields(log.Fields{
 		"p.noOfEntriesInIndexFile": p.noOfEntriesInIndexFile,
+		"msgID":                    msgId,
 		"msgSize":                  uint32(len(msg)),
 		"msgOffset":                messageOffset,
 		"filename":                 p.indexFile.Name(),
@@ -664,20 +654,20 @@ func (p *MessagePartition) checkoutMessagefile(fileId uint64) (*os.File, error) 
 	return os.Open(p.composeMsgFilenameWithValue(fileId))
 }
 
-// releaseMessagefile releases a message file handle
-func (p *MessagePartition) releaseMessagefile(fileId uint64, file *os.File) {
-	file.Close()
-}
-
-// checkoutIndexfile returns a file handle to the index file with the supplied file id. The returned file handle may be shared for multiple go routines.
-func (p *MessagePartition) checkoutIndexfile() (*os.File, error) {
-	return os.Open(p.composeIndexFilename())
-}
-
-// releaseIndexfile releases an index file handle
-func (p *MessagePartition) releaseIndexfile(fileId uint64, file *os.File) {
-	file.Close()
-}
+//// releaseMessagefile releases a message file handle
+//func (p *MessagePartition) releaseMessagefile(fileId uint64, file *os.File) {
+//	file.Close()
+//}
+//
+//// checkoutIndexfile returns a file handle to the index file with the supplied file id. The returned file handle may be shared for multiple go routines.
+//func (p *MessagePartition) checkoutIndexfile() (*os.File, error) {
+//	return os.Open(p.composeIndexFilename())
+//}
+//
+//// releaseIndexfile releases an index file handle
+//func (p *MessagePartition) releaseIndexfile(fileId uint64, file *os.File) {
+//	file.Close()
+//}
 
 func (p *MessagePartition) composeMsgFilename() string {
 	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.msg", p.name, uint64(len(p.fileCache))))
