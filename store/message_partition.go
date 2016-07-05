@@ -16,7 +16,7 @@ import (
 var (
 	MAGIC_NUMBER        = []byte{42, 249, 180, 108, 82, 75, 222, 182}
 	FILE_FORMAT_VERSION = []byte{1}
-	MESSAGES_PER_FILE   = uint64(10)
+	MESSAGES_PER_FILE   = uint64(10000)
 	INDEX_ENTRY_SIZE    = 20
 )
 
@@ -376,7 +376,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 		"msgSize":                  uint32(len(msg)),
 		"msgOffset":                messageOffset,
 		"filename":                 p.indexFile.Name(),
-	}).Debug("Wrote on indexFile")
+	}).Debug("Wrote in indexFile")
 
 	//create entry for pq
 	e := &FetchEntry{
@@ -398,9 +398,9 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 
 // Fetch fetches a set of messages
 func (p *MessagePartition) Fetch(req *FetchRequest) {
-	log.WithField("req", req.StartID).Error("Fetching ")
+	log.WithField("req", req.StartID).Debug("Fetching ")
 	go func() {
-		fetchList, err := p.calculateFetchListNew(req)
+		fetchList, err := p.calculateFetchList(req)
 
 		if err != nil {
 			log.WithField("err", err).Error("Error calculating list")
@@ -408,10 +408,10 @@ func (p *MessagePartition) Fetch(req *FetchRequest) {
 			return
 		}
 
-		log.WithField("fetchLIst", fetchList).Debug("FetchING ")
+		log.WithField("fetchList", fetchList).Debug("Fetching")
 		req.StartCallback <- fetchList.Len()
 
-		log.WithField("fetchLIst", fetchList).Debug("Fetch 2")
+		log.WithField("fetchList", fetchList).Debug("Fetch 2")
 		err = p.fetchByFetchlist(fetchList, req.MessageC)
 
 		if err != nil {
@@ -462,7 +462,7 @@ func retrieveFromList(pq *SortedIndexList, req *FetchRequest) *SortedIndexList {
 }
 
 // calculateFetchList returns a list of fetchEntry records for all messages in the fetch request.
-func (p *MessagePartition) calculateFetchListNew(req *FetchRequest) (*SortedIndexList, error) {
+func (p *MessagePartition) calculateFetchList(req *FetchRequest) (*SortedIndexList, error) {
 	if req.Direction == 0 {
 		req.Direction = 1
 	}
@@ -490,10 +490,8 @@ func (p *MessagePartition) calculateFetchListNew(req *FetchRequest) (*SortedInde
 	}
 
 	//read from current cached value (the idx file which size is smaller than MESSAGE_PER_FILE
-	fce := FileCacheEntry{
-		minMsgID: p.indexFileSortedList.Front().messageId,
-		maxMsgID: p.indexFileSortedList.Back().messageId,
-	}
+
+	fce := fileCacheEntryForList(p.indexFileSortedList)
 	if fce.hasStartID(req) || (prev && potentialEntries.Len() < req.Count) {
 		currentEntries := retrieveFromList(p.indexFileSortedList, req)
 		potentialEntries.InsertList(currentEntries)
@@ -507,7 +505,7 @@ func (p *MessagePartition) calculateFetchListNew(req *FetchRequest) (*SortedInde
 func (p *MessagePartition) dumpSortedIndexFile(filename string) error {
 	messageStoreLogger.WithFields(log.Fields{
 		"filename": filename,
-	}).Info("Dumping Sorted list ")
+	}).Info("Dumping Sorted list")
 
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0666)
 	defer file.Close()
@@ -534,7 +532,7 @@ func (p *MessagePartition) dumpSortedIndexFile(filename string) error {
 			"err":      err,
 			"pos":      i,
 			"filename": file.Name(),
-		}).Info("Wrote while dumpSortedIndexFile")
+		}).Debug("Wrote while dumpSortedIndexFile")
 
 		if err != nil {
 			messageStoreLogger.WithField("err", err).Error("Error writing indexfile in sorted way.")
@@ -613,7 +611,7 @@ func (p *MessagePartition) loadLastIndexFile(filename string) error {
 // loadIndexFile will read a file and will return a sorted list for fetchEntries
 func loadIndexFile(filename string, fileID int) (*SortedIndexList, error) {
 	pq := newList(1000)
-	messageStoreLogger.WithField("filename", filename).Info("checkIndexFile")
+	messageStoreLogger.WithField("filename", filename).Debug("loadIndexFile")
 
 	entriesInIndex, err := calculateNumberOfEntries(filename)
 	if err != nil {
@@ -648,7 +646,7 @@ func loadIndexFile(filename string, fileID int) (*SortedIndexList, error) {
 			fileID:    fileID,
 		}
 		pq.Insert(e)
-		messageStoreLogger.WithField("lenPq", pq.Len()).Info("checkIndexFile")
+		messageStoreLogger.WithField("lenPq", pq.Len()).Debug("loadIndexFile")
 	}
 	return pq, nil
 }
@@ -687,4 +685,15 @@ func (p *MessagePartition) composeIndexFilename() string {
 
 func (p *MessagePartition) composeIndexFilenameWithValue(value uint64) string {
 	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.name, value))
+}
+
+func fileCacheEntryForList(pq *SortedIndexList) (entry FileCacheEntry) {
+	front, back := pq.Front(), pq.Back()
+	if front != nil {
+		entry.minMsgID = front.messageId
+	}
+	if back != nil {
+		entry.maxMsgID = back.messageId
+	}
+	return
 }

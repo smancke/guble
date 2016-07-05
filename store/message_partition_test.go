@@ -2,13 +2,13 @@ package store
 
 import (
 	"fmt"
-	"github.com/smancke/guble/testutil"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
@@ -33,8 +33,6 @@ func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
 
 func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
 	a := assert.New(t)
-
-	//defer testutil.EnableDebugForMethod()()
 
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
@@ -62,13 +60,11 @@ func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
 		a.Nil(err)
 	}
 
-	for i :=0 ;i < len(generatedIDs)-1 ;i++ {
+	for i := 0; i < len(generatedIDs)-1; i++ {
 		if generatedIDs[i] >= generatedIDs[i+1] {
 			a.FailNow("Not Sorted")
 		}
 	}
-
-
 }
 
 func Test_MessagePartition_loadFiles(t *testing.T) {
@@ -183,7 +179,6 @@ func Benchmark_Storing_1MB_Messages(b *testing.B) {
 }
 
 func Test_calculateFetchList(t *testing.T) {
-	defer testutil.EnableDebugForMethod()()
 	// allow five messages per file
 	MESSAGES_PER_FILE = uint64(5)
 
@@ -308,7 +303,7 @@ func Test_calculateFetchList(t *testing.T) {
 
 	for _, testcase := range testCases {
 		testcase.req.Partition = "myMessages"
-		fetchEntries, err := store.calculateFetchListNew(&testcase.req)
+		fetchEntries, err := store.calculateFetchList(&testcase.req)
 		a.NoError(err, "Tescase: "+testcase.description)
 		a.True(matchSortedList(t, testcase.expectedResults, *fetchEntries), "Tescase: "+testcase.description)
 	}
