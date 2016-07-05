@@ -11,7 +11,7 @@ import (
 func Test_SortedListSanity(t *testing.T) {
 
 	a := assert.New(t)
-	pq := createIndexPriorityQueue(1000)
+	pq := newList(1000)
 
 	defer testutil.EnableDebugForMethod()()
 

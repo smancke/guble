@@ -9,6 +9,7 @@ type SortedIndexList []*FetchEntry
 
 func (pq *SortedIndexList) Len() int { return len(*pq) }
 
+// InsertList will merge the given list as a parameter in current list
 func (pq *SortedIndexList) InsertList(list *SortedIndexList) {
 	for _, el := range *list {
 		pq.Insert(el)
@@ -56,6 +57,7 @@ func (pq *SortedIndexList) Clear() {
 
 }
 
+//returns the absolute value for two numbers
 func abs(m1, m2 uint64) uint64 {
 	if m1 > m2 {
 		return m1 - m2
@@ -129,7 +131,7 @@ func (pq *SortedIndexList) PrintPq() {
 	}
 }
 
-func createIndexPriorityQueue(size int) *SortedIndexList {
+func newList(size int) *SortedIndexList {
 	pq := make(SortedIndexList, 0, size)
 	return &pq
 }
