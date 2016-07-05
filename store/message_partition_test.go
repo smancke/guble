@@ -9,6 +9,7 @@ import (
 	"path"
 	"testing"
 	"time"
+	"github.com/Sirupsen/logrus"
 )
 
 func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
@@ -36,6 +37,8 @@ func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
 
 	defer testutil.EnableDebugForMethod()()
 
+	logrus.WithField("ts", time.Now().UnixNano()).Info("afasf")
+
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 	store, err := NewMessagePartition(dir, "node1")
@@ -61,6 +64,13 @@ func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
 		lastId = id2
 		a.Nil(err)
 	}
+
+	for i :=0 ;i < len(generatedIDs)-1 ;i++ {
+		if generatedIDs[i] >= generatedIDs[i+1] {
+			a.FailNow("Not Sorted")
+		}
+	}
+
 
 }
 

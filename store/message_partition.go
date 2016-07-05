@@ -11,7 +11,6 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	//"math"
 )
 
 var (
@@ -26,7 +25,7 @@ const (
 	SequenceBits       = 12
 	GubleNodeIdShift   = SequenceBits
 	TimestampLeftShift = SequenceBits + GubleNodeIdBits
-	GubleEpoch         = 1467024972
+	GubleEpoch         = 1467714505012
 )
 
 type FetchEntry struct {
@@ -259,12 +258,15 @@ func (p *MessagePartition) generateNextMsgId(nodeId int) (uint64, int64, error) 
 	// timestamp in Seconds will be return to client
 	timestamp := currTime.Unix()
 
-	if timestamp < GubleEpoch {
+	//Use the unixNanoTimestamp for generating id
+	nanoTimestamp := currTime.UnixNano()
+
+	if nanoTimestamp < GubleEpoch {
 		err := fmt.Errorf("Clock is moving backwards. Rejecting requests until %d.", timestamp)
 		return 0, 0, err
 	}
 
-	id := (uint64(currTime.UnixNano()-GubleEpoch) << TimestampLeftShift) |
+	id := (uint64(nanoTimestamp-GubleEpoch) << TimestampLeftShift) |
 		(uint64(nodeId) << GubleNodeIdShift) | p.localSequenceNumber
 
 	p.localSequenceNumber++
