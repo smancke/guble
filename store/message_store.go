@@ -72,13 +72,13 @@ func (fms *FileMessageStore) Store(partition string, msgId uint64, msg []byte) e
 }
 
 // Fetch asynchronously fetches a set of messages defined by the fetch request
-func (fms *FileMessageStore) Fetch(req *FetchRequest) {
+func (fms *FileMessageStore) Fetch(req FetchRequest) {
 	p, err := fms.partitionStore(req.Partition)
 	if err != nil {
 		req.ErrorCallback <- err
 		return
 	}
-	p.Fetch(req)
+	p.Fetch(&req)
 }
 
 func (fms *FileMessageStore) DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error {

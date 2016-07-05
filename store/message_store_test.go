@@ -43,7 +43,7 @@ func Test_Fetch(t *testing.T) {
 
 		messages := []string{}
 
-		store.Fetch(&testcase.req)
+		store.Fetch(testcase.req)
 
 		select {
 		case numberOfResults := <-testcase.req.StartCallback:
@@ -132,7 +132,7 @@ func Test_FetchWithError(t *testing.T) {
 	store := NewFileMessageStore("/TestDir")
 
 	chanCallBack := make(chan error, 1)
-	aFetchRequest := &FetchRequest{Partition: "p1", StartID: 2, Count: 1, ErrorCallback: chanCallBack}
+	aFetchRequest := FetchRequest{Partition: "p1", StartID: 2, Count: 1, ErrorCallback: chanCallBack}
 	store.Fetch(aFetchRequest)
 	err := <-aFetchRequest.ErrorCallback
 	a.NotNil(err)

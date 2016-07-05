@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
+
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
@@ -80,6 +82,7 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 }
 
 func TestRouter_HandleMessageNotAllowed(t *testing.T) {
+	defer testutil.EnableDebugForMethod()()
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	a := assert.New(t)
@@ -97,27 +100,38 @@ func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 	amMock.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(false)
 
 	// when i send a message to the route
-	testMsg := &protocol.Message{
+	err := router.HandleMessage(&protocol.Message{
 		Path:   r.Path,
 		Body:   aTestByteMessage,
 		UserID: r.UserID,
-	}
-	e := router.HandleMessage(testMsg)
+	})
 
 	// an error shall be returned
-	a.NotNil(e)
+	a.Error(err)
 
 	// and when permission is granted
 	id := uint64(2)
+	timestamp := time.Now().Unix()
+	defer func() {
+		if p := recover(); p != nil {
+			log.Debug(p)
+		}
+	}()
+
 	amMock.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(true)
-	msMock.EXPECT().GenerateNextMsgId(gomock.Any(), gomock.Any()).Return(id, nil)
+	msMock.EXPECT().GenerateNextMsgId(gomock.Any(), gomock.Any()).Return(id, timestamp, nil)
 	msMock.EXPECT().Store("blah", id, gomock.Any()).Return(nil)
 
 	// sending message
-	e = router.HandleMessage(testMsg)
+	err = router.HandleMessage(&protocol.Message{
+		Path:   r.Path,
+		Body:   aTestByteMessage,
+		UserID: r.UserID,
+	})
 
 	// shall give no error
-	a.Nil(e)
+	a.NoError(err)
+	time.Sleep(1 * time.Second)
 }
 
 func TestRouter_ReplacingOfRoutes(t *testing.T) {
@@ -277,7 +291,7 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	var ID uint64
 
 	msMock := NewMockMessageStore(ctrl)
-	msMock.EXPECT().Store("blah", gomock.Any(),gomock.Any()).
+	msMock.EXPECT().Store("blah", gomock.Any(), gomock.Any()).
 		Return(nil).
 		Do(func(partition string, callback func(msgID uint64) []byte) error {
 			ID++
