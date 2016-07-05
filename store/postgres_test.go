@@ -1,9 +1,11 @@
 package store
 
 import (
-	"github.com/smancke/guble/testutil"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/smancke/guble/testutil"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func BenchmarkPostgresKVStore_PutGet(b *testing.B) {
@@ -73,6 +75,7 @@ func TestPostgresKVStore_ParallelUsage(t *testing.T) {
 	CommonTestIterateKeys(t, kvs1, kvs2)
 }
 
+// This config assumes a postgresql running locally
 func aPostgresConfig() PostgresConfig {
 	return PostgresConfig{
 		map[string]string{

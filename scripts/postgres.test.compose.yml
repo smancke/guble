@@ -1,0 +1,14 @@
+# docker compose file to run a test postgresql
+# start db with from root of project with following command:
+# `sudo docker-compose -f scripts/postgres.test.compose.yml up -d`
+version: '2'
+services:
+  postgres:
+    image: postgres:9
+    environment:
+      - POSTGRES_USER=guble
+      - POSTGRES_PASSWORD=guble
+    volumes:
+      - /tmp/guble_test_postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
