@@ -140,6 +140,12 @@ func (p *MessagePartition) readIdxFiles() error {
 			return err
 		}
 
+		// check the message id's for max value
+		if max >= p.maxMessageId {
+			p.maxMessageId = max
+		}
+
+		// put entry in file cache
 		p.fileCache = append(p.fileCache, &FileCacheEntry{
 			minMsgID: min,
 			maxMsgID: max,
@@ -154,6 +160,10 @@ func (p *MessagePartition) readIdxFiles() error {
 			"err":         err,
 		}).Error("Error loading last .idx file")
 		return err
+	}
+
+	if p.indexFileSortedList.Back().messageId >= p.maxMessageId {
+		p.maxMessageId = p.indexFileSortedList.Back().messageId
 	}
 
 	return nil
@@ -540,6 +550,7 @@ func (p *MessagePartition) dumpSortedIndexFile(filename string) error {
 	return nil
 
 }
+
 // readIndexEntry reads from a .idx file from the given `indexPosition` the msgIDm msgOffset and msgSize
 func readIndexEntry(file *os.File, indexPosition int64) (uint64, uint64, uint32, error) {
 	msgOffsetBuff := make([]byte, INDEX_ENTRY_SIZE)
@@ -647,7 +658,6 @@ func loadIndexFile(filename string, fileID int) (*SortedIndexList, error) {
 	}
 	return pq, nil
 }
-
 
 // checkoutMessagefile returns a file handle to the message file with the supplied file id. The returned file handle may be shared for multiple go routines.
 func (p *MessagePartition) checkoutMessagefile(fileId uint64) (*os.File, error) {
