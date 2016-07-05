@@ -2,9 +2,12 @@ package store
 
 import (
 	log "github.com/Sirupsen/logrus"
+
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
+
+const postgresGormLogMode = false
 
 type PostgresKVStore struct {
 	*kvStore
@@ -22,22 +25,22 @@ func (kvStore *PostgresKVStore) Open() error {
 	logger := kvStore.logger.WithField("config", kvStore.config)
 	logger.Info("Opening database")
 
-	gormdb, err := gorm.Open("postgres", kvStore.config.String())
+	gormdb, err := gorm.Open("postgres", kvStore.config.connectionString())
 	if err != nil {
 		logger.WithField("err", err).Error("Error opening database")
 		return err
 	}
 
 	if err := gormdb.DB().Ping(); err != nil {
-		logger.WithField("err", err).Error("Error pinging database")
+		kvStore.logger.WithError(err).Error("Error pinging database")
 	} else {
-		logger.Info("Ping reply from database")
+		kvStore.logger.Info("Ping reply from database")
 	}
 
-	gormdb.LogMode(gormLogMode)
+	gormdb.LogMode(postgresGormLogMode)
 	gormdb.SingularTable(true)
-	gormdb.DB().SetMaxIdleConns(dbMaxIdleConns)
-	gormdb.DB().SetMaxOpenConns(dbMaxOpenConns)
+	gormdb.DB().SetMaxIdleConns(kvStore.config.MaxIdleConns)
+	gormdb.DB().SetMaxOpenConns(kvStore.config.MaxOpenConns)
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
 		logger.WithField("err", err).Error("Error in schema migration")
 		return err

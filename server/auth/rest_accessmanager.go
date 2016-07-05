@@ -32,24 +32,15 @@ func (ram RestAccessManager) IsAllowed(accessType AccessType, userId string, pat
 	resp, err := http.DefaultClient.Get(u.String())
 
 	if err != nil {
-		logger.WithFields(log.Fields{
-			"module": "RestAccessManager",
-			"err":    err,
-		}).Warn("Write message failed")
-
+		logger.WithError(err).WithField("module", "RestAccessManager").Warn("Write message failed")
 		return false
 	}
 	defer resp.Body.Close()
 	responseBody, err := ioutil.ReadAll(resp.Body)
 
 	if err != nil || resp.StatusCode != 200 {
-		logger.WithFields(log.Fields{
-			"err":      err,
-			"httpCode": resp.StatusCode,
-		}).Info("Error getting permission")
-		logger.WithFields(log.Fields{
-			"responseBody": responseBody,
-		}).Debug("HTTP Response Body")
+		logger.WithError(err).WithField("httpCode", resp.StatusCode).Info("Error getting permission")
+		logger.WithField("responseBody", responseBody).Debug("HTTP Response Body")
 		return false
 	}
 	logger.WithFields(log.Fields{

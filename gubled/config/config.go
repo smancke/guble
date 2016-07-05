@@ -41,10 +41,10 @@ var (
 		Password *string
 		DbName   *string
 	}{
-		Host:     kingpin.Flag("postgres-host", "The postgres hostname").Default("localhost").Envar("GUBLE_POSTGRES_HOST").String(),
-		User:     kingpin.Flag("postgres-user", "The postgres user").Default("guble").Envar("GUBLE_POSTGRES_USER").String(),
-		Password: kingpin.Flag("postgres-password", "The postgres password").Default("guble").Envar("GUBLE_POSTGRES_PASSWORD").String(),
-		DbName:   kingpin.Flag("postgres-dbname", "The postgres database name").Default("guble").Envar("GUBLE_POSTGRES_DBNAME").String(),
+		Host:     kingpin.Flag("pg-host", "The PostgreSQL hostname").Default("localhost").Envar("GUBLE_PG_HOST").String(),
+		User:     kingpin.Flag("pg-user", "The PostgreSQL user").Default("guble").Envar("GUBLE_PG_USER").String(),
+		Password: kingpin.Flag("pg-password", "The PostgreSQL password").Default("guble").Envar("GUBLE_PG_PASSWORD").String(),
+		DbName:   kingpin.Flag("pg-dbname", "The PostgreSQL database name").Default("guble").Envar("GUBLE_PG_DBNAME").String(),
 	}
 
 	Metrics = struct {

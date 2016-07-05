@@ -2,11 +2,15 @@ package store
 
 import "strings"
 
-type PostgresConfig map[string]string
+type PostgresConfig struct {
+	ConnParams   map[string]string
+	MaxIdleConns int
+	MaxOpenConns int
+}
 
-func (pc PostgresConfig) String() string {
+func (pc PostgresConfig) connectionString() string {
 	var params []string
-	for key, value := range pc {
+	for key, value := range pc.ConnParams {
 		params = append(params, key+"="+value)
 	}
 	return strings.Join(params, " ")

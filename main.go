@@ -7,9 +7,6 @@ import (
 )
 
 func main() {
-
 	log.SetFormatter(&config.LogstashGubleFormatter{})
-
 	gubled.Main()
-
 }

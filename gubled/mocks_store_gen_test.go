@@ -4,8 +4,8 @@
 package gubled
 
 import (
-	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/store"
+	gomock "github.com/golang/mock/gomock"
+	store "github.com/smancke/guble/store"
 )
 
 // Mock of MessageStore interface
@@ -27,16 +27,6 @@ func NewMockMessageStore(ctrl *gomock.Controller) *MockMessageStore {
 
 func (_m *MockMessageStore) EXPECT() *_MockMessageStoreRecorder {
 	return _m.recorder
-}
-
-func (_m *MockMessageStore) Check() error {
-	ret := _m.ctrl.Call(_m, "Check")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockMessageStoreRecorder) Check() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Check")
 }
 
 func (_m *MockMessageStore) DoInTx(_param0 string, _param1 func(uint64) error) error {

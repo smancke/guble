@@ -221,6 +221,6 @@ func TestCluster_broadcastClusterMessage(t *testing.T) {
 type DummyMessageHandler struct {
 }
 
-func (_ DummyMessageHandler) HandleMessage(pmsg *protocol.Message) error {
+func (dmh DummyMessageHandler) HandleMessage(pmsg *protocol.Message) error {
 	return nil
 }

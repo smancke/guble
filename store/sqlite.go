@@ -1,15 +1,24 @@
 package store
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"github.com/jinzhu/gorm"
+	// needed because of gorm / sql
 	_ "github.com/mattn/go-sqlite3"
+
+	"github.com/jinzhu/gorm"
+
+	log "github.com/Sirupsen/logrus"
 
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
+)
+
+const (
+	sqliteMaxIdleConns = 2
+	sqliteMaxOpenConns = 5
+	sqliteGormLogMode  = false
 )
 
 var writeTestFilename = "db_testfile"
@@ -32,8 +41,7 @@ func NewSqliteKVStore(filename string, syncOnWrite bool) *SqliteKVStore {
 	}
 }
 
-// Open opens the database file.
-// If the directory does not exist, it will be created.
+// Open opens the database file. If the directory does not exist, it will be created.
 func (kvStore *SqliteKVStore) Open() error {
 	directoryPath := filepath.Dir(kvStore.filename)
 	if err := ensureWriteableDirectory(directoryPath); err != nil {
@@ -55,10 +63,10 @@ func (kvStore *SqliteKVStore) Open() error {
 		kvStore.logger.Info("Ping reply from database")
 	}
 
-	gormdb.LogMode(gormLogMode)
+	gormdb.LogMode(sqliteGormLogMode)
 	gormdb.SingularTable(true)
-	gormdb.DB().SetMaxIdleConns(dbMaxIdleConns)
-	gormdb.DB().SetMaxOpenConns(dbMaxOpenConns)
+	gormdb.DB().SetMaxIdleConns(sqliteMaxIdleConns)
+	gormdb.DB().SetMaxOpenConns(sqliteMaxOpenConns)
 
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
 		kvStore.logger.WithError(err).Error("Error in schema migration")
@@ -86,11 +94,9 @@ func ensureWriteableDirectory(dir string) error {
 		}
 		dirInfo, err = os.Stat(dir)
 	}
-
 	if err != nil || !dirInfo.IsDir() {
 		return fmt.Errorf("kv-sqlite: not a directory %v", dir)
 	}
-
 	writeTest := path.Join(dir, writeTestFilename)
 	if err := ioutil.WriteFile(writeTest, []byte("writeTest"), 0644); err != nil {
 		return err

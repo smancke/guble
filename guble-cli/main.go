@@ -115,8 +115,7 @@ func writeLoop(client client.Client) {
 			}
 			if err := client.WriteRawMessage([]byte(text)); err != nil {
 				shouldStop = true
-
-				logger.WithField("err", err).Error("Error on Writing  message")
+				logger.WithError(err).Error("Error on Writing  message")
 			}
 		}()
 	}

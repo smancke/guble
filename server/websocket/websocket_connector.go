@@ -46,11 +46,7 @@ func (handle *WSHandler) GetPrefix() string {
 func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := webSocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-
-		logger.WithFields(log.Fields{
-			"err": err,
-		}).Error("Error on upgrading")
-
+		logger.WithError(err).Error("Error on upgrading to websocket")
 		return
 	}
 	defer c.Close()
@@ -216,11 +212,7 @@ func (ws *WebSocket) handleReceiveCmd(cmd *protocol.Cmd) {
 		ws.userID,
 	)
 	if err != nil {
-
-		logger.WithFields(log.Fields{
-			"err": err,
-		}).Error("Client error in handleReceiveCmd")
-
+		logger.WithError(err).Error("Client error in handleReceiveCmd")
 		ws.sendError(protocol.ERROR_BAD_REQUEST, err.Error())
 		return
 	}

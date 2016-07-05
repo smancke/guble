@@ -6,13 +6,22 @@ import (
 	"testing"
 )
 
+func BenchmarkSqlitePutGet(b *testing.B) {
+	f := tempFilename()
+	defer os.Remove(f)
+
+	db := NewSqliteKVStore(f, false)
+	db.Open()
+	CommonBenchmarkPutGet(b, db)
+}
+
 func TestSqlitePutGetDelete(t *testing.T) {
 	f := tempFilename()
 	defer os.Remove(f)
 
 	db := NewSqliteKVStore(f, false)
 	db.Open()
-	CommonTestPutGetDelete(t, db)
+	CommonTestPutGetDelete(t, db, db)
 }
 
 func TestSqliteIterate(t *testing.T) {
@@ -22,7 +31,7 @@ func TestSqliteIterate(t *testing.T) {
 	db := NewSqliteKVStore(f, false)
 	db.Open()
 
-	CommonTestIterate(t, db)
+	CommonTestIterate(t, db, db)
 }
 
 func TestSqliteIterateKeys(t *testing.T) {
@@ -32,16 +41,7 @@ func TestSqliteIterateKeys(t *testing.T) {
 	db := NewSqliteKVStore(f, false)
 	db.Open()
 
-	CommonTestIterateKeys(t, db)
-}
-
-func BenchmarkSqlitePutGet(b *testing.B) {
-	f := tempFilename()
-	defer os.Remove(f)
-
-	db := NewSqliteKVStore(f, false)
-	db.Open()
-	CommonBenchPutGet(b, db)
+	CommonTestIterateKeys(t, db, db)
 }
 
 func TestCheck_SqlKVStore(t *testing.T) {
@@ -49,18 +49,14 @@ func TestCheck_SqlKVStore(t *testing.T) {
 	f := tempFilename()
 	defer os.Remove(f)
 
-	store := NewSqliteKVStore(f, false)
-	//start the DB
-	store.Open()
+	kvs := NewSqliteKVStore(f, false)
+	kvs.Open()
 
-	//check should work
-	err := store.Check()
+	err := kvs.Check()
 	a.Nil(err, "Db ping should work")
 
-	//close DB
-	store.Stop()
+	kvs.Stop()
 
-	//check should throw an error
-	err = store.Check()
-	a.NotNil(err, "Db ping should not work. Db is closed")
+	err = kvs.Check()
+	a.NotNil(err, "Check should fail because db was already closed")
 }
