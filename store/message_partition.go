@@ -404,19 +404,19 @@ func (p *MessagePartition) Fetch(req *FetchRequest) {
 
 		if err != nil {
 			log.WithField("err", err).Error("Error calculating list")
-			req.ErrorCallback <- err
+			req.ErrorC <- err
 			return
 		}
 
 		log.WithField("fetchList", fetchList).Debug("Fetching")
-		req.StartCallback <- fetchList.Len()
+		req.StartC <- fetchList.Len()
 
 		log.WithField("fetchList", fetchList).Debug("Fetch 2")
 		err = p.fetchByFetchlist(fetchList, req.MessageC)
 
 		if err != nil {
 			log.WithField("err", err).Error("Error calculating list")
-			req.ErrorCallback <- err
+			req.ErrorC <- err
 			return
 		}
 		close(req.MessageC)
@@ -424,7 +424,7 @@ func (p *MessagePartition) Fetch(req *FetchRequest) {
 }
 
 // fetchByFetchlist fetches the messages in the supplied fetchlist and sends them to the message-channel
-func (p *MessagePartition) fetchByFetchlist(fetchList *SortedIndexList, messageC chan MessageAndId) error {
+func (p *MessagePartition) fetchByFetchlist(fetchList *SortedIndexList, messageC chan MessageAndID) error {
 	for _, f := range *fetchList {
 		file, err := p.checkoutMessagefile(uint64(f.fileID))
 
@@ -435,7 +435,7 @@ func (p *MessagePartition) fetchByFetchlist(fetchList *SortedIndexList, messageC
 			file.Close()
 			return err
 		}
-		messageC <- MessageAndId{f.messageId, msg}
+		messageC <- MessageAndID{f.messageId, msg}
 		file.Close()
 	}
 	return nil

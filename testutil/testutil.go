@@ -2,6 +2,7 @@ package testutil
 
 import (
 	log "github.com/Sirupsen/logrus"
+
 	"github.com/alexjlockwood/gcm"
 	"github.com/docker/distribution/health"
 	"github.com/golang/mock/gomock"
@@ -66,46 +67,40 @@ func ResetDefaultRegistryHealthCheck() {
 }
 
 const (
-	CorrectGcmResponseMessageJSON = `
-{
-   "multicast_id":3,
-   "succes":1,
-   "failure":0,
-   "canonicals_ids":5,
-   "results":[
-      {
-         "message_id":"da",
-         "registration_id":"rId",
-         "error":""
-      }
-   ]
-}`
+	SuccessGCMResponse = `{
+	   "multicast_id":3,
+	   "succes":1,
+	   "failure":0,
+	   "canonicals_ids":5,
+	   "results":[
+	      {
+	         "message_id":"da",
+	         "registration_id":"rId",
+	         "error":""
+	      }
+	   ]
+	}`
 
-	ErrorResponseMessageJSON = `
-{
-   "multicast_id":3,
-   "succes":0,
-   "failure":1,
-   "canonicals_ids":5,
-   "results":[
-      {
-         "message_id":"err",
-         "registration_id":"gcmCanonicalID",
-         "error":"InvalidRegistration"
-      }
-   ]
-}`
+	ErrorGCMResponse = `{
+	   "multicast_id":3,
+	   "succes":0,
+	   "failure":1,
+	   "canonicals_ids":5,
+	   "results":[
+	      {
+	         "message_id":"err",
+	         "registration_id":"gcmCanonicalID",
+	         "error":"InvalidRegistration"
+	      }
+	   ]
+	}`
 )
 
 // RoundTripperFunc mocks a https round tripper in order to not send the test request to GCM.
 type RoundTripperFunc func(req *http.Request) *http.Response
 
 func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	log.WithFields(log.Fields{
-		"module":   "testing",
-		"url_path": req.URL.Path,
-	}).Debug("Served request for")
-
+	log.WithFields(log.Fields{"module": "testing", "url_path": req.URL.Path}).Debug("Served request")
 	return rt(req), nil
 }
 
@@ -117,32 +112,61 @@ func CreateGcmSender(rt RoundTripperFunc) *gcm.Sender {
 	return &gcm.Sender{ApiKey: "124", Http: httpClient}
 }
 
-func CreateRoundTripperWithJsonResponse(httpStatusCode int, messageBodyAsJSON string, doneC chan bool) RoundTripperFunc {
+func CreateRoundTripperWithJsonResponse(statusCode int, body string, doneC chan bool) RoundTripperFunc {
+	log.WithFields(log.Fields{"module": "testing"}).Debug("CreateRoundTripperWithJSONResponse")
 
-	log.WithFields(log.Fields{
-		"module": "testing",
-	}).Debug("CreateRoundTripperWithJsonResponse")
 	return RoundTripperFunc(func(req *http.Request) *http.Response {
-		log.WithFields(log.Fields{
-			"module": "testing",
-		}).Debug("RoundTripperFunc")
+		log.WithFields(log.Fields{"module": "testing", "url": req.URL.String()}).Debug("RoundTripperFunc")
 
 		if doneC != nil {
 			defer func() {
 				close(doneC)
 			}()
 		}
-
-		resp := &http.Response{
-			Proto:      "HTTP/1.1",
-			ProtoMajor: 1,
-			ProtoMinor: 1,
-			Header:     make(http.Header),
-			Body:       ioutil.NopCloser(strings.NewReader(messageBodyAsJSON)),
-			Request:    req,
-			StatusCode: httpStatusCode,
-		}
-		resp.Header.Add("Content-Type", "application/json")
+		resp := responseBuilder(statusCode, body)
+		resp.Request = req
 		return resp
 	})
+}
+
+// CreateRoundTripperWithCountAndTimeout will mock the GCM API and will send each request as a count into a channel
+func CreateRoundTripperWithCountAndTimeout(statusCode int, body string, countC chan bool, to time.Duration) RoundTripperFunc {
+	log.WithFields(log.Fields{"module": "testing"}).Debug("CreateRoundTripperWithCount")
+	return RoundTripperFunc(func(req *http.Request) *http.Response {
+		defer func() {
+			select {
+			case countC <- true:
+			case <-time.After(10 * time.Millisecond):
+				return
+			}
+		}()
+		log.WithFields(log.Fields{"module": "testing", "url": req.URL.String()}).Debug("RoundTripperWithCountAndTimeout")
+
+		resp := responseBuilder(statusCode, body)
+		resp.Request = req
+		time.Sleep(to)
+		return resp
+	})
+}
+
+func responseBuilder(statusCode int, body string) *http.Response {
+	headers := make(http.Header)
+	headers.Add("Content-Type", "application/json")
+	log.WithFields(log.Fields{"status": statusCode}).Debug("Building response")
+	return &http.Response{
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     headers,
+		Body:       ioutil.NopCloser(strings.NewReader(body)),
+		// Request:    req,
+		StatusCode: statusCode,
+	}
+}
+
+//SkipIfShort skips a test if the `-short` flag is given to `go test`
+func SkipIfShort(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 }

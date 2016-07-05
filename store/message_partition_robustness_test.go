@@ -56,7 +56,7 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 	lastReadMessage := 0
 
 	for lastReadMessage < n {
-		msgC := make(chan MessageAndId)
+		msgC := make(chan MessageAndID)
 		errorC := make(chan error)
 
 		log.WithFields(log.Fields{
@@ -66,13 +66,13 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 		}).Debug("Start fetching")
 
 		store.Fetch(&FetchRequest{
-			Partition:     "myMessages",
-			StartID:       uint64(lastReadMessage),
-			Direction:     1,
-			Count:         math.MaxInt32,
-			MessageC:      msgC,
-			ErrorCallback: errorC,
-			StartCallback: make(chan int, 1),
+			Partition: "myMessages",
+			StartID:   uint64(lastReadMessage),
+			Direction: 1,
+			Count:     math.MaxInt32,
+			MessageC:  msgC,
+			ErrorC:    errorC,
+			StartC:    make(chan int, 1),
 		})
 
 	FETCH:

@@ -422,16 +422,16 @@ func Test_Partition_Fetch(t *testing.T) {
 	}
 	for _, testcase := range testCases {
 		testcase.req.Partition = "myMessages"
-		testcase.req.MessageC = make(chan MessageAndId)
-		testcase.req.ErrorCallback = make(chan error)
-		testcase.req.StartCallback = make(chan int)
+		testcase.req.MessageC = make(chan MessageAndID)
+		testcase.req.ErrorC = make(chan error)
+		testcase.req.StartC = make(chan int)
 
 		messages := []string{}
 
 		store.Fetch(&testcase.req)
 
 		select {
-		case numberOfResults := <-testcase.req.StartCallback:
+		case numberOfResults := <-testcase.req.StartC:
 			a.Equal(len(testcase.expectedResults), numberOfResults)
 		case <-time.After(time.Second):
 			a.Fail("timeout")
@@ -446,7 +446,7 @@ func Test_Partition_Fetch(t *testing.T) {
 					break loop
 				}
 				messages = append(messages, string(msg.Message))
-			case err := <-testcase.req.ErrorCallback:
+			case err := <-testcase.req.ErrorC:
 				a.Fail(err.Error())
 				break loop
 			case <-time.After(time.Second):

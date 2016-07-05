@@ -15,8 +15,8 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	defer func() { os.Args = originalArgs }()
 
 	// given: some environment variables
-	os.Setenv("GUBLE_HTTP", "http_listen")
-	defer os.Unsetenv("GUBLE_HTTP")
+	os.Setenv("GUBLE_HTTP_LISTEN", "http_listen")
+	defer os.Unsetenv("GUBLE_HTTP_LISTEN")
 
 	os.Setenv("GUBLE_LOG", "debug")
 	defer os.Unsetenv("GUBLE_LOG")
@@ -24,7 +24,7 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_KVS", "kvs-backend")
 	defer os.Unsetenv("GUBLE_KVS")
 
-	os.Setenv("GUBLE_STORAGE_PATH", "storage-path")
+	os.Setenv("GUBLE_STORAGE_PATH", os.TempDir())
 	defer os.Unsetenv("GUBLE_STORAGE_PATH")
 
 	os.Setenv("GUBLE_HEALTH_ENDPOINT", "health_endpoint")
@@ -54,6 +54,18 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_NODE_PORT", "10000")
 	defer os.Unsetenv("GUBLE_NODE_PORT")
 
+	os.Setenv("GUBLE_PG_HOST", "pg-host")
+	defer os.Unsetenv("GUBLE_PG_HOST")
+
+	os.Setenv("GUBLE_PG_USER", "pg-user")
+	defer os.Unsetenv("GUBLE_PG_USER")
+
+	os.Setenv("GUBLE_PG_PASSWORD", "pg-password")
+	defer os.Unsetenv("GUBLE_PG_PASSWORD")
+
+	os.Setenv("GUBLE_PG_DBNAME", "pg-dbname")
+	defer os.Unsetenv("GUBLE_PG_DBNAME")
+
 	// when we parse the arguments from environment variables
 	Parse()
 
@@ -72,17 +84,21 @@ func TestParsingArgs(t *testing.T) {
 	os.Args = []string{os.Args[0],
 		"--http", "http_listen",
 		"--log", "debug",
-		"--storage-path", "storage-path",
-		"--kvs", "kv-backend",
+		"--storage-path", os.TempDir(),
+		"--kvs", "kvs-backend",
 		"--ms", "ms-backend",
-		"--health", "health_endpoint",
-		"--metrics", "true",
+		"--health-endpoint", "health_endpoint",
+		"--metrics",
 		"--metrics-endpoint", "metrics_endpoint",
-		"--gcm", "true",
+		"--gcm",
 		"--gcm-api-key", "gcm-api-key",
 		"--gcm-workers", "3",
 		"--node-id", "1",
 		"--node-port", "10000",
+		"--pg-host", "pg-host",
+		"--pg-user", "pg-user",
+		"--pg-password", "pg-password",
+		"--pg-dbname", "pg-dbname",
 	}
 
 	// when we parse the arguments from command-line flags
@@ -95,7 +111,7 @@ func TestParsingArgs(t *testing.T) {
 func assertArguments(a *assert.Assertions) {
 	a.Equal("http_listen", *HttpListen)
 	a.Equal("kvs-backend", *KVS)
-	a.Equal("storage-path", *StoragePath)
+	a.Equal(os.TempDir(), *StoragePath)
 	a.Equal("ms-backend", *MS)
 	a.Equal("health_endpoint", *HealthEndpoint)
 
@@ -109,7 +125,10 @@ func assertArguments(a *assert.Assertions) {
 	a.Equal(1, *Cluster.NodeID)
 	a.Equal(10000, *Cluster.NodePort)
 
-	a.Equal("debug", *Log)
+	a.Equal("pg-host", *Postgres.Host)
+	a.Equal("pg-user", *Postgres.User)
+	a.Equal("pg-password", *Postgres.Password)
+	a.Equal("pg-dbname", *Postgres.DbName)
 
-	//TODO Cosmin check also the arguments used in cluster-mode (remotes)
+	a.Equal("debug", *Log)
 }

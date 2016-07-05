@@ -39,7 +39,6 @@ func NewDummyMessageStore(kvStore KVStore) *DummyMessageStore {
 func (dms *DummyMessageStore) Start() error {
 	go dms.startSequenceSync()
 	dms.isSyncStarted = true
-
 	return nil
 }
 
@@ -75,7 +74,7 @@ func (dms *DummyMessageStore) store(partition string, msgId uint64, msg []byte) 
 func (dms *DummyMessageStore) Fetch(req FetchRequest) {
 }
 
-func (dms *DummyMessageStore) MaxMessageId(partition string) (uint64, error) {
+func (dms *DummyMessageStore) MaxMessageID(partition string) (uint64, error) {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
 	return dms.maxMessageId(partition)
@@ -91,10 +90,10 @@ func (dms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessa
 	return fnToExecute(maxId)
 }
 
-func (dms *DummyMessageStore) GenerateNextMsgId(msgPathPartition string, timestamp int) (uint64,int64, error) {
+func (dms *DummyMessageStore) GenerateNextMsgId(msgPathPartition string, timestamp int) (uint64, int64, error) {
 	// TODO MARIAN better implemente this
 
-	return 0,0,nil
+	return 0, 0, nil
 }
 
 func (dms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
@@ -114,7 +113,7 @@ func (dms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
 	return sequenceValue, nil
 }
 
-// the the id to a new value
+// the id to a new value
 func (dms *DummyMessageStore) setId(partition string, id uint64) {
 	dms.topicSequences[partition] = id
 }

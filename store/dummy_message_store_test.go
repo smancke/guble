@@ -1,10 +1,11 @@
 package store
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_DummyMessageStore_IncreaseOnStore(t *testing.T) {
@@ -12,10 +13,10 @@ func Test_DummyMessageStore_IncreaseOnStore(t *testing.T) {
 
 	store := NewDummyMessageStore(NewMemoryKVStore())
 
-	a.Equal(uint64(0), fne(store.MaxMessageId("partition")))
+	a.Equal(uint64(0), fne(store.MaxMessageID("partition")))
 	a.NoError(store.Store("partition", 1, []byte{}))
 	a.NoError(store.Store("partition", 2, []byte{}))
-	a.Equal(uint64(2), fne(store.MaxMessageId("partition")))
+	a.Equal(uint64(2), fne(store.MaxMessageID("partition")))
 }
 
 func Test_DummyMessageStore_ErrorOnWrongMessageId(t *testing.T) {
@@ -23,7 +24,7 @@ func Test_DummyMessageStore_ErrorOnWrongMessageId(t *testing.T) {
 
 	store := NewDummyMessageStore(NewMemoryKVStore())
 
-	a.Equal(uint64(0), fne(store.MaxMessageId("partition")))
+	a.Equal(uint64(0), fne(store.MaxMessageID("partition")))
 	a.Error(store.Store("partition", 42, []byte{}))
 }
 
@@ -37,8 +38,8 @@ func Test_DummyMessageStore_InitIdsFromKvStore(t *testing.T) {
 	store := NewDummyMessageStore(kvStore)
 
 	// then
-	a.Equal(uint64(42), fne(store.MaxMessageId("partition1")))
-	a.Equal(uint64(43), fne(store.MaxMessageId("partition2")))
+	a.Equal(uint64(42), fne(store.MaxMessageID("partition1")))
+	a.Equal(uint64(43), fne(store.MaxMessageID("partition2")))
 }
 
 func Test_DummyMessageStore_SyncIds(t *testing.T) {
@@ -49,7 +50,7 @@ func Test_DummyMessageStore_SyncIds(t *testing.T) {
 	store := NewDummyMessageStore(kvStore)
 	store.idSyncDuration = time.Millisecond
 
-	a.Equal(uint64(0), fne(store.MaxMessageId("partition")))
+	a.Equal(uint64(0), fne(store.MaxMessageID("partition")))
 	_, exist, _ := kvStore.Get(topicSchema, "partition")
 	a.False(exist)
 
@@ -98,14 +99,6 @@ func Test_DummyMessageStore_SyncIdsOnStop(t *testing.T) {
 	value, exist, _ := kvStore.Get(topicSchema, "partition")
 	a.True(exist)
 	a.Equal([]byte(strconv.FormatUint(uint64(42), 10)), value)
-}
-
-func Test_CheckDummyStore(t *testing.T) {
-	a := assert.New(t)
-	store := NewDummyMessageStore(NewMemoryKVStore())
-
-	err := store.Check()
-	a.Nil(err)
 }
 
 func fne(args ...interface{}) interface{} {

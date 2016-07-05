@@ -69,15 +69,15 @@ func (_mr *_MockMessageStoreRecorder) GenerateNextMsgId(arg0, arg1 interface{}) 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GenerateNextMsgId", arg0, arg1)
 }
 
-func (_m *MockMessageStore) MaxMessageId(_param0 string) (uint64, error) {
-	ret := _m.ctrl.Call(_m, "MaxMessageId", _param0)
+func (_m *MockMessageStore) MaxMessageID(_param0 string) (uint64, error) {
+	ret := _m.ctrl.Call(_m, "MaxMessageID", _param0)
 	ret0, _ := ret[0].(uint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockMessageStoreRecorder) MaxMessageId(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaxMessageId", arg0)
+func (_mr *_MockMessageStoreRecorder) MaxMessageID(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaxMessageID", arg0)
 }
 
 func (_m *MockMessageStore) Store(_param0 string, _param1 uint64, _param2 []byte) error {
@@ -109,16 +109,6 @@ func NewMockKVStore(ctrl *gomock.Controller) *MockKVStore {
 
 func (_m *MockKVStore) EXPECT() *_MockKVStoreRecorder {
 	return _m.recorder
-}
-
-func (_m *MockKVStore) Check() error {
-	ret := _m.ctrl.Call(_m, "Check")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockKVStoreRecorder) Check() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Check")
 }
 
 func (_m *MockKVStore) Delete(_param0 string, _param1 string) error {

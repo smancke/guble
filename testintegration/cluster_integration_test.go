@@ -14,6 +14,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/smancke/guble/testutil"
 	//"github.com/smancke/guble/testutil"
 	"github.com/smancke/guble/protocol"
 )
@@ -34,7 +36,9 @@ func createService(storagePath, nodeID, nodePort, httpListen string, remotes str
 	return service
 }
 
-func Test_Cluster(t *testing.T) {
+func Test_Cluster_Integration(t *testing.T) {
+	testutil.SkipIfShort(t)
+
 	a := assert.New(t)
 	//defer testutil.EnableDebugForMethod()()
 
@@ -62,7 +66,7 @@ func Test_Cluster(t *testing.T) {
 	client1, err1 := client.Open("ws://127.0.0.1:8080/stream/user/user1", "http://localhost", 10, false)
 	a.NoError(err1)
 
-	client2, err2 := client.Open("ws://127.0.0.1:8080/stream/user/user2", "http://localhost", 10, false)
+	client2, err2 := client.Open("ws://localhost:8080/stream/user/user2", "http://localhost", 10, false)
 	a.NoError(err2)
 
 	err2 = client2.Subscribe("/testTopic/m")
@@ -70,7 +74,6 @@ func Test_Cluster(t *testing.T) {
 
 	client3, err3 := client.Open("ws://127.0.0.1:8080/stream/user/user3", "http://localhost", 10, false)
 	a.NoError(err3)
-
 
 	numSent := 3
 	for i := 0; i < numSent; i++ {
@@ -84,7 +87,7 @@ func Test_Cluster(t *testing.T) {
 		//time.Sleep(time.Millisecond * 20)
 	}
 	//time.Sleep(time.Second* 3)
-	breakTimer := time.After(3* time.Second)
+	breakTimer := time.After(3 * time.Second)
 	numReceived := 0
 	idReceived := make(map[uint64]bool)
 
@@ -108,10 +111,10 @@ WAIT:
 			//a.Equal("user1", incomingMessage.UserID)
 			//a.Equal("{jsonHeader:1}", incomingMessage.HeaderJSON)
 			a.Equal("body", incomingMessage.BodyAsString())
-			a.True(incomingMessage.ID > 0 )
+			a.True(incomingMessage.ID > 0)
 			idReceived[incomingMessage.ID] = true
 
-			if 2* numReceived == numSent {
+			if 2*numReceived == numSent {
 				break WAIT
 			}
 

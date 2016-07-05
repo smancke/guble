@@ -2,15 +2,17 @@ package server
 
 import (
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/webserver"
 
-	"github.com/docker/distribution/health"
-	"github.com/smancke/guble/metrics"
 	"net/http"
 	"reflect"
 	"time"
+
+	"github.com/docker/distribution/health"
+	"github.com/smancke/guble/metrics"
 )
 
 const (
@@ -114,15 +116,10 @@ func (s *Service) Start() error {
 	for _, module := range s.modules {
 		name := reflect.TypeOf(module).String()
 		if startable, ok := module.(Startable); ok {
-			loggerService.WithFields(log.Fields{
-				"name": name,
-			}).Info("Starting module")
+			loggerService.WithField("name", name).Info("Starting module")
 
 			if err := startable.Start(); err != nil {
-				loggerService.WithFields(log.Fields{
-					"name": name,
-					"err":  err,
-				}).Error("Error while starting module")
+				loggerService.WithError(err).WithField("name", name).Error("Error while starting module")
 				el.Add(err)
 			}
 		}
@@ -196,4 +193,9 @@ func (s *Service) Modules() []interface{} {
 // WebServer returns the service *webserver.WebServer instance
 func (s *Service) WebServer() *webserver.WebServer {
 	return s.webserver
+}
+
+// Router returns the service Router instance
+func (s *Service) Router() Router {
+	return s.router
 }

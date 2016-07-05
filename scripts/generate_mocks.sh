@@ -57,7 +57,7 @@ $MOCKGEN -package gcm \
 $MOCKGEN -self_package gcm -package gcm \
       -destination gcm/mocks_store_gen_test.go \
       github.com/smancke/guble/store \
-      KVStore
+      KVStore,MessageStore
 
 # gubled mocks
 $MOCKGEN -package gubled \

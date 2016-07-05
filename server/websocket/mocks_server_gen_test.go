@@ -54,6 +54,16 @@ func (_mr *_MockRouterRecorder) Cluster() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Cluster")
 }
 
+func (_m *MockRouter) Fetch(_param0 store.FetchRequest) error {
+	ret := _m.ctrl.Call(_m, "Fetch", _param0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockRouterRecorder) Fetch(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Fetch", arg0)
+}
+
 func (_m *MockRouter) HandleMessage(_param0 *protocol.Message) error {
 	ret := _m.ctrl.Call(_m, "HandleMessage", _param0)
 	ret0, _ := ret[0].(error)

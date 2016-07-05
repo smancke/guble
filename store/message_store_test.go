@@ -37,16 +37,16 @@ func Test_Fetch(t *testing.T) {
 	}
 
 	for _, testcase := range testCases {
-		testcase.req.MessageC = make(chan MessageAndId)
-		testcase.req.ErrorCallback = make(chan error)
-		testcase.req.StartCallback = make(chan int)
+		testcase.req.MessageC = make(chan MessageAndID)
+		testcase.req.ErrorC = make(chan error)
+		testcase.req.StartC = make(chan int)
 
 		messages := []string{}
 
 		store.Fetch(testcase.req)
 
 		select {
-		case numberOfResults := <-testcase.req.StartCallback:
+		case numberOfResults := <-testcase.req.StartC:
 			a.Equal(len(testcase.expectedResults), numberOfResults)
 		case <-time.After(time.Second):
 			a.Fail("timeout")
@@ -61,7 +61,7 @@ func Test_Fetch(t *testing.T) {
 					break loop
 				}
 				messages = append(messages, string(msg.Message))
-			case err := <-testcase.req.ErrorCallback:
+			case err := <-testcase.req.ErrorC:
 				a.Fail(err.Error())
 				break loop
 			case <-time.After(time.Second):
@@ -101,7 +101,7 @@ func Test_MaxMessageId(t *testing.T) {
 	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
 	a.NoError(store.Store("p1", uint64(expectedMaxId), []byte("bbbbbbbbbb")))
 
-	maxID, err := store.MaxMessageId("p1")
+	maxID, err := store.MaxMessageID("p1")
 	a.Nil(err, "No error should be received for partition p1")
 	a.Equal(maxID, uint64(expectedMaxId), fmt.Sprintf("MaxId should be [%d]", expectedMaxId))
 }
@@ -110,7 +110,7 @@ func Test_MaxMessageIdError(t *testing.T) {
 	a := assert.New(t)
 	store := NewFileMessageStore("/TestDir")
 
-	_, err := store.MaxMessageId("p2")
+	_, err := store.MaxMessageID("p2")
 	a.NotNil(err)
 }
 
@@ -132,9 +132,9 @@ func Test_FetchWithError(t *testing.T) {
 	store := NewFileMessageStore("/TestDir")
 
 	chanCallBack := make(chan error, 1)
-	aFetchRequest := FetchRequest{Partition: "p1", StartID: 2, Count: 1, ErrorCallback: chanCallBack}
+	aFetchRequest := FetchRequest{Partition: "p1", StartID: 2, Count: 1, ErrorC: chanCallBack}
 	store.Fetch(aFetchRequest)
-	err := <-aFetchRequest.ErrorCallback
+	err := <-aFetchRequest.ErrorC
 	a.NotNil(err)
 }
 
