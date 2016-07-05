@@ -87,12 +87,12 @@ func messagePartitionReader(name string, a *assert.Assertions, store *MessagePar
 					}).Debug("Stop fetching")
 					break FETCH
 				}
-				a.Equal(lastReadMessage+1, int(msgAndId.Id), "Reader: "+name)
+				a.Equal(lastReadMessage+1, int(msgAndId.ID), "Reader: "+name)
 				// if ! {
 				// 	log.WithField("fileCache", store.fileCache).Info("FileCAche")
 				// 	os.Exit(1)
 				// }
-				lastReadMessage = int(msgAndId.Id)
+				lastReadMessage = int(msgAndId.ID)
 			case err := <-errorC:
 				a.Fail("received error", err.Error())
 				<-done

@@ -24,9 +24,6 @@ type MessageStore interface {
 
 	// GenerateNextMsgId generates a new message ID based on a timestamp in a strictly monotonically order
 	GenerateNextMsgId(msgPathPartition string, nodeID int) (uint64, int64, error)
-
-	//Check if the current messageStore is having enough space to save on Disk
-	Check() error
 }
 
 type MessageAndID struct {
