@@ -9,7 +9,6 @@ import (
 	"path"
 	"testing"
 	"time"
-	"github.com/Sirupsen/logrus"
 )
 
 func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
@@ -35,9 +34,7 @@ func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
 func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
 	a := assert.New(t)
 
-	defer testutil.EnableDebugForMethod()()
-
-	logrus.WithField("ts", time.Now().UnixNano()).Info("afasf")
+	//defer testutil.EnableDebugForMethod()()
 
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
