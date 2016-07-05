@@ -1,8 +1,9 @@
 package store
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPostgresPutGetDelete(t *testing.T) {
@@ -46,6 +47,7 @@ func TestPostgresKVStore_Check(t *testing.T) {
 	a.NotNil(err, "Db ping should not work. Db is closed")
 }
 
+// This config assumes a postgresql running locally
 func aPostgresConfig() PostgresConfig {
 	return PostgresConfig{
 		"host":     "localhost",
