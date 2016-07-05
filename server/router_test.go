@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
-
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
@@ -110,16 +108,10 @@ func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 	a.Error(err)
 
 	// and when permission is granted
-	id := uint64(2)
-	timestamp := time.Now().Unix()
-	defer func() {
-		if p := recover(); p != nil {
-			log.Debug(p)
-		}
-	}()
+	id, ts := uint64(2), time.Now().Unix()
 
 	amMock.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(true)
-	msMock.EXPECT().GenerateNextMsgId(gomock.Any(), gomock.Any()).Return(id, timestamp, nil)
+	msMock.EXPECT().GenerateNextMsgId(gomock.Any(), gomock.Any()).Return(id, ts, nil)
 	msMock.EXPECT().Store("blah", id, gomock.Any()).Return(nil)
 
 	// sending message
@@ -131,7 +123,6 @@ func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 
 	// shall give no error
 	a.NoError(err)
-	time.Sleep(1 * time.Second)
 }
 
 func TestRouter_ReplacingOfRoutes(t *testing.T) {
@@ -161,8 +152,8 @@ func TestRouter_SimpleMessageSending(t *testing.T) {
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
 
-	id := uint64(2)
-	msMock.EXPECT().GenerateNextMsgId(gomock.Any(), gomock.Any()).Return(id, nil)
+	id, ts := uint64(2), time.Now().Unix()
+	msMock.EXPECT().GenerateNextMsgId(gomock.Any(), gomock.Any()).Return(id, ts, nil)
 	msMock.EXPECT().Store(r.Path.Partition(), id, gomock.Any()).Return(nil)
 
 	// when i send a message to the route
@@ -183,9 +174,10 @@ func TestRouter_RoutingWithSubTopics(t *testing.T) {
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
 	// expect a message to `blah` partition first and `blahblub` second
-	id := uint64(2)
-	msMock.EXPECT().GenerateNextMsgId("blah", gomock.Any()).Return(id, nil)
-	msMock.EXPECT().GenerateNextMsgId("blahblub", gomock.Any()).Return(id+1, nil)
+	id, ts := uint64(2), time.Now().Unix()
+	msMock.EXPECT().GenerateNextMsgId("blah", gomock.Any()).Return(id, ts, nil)
+	ts = time.Now().Unix()
+	msMock.EXPECT().GenerateNextMsgId("blahblub", gomock.Any()).Return(id+1, ts, nil)
 	msMock.EXPECT().Store("blah", id, gomock.Any()).Return(nil)
 	msMock.EXPECT().Store("blahblub", id+1, gomock.Any()).Return(nil)
 

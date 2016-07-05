@@ -165,12 +165,12 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 
 	if router.cluster == nil || (router.cluster != nil && message.NodeID == 0) {
 		// for a new locally-generated message, we need to generate a new message-ID
-		var clusterID int
+		var nodeID int
 		if router.cluster != nil {
-			clusterID = router.cluster.Config.ID
+			nodeID = router.cluster.Config.ID
 		}
 
-		id, ts, err := router.messageStore.GenerateNextMsgId(msgPathPartition, clusterID)
+		id, ts, err := router.messageStore.GenerateNextMsgId(msgPathPartition, nodeID)
 		if err != nil {
 			logger.WithError(err).Error("Generation of id failed")
 			mTotalMessageStoreErrors.Add(1)
@@ -197,7 +197,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 			"ts2":          ts,
 			"msgPartition": msgPathPartition,
 			"s":            message.UserID,
-			"nodeId":       router.cluster.Config.ID,
+			"nodeId":       nodeID,
 		}).Info("++Storing locally generated")
 
 	} else {
