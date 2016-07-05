@@ -22,12 +22,11 @@ var (
 )
 
 const (
-	defaultInitialCapacity = 128
-	GubleNodeIdBits        = 3
-	SequenceBits           = 12
-	GubleNodeIdShift       = SequenceBits
-	TimestampLeftShift     = SequenceBits + GubleNodeIdBits
-	GubleEpoch             = 1467024972
+	GubleNodeIdBits    = 3
+	SequenceBits       = 12
+	GubleNodeIdShift   = SequenceBits
+	TimestampLeftShift = SequenceBits + GubleNodeIdBits
+	GubleEpoch         = 1467024972
 )
 
 type FetchEntry struct {
@@ -255,14 +254,17 @@ func (p *MessagePartition) generateNextMsgId(nodeId int) (uint64, int64, error) 
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	timestamp := time.Now().Unix()
+	//Get the local Timestamp
+	currTime := time.Now()
+	// timestamp in Seconds will be return to client
+	timestamp := currTime.Unix()
 
 	if timestamp < GubleEpoch {
 		err := fmt.Errorf("Clock is moving backwards. Rejecting requests until %d.", timestamp)
 		return 0, 0, err
 	}
 
-	id := (uint64(timestamp - GubleEpoch) << TimestampLeftShift) |
+	id := (uint64(currTime.UnixNano()-GubleEpoch) << TimestampLeftShift) |
 		(uint64(nodeId) << GubleNodeIdShift) | p.localSequenceNumber
 
 	p.localSequenceNumber++
