@@ -23,7 +23,7 @@ var (
 
 const (
 	defaultInitialCapacity = 128
-	GubleNodeIdBits        = 5
+	GubleNodeIdBits        = 3
 	SequenceBits           = 12
 	GubleNodeIdShift       = SequenceBits
 	TimestampLeftShift     = SequenceBits + GubleNodeIdBits

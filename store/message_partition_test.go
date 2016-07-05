@@ -12,6 +12,26 @@ import (
 	"path"
 )
 
+func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
+	a := assert.New(t)
+
+	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
+	defer os.RemoveAll(dir)
+	store, err := NewMessagePartition(dir, "node1")
+	a.Nil(err)
+
+	generatedIDs :=  make([]uint64,0)
+	lastId  := uint64(0)
+
+	for i :=0 ;i < 1000 ; i++  {
+		id ,_,err := store.generateNextMsgId(1)
+		generatedIDs = append(generatedIDs,id)
+		a.True(id > lastId,"Ids should be monotonic")
+		lastId =id
+		a.Nil(err)
+	}
+}
+
 func Test_MessagePartition_loadFiles(t *testing.T) {
 	a := assert.New(t)
 	// allow five messages per file
