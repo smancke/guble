@@ -159,9 +159,11 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
 	}
 
-	lenMessage := int64(len(message.Bytes()))
-	mTotalMessagesIncomingBytes.Add(lenMessage)
-	msgPathPartition := message.Path.Partition()
+	messageData := message.Bytes()
+	messageSize := int64(len(messageData))
+	messagePartition := message.Path.Partition()
+
+	mTotalMessagesIncomingBytes.Add(messageSize)
 
 	if router.cluster == nil || (router.cluster != nil && message.NodeID == 0) {
 		// for a new locally-generated message, we need to generate a new message-ID
@@ -170,7 +172,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 			nodeID = router.cluster.Config.ID
 		}
 
-		id, ts, err := router.messageStore.GenerateNextMsgId(msgPathPartition, nodeID)
+		id, ts, err := router.messageStore.GenerateNextMsgId(messagePartition, nodeID)
 		if err != nil {
 			logger.WithError(err).Error("Generation of id failed")
 			mTotalMessageStoreErrors.Add(1)
@@ -183,44 +185,44 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 			message.NodeID = router.cluster.Config.ID
 		}
 
-		if err := router.messageStore.Store(msgPathPartition, message.ID, message.Bytes()); err != nil {
+		if err := router.messageStore.Store(messagePartition, message.ID, messageData); err != nil {
 			logger.
-				WithError(err).WithField("msgPartition", msgPathPartition).
+				WithError(err).WithField("messagePartition", messagePartition).
 				Error("Error storing locally generated  messagein partition")
 			mTotalMessageStoreErrors.Add(1)
 			return err
 		}
 
 		logger.WithFields(log.Fields{
-			"id":           message.ID,
-			"ts":           message.Time,
-			"ts2":          ts,
-			"msgPartition": msgPathPartition,
-			"s":            message.UserID,
-			"nodeId":       nodeID,
+			"id":               message.ID,
+			"ts":               message.Time,
+			"ts2":              ts,
+			"messagePartition": messagePartition,
+			"s":                message.UserID,
+			"nodeId":           nodeID,
 		}).Info("++Storing locally generated")
 
 	} else {
 
-		if err := router.messageStore.Store(msgPathPartition, message.ID, message.Bytes()); err != nil {
+		if err := router.messageStore.Store(messagePartition, message.ID, messageData); err != nil {
 			logger.
-				WithError(err).WithField("msgPartition", msgPathPartition).
+				WithError(err).WithField("messagePartition", messagePartition).
 				Error("Error storing message from cluster in partition")
 			mTotalMessageStoreErrors.Add(1)
 			return err
 		}
 
 		logger.WithFields(log.Fields{
-			"id":            message.ID,
-			"messageTime":   message.Time,
-			"msgPartition":  msgPathPartition,
-			"s":             message.UserID,
-			"nodeId":        router.cluster.Config.ID,
-			"messageNodiDi": message.NodeID,
+			"id":               message.ID,
+			"messageTime":      message.Time,
+			"messagePartition": messagePartition,
+			"s":                message.UserID,
+			"nodeId":           router.cluster.Config.ID,
+			"messageNodiDi":    message.NodeID,
 		}).Info("+++Storing CLuster generated")
 
 	}
-	mTotalMessagesStoredBytes.Add(lenMessage)
+	mTotalMessagesStoredBytes.Add(messageSize)
 
 	router.handleOverloadedChannel()
 
