@@ -3,6 +3,7 @@ package store
 import (
 	"testing"
 
+	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -52,6 +53,8 @@ func TestPostgresKVStore_Open(t *testing.T) {
 }
 
 func TestPostgresKVStore_ParallelUsage(t *testing.T) {
+	// test cant run because we cannot ensure the data has been written
+	testutil.SkipIfShort(t)
 	a := assert.New(t)
 
 	kvs1 := NewPostgresKVStore(aPostgresConfig())
@@ -70,28 +73,28 @@ func TestPostgresKVStore_ParallelUsage(t *testing.T) {
 // This config assumes a postgresql running locally
 func aPostgresConfig() PostgresConfig {
 	return PostgresConfig{
-		map[string]string{
+		ConnParams: map[string]string{
 			"host":     "localhost",
 			"user":     "postgres",
 			"password": "",
 			"dbname":   "guble",
 			"sslmode":  "disable",
 		},
-		1,
-		1,
+		MaxIdleConns: 1,
+		MaxOpenConns: 1,
 	}
 }
 
 func invalidPostgresConfig() PostgresConfig {
 	return PostgresConfig{
-		map[string]string{
+		ConnParams: map[string]string{
 			"host":     "localhost",
 			"user":     "",
 			"password": "",
 			"dbname":   "",
 			"sslmode":  "disable",
 		},
-		1,
-		1,
+		MaxIdleConns: 1,
+		MaxOpenConns: 1,
 	}
 }
