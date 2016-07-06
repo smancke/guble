@@ -4,7 +4,7 @@ import (
 	"github.com/Sirupsen/logrus"
 )
 
-// A PriorityQueue implements heap.Interface and holds Items.
+// SortedIndexList a sorted list of fetch entries
 type SortedIndexList []*FetchEntry
 
 func (pq *SortedIndexList) Len() int { return len(*pq) }
@@ -24,26 +24,27 @@ func (pq *SortedIndexList) Insert(newElement *FetchEntry) {
 	if pq.Len() == 0 {
 		*pq = append(*pq, newElement)
 		return
-	} else {
-		// if the first element in list have a bigger id...insert new element on the start of list
-		if (*pq)[0].messageId >= newElement.messageId {
-			*pq = append(SortedIndexList{newElement}, *pq...)
-			return
-			//to optimize the performance check if the new element is having a bigger ID than the last one
-		} else if (*pq)[pq.Len()-1].messageId <= newElement.messageId {
-			*pq = append(*pq, newElement)
-			return
-		} else {
-			//found the correct position to make an insertion sort
-			for i := 1; i <= pq.Len()-1; i++ {
-				if (*pq)[i].messageId > newElement.messageId {
-					pq.insertAt(i, newElement)
-					return
-				}
-			}
-		}
 	}
 
+	// if the first element in list have a bigger id...insert new element on the start of list
+	if (*pq)[0].messageID >= newElement.messageID {
+		*pq = append(SortedIndexList{newElement}, *pq...)
+		return
+		//to optimize the performance check if the new element is having a bigger ID than the last one
+	}
+
+	if (*pq)[pq.Len()-1].messageID <= newElement.messageID {
+		*pq = append(*pq, newElement)
+		return
+	}
+
+	//found the correct position to make an insertion sort
+	for i := 1; i <= pq.Len()-1; i++ {
+		if (*pq)[i].messageID > newElement.messageID {
+			pq.insertAt(i, newElement)
+			return
+		}
+	}
 }
 
 func (pq *SortedIndexList) insertAt(index int, newElement *FetchEntry) {
@@ -52,9 +53,7 @@ func (pq *SortedIndexList) insertAt(index int, newElement *FetchEntry) {
 
 // Clear empties the current list
 func (pq *SortedIndexList) Clear() {
-	*pq = nil
 	*pq = make(SortedIndexList, 0)
-
 }
 
 //returns the absolute value for two numbers
@@ -69,26 +68,25 @@ func abs(m1, m2 uint64) uint64 {
 // GetIndexEntryFromID performs a binarySearch retrieving the
 // true, the position and list and the actual entry if found
 // false , -1 ,nil if position is not found
-func (pq *SortedIndexList) GetIndexEntryFromID(searchedId uint64) (bool, int, int, *FetchEntry) {
-	//messageStoreLogger.WithField("searchedId", searchedId).Info("GetIndexEntryFromID")
-
+func (pq *SortedIndexList) GetIndexEntryFromID(searchID uint64) (bool, int, int, *FetchEntry) {
 	if pq.Len() == 0 {
 		return false, -1, -1, nil
 	}
+
 	h := pq.Len() - 1
 	l := 0
 	bestIndex := l
 	for l <= h {
 		mid := (h + l) / 2
-		if (*pq)[mid].messageId == searchedId {
+		if (*pq)[mid].messageID == searchID {
 			return true, mid, bestIndex, (*pq)[mid]
-		} else if (*pq)[mid].messageId < searchedId {
+		} else if (*pq)[mid].messageID < searchID {
 			l = mid + 1
 		} else {
 			h = mid - 1
 		}
 
-		if abs((*pq)[mid].messageId, searchedId) <= abs((*pq)[bestIndex].messageId, searchedId) {
+		if abs((*pq)[mid].messageID, searchID) <= abs((*pq)[bestIndex].messageID, searchID) {
 			bestIndex = mid
 		}
 	}
@@ -125,7 +123,7 @@ func (pq *SortedIndexList) PrintPq() {
 	for i := 0; i < pq.Len(); i++ {
 		messageStoreLogger.WithFields(logrus.Fields{
 			"msgSize":   (*pq)[i].size,
-			"msgId":     (*pq)[i].messageId,
+			"msgId":     (*pq)[i].messageID,
 			"msgOffset": (*pq)[i].offset,
 		}).Info("Printing element")
 	}

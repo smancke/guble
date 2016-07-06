@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/protocol"
 )
 
 var messageStoreLogger = log.WithFields(log.Fields{
@@ -60,6 +61,49 @@ func (fms *FileMessageStore) GenerateNextMsgId(msgPathPartition string, nodeID i
 		return 0, 0, err
 	}
 	return p.generateNextMsgId(nodeID)
+}
+
+func (fms *FileMessageStore) StoreMessage(message *protocol.Message, nodeID int) (int, error) {
+	partitionName := message.Path.Partition()
+
+	// If nodeID is zero means we are running in standalone more, otherwise
+	// if the message has no nodeID it means it was received by this node
+	if nodeID == 0 || message.NodeID == 0 {
+		id, ts, err := fms.GenerateNextMsgId(partitionName, nodeID)
+
+		if err != nil {
+			messageStoreLogger.WithError(err).Error("Generation of id failed")
+			return 0, err
+		}
+
+		message.ID = id
+		message.Time = ts
+		message.NodeID = nodeID
+
+		log.WithFields(log.Fields{
+			"generatedID":   id,
+			"generatedTime": message.Time,
+		}).Info("Locally generated ID for message")
+	}
+
+	data := message.Bytes()
+
+	if err := fms.Store(partitionName, message.ID, message.Bytes()); err != nil {
+		messageStoreLogger.
+			WithError(err).WithField("partition", partitionName).
+			Error("Error storing locally generated  messagein partition")
+		return 0, err
+	}
+
+	messageStoreLogger.WithFields(log.Fields{
+		"id":            message.ID,
+		"ts":            message.Time,
+		"partition":     partitionName,
+		"messageUserID": message.UserID,
+		"nodeID":        nodeID,
+	}).Info("Stored message")
+
+	return len(data), nil
 }
 
 // Store stores a message within a partition

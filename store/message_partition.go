@@ -29,7 +29,7 @@ const (
 )
 
 type FetchEntry struct {
-	messageId uint64
+	messageID uint64
 	offset    uint64
 	size      uint32
 	fileID    int
@@ -65,17 +65,17 @@ type MessagePartition struct {
 
 	noOfEntriesInIndexFile uint64 //TODO  MAYBE USE ONLY ONE  FROM THE noOfEntriesInIndexFile AND localSequenceNumber
 	mutex                  *sync.RWMutex
-	indexFileSortedList    *SortedIndexList
+	sortedIndexList        *SortedIndexList
 	fileCache              []*FileCacheEntry
 }
 
 func NewMessagePartition(basedir string, storeName string) (*MessagePartition, error) {
 	p := &MessagePartition{
-		basedir:             basedir,
-		name:                storeName,
-		mutex:               &sync.RWMutex{},
-		indexFileSortedList: newList(600),
-		fileCache:           make([]*FileCacheEntry, 0),
+		basedir:         basedir,
+		name:            storeName,
+		mutex:           &sync.RWMutex{},
+		sortedIndexList: newList(600),
+		fileCache:       make([]*FileCacheEntry, 0),
 	}
 	return p, p.initialize()
 }
@@ -140,7 +140,7 @@ func (p *MessagePartition) readIdxFiles() error {
 
 	}
 	// read the  idx file with   biggest id and load in the sorted cache
-	err = p.loadLastIndexFile(indexFilesName[len(indexFilesName)-1])
+	err = p.lostLastIdxFile(indexFilesName[len(indexFilesName)-1])
 	if err != nil {
 		messageStoreLogger.WithFields(log.Fields{
 			"idxFilename": indexFilesName[(len(indexFilesName) - 1)],
@@ -149,8 +149,8 @@ func (p *MessagePartition) readIdxFiles() error {
 		return err
 	}
 
-	if p.indexFileSortedList.Back().messageId >= p.maxMessageId {
-		p.maxMessageId = p.indexFileSortedList.Back().messageId
+	if p.sortedIndexList.Back().messageID >= p.maxMessageId {
+		p.maxMessageId = p.sortedIndexList.Back().messageID
 	}
 
 	return nil
@@ -208,8 +208,7 @@ func readMinMaxMsgIdFromIndexFile(filename string) (minMsgID, maxMsgID uint64, e
 }
 
 func (p *MessagePartition) createNextAppendFiles() error {
-
-	messageStoreLogger.WithField("NEW_FILENAME", p.composeMsgFilename()).Info("++CreateNextIndexAPppendFIles")
+	messageStoreLogger.WithField("newFilename", p.composeMsgFilename()).Info("CreateNextIndexApppendFIles")
 
 	appendfile, err := os.OpenFile(p.composeMsgFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -328,19 +327,19 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 			}).Info("DUumping current file ")
 
 			//sort the indexFile
-			err := p.dumpSortedIndexFile(p.composeIndexFilename())
+			err := p.rewriteSortedIdxFile(p.composeIndexFilename())
 			if err != nil {
 				messageStoreLogger.WithField("err", err).Error("Error dumping file")
 				return err
 			}
 			//Add items in the filecache
 			p.fileCache = append(p.fileCache, &FileCacheEntry{
-				minMsgID: p.indexFileSortedList.Get(0).messageId,
-				maxMsgID: p.indexFileSortedList.Back().messageId,
+				minMsgID: p.sortedIndexList.Get(0).messageID,
+				maxMsgID: p.sortedIndexList.Back().messageID,
 			})
 
 			//clear the current sorted cache
-			p.indexFileSortedList.Clear()
+			p.sortedIndexList.Clear()
 			p.noOfEntriesInIndexFile = 0
 		}
 
@@ -380,12 +379,12 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 
 	//create entry for pq
 	e := &FetchEntry{
-		messageId: msgId,
+		messageID: msgId,
 		offset:    messageOffset,
 		size:      uint32(len(msg)),
 		fileID:    len(p.fileCache),
 	}
-	p.indexFileSortedList.Insert(e)
+	p.sortedIndexList.Insert(e)
 
 	p.appendFileWritePosition += uint64(len(sizeAndId) + len(msg))
 
@@ -435,7 +434,7 @@ func (p *MessagePartition) fetchByFetchlist(fetchList *SortedIndexList, messageC
 			file.Close()
 			return err
 		}
-		messageC <- MessageAndID{f.messageId, msg}
+		messageC <- MessageAndID{f.messageID, msg}
 		file.Close()
 	}
 	return nil
@@ -476,7 +475,7 @@ func (p *MessagePartition) calculateFetchList(req *FetchRequest) (*SortedIndexLi
 		if fce.hasStartID(req) || (prev && potentialEntries.Len() < req.Count) {
 			prev = true
 
-			pq, err := loadIndexFile(p.composeIndexFilenameWithValue(uint64(i)), i)
+			pq, err := loadIdxFile(p.composeIndexFilenameWithValue(uint64(i)), i)
 			if err != nil {
 				messageStoreLogger.WithError(err).Info("Error loading idx file in memory")
 				return nil, err
@@ -491,9 +490,9 @@ func (p *MessagePartition) calculateFetchList(req *FetchRequest) (*SortedIndexLi
 
 	//read from current cached value (the idx file which size is smaller than MESSAGE_PER_FILE
 
-	fce := fileCacheEntryForList(p.indexFileSortedList)
+	fce := fileCacheEntryForList(p.sortedIndexList)
 	if fce.hasStartID(req) || (prev && potentialEntries.Len() < req.Count) {
-		currentEntries := retrieveFromList(p.indexFileSortedList, req)
+		currentEntries := retrieveFromList(p.sortedIndexList, req)
 		potentialEntries.InsertList(currentEntries)
 	}
 	//Currently potentialEntries contains a potentials msgIDs from any files and from inMemory.From this will select only Count Id.
@@ -502,7 +501,7 @@ func (p *MessagePartition) calculateFetchList(req *FetchRequest) (*SortedIndexLi
 	return fetchList, nil
 }
 
-func (p *MessagePartition) dumpSortedIndexFile(filename string) error {
+func (p *MessagePartition) rewriteSortedIdxFile(filename string) error {
 	messageStoreLogger.WithFields(log.Fields{
 		"filename": filename,
 	}).Info("Dumping Sorted list")
@@ -514,10 +513,10 @@ func (p *MessagePartition) dumpSortedIndexFile(filename string) error {
 	}
 
 	lastMsgID := uint64(0)
-	for i := 0; i < p.indexFileSortedList.Len(); i++ {
-		item := p.indexFileSortedList.Get(i)
+	for i := 0; i < p.sortedIndexList.Len(); i++ {
+		item := p.sortedIndexList.Get(i)
 
-		if lastMsgID >= item.messageId {
+		if lastMsgID >= item.messageID {
 			messageStoreLogger.WithFields(log.Fields{
 				"err":      err,
 				"filename": filename,
@@ -525,10 +524,10 @@ func (p *MessagePartition) dumpSortedIndexFile(filename string) error {
 
 			return err
 		}
-		lastMsgID = item.messageId
-		err := writeIndexEntry(file, item.messageId, item.offset, item.size, uint64(i))
+		lastMsgID = item.messageID
+		err := writeIndexEntry(file, item.messageID, item.offset, item.size, uint64(i))
 		messageStoreLogger.WithFields(log.Fields{
-			"curMsgId": item.messageId,
+			"curMsgId": item.messageID,
 			"err":      err,
 			"pos":      i,
 			"filename": file.Name(),
@@ -593,23 +592,23 @@ func calculateNumberOfEntries(filename string) (uint64, error) {
 }
 
 // loadLastIndexFile will construct the current Sorted List for fetch entries which corresponds to the idx file with the biggest name
-func (p *MessagePartition) loadLastIndexFile(filename string) error {
+func (p *MessagePartition) lostLastIdxFile(filename string) error {
 	messageStoreLogger.WithField("filename", filename).Info("loadIndexFileInMemory")
 
-	pq, err := loadIndexFile(filename, len(p.fileCache))
+	pq, err := loadIdxFile(filename, len(p.fileCache))
 	if err != nil {
 		messageStoreLogger.WithError(err).Error("Error loading filename")
 		return err
 	}
 
-	p.indexFileSortedList = pq
+	p.sortedIndexList = pq
 	p.noOfEntriesInIndexFile = uint64(pq.Len())
 
 	return nil
 }
 
 // loadIndexFile will read a file and will return a sorted list for fetchEntries
-func loadIndexFile(filename string, fileID int) (*SortedIndexList, error) {
+func loadIdxFile(filename string, fileID int) (*SortedIndexList, error) {
 	pq := newList(1000)
 	messageStoreLogger.WithField("filename", filename).Debug("loadIndexFile")
 
@@ -641,7 +640,7 @@ func loadIndexFile(filename string, fileID int) (*SortedIndexList, error) {
 
 		e := &FetchEntry{
 			size:      msgSize,
-			messageId: msgID,
+			messageID: msgID,
 			offset:    msgOffset,
 			fileID:    fileID,
 		}
@@ -690,10 +689,10 @@ func (p *MessagePartition) composeIndexFilenameWithValue(value uint64) string {
 func fileCacheEntryForList(pq *SortedIndexList) (entry FileCacheEntry) {
 	front, back := pq.Front(), pq.Back()
 	if front != nil {
-		entry.minMsgID = front.messageId
+		entry.minMsgID = front.messageID
 	}
 	if back != nil {
-		entry.maxMsgID = back.messageId
+		entry.maxMsgID = back.messageID
 	}
 	return
 }

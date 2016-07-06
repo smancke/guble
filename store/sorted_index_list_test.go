@@ -21,7 +21,7 @@ func Test_SortedListSanity(t *testing.T) {
 
 		entry := &FetchEntry{
 			size:      3,
-			messageId: uint64(msgID),
+			messageID: uint64(msgID),
 			offset:    128,
 		}
 		pq.Insert(entry)
@@ -38,14 +38,14 @@ func Test_SortedListSanity(t *testing.T) {
 		}
 		found, pos, _, foundEntry := pq.GetIndexEntryFromID(id)
 		a.True(found)
-		a.Equal(foundEntry.messageId, id)
+		a.Equal(foundEntry.messageID, id)
 		a.True(pos >= 0 && pos <= len(generatedIds))
 	}
 
 	logrus.WithField("generatedIds", generatedIds).Info("IdS")
 
-	a.Equal(min, pq.Front().messageId)
-	a.Equal(max, pq.Back().messageId)
+	a.Equal(min, pq.Front().messageID)
+	a.Equal(max, pq.Back().messageID)
 
 	found, pos, bestIndexbestIndex, foundEntry := pq.GetIndexEntryFromID(uint64(46))
 	a.False(found, "Element should not be found since is a number greater than the random generated upper limit")
@@ -53,7 +53,7 @@ func Test_SortedListSanity(t *testing.T) {
 	a.Nil(foundEntry)
 	logrus.WithField("bestIndexbestIndex", bestIndexbestIndex).Info("bEST")
 
-	a.Equal(pq.Front().messageId, pq.Get(0).messageId, "First element should contain the smallest element")
+	a.Equal(pq.Front().messageID, pq.Get(0).messageID, "First element should contain the smallest element")
 	a.Nil(pq.Get(-1), "Trying to get an invalid index will return nil")
 
 	pq.Clear()

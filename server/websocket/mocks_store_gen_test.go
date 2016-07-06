@@ -5,6 +5,7 @@ package websocket
 
 import (
 	gomock "github.com/golang/mock/gomock"
+	protocol "github.com/smancke/guble/protocol"
 	store "github.com/smancke/guble/store"
 )
 
@@ -78,4 +79,15 @@ func (_m *MockMessageStore) Store(_param0 string, _param1 uint64, _param2 []byte
 
 func (_mr *_MockMessageStoreRecorder) Store(arg0, arg1, arg2 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Store", arg0, arg1, arg2)
+}
+
+func (_m *MockMessageStore) StoreMessage(_param0 *protocol.Message, _param1 int) (int, error) {
+	ret := _m.ctrl.Call(_m, "StoreMessage", _param0, _param1)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockMessageStoreRecorder) StoreMessage(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "StoreMessage", arg0, arg1)
 }

@@ -1,5 +1,7 @@
 package store
 
+import "github.com/smancke/guble/protocol"
+
 // MessageStore is an interface for a persistence backend storing topics.
 type MessageStore interface {
 
@@ -8,6 +10,11 @@ type MessageStore interface {
 	// So the caller has to maintain the consistence between
 	// fetching an id and storing the message.
 	Store(partition string, msgID uint64, msg []byte) error
+
+	// Generates a new ID for the message if it's new and stores it
+	// Returns the size of the new message or error
+	// Takes the message and cluster node ID as parameters.
+	StoreMessage(*protocol.Message, int) (int, error)
 
 	// Fetch fetches a set of messages.
 	// The results, as well as errors are communicated asynchronously using

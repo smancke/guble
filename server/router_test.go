@@ -133,8 +133,14 @@ func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 	id, ts := uint64(2), time.Now().Unix()
 
 	amMock.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(true)
-	msMock.EXPECT().GenerateNextMsgId(gomock.Any(), gomock.Any()).Return(id, ts, nil)
-	msMock.EXPECT().Store("blah", id, gomock.Any()).Return(nil)
+	msMock.EXPECT().
+		StoreMessage(gomock.Any(), gomock.Any()).
+		Do(func(m *protocol.Message, nodeID int) (int, error) {
+			m.ID = id
+			m.Time = ts
+			m.NodeID = nodeID
+			return len(m.Bytes()), nil
+		})
 
 	// sending message
 	err = router.HandleMessage(&protocol.Message{
@@ -175,8 +181,14 @@ func TestRouter_SimpleMessageSending(t *testing.T) {
 	router.messageStore = msMock
 
 	id, ts := uint64(2), time.Now().Unix()
-	msMock.EXPECT().GenerateNextMsgId(gomock.Any(), gomock.Any()).Return(id, ts, nil)
-	msMock.EXPECT().Store(r.Path.Partition(), id, gomock.Any()).Return(nil)
+	msMock.EXPECT().
+		StoreMessage(gomock.Any(), gomock.Any()).
+		Do(func(m *protocol.Message, nodeID int) (int, error) {
+			m.ID = id
+			m.Time = ts
+			m.NodeID = nodeID
+			return len(m.Bytes()), nil
+		})
 
 	// when i send a message to the route
 	router.HandleMessage(&protocol.Message{Path: r.Path, Body: aTestByteMessage})
@@ -196,12 +208,19 @@ func TestRouter_RoutingWithSubTopics(t *testing.T) {
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
 	// expect a message to `blah` partition first and `blahblub` second
-	id, ts := uint64(2), time.Now().Unix()
-	msMock.EXPECT().GenerateNextMsgId("blah", gomock.Any()).Return(id, ts, nil)
-	ts = time.Now().Unix()
-	msMock.EXPECT().GenerateNextMsgId("blahblub", gomock.Any()).Return(id+1, ts, nil)
-	msMock.EXPECT().Store("blah", id, gomock.Any()).Return(nil)
-	msMock.EXPECT().Store("blahblub", id+1, gomock.Any()).Return(nil)
+	msMock.EXPECT().
+		StoreMessage(gomock.Any(), gomock.Any()).
+		Do(func(m *protocol.Message, nodeID int) (int, error) {
+			a.Equal("/blah/blub", string(m.Path))
+			return 0, nil
+		})
+
+	msMock.EXPECT().
+		StoreMessage(gomock.Any(), gomock.Any()).
+		Do(func(m *protocol.Message, nodeID int) (int, error) {
+			a.Equal("/blahblub", string(m.Path))
+			return 0, nil
+		})
 
 	r, _ := router.Subscribe(NewRoute("/blah", "appid01", "user01", chanSize))
 
@@ -249,8 +268,12 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
 
-	msMock.EXPECT().GenerateNextMsgId(gomock.Any(), gomock.Any()).MaxTimes(chanSize + 1)
-	msMock.EXPECT().Store(gomock.Any(), gomock.Any(), gomock.Any()).MaxTimes(chanSize + 1)
+	msMock.EXPECT().
+		StoreMessage(gomock.Any(), gomock.Any()).
+		Do(func(m *protocol.Message, nodeID int) (int, error) {
+			a.Equal(r.Path, m.Path)
+			return 0, nil
+		}).MaxTimes(chanSize + 1)
 
 	// where the channel is full of messages
 	for i := 0; i < chanSize; i++ {

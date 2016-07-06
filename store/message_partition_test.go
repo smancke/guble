@@ -318,7 +318,7 @@ func matchSortedList(t *testing.T, expected, actual SortedIndexList) bool {
 	for i, entry := range expected {
 		a := actual[i]
 		assert.Equal(t, *entry, *a)
-		if entry.messageId != a.messageId ||
+		if entry.messageID != a.messageID ||
 			entry.offset != a.offset ||
 			entry.size != a.size ||
 			entry.fileID != a.fileID {
