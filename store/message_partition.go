@@ -16,7 +16,7 @@ import (
 var (
 	MAGIC_NUMBER        = []byte{42, 249, 180, 108, 82, 75, 222, 182}
 	FILE_FORMAT_VERSION = []byte{1}
-	MESSAGES_PER_FILE   = uint64(10000)
+	MESSAGES_PER_FILE   = uint64(100)
 	INDEX_ENTRY_SIZE    = 20
 )
 
@@ -35,24 +35,9 @@ type FetchEntry struct {
 	fileID    int
 }
 
-type FileCacheEntry struct {
-	minMsgID uint64
-	maxMsgID uint64
-}
 
-func (f *FileCacheEntry) hasStartID(req *FetchRequest) bool {
-	if req.StartID == 0 {
-		req.Direction = 1
-		return true
-	}
 
-	if req.Direction >= 0 {
-		return req.StartID >= f.minMsgID && req.StartID <= f.maxMsgID
-	} else {
-		return req.StartID >= f.minMsgID
-	}
 
-}
 
 type MessagePartition struct {
 	basedir                 string
@@ -66,7 +51,7 @@ type MessagePartition struct {
 	noOfEntriesInIndexFile uint64 //TODO  MAYBE USE ONLY ONE  FROM THE noOfEntriesInIndexFile AND localSequenceNumber
 	mutex                  *sync.RWMutex
 	sortedIndexList        *SortedIndexList
-	fileCache              []*FileCacheEntry
+	fileCache             *fileCache
 }
 
 func NewMessagePartition(basedir string, storeName string) (*MessagePartition, error) {
@@ -74,8 +59,8 @@ func NewMessagePartition(basedir string, storeName string) (*MessagePartition, e
 		basedir:         basedir,
 		name:            storeName,
 		mutex:           &sync.RWMutex{},
-		sortedIndexList: newList(600),
-		fileCache:       make([]*FileCacheEntry, 0),
+		sortedIndexList: newList(int(MESSAGES_PER_FILE)),
+		fileCache:       newCache(),
 	}
 	return p, p.initialize()
 }
@@ -133,7 +118,7 @@ func (p *MessagePartition) readIdxFiles() error {
 		}
 
 		// put entry in file cache
-		p.fileCache = append(p.fileCache, &FileCacheEntry{
+		p.fileCache.Add(&FileCacheEntry{
 			minMsgID: min,
 			maxMsgID: max,
 		})
@@ -333,8 +318,8 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 				return err
 			}
 			//Add items in the filecache
-			p.fileCache = append(p.fileCache, &FileCacheEntry{
-				minMsgID: p.sortedIndexList.Get(0).messageID,
+			p.fileCache.Add(&FileCacheEntry{
+				minMsgID: p.sortedIndexList.Front().messageID,
 				maxMsgID: p.sortedIndexList.Back().messageID,
 			})
 
@@ -382,7 +367,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 		messageID: msgId,
 		offset:    messageOffset,
 		size:      uint32(len(msg)),
-		fileID:    len(p.fileCache),
+		fileID:    p.fileCache.Len(),
 	}
 	p.sortedIndexList.Insert(e)
 
@@ -430,7 +415,10 @@ func (p *MessagePartition) fetchByFetchlist(fetchList *SortedIndexList, messageC
 		msg := make([]byte, f.size, f.size)
 		_, err = file.ReadAt(msg, int64(f.offset))
 		if err != nil {
-			log.WithField("err", err).Error("Error ReadAt")
+			messageStoreLogger.WithFields(log.Fields{
+				"err": err,
+				"offset": f.offset,
+			}).Error("Error ReadAt")
 			file.Close()
 			return err
 		}
@@ -450,8 +438,17 @@ func retrieveFromList(pq *SortedIndexList, req *FetchRequest) *SortedIndexList {
 
 	for potentialEntries.Len() < req.Count && currentPos >= 0 && currentPos < pq.Len() {
 		e := pq.Get(currentPos)
-		if e == nil {
-			messageStoreLogger.Error("Error in retrieving from list.Got nil entry")
+		//e := (*pq)[currentPos]
+		if e == nil {                          //TODO investigate why nil is returned sometimes
+			messageStoreLogger.WithFields(log.Fields{
+				"pos":currentPos,
+				"pq.Len" :pq.Len(),
+				"len": potentialEntries.Len(),
+				"startID": req.StartID,
+				"count": req.Count,
+				"e":e,
+				"e.msgId": (*pq)[currentPos],
+			}).Error("Error in retrieving from list.Got nil entry")
 			break
 		}
 		potentialEntries.Insert(e)
@@ -471,7 +468,9 @@ func (p *MessagePartition) calculateFetchList(req *FetchRequest) (*SortedIndexLi
 	//reading from IndexFiles
 	// TODO: fix  prev when EndID logic will be done
 	prev := false
-	for i, fce := range p.fileCache {
+	p.fileCache.cacheMutex.RLock()
+
+	for i, fce := range p.fileCache.entries {
 		if fce.hasStartID(req) || (prev && potentialEntries.Len() < req.Count) {
 			prev = true
 
@@ -498,6 +497,7 @@ func (p *MessagePartition) calculateFetchList(req *FetchRequest) (*SortedIndexLi
 	//Currently potentialEntries contains a potentials msgIDs from any files and from inMemory.From this will select only Count Id.
 	fetchList := retrieveFromList(potentialEntries, req)
 
+	p.fileCache.cacheMutex.RUnlock()
 	return fetchList, nil
 }
 
@@ -595,7 +595,7 @@ func calculateNumberOfEntries(filename string) (uint64, error) {
 func (p *MessagePartition) lostLastIdxFile(filename string) error {
 	messageStoreLogger.WithField("filename", filename).Info("loadIndexFileInMemory")
 
-	pq, err := loadIdxFile(filename, len(p.fileCache))
+	pq, err := loadIdxFile(filename, p.fileCache.Len())
 	if err != nil {
 		messageStoreLogger.WithError(err).Error("Error loading filename")
 		return err
@@ -609,7 +609,7 @@ func (p *MessagePartition) lostLastIdxFile(filename string) error {
 
 // loadIndexFile will read a file and will return a sorted list for fetchEntries
 func loadIdxFile(filename string, fileID int) (*SortedIndexList, error) {
-	pq := newList(1000)
+	pq := newList(int(MESSAGES_PER_FILE))
 	messageStoreLogger.WithField("filename", filename).Debug("loadIndexFile")
 
 	entriesInIndex, err := calculateNumberOfEntries(filename)
@@ -671,7 +671,7 @@ func (p *MessagePartition) checkoutMessagefile(fileId uint64) (*os.File, error) 
 //}
 
 func (p *MessagePartition) composeMsgFilename() string {
-	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.msg", p.name, uint64(len(p.fileCache))))
+	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.msg", p.name, uint64(p.fileCache.Len())))
 }
 
 func (p *MessagePartition) composeMsgFilenameWithValue(value uint64) string {
@@ -679,7 +679,7 @@ func (p *MessagePartition) composeMsgFilenameWithValue(value uint64) string {
 }
 
 func (p *MessagePartition) composeIndexFilename() string {
-	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.name, uint64(len(p.fileCache))))
+	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.name,uint64(p.fileCache.Len())))
 }
 
 func (p *MessagePartition) composeIndexFilenameWithValue(value uint64) string {

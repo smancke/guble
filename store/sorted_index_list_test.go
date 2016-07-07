@@ -47,11 +47,11 @@ func Test_SortedListSanity(t *testing.T) {
 	a.Equal(min, pq.Front().messageID)
 	a.Equal(max, pq.Back().messageID)
 
-	found, pos, bestIndexbestIndex, foundEntry := pq.GetIndexEntryFromID(uint64(46))
+	found, pos, bestIndex, foundEntry := pq.GetIndexEntryFromID(uint64(46))
 	a.False(found, "Element should not be found since is a number greater than the random generated upper limit")
 	a.Equal(pos, -1)
 	a.Nil(foundEntry)
-	logrus.WithField("bestIndexbestIndex", bestIndexbestIndex).Info("bEST")
+	logrus.WithField("bestIndexbestIndex", bestIndex).Info("bEST")
 
 	a.Equal(pq.Front().messageID, pq.Get(0).messageID, "First element should contain the smallest element")
 	a.Nil(pq.Get(-1), "Trying to get an invalid index will return nil")

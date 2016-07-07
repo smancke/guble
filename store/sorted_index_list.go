@@ -113,6 +113,10 @@ func (pq *SortedIndexList) Front() *FetchEntry {
 //Front retrieves the element at the given index or nil if position is incorrect or list is empty
 func (pq *SortedIndexList) Get(pos int) *FetchEntry {
 	if pq.Len() == 0 || pos < 0 || pos >= pq.Len() {
+		messageStoreLogger.WithFields(logrus.Fields{
+			"len":   pq.Len(),
+			"pos":     pos,
+		}).Info("Empty list or invalid index")
 		return nil
 	}
 	return (*pq)[pos]
@@ -125,7 +129,7 @@ func (pq *SortedIndexList) PrintPq() {
 			"msgSize":   (*pq)[i].size,
 			"msgId":     (*pq)[i].messageID,
 			"msgOffset": (*pq)[i].offset,
-		}).Info("Printing element")
+		}).Debug("Printing element")
 	}
 }
 
