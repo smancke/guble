@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"sync"
 )
 
 func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
@@ -464,6 +465,8 @@ func TestFilenameGeneration(t *testing.T) {
 	store := &MessagePartition{
 		basedir: "/foo/bar/",
 		name:    "myMessages",
+		mutex:  &sync.RWMutex{},
+		fileCache: newCache(),
 	}
 
 	a.Equal("/foo/bar/myMessages-00000000000000000000.msg", store.composeMsgFilename())
