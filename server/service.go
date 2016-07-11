@@ -40,7 +40,7 @@ type Endpoint interface {
 	GetPrefix() string
 }
 
-// Service is the main class for simple control of a server
+// Service is the main struct for controlling a guble server
 type Service struct {
 	webserver       *webserver.WebServer
 	router          Router

@@ -70,7 +70,7 @@ var CreateKVStore = func() store.KVStore {
 		}
 		return db
 	default:
-		panic(fmt.Errorf("Unknown key-value backend: %q", *config.KVS))
+		logger.WithField("kvs", *config.KVS).Panic("Unknown key-value store backend")
 	}
 }
 
@@ -82,7 +82,7 @@ var CreateMessageStore = func() store.MessageStore {
 		logger.WithField("storagePath", *config.StoragePath).Info("Using FileMessageStore in directory")
 		return store.NewFileMessageStore(*config.StoragePath)
 	default:
-		panic(fmt.Errorf("Unknown message-store backend: %q", *config.MS))
+		logger.WithField("ms", *config.MS).Panic("Unknown message-store backend")
 	}
 }
 
@@ -90,7 +90,7 @@ var CreateModules = func(router server.Router) []interface{} {
 	modules := make([]interface{}, 0, 3)
 
 	if wsHandler, err := websocket.NewWSHandler(router, "/stream/"); err != nil {
-		logger.WithError(err).Error("Error loading WSHandler module:")
+		logger.WithError(err).Error("Error loading WSHandler module")
 	} else {
 		modules = append(modules, wsHandler)
 	}
@@ -195,7 +195,7 @@ func StartService() *server.Service {
 
 	if err = service.Start(); err != nil {
 		if err = service.Stop(); err != nil {
-			logger.WithError(err).Error("Error when stopping service after Start() failed")
+			logger.WithError(err).Error("Error when trying to stop service after it failed to start")
 		}
 		logger.WithError(err).Fatal("Service could not be started")
 	}
