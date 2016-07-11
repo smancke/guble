@@ -360,7 +360,7 @@ func (p *MessagePartition) store(msgId uint64, msg []byte) error {
 		"filename":                 p.indexFile.Name(),
 	}).Debug("Wrote in indexFile")
 
-	//create entry for pq
+	//create entry for l
 	e := &Index{
 		messageID: msgId,
 		offset:    messageOffset,
@@ -426,26 +426,26 @@ func (p *MessagePartition) fetchByFetchlist(fetchList *IndexList, messageC chan 
 	return nil
 }
 
-func retrieveFromList(pq *IndexList, req *store.FetchRequest) *IndexList {
+func retrieveFromList(l *IndexList, req *store.FetchRequest) *IndexList {
 	potentialEntries := newList(0)
-	found, pos, lastPos, _ := pq.GetIndexEntryFromID(req.StartID)
+	found, pos, lastPos, _ := l.GetIndexEntryFromID(req.StartID)
 	currentPos := lastPos
 	if found == true {
 		currentPos = pos
 	}
 
-	for potentialEntries.Len() < req.Count && currentPos >= 0 && currentPos < pq.Len() {
-		e := pq.Get(currentPos)
-		//e := (*pq)[currentPos]
+	for potentialEntries.Len() < req.Count && currentPos >= 0 && currentPos < l.Len() {
+		e := l.Get(currentPos)
+		//e := (*l)[currentPos]
 		if e == nil { //TODO investigate why nil is returned sometimes
 			messageStoreLogger.WithFields(log.Fields{
 				"pos":     currentPos,
-				"pq.Len":  pq.Len(),
+				"l.Len":   l.Len(),
 				"len":     potentialEntries.Len(),
 				"startID": req.StartID,
 				"count":   req.Count,
 				"e":       e,
-				"e.msgId": (*pq)[currentPos],
+				"e.msgId": (*l)[currentPos],
 			}).Error("Error in retrieving from list.Got nil entry")
 			break
 		}
@@ -472,13 +472,13 @@ func (p *MessagePartition) calculateFetchList(req *store.FetchRequest) (*IndexLi
 		if fce.has(req) || (prev && potentialEntries.Len() < req.Count) {
 			prev = true
 
-			pq, err := loadIdxFile(p.composeIndexFilenameWithValue(uint64(i)), i)
+			l, err := loadIdxFile(p.composeIndexFilenameWithValue(uint64(i)), i)
 			if err != nil {
 				messageStoreLogger.WithError(err).Info("Error loading idx file in memory")
 				return nil, err
 			}
 
-			currentEntries := retrieveFromList(pq, req)
+			currentEntries := retrieveFromList(l, req)
 			potentialEntries.InsertList(currentEntries)
 		} else {
 			prev = false
@@ -593,21 +593,21 @@ func calculateNumberOfEntries(filename string) (uint64, error) {
 func (p *MessagePartition) lostLastIdxFile(filename string) error {
 	messageStoreLogger.WithField("filename", filename).Info("loadIndexFileInMemory")
 
-	pq, err := loadIdxFile(filename, p.fileCache.Len())
+	l, err := loadIdxFile(filename, p.fileCache.Len())
 	if err != nil {
 		messageStoreLogger.WithError(err).Error("Error loading filename")
 		return err
 	}
 
-	p.list = pq
-	p.entriesCount = uint64(pq.Len())
+	p.list = l
+	p.entriesCount = uint64(l.Len())
 
 	return nil
 }
 
 // loadIndexFile will read a file and will return a sorted list for fetchEntries
 func loadIdxFile(filename string, fileID int) (*IndexList, error) {
-	pq := newList(int(MESSAGES_PER_FILE))
+	l := newList(int(MESSAGES_PER_FILE))
 	messageStoreLogger.WithField("filename", filename).Debug("loadIndexFile")
 
 	entriesInIndex, err := calculateNumberOfEntries(filename)
@@ -642,10 +642,10 @@ func loadIdxFile(filename string, fileID int) (*IndexList, error) {
 			offset:    msgOffset,
 			fileID:    fileID,
 		}
-		pq.Insert(e)
-		messageStoreLogger.WithField("lenPq", pq.Len()).Debug("loadIndexFile")
+		l.Insert(e)
+		messageStoreLogger.WithField("lenl", l.Len()).Debug("loadIndexFile")
 	}
-	return pq, nil
+	return l, nil
 }
 
 // checkoutMessagefile returns a file handle to the message file with the supplied file id. The returned file handle may be shared for multiple go routines.
@@ -684,8 +684,8 @@ func (p *MessagePartition) composeIndexFilenameWithValue(value uint64) string {
 	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.name, value))
 }
 
-func fileCacheEntryForList(pq *IndexList) (entry cacheEntry) {
-	front, back := pq.Front(), pq.Back()
+func fileCacheEntryForList(l *IndexList) (entry cacheEntry) {
+	front, back := l.Front(), l.Back()
 	if front != nil {
 		entry.min = front.messageID
 	}
