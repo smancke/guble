@@ -24,7 +24,7 @@ func TestStopingOfModules(t *testing.T) {
 
 	// with a registered Stopable
 	stopable := NewMockStopable(ctrl)
-	service.RegisterModules(stopable)
+	service.RegisterModules(0, 0, stopable)
 
 	service.Start()
 
@@ -43,7 +43,7 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 	service, _, _, _ := aMockedServiceWithMockedRouterStandalone()
 
 	// when I register an endpoint at path /foo
-	service.RegisterModules(&TestEndpoint{})
+	service.RegisterModules(0, 0, &testEndpoint{})
 	service.Start()
 	defer service.Stop()
 	time.Sleep(time.Millisecond * 10)
@@ -98,7 +98,7 @@ func TestHealthDown(t *testing.T) {
 	// when starting the service with a short frequency
 	defer service.Stop()
 	service.healthFrequency = time.Millisecond * 3
-	service.RegisterModules(mockChecker)
+	service.RegisterModules(0, 0, mockChecker)
 	service.Start()
 	time.Sleep(time.Millisecond * 10)
 
@@ -148,14 +148,14 @@ func aMockedServiceWithMockedRouterStandalone() (*Service, store.KVStore, store.
 	return service, kvStore, messageStore, routerMock
 }
 
-type TestEndpoint struct {
+type testEndpoint struct {
 }
 
-func (*TestEndpoint) GetPrefix() string {
+func (*testEndpoint) GetPrefix() string {
 	return "/foo"
 }
 
-func (*TestEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (*testEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "bar")
 	return
 }

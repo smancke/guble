@@ -19,7 +19,6 @@ import (
 	"os"
 	"os/signal"
 	"path"
-	"reflect"
 	"runtime"
 	"syscall"
 )
@@ -70,7 +69,7 @@ var CreateKVStore = func() store.KVStore {
 		}
 		return db
 	default:
-		logger.WithField("kvs", *config.KVS).Panic("Unknown key-value store backend")
+		panic(fmt.Errorf("Unknown key-value backend: %q", *config.KVS))
 	}
 }
 
@@ -82,7 +81,7 @@ var CreateMessageStore = func() store.MessageStore {
 		logger.WithField("storagePath", *config.StoragePath).Info("Using FileMessageStore in directory")
 		return store.NewFileMessageStore(*config.StoragePath)
 	default:
-		logger.WithField("ms", *config.MS).Panic("Unknown message-store backend")
+		panic(fmt.Errorf("Unknown message-store backend: %q", *config.MS))
 	}
 }
 
@@ -90,7 +89,7 @@ var CreateModules = func(router server.Router) []interface{} {
 	modules := make([]interface{}, 0, 3)
 
 	if wsHandler, err := websocket.NewWSHandler(router, "/stream/"); err != nil {
-		logger.WithError(err).Error("Error loading WSHandler module")
+		logger.WithError(err).Error("Error loading WSHandler module:")
 	} else {
 		modules = append(modules, wsHandler)
 	}
@@ -145,17 +144,6 @@ func Main() {
 		if err != nil {
 			logger.WithError(err).Error("Error when stopping service")
 		}
-		r := service.Router()
-		ms, err := r.MessageStore()
-		if err != nil {
-			logger.WithError(err).Error("Error when getting MessageStore for closing it")
-		}
-		stop(ms)
-		kvs, err := r.KVStore()
-		if err != nil {
-			logger.WithError(err).Error("Error when getting KVStore for closing it")
-		}
-		stop(kvs)
 	})
 }
 
@@ -191,11 +179,12 @@ func StartService() *server.Service {
 		HealthEndpoint(*config.HealthEndpoint).
 		MetricsEndpoint(*config.Metrics.Endpoint)
 
-	service.RegisterModules(CreateModules(router)...)
+	service.RegisterModules(-2, 4, kvStore, messageStore)
+	service.RegisterModules(2, 1, CreateModules(router)...)
 
 	if err = service.Start(); err != nil {
 		if err = service.Stop(); err != nil {
-			logger.WithError(err).Error("Error when trying to stop service after it failed to start")
+			logger.WithError(err).Error("Error when stopping service after Start() failed")
 		}
 		logger.WithError(err).Fatal("Service could not be started")
 	}
@@ -211,17 +200,6 @@ func exitIfInvalidClusterParams(nodeID int, nodePort int, remotes []*net.TCPAddr
 			"nodePort":        nodePort,
 			"numberOfRemotes": len(remotes),
 		}).Fatal(errorMessage)
-	}
-}
-
-func stop(iface interface{}) {
-	if stoppable, ok := iface.(server.Stopable); ok {
-		name := reflect.TypeOf(iface).String()
-		logger.WithField("name", name).Info("Stopping")
-		err := stoppable.Stop()
-		if err != nil {
-			logger.WithError(err).WithField("name", name).Error("Failed to Stop")
-		}
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/docker/distribution/health"
 	"github.com/smancke/guble/metrics"
+	"sort"
 )
 
 const (
@@ -20,15 +21,13 @@ const (
 	defaultHealthThreshold = 1
 )
 
-var loggerService = log.WithFields(log.Fields{
-	"module": "service",
-})
+var loggerService = log.WithField("module", "service")
 
 // Service is the main struct for controlling a guble server
 type Service struct {
 	webserver       *webserver.WebServer
 	router          Router
-	modules         []interface{}
+	modules         []module
 	healthEndpoint  string
 	healthFrequency time.Duration
 	healthThreshold int
@@ -47,21 +46,30 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 	}
 	cluster := router.Cluster()
 	if cluster != nil {
-		s.RegisterModules(cluster)
+		s.RegisterModules(-1, 3, cluster)
 		router.Cluster().MessageHandler = router
 	}
-	s.RegisterModules(s.router, s.webserver)
+	s.RegisterModules(0, 0, s.router)
+	s.RegisterModules(1, 2, s.webserver)
 	return s
 }
 
-// RegisterModules adds more modules (which can be Startable, Stopable, Endpoint etc.) to the service.
-func (s *Service) RegisterModules(modules ...interface{}) {
+// RegisterModules adds more modules (which can be Startable, Stopable, Endpoint etc.) to the service,
+// with their start and stop ordering across all the service's modules.
+func (s *Service) RegisterModules(startOrder int, stopOrder int, ifaces ...interface{}) {
 	loggerService.WithFields(log.Fields{
-		"numberOfNewModules":      len(modules),
+		"numberOfNewModules":      len(ifaces),
 		"numberOfExistingModules": len(s.modules),
-	}).Info("RegisterModules: adding")
+	}).Info("RegisterModules")
 
-	s.modules = append(s.modules, modules...)
+	for _, i := range ifaces {
+		m := module{
+			iface:      i,
+			startOrder: startOrder,
+			stopOrder:  stopOrder,
+		}
+		s.modules = append(s.modules, m)
+	}
 }
 
 // HealthEndpoint sets the endpoint used for health. Parameter for disabling the endpoint is: "". Returns the updated service.
@@ -97,9 +105,9 @@ func (s *Service) Start() error {
 		loggerService.Info("Metrics endpoint disabled")
 	}
 
-	for _, module := range s.modules {
-		name := reflect.TypeOf(module).String()
-		if startable, ok := module.(Startable); ok {
+	for _, iface := range s.ModulesSortedByStartOrder() {
+		name := reflect.TypeOf(iface).String()
+		if startable, ok := iface.(startable); ok {
 			loggerService.WithField("name", name).Info("Starting module")
 
 			if err := startable.Start(); err != nil {
@@ -107,11 +115,11 @@ func (s *Service) Start() error {
 				el.Add(err)
 			}
 		}
-		if checker, ok := module.(health.Checker); ok && s.healthEndpoint != "" {
+		if checker, ok := iface.(health.Checker); ok && s.healthEndpoint != "" {
 			loggerService.WithField("name", name).Info("Registering module as Health-Checker")
 			health.RegisterPeriodicThresholdFunc(name, s.healthFrequency, s.healthThreshold, health.CheckFunc(checker.Check))
 		}
-		if endpoint, ok := module.(Endpoint); ok {
+		if endpoint, ok := iface.(endpoint); ok {
 			prefix := endpoint.GetPrefix()
 			loggerService.WithFields(log.Fields{
 				"name":   name,
@@ -125,40 +133,16 @@ func (s *Service) Start() error {
 
 // Stop stops the registered modules in the required order
 func (s *Service) Stop() error {
-	var stopables []Stopable
-
-	for _, module := range s.modules {
-		if stopable, ok := module.(Stopable); ok {
-			stopables = append(stopables, stopable)
-		}
-	}
-
-	stopOrder := make([]int, len(stopables))
-
-	if s.router.Cluster() == nil {
-		for i := 1; i < len(stopables); i++ {
-			stopOrder[i] = len(stopables) - i
-		}
-	} else {
-		stopOrder[0] = 1
-		for i := 1; i < len(stopables)-1; i++ {
-			stopOrder[i] = len(stopables) - i
-		}
-		stopOrder[len(stopables)-1] = 0
-	}
-
-	loggerService.WithField("stopOrder", stopOrder).Debug("Stopping modules in this order relative to registration")
-
 	errors := protocol.NewErrorList("stopping errors: ")
-	for _, order := range stopOrder {
-		module := stopables[order]
-		name := reflect.TypeOf(module).String()
-		loggerService.WithFields(log.Fields{
-			"name":  name,
-			"order": order,
-		}).Info("Stopping module")
-		if err := module.Stop(); err != nil {
-			errors.Add(err)
+	for _, iface := range s.ModulesSortedByStopOrder() {
+		if stoppable, ok := iface.(stopable); ok {
+			name := reflect.TypeOf(iface).String()
+			loggerService.WithFields(log.Fields{
+				"name": name,
+			}).Info("Stopping module")
+			if err := stoppable.Stop(); err != nil {
+				errors.Add(err)
+			}
 		}
 	}
 
@@ -169,9 +153,24 @@ func (s *Service) Stop() error {
 	return nil
 }
 
-// Modules returns the slice of registered modules
-func (s *Service) Modules() []interface{} {
-	return s.modules
+// Modules returns the registered modules sorted by their startOrder property
+func (s *Service) ModulesSortedByStartOrder() []interface{} {
+	var sorted []interface{}
+	sort.Sort(startSorter(s.modules))
+	for _, m := range s.modules {
+		sorted = append(sorted, m.iface)
+	}
+	return sorted
+}
+
+// Modules returns the registered modules sorted by their stopOrder property
+func (s *Service) ModulesSortedByStopOrder() []interface{} {
+	var sorted []interface{}
+	sort.Sort(stopSorter(s.modules))
+	for _, m := range s.modules {
+		sorted = append(sorted, m.iface)
+	}
+	return sorted
 }
 
 // WebServer returns the service *webserver.WebServer instance
