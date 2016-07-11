@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -51,7 +52,7 @@ func TestGcmOnlyStartedIfEnabled(t *testing.T) {
 
 	a := assert.New(t)
 
-	routerMock, _, _ := initRouterMock()
+	routerMock := initRouterMock()
 	routerMock.EXPECT().KVStore().Return(store.NewMemoryKVStore(), nil)
 
 	*config.GCM.Enabled = true
@@ -82,15 +83,13 @@ func TestPanicOnMissingGcmApiKey(t *testing.T) {
 		}
 	}()
 
-	routerMock, _, _ := initRouterMock()
+	routerMock := initRouterMock()
 	*config.GCM.APIKey = ""
 	*config.GCM.Enabled = true
 	CreateModules(routerMock)
 }
 
 func TestCreateStoreBackendPanicInvalidBackend(t *testing.T) {
-	a := assert.New(t)
-
 	var p interface{}
 	func() {
 		defer func() {
@@ -100,10 +99,29 @@ func TestCreateStoreBackendPanicInvalidBackend(t *testing.T) {
 		*config.KVS = "foo bar"
 		CreateKVStore()
 	}()
-	a.NotNil(p)
+	assert.NotNil(t, p)
 }
 
-func initRouterMock() (*MockRouter, *MockAccessManager, *MockMessageStore) {
+func TestStartServiceModules(t *testing.T) {
+	a := assert.New(t)
+
+	// when starting a simple valid service
+	*config.KVS = "memory"
+	*config.GCM.Enabled = false
+	s := StartService()
+
+	// then the number and ordering of modules should be correct
+	a.Equal(6, len(s.ModulesSortedByStartOrder()))
+	var moduleNames []string
+	for _, iface := range s.ModulesSortedByStartOrder() {
+		name := reflect.TypeOf(iface).String()
+		moduleNames = append(moduleNames, name)
+	}
+	a.Equal("*store.MemoryKVStore *store.FileMessageStore *server.router *webserver.WebServer *websocket.WSHandler *rest.RestMessageAPI",
+		strings.Join(moduleNames, " "))
+}
+
+func initRouterMock() *MockRouter {
 	routerMock := NewMockRouter(testutil.MockCtrl)
 	amMock := NewMockAccessManager(testutil.MockCtrl)
 	msMock := NewMockMessageStore(testutil.MockCtrl)
@@ -111,5 +129,5 @@ func initRouterMock() (*MockRouter, *MockAccessManager, *MockMessageStore) {
 	routerMock.EXPECT().AccessManager().Return(amMock, nil).AnyTimes()
 	routerMock.EXPECT().MessageStore().Return(msMock, nil).AnyTimes()
 
-	return routerMock, amMock, msMock
+	return routerMock
 }

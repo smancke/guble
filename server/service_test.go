@@ -14,23 +14,38 @@ import (
 	"time"
 )
 
-func TestStopingOfModules(t *testing.T) {
-	ctrl, finish := testutil.NewMockCtrl(t)
-	defer finish()
+func TestStartingOfModules(t *testing.T) {
 	defer testutil.ResetDefaultRegistryHealthCheck()
 
-	// given:
-	service, _, _, _ := aMockedServiceWithMockedRouterStandalone()
+	a := assert.New(t)
+	var p interface{}
+	func() {
+		defer func() {
+			p = recover()
+		}()
 
-	// with a registered Stopable
-	stopable := NewMockStopable(ctrl)
-	service.RegisterModules(0, 0, stopable)
+		service, _, _, _ := aMockedServiceWithMockedRouterStandalone()
+		service.RegisterModules(0, 0, &testStartable{})
+		a.Equal(3, len(service.ModulesSortedByStartOrder()))
+		service.Start()
+	}()
+	a.NotNil(p)
+}
 
-	service.Start()
+func TestStoppingOfModules(t *testing.T) {
+	defer testutil.ResetDefaultRegistryHealthCheck()
 
-	// when i stop the service, the Stop() is called
-	stopable.EXPECT().Stop()
-	service.Stop()
+	var p interface{}
+	func() {
+		defer func() {
+			p = recover()
+		}()
+
+		service, _, _, _ := aMockedServiceWithMockedRouterStandalone()
+		service.RegisterModules(0, 0, &testStopable{})
+		service.Stop()
+	}()
+	assert.NotNil(t, p)
 }
 
 func TestEndpointRegisterAndServing(t *testing.T) {
@@ -44,6 +59,7 @@ func TestEndpointRegisterAndServing(t *testing.T) {
 
 	// when I register an endpoint at path /foo
 	service.RegisterModules(0, 0, &testEndpoint{})
+	a.Equal(3, len(service.ModulesSortedByStartOrder()))
 	service.Start()
 	defer service.Stop()
 	time.Sleep(time.Millisecond * 10)
@@ -66,6 +82,7 @@ func TestHealthUp(t *testing.T) {
 	// given:
 	service, _, _, _ := aMockedServiceWithMockedRouterStandalone()
 	service = service.HealthEndpoint("/health_url")
+	a.Equal(2, len(service.ModulesSortedByStartOrder()))
 
 	// when starting the service
 	defer service.Stop()
@@ -99,6 +116,8 @@ func TestHealthDown(t *testing.T) {
 	defer service.Stop()
 	service.healthFrequency = time.Millisecond * 3
 	service.RegisterModules(0, 0, mockChecker)
+	a.Equal(3, len(service.ModulesSortedByStartOrder()))
+
 	service.Start()
 	time.Sleep(time.Millisecond * 10)
 
@@ -122,6 +141,7 @@ func TestMetricsEnabled(t *testing.T) {
 	// given:
 	service, _, _, _ := aMockedServiceWithMockedRouterStandalone()
 	service = service.MetricsEndpoint("/metrics_url")
+	a.Equal(2, len(service.ModulesSortedByStartOrder()))
 
 	// when starting the service
 	defer service.Stop()
@@ -158,4 +178,18 @@ func (*testEndpoint) GetPrefix() string {
 func (*testEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "bar")
 	return
+}
+
+type testStartable struct {
+}
+
+func (*testStartable) Start() error {
+	panic(fmt.Errorf("In a panic when I should start"))
+}
+
+type testStopable struct {
+}
+
+func (*testStopable) Stop() error {
+	panic(fmt.Errorf("In a panic when I should stop"))
 }
