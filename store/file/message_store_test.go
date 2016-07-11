@@ -1,10 +1,12 @@
-package store
+package file
 
 import (
 	"fmt"
 	"io/ioutil"
 	"testing"
 	"time"
+
+	"github.com/smancke/guble/store"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -15,35 +17,35 @@ func Test_Fetch(t *testing.T) {
 	//defer os.RemoveAll(dir)
 
 	// when i store a message
-	store := NewFileMessageStore(dir)
-	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
-	a.NoError(store.Store("p1", uint64(2), []byte("bbbbbbbbbb")))
-	a.NoError(store.Store("p2", uint64(1), []byte("1111111111")))
-	a.NoError(store.Store("p2", uint64(2), []byte("2222222222")))
+	mStore := NewFileMessageStore(dir)
+	a.NoError(mStore.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
+	a.NoError(mStore.Store("p1", uint64(2), []byte("bbbbbbbbbb")))
+	a.NoError(mStore.Store("p2", uint64(1), []byte("1111111111")))
+	a.NoError(mStore.Store("p2", uint64(2), []byte("2222222222")))
 
 	testCases := []struct {
 		description     string
-		req             FetchRequest
+		req             store.FetchRequest
 		expectedResults []string
 	}{
 		{`match in partition 1`,
-			FetchRequest{Partition: "p1", StartID: 2, Count: 1},
+			store.FetchRequest{Partition: "p1", StartID: 2, Count: 1},
 			[]string{"bbbbbbbbbb"},
 		},
 		{`match in partition 2`,
-			FetchRequest{Partition: "p2", StartID: 2, Count: 1},
+			store.FetchRequest{Partition: "p2", StartID: 2, Count: 1},
 			[]string{"2222222222"},
 		},
 	}
 
 	for _, testcase := range testCases {
-		testcase.req.MessageC = make(chan MessageAndID)
+		testcase.req.MessageC = make(chan store.MessageAndID)
 		testcase.req.ErrorC = make(chan error)
 		testcase.req.StartC = make(chan int)
 
 		messages := []string{}
 
-		store.Fetch(testcase.req)
+		mStore.Fetch(testcase.req)
 
 		select {
 		case numberOfResults := <-testcase.req.StartC:
@@ -129,30 +131,30 @@ func Test_MessagePartitionReturningError(t *testing.T) {
 
 func Test_FetchWithError(t *testing.T) {
 	a := assert.New(t)
-	store := NewFileMessageStore("/TestDir")
+	mStore := NewFileMessageStore("/TestDir")
 
 	chanCallBack := make(chan error, 1)
-	aFetchRequest := FetchRequest{Partition: "p1", StartID: 2, Count: 1, ErrorC: chanCallBack}
-	store.Fetch(aFetchRequest)
+	aFetchRequest := store.FetchRequest{Partition: "p1", StartID: 2, Count: 1, ErrorC: chanCallBack}
+	mStore.Fetch(aFetchRequest)
 	err := <-aFetchRequest.ErrorC
 	a.NotNil(err)
 }
 
 func Test_StoreWithError(t *testing.T) {
 	a := assert.New(t)
-	store := NewFileMessageStore("/TestDir")
+	mStore := NewFileMessageStore("/TestDir")
 
-	err := store.Store("p1", uint64(1), []byte("124151qfas"))
+	err := mStore.Store("p1", uint64(1), []byte("124151qfas"))
 	a.NotNil(err)
 }
 
 func Test_DoInTx(t *testing.T) {
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_store_test")
-	store := NewFileMessageStore(dir)
-	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
+	mStore := NewFileMessageStore(dir)
+	a.NoError(mStore.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
 
-	err := store.DoInTx("p1", func(maxId uint64) error {
+	err := mStore.DoInTx("p1", func(maxId uint64) error {
 		return nil
 	})
 	a.Nil(err)
@@ -160,18 +162,18 @@ func Test_DoInTx(t *testing.T) {
 
 func Test_DoInTxError(t *testing.T) {
 	a := assert.New(t)
-	store := NewFileMessageStore("/TestDir")
+	mStore := NewFileMessageStore("/TestDir")
 
-	err := store.DoInTx("p2", nil)
+	err := mStore.DoInTx("p2", nil)
 	a.NotNil(err)
 }
 
 func Test_Check(t *testing.T) {
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_store_test")
-	store := NewFileMessageStore(dir)
-	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
+	mStore := NewFileMessageStore(dir)
+	a.NoError(mStore.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
 
-	err := store.Check()
+	err := mStore.Check()
 	a.Nil(err)
 }

@@ -2,6 +2,7 @@ package gubled
 
 import (
 	log "github.com/Sirupsen/logrus"
+	filestore "github.com/smancke/guble/store/file"
 
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/gubled/config"
@@ -80,7 +81,7 @@ var CreateMessageStore = func() store.MessageStore {
 		return store.NewDummyMessageStore(store.NewMemoryKVStore())
 	case "file":
 		logger.WithField("storagePath", *config.StoragePath).Info("Using FileMessageStore in directory")
-		return store.NewFileMessageStore(*config.StoragePath)
+		return filestore.NewFileMessageStore(*config.StoragePath)
 	default:
 		panic(fmt.Errorf("Unknown message-store backend: %q", *config.MS))
 	}

@@ -1,23 +1,23 @@
-package store
+package file
 
 import (
 	"github.com/Sirupsen/logrus"
 )
 
 // SortedIndexList a sorted list of fetch entries
-type SortedIndexList []*FetchEntry
+type IndexList []*Index
 
-func (pq *SortedIndexList) Len() int { return len(*pq) }
+func (pq *IndexList) Len() int { return len(*pq) }
 
 // InsertList will merge the given list as a parameter in current list
-func (pq *SortedIndexList) InsertList(list *SortedIndexList) {
+func (pq *IndexList) InsertList(list *IndexList) {
 	for _, el := range *list {
 		pq.Insert(el)
 	}
 }
 
 //Insert  adds in the sorted list a new element
-func (pq *SortedIndexList) Insert(newElement *FetchEntry) {
+func (pq *IndexList) Insert(newElement *Index) {
 	//messageStoreLogger.WithField("new_msgID", newElement.msgID).Info("Adding on list")
 
 	// first element on list just append at the end
@@ -28,7 +28,7 @@ func (pq *SortedIndexList) Insert(newElement *FetchEntry) {
 
 	// if the first element in list have a bigger id...insert new element on the start of list
 	if (*pq)[0].messageID >= newElement.messageID {
-		*pq = append(SortedIndexList{newElement}, *pq...)
+		*pq = append(IndexList{newElement}, *pq...)
 		return
 		//to optimize the performance check if the new element is having a bigger ID than the last one
 	}
@@ -47,13 +47,13 @@ func (pq *SortedIndexList) Insert(newElement *FetchEntry) {
 	}
 }
 
-func (pq *SortedIndexList) insertAt(index int, newElement *FetchEntry) {
-	*pq = append((*pq)[:index], append(SortedIndexList{newElement}, (*pq)[index:]...)...)
+func (pq *IndexList) insertAt(index int, newElement *Index) {
+	*pq = append((*pq)[:index], append(IndexList{newElement}, (*pq)[index:]...)...)
 }
 
 // Clear empties the current list
-func (pq *SortedIndexList) Clear() {
-	*pq = make(SortedIndexList, 0)
+func (pq *IndexList) Clear() {
+	*pq = make(IndexList, 0)
 }
 
 //returns the absolute value for two numbers
@@ -68,7 +68,7 @@ func abs(m1, m2 uint64) uint64 {
 // GetIndexEntryFromID performs a binarySearch retrieving the
 // true, the position and list and the actual entry if found
 // false , -1 ,nil if position is not found
-func (pq *SortedIndexList) GetIndexEntryFromID(searchID uint64) (bool, int, int, *FetchEntry) {
+func (pq *IndexList) GetIndexEntryFromID(searchID uint64) (bool, int, int, *Index) {
 	if pq.Len() == 0 {
 		return false, -1, -1, nil
 	}
@@ -95,7 +95,7 @@ func (pq *SortedIndexList) GetIndexEntryFromID(searchID uint64) (bool, int, int,
 }
 
 //Back retrieves the element with the biggest id or nil if list is empty
-func (pq *SortedIndexList) Back() *FetchEntry {
+func (pq *IndexList) Back() *Index {
 	if pq.Len() == 0 {
 		return nil
 	}
@@ -103,7 +103,7 @@ func (pq *SortedIndexList) Back() *FetchEntry {
 }
 
 //Front retrieves the element with the smallest id or nil if list is empty
-func (pq *SortedIndexList) Front() *FetchEntry {
+func (pq *IndexList) Front() *Index {
 	if pq.Len() == 0 {
 		return nil
 	}
@@ -111,11 +111,11 @@ func (pq *SortedIndexList) Front() *FetchEntry {
 }
 
 //Front retrieves the element at the given index or nil if position is incorrect or list is empty
-func (pq *SortedIndexList) Get(pos int) *FetchEntry {
+func (pq *IndexList) Get(pos int) *Index {
 	if pq.Len() == 0 || pos < 0 || pos >= pq.Len() {
 		messageStoreLogger.WithFields(logrus.Fields{
-			"len":   pq.Len(),
-			"pos":     pos,
+			"len": pq.Len(),
+			"pos": pos,
 		}).Info("Empty list or invalid index")
 		return nil
 	}
@@ -123,7 +123,7 @@ func (pq *SortedIndexList) Get(pos int) *FetchEntry {
 }
 
 //TODO remove after usage.(ONly for testing )
-func (pq *SortedIndexList) PrintPq() {
+func (pq *IndexList) PrintPq() {
 	for i := 0; i < pq.Len(); i++ {
 		messageStoreLogger.WithFields(logrus.Fields{
 			"msgSize":   (*pq)[i].size,
@@ -133,7 +133,7 @@ func (pq *SortedIndexList) PrintPq() {
 	}
 }
 
-func newList(size int) *SortedIndexList {
-	pq := make(SortedIndexList, 0, size)
+func newList(size int) *IndexList {
+	pq := make(IndexList, 0, size)
 	return &pq
 }

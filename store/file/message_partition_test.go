@@ -1,15 +1,17 @@
-package store
+package file
 
 import (
 	"fmt"
+	"github.com/smancke/guble/store"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"sync"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
@@ -17,14 +19,14 @@ func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
 
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
-	store, err := NewMessagePartition(dir, "node1")
+	mStore, err := NewMessagePartition(dir, "node1")
 	a.Nil(err)
 
 	generatedIDs := make([]uint64, 0)
 	lastId := uint64(0)
 
 	for i := 0; i < 1000; i++ {
-		id, _, err := store.generateNextMsgId(1)
+		id, _, err := mStore.generateNextMsgId(1)
 		generatedIDs = append(generatedIDs, id)
 		a.True(id > lastId, "Ids should be monotonic")
 		lastId = id
@@ -37,20 +39,20 @@ func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
 
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
-	store, err := NewMessagePartition(dir, "node1")
+	mStore, err := NewMessagePartition(dir, "node1")
 	a.Nil(err)
 
 	dir2, _ := ioutil.TempDir("", "guble_message_partition_test2")
 	defer os.RemoveAll(dir2)
-	store2, err := NewMessagePartition(dir2, "node1")
+	mStore2, err := NewMessagePartition(dir2, "node1")
 	a.Nil(err)
 
 	generatedIDs := make([]uint64, 0)
 	lastId := uint64(0)
 
 	for i := 0; i < 1000; i++ {
-		id, _, err := store.generateNextMsgId(1)
-		id2, _, err := store2.generateNextMsgId(2)
+		id, _, err := mStore.generateNextMsgId(1)
+		id2, _, err := mStore2.generateNextMsgId(2)
 		a.True(id2 > id, "Ids should be monotonic")
 		generatedIDs = append(generatedIDs, id)
 		generatedIDs = append(generatedIDs, id2)
@@ -75,33 +77,33 @@ func Test_MessagePartition_loadFiles(t *testing.T) {
 
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
-	store, _ := NewMessagePartition(dir, "myMessages")
+	mStore, _ := NewMessagePartition(dir, "myMessages")
 
-	msgData := []byte("aaaaaaaaaa")            // 10 bytes message
-	a.NoError(store.Store(uint64(3), msgData)) // stored offset 21, size: 10
-	a.NoError(store.Store(uint64(4), msgData)) // stored offset 21+10+12=43
+	msgData := []byte("aaaaaaaaaa")             // 10 bytes message
+	a.NoError(mStore.Store(uint64(3), msgData)) // stored offset 21, size: 10
+	a.NoError(mStore.Store(uint64(4), msgData)) // stored offset 21+10+12=43
 
-	a.NoError(store.Store(uint64(10), msgData)) // stored offset 43+22=65
+	a.NoError(mStore.Store(uint64(10), msgData)) // stored offset 43+22=65
 
-	a.NoError(store.Store(uint64(9), msgData)) // stored offset 65+22=87
-	a.NoError(store.Store(uint64(5), msgData)) // stored offset 87+22=109
+	a.NoError(mStore.Store(uint64(9), msgData)) // stored offset 65+22=87
+	a.NoError(mStore.Store(uint64(5), msgData)) // stored offset 87+22=109
 
 	// here second file will start
-	a.NoError(store.Store(uint64(8), msgData))  // stored offset 21
-	a.NoError(store.Store(uint64(15), msgData)) // stored offset 43
-	a.NoError(store.Store(uint64(13), msgData)) // stored offset 65
+	a.NoError(mStore.Store(uint64(8), msgData))  // stored offset 21
+	a.NoError(mStore.Store(uint64(15), msgData)) // stored offset 43
+	a.NoError(mStore.Store(uint64(13), msgData)) // stored offset 65
 
-	a.NoError(store.Store(uint64(22), msgData)) // stored offset 87
-	a.NoError(store.Store(uint64(23), msgData)) // stored offset 109
+	a.NoError(mStore.Store(uint64(22), msgData)) // stored offset 87
+	a.NoError(mStore.Store(uint64(23), msgData)) // stored offset 109
 
 	// third file
-	a.NoError(store.Store(uint64(24), msgData)) // stored offset 21
-	a.NoError(store.Store(uint64(26), msgData)) // stored offset 43
+	a.NoError(mStore.Store(uint64(24), msgData)) // stored offset 21
+	a.NoError(mStore.Store(uint64(26), msgData)) // stored offset 43
 
-	a.NoError(store.Store(uint64(30), msgData)) // stored offset 65
-	a.NoError(store.Close())
+	a.NoError(mStore.Store(uint64(30), msgData)) // stored offset 65
+	a.NoError(mStore.Close())
 
-	err := store.readIdxFiles()
+	err := mStore.readIdxFiles()
 	a.NoError(err)
 
 	min, max, err := readMinMaxMsgIdFromIndexFile(path.Join(dir, "myMessages-00000000000000000000.idx"))
@@ -115,29 +117,29 @@ func Test_MessagePartition_correctIdAfterRestart(t *testing.T) {
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
-	store, _ := NewMessagePartition(dir, "myMessages")
+	mStore, _ := NewMessagePartition(dir, "myMessages")
 
-	a.NoError(store.Store(uint64(1), []byte("aaaaaaaaaa")))
-	a.NoError(store.Store(uint64(2), []byte("aaaaaaaaaa")))
-	a.Equal(uint64(2), fne(store.MaxMessageId()))
-	a.NoError(store.Close())
+	a.NoError(mStore.Store(uint64(1), []byte("aaaaaaaaaa")))
+	a.NoError(mStore.Store(uint64(2), []byte("aaaaaaaaaa")))
+	a.Equal(uint64(2), fne(mStore.MaxMessageId()))
+	a.NoError(mStore.Close())
 
-	newStore, err := NewMessagePartition(dir, "myMessages")
+	newMStore, err := NewMessagePartition(dir, "myMessages")
 	a.NoError(err)
-	a.Equal(uint64(2), fne(newStore.MaxMessageId()))
+	a.Equal(uint64(2), fne(newMStore.MaxMessageId()))
 }
 
 func Benchmark_Storing_HelloWorld_Messages(b *testing.B) {
 	a := assert.New(b)
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
-	store, _ := NewMessagePartition(dir, "myMessages")
+	mStore, _ := NewMessagePartition(dir, "myMessages")
 
 	b.ResetTimer()
 	for i := 1; i <= b.N; i++ {
-		a.NoError(store.Store(uint64(i), []byte("Hello World")))
+		a.NoError(mStore.Store(uint64(i), []byte("Hello World")))
 	}
-	a.NoError(store.Close())
+	a.NoError(mStore.Close())
 	b.StopTimer()
 }
 
@@ -145,7 +147,7 @@ func Benchmark_Storing_1Kb_Messages(b *testing.B) {
 	a := assert.New(b)
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
-	store, _ := NewMessagePartition(dir, "myMessages")
+	mStore, _ := NewMessagePartition(dir, "myMessages")
 
 	message := make([]byte, 1024)
 	for i := range message {
@@ -154,9 +156,9 @@ func Benchmark_Storing_1Kb_Messages(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 1; i <= b.N; i++ {
-		a.NoError(store.Store(uint64(i), message))
+		a.NoError(mStore.Store(uint64(i), message))
 	}
-	a.NoError(store.Close())
+	a.NoError(mStore.Close())
 	b.StopTimer()
 }
 
@@ -164,7 +166,7 @@ func Benchmark_Storing_1MB_Messages(b *testing.B) {
 	a := assert.New(b)
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
-	store, _ := NewMessagePartition(dir, "myMessages")
+	mStore, _ := NewMessagePartition(dir, "myMessages")
 
 	message := make([]byte, 1024*1024)
 	for i := range message {
@@ -173,9 +175,9 @@ func Benchmark_Storing_1MB_Messages(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 1; i <= b.N; i++ {
-		a.NoError(store.Store(uint64(i), message))
+		a.NoError(mStore.Store(uint64(i), message))
 	}
-	a.NoError(store.Close())
+	a.NoError(mStore.Close())
 	b.StopTimer()
 }
 
@@ -189,95 +191,95 @@ func Test_calculateFetchList(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 
-	store, _ := NewMessagePartition(dir, "myMessages")
+	mStore, _ := NewMessagePartition(dir, "myMessages")
 
 	// File header: MAGIC_NUMBER + FILE_NUMBER_VERSION = 9 bytes in the file
 	// For each stored message there is a 12 bytes write that contains the msgID and size
 
-	a.NoError(store.Store(uint64(3), msgData)) // stored offset 21, size: 10
-	a.NoError(store.Store(uint64(4), msgData)) // stored offset 21+10+12=43
+	a.NoError(mStore.Store(uint64(3), msgData)) // stored offset 21, size: 10
+	a.NoError(mStore.Store(uint64(4), msgData)) // stored offset 21+10+12=43
 
-	a.NoError(store.Store(uint64(10), msgData)) // stored offset 43+22=65
+	a.NoError(mStore.Store(uint64(10), msgData)) // stored offset 43+22=65
 
-	a.NoError(store.Store(uint64(9), msgData)) // stored offset 65+22=87
-	a.NoError(store.Store(uint64(5), msgData)) // stored offset 87+22=109
+	a.NoError(mStore.Store(uint64(9), msgData)) // stored offset 65+22=87
+	a.NoError(mStore.Store(uint64(5), msgData)) // stored offset 87+22=109
 
 	// here second file will start
-	a.NoError(store.Store(uint64(8), msgData))  // stored offset 21
-	a.NoError(store.Store(uint64(15), msgData)) // stored offset 43
-	a.NoError(store.Store(uint64(13), msgData)) // stored offset 65
+	a.NoError(mStore.Store(uint64(8), msgData))  // stored offset 21
+	a.NoError(mStore.Store(uint64(15), msgData)) // stored offset 43
+	a.NoError(mStore.Store(uint64(13), msgData)) // stored offset 65
 
-	a.NoError(store.Store(uint64(22), msgData)) // stored offset 87
-	a.NoError(store.Store(uint64(23), msgData)) // stored offset 109
+	a.NoError(mStore.Store(uint64(22), msgData)) // stored offset 87
+	a.NoError(mStore.Store(uint64(23), msgData)) // stored offset 109
 
 	// third file
-	a.NoError(store.Store(uint64(24), msgData)) // stored offset 21
-	a.NoError(store.Store(uint64(26), msgData)) // stored offset 43
+	a.NoError(mStore.Store(uint64(24), msgData)) // stored offset 21
+	a.NoError(mStore.Store(uint64(26), msgData)) // stored offset 43
 
-	a.NoError(store.Store(uint64(30), msgData)) // stored offset 65
+	a.NoError(mStore.Store(uint64(30), msgData)) // stored offset 65
 
-	defer a.NoError(store.Close())
+	defer a.NoError(mStore.Close())
 
 	testCases := []struct {
 		description     string
-		req             FetchRequest
-		expectedResults SortedIndexList
+		req             store.FetchRequest
+		expectedResults IndexList
 	}{
 		{`direct match`,
-			FetchRequest{StartID: 3, Direction: 0, Count: 1},
-			SortedIndexList{
+			store.FetchRequest{StartID: 3, Direction: 0, Count: 1},
+			IndexList{
 				{3, uint64(21), 10, 0}, // messageId, offset, size, fileId
 			},
 		},
 		{`direct match in second file`,
-			FetchRequest{StartID: 8, Direction: 0, Count: 1},
-			SortedIndexList{
+			store.FetchRequest{StartID: 8, Direction: 0, Count: 1},
+			IndexList{
 				{8, uint64(21), 10, 1}, // messageId, offset, size, fileId,
 			},
 		},
 		{`direct match in second file, not first position`,
-			FetchRequest{StartID: 13, Direction: 0, Count: 1},
-			SortedIndexList{
+			store.FetchRequest{StartID: 13, Direction: 0, Count: 1},
+			IndexList{
 				{13, uint64(65), 10, 1}, // messageId, offset, size, fileId,
 			},
 		},
 		// TODO this is caused by hasStartID() functions.This will be done when implementing the EndID logic
 		// {`next entry matches`,
-		// 	FetchRequest{StartID: 1, Direction: 0, Count: 1},
+		// 	store.FetchRequest{StartID: 1, Direction: 0, Count: 1},
 		// 	SortedIndexList{
 		// 		{3, uint64(21), 10, 0}, // messageId, offset, size, fileId
 		// 	},
 		// },
 		{`entry before matches`,
-			FetchRequest{StartID: 5, Direction: -1, Count: 2},
-			SortedIndexList{
+			store.FetchRequest{StartID: 5, Direction: -1, Count: 2},
+			IndexList{
 				{4, uint64(43), 10, 0},  // messageId, offset, size, fileId
 				{5, uint64(109), 10, 0}, // messageId, offset, size, fileId
 			},
 		},
 		{`backward, no match`,
-			FetchRequest{StartID: 1, Direction: -1, Count: 1},
-			SortedIndexList{},
+			store.FetchRequest{StartID: 1, Direction: -1, Count: 1},
+			IndexList{},
 		},
 		{`forward, no match (out of files)`,
-			FetchRequest{StartID: 99999999999, Direction: 1, Count: 1},
-			SortedIndexList{},
+			store.FetchRequest{StartID: 99999999999, Direction: 1, Count: 1},
+			IndexList{},
 		},
 		{`forward, no match (after last id in last file)`,
-			FetchRequest{StartID: 31, Direction: 1, Count: 1},
-			SortedIndexList{},
+			store.FetchRequest{StartID: 31, Direction: 1, Count: 1},
+			IndexList{},
 		},
 		{`forward, overlapping files`,
-			FetchRequest{StartID: 9, Direction: 1, Count: 3},
-			SortedIndexList{
+			store.FetchRequest{StartID: 9, Direction: 1, Count: 3},
+			IndexList{
 				{9, uint64(87), 10, 0},  // messageId, offset, size, fileId
 				{10, uint64(65), 10, 0}, // messageId, offset, size, fileId
 				{13, uint64(65), 10, 1}, // messageId, offset, size, fileId
 			},
 		},
 		{`backward, overlapping files`,
-			FetchRequest{StartID: 26, Direction: -1, Count: 4},
-			SortedIndexList{
+			store.FetchRequest{StartID: 26, Direction: -1, Count: 4},
+			IndexList{
 				// {15, uint64(43), 10, 1},  // messageId, offset, size, fileId
 				{22, uint64(87), 10, 1},  // messageId, offset, size, fileId
 				{23, uint64(109), 10, 1}, // messageId, offset, size, fileId
@@ -286,8 +288,8 @@ func Test_calculateFetchList(t *testing.T) {
 			},
 		},
 		{`forward, over more then 2 files`,
-			FetchRequest{StartID: 5, Direction: 1, Count: 10},
-			SortedIndexList{
+			store.FetchRequest{StartID: 5, Direction: 1, Count: 10},
+			IndexList{
 				{5, uint64(109), 10, 0},  // messageId, offset, size, fileId
 				{8, uint64(21), 10, 1},   // messageId, offset, size, fileId
 				{9, uint64(87), 10, 0},   // messageId, offset, size, fileId
@@ -304,13 +306,13 @@ func Test_calculateFetchList(t *testing.T) {
 
 	for _, testcase := range testCases {
 		testcase.req.Partition = "myMessages"
-		fetchEntries, err := store.calculateFetchList(&testcase.req)
+		fetchEntries, err := mStore.calculateFetchList(&testcase.req)
 		a.NoError(err, "Tescase: "+testcase.description)
 		a.True(matchSortedList(t, testcase.expectedResults, *fetchEntries), "Tescase: "+testcase.description)
 	}
 }
 
-func matchSortedList(t *testing.T, expected, actual SortedIndexList) bool {
+func matchSortedList(t *testing.T, expected, actual IndexList) bool {
 	if len(expected) != len(actual) {
 		assert.Equal(t, len(expected), len(actual), "Invalid length")
 		return false
@@ -342,94 +344,94 @@ func Test_Partition_Fetch(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 
-	store, _ := NewMessagePartition(dir, "myMessages")
+	mStore, _ := NewMessagePartition(dir, "myMessages")
 
 	// File header: MAGIC_NUMBER + FILE_NUMBER_VERSION = 9 bytes in the file
 	// For each stored message there is a 12 bytes write that contains the msgID and size
 
-	a.NoError(store.Store(uint64(3), msgData)) // stored offset 21, size: 10
-	a.NoError(store.Store(uint64(4), msgData)) // stored offset 21+10+12=43
+	a.NoError(mStore.Store(uint64(3), msgData)) // stored offset 21, size: 10
+	a.NoError(mStore.Store(uint64(4), msgData)) // stored offset 21+10+12=43
 
-	a.NoError(store.Store(uint64(10), msgData)) // stored offset 43+22=65
+	a.NoError(mStore.Store(uint64(10), msgData)) // stored offset 43+22=65
 
-	a.NoError(store.Store(uint64(9), msgData2)) // stored offset 65+22=87
-	a.NoError(store.Store(uint64(5), msgData3)) // stored offset 87+22=109
+	a.NoError(mStore.Store(uint64(9), msgData2)) // stored offset 65+22=87
+	a.NoError(mStore.Store(uint64(5), msgData3)) // stored offset 87+22=109
 
 	// here second file will start
-	a.NoError(store.Store(uint64(8), msgData2))  // stored offset 21
-	a.NoError(store.Store(uint64(15), msgData))  // stored offset 43
-	a.NoError(store.Store(uint64(13), msgData3)) // stored offset 65
+	a.NoError(mStore.Store(uint64(8), msgData2))  // stored offset 21
+	a.NoError(mStore.Store(uint64(15), msgData))  // stored offset 43
+	a.NoError(mStore.Store(uint64(13), msgData3)) // stored offset 65
 
-	a.NoError(store.Store(uint64(22), msgData)) // stored offset 87
-	a.NoError(store.Store(uint64(23), msgData)) // stored offset 109
+	a.NoError(mStore.Store(uint64(22), msgData)) // stored offset 87
+	a.NoError(mStore.Store(uint64(23), msgData)) // stored offset 109
 
 	// third file
-	a.NoError(store.Store(uint64(24), msgData)) // stored offset 21
-	a.NoError(store.Store(uint64(26), msgData)) // stored offset 43
+	a.NoError(mStore.Store(uint64(24), msgData)) // stored offset 21
+	a.NoError(mStore.Store(uint64(26), msgData)) // stored offset 43
 
-	a.NoError(store.Store(uint64(30), msgData)) // stored offset 65
+	a.NoError(mStore.Store(uint64(30), msgData)) // stored offset 65
 
-	defer a.NoError(store.Close())
+	defer a.NoError(mStore.Close())
 
 	testCases := []struct {
 		description     string
-		req             FetchRequest
+		req             store.FetchRequest
 		expectedResults []string
 	}{
 		{`direct match`,
-			FetchRequest{StartID: 3, Direction: 0, Count: 1},
+			store.FetchRequest{StartID: 3, Direction: 0, Count: 1},
 			[]string{"aaaaaaaaaa"},
 		},
 		{`direct match in second file`,
-			FetchRequest{StartID: 8, Direction: 0, Count: 1},
+			store.FetchRequest{StartID: 8, Direction: 0, Count: 1},
 			[]string{"1111111111"},
 		},
 		{`next entry matches`,
-			FetchRequest{StartID: 13, Direction: 0, Count: 1},
+			store.FetchRequest{StartID: 13, Direction: 0, Count: 1},
 			[]string{"bbbbbbbbbb"},
 		},
 		{`entry before matches`,
-			FetchRequest{StartID: 5, Direction: -1, Count: 2},
+			store.FetchRequest{StartID: 5, Direction: -1, Count: 2},
 			[]string{"aaaaaaaaaa", "bbbbbbbbbb"},
 		},
 		{`backward, no match`,
-			FetchRequest{StartID: 1, Direction: -1, Count: 1},
+			store.FetchRequest{StartID: 1, Direction: -1, Count: 1},
 			[]string{},
 		},
 		{`forward, no match (out of files)`,
-			FetchRequest{StartID: 99999999999, Direction: 1, Count: 1},
+			store.FetchRequest{StartID: 99999999999, Direction: 1, Count: 1},
 			[]string{},
 		},
 		{`forward, no match (after last id in last file)`,
-			FetchRequest{StartID: store.maxMessageId + uint64(8), Direction: 1, Count: 1},
+			store.FetchRequest{StartID: mStore.maxMessageId + uint64(8), Direction: 1, Count: 1},
 			[]string{},
 		},
 		{`forward, overlapping files`,
-			FetchRequest{StartID: 9, Direction: 1, Count: 3},
+			store.FetchRequest{StartID: 9, Direction: 1, Count: 3},
 			[]string{"1111111111", "aaaaaaaaaa", "bbbbbbbbbb"},
 		},
 		{`forward, over more then 2 files`,
-			FetchRequest{StartID: 5, Direction: 1, Count: 10},
+			store.FetchRequest{StartID: 5, Direction: 1, Count: 10},
 			[]string{"bbbbbbbbbb", "1111111111", "1111111111", "aaaaaaaaaa", "bbbbbbbbbb", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa"},
 		},
 		{`backward, overlapping files`,
-			FetchRequest{StartID: 26, Direction: -1, Count: 4},
+			store.FetchRequest{StartID: 26, Direction: -1, Count: 4},
 			[]string{"aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa"},
 		},
 		{`backward, all messages`,
-			FetchRequest{StartID: uint64(100), Direction: -1, Count: 100},
+			store.FetchRequest{StartID: uint64(100), Direction: -1, Count: 100},
 			[]string{"aaaaaaaaaa", "aaaaaaaaaa", "bbbbbbbbbb", "1111111111", "1111111111", "aaaaaaaaaa", "bbbbbbbbbb", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa"},
 		},
 	}
 	for _, testcase := range testCases {
 		testcase.req.Partition = "myMessages"
-		testcase.req.MessageC = make(chan MessageAndID)
+		testcase.req.MessageC = make(chan store.MessageAndID)
 		testcase.req.ErrorC = make(chan error)
 		testcase.req.StartC = make(chan int)
 
 		messages := []string{}
 
-		store.Fetch(&testcase.req)
+		mStore.Fetch(&testcase.req)
 
 		select {
 		case numberOfResults := <-testcase.req.StartC:
@@ -462,15 +464,22 @@ func Test_Partition_Fetch(t *testing.T) {
 func TestFilenameGeneration(t *testing.T) {
 	a := assert.New(t)
 
-	store := &MessagePartition{
-		basedir: "/foo/bar/",
-		name:    "myMessages",
-		mutex:  &sync.RWMutex{},
+	mStore := &MessagePartition{
+		basedir:   "/foo/bar/",
+		name:      "myMessages",
+		mutex:     &sync.RWMutex{},
 		fileCache: newCache(),
 	}
 
-	a.Equal("/foo/bar/myMessages-00000000000000000000.msg", store.composeMsgFilename())
-	a.Equal("/foo/bar/myMessages-00000000000000000042.idx", store.composeIndexFilenameWithValue(42))
-	a.Equal("/foo/bar/myMessages-00000000000000000000.idx", store.composeIndexFilenameWithValue(0))
-	a.Equal(fmt.Sprintf("/foo/bar/myMessages-%020d.idx", MESSAGES_PER_FILE), store.composeIndexFilenameWithValue(MESSAGES_PER_FILE))
+	a.Equal("/foo/bar/myMessages-00000000000000000000.msg", mStore.composeMsgFilename())
+	a.Equal("/foo/bar/myMessages-00000000000000000042.idx", mStore.composeIndexFilenameWithValue(42))
+	a.Equal("/foo/bar/myMessages-00000000000000000000.idx", mStore.composeIndexFilenameWithValue(0))
+	a.Equal(fmt.Sprintf("/foo/bar/myMessages-%020d.idx", MESSAGES_PER_FILE), mStore.composeIndexFilenameWithValue(MESSAGES_PER_FILE))
+}
+
+func fne(args ...interface{}) interface{} {
+	if args[1] != nil {
+		panic(args[1])
+	}
+	return args[0]
 }

@@ -1,4 +1,4 @@
-package store
+package file
 
 import (
 	"errors"
@@ -9,6 +9,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/store"
 )
 
 var messageStoreLogger = log.WithFields(log.Fields{
@@ -116,7 +117,7 @@ func (fms *FileMessageStore) Store(partition string, msgId uint64, msg []byte) e
 }
 
 // Fetch asynchronously fetches a set of messages defined by the fetch request
-func (fms *FileMessageStore) Fetch(req FetchRequest) {
+func (fms *FileMessageStore) Fetch(req store.FetchRequest) {
 	p, err := fms.partitionStore(req.Partition)
 	if err != nil {
 		req.ErrorC <- err
