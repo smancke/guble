@@ -24,22 +24,6 @@ var loggerService = log.WithFields(log.Fields{
 	"module": "service",
 })
 
-// Startable interface for modules which provide a start mechanism
-type Startable interface {
-	Start() error
-}
-
-// Stopable interface for modules which provide a stop mechanism
-type Stopable interface {
-	Stop() error
-}
-
-// Endpoint adds a HTTP handler for the `GetPrefix()` to the webserver
-type Endpoint interface {
-	http.Handler
-	GetPrefix() string
-}
-
 // Service is the main struct for controlling a guble server
 type Service struct {
 	webserver       *webserver.WebServer
