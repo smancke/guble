@@ -4,6 +4,9 @@ go:
 sudo: required
 services:
   - docker
+  - postgresql
+before_script:
+  - psql -c 'create database guble;' -U postgres
 before_install:
   - go get github.com/wadey/gocovmerge
   - go get github.com/mattn/goveralls
