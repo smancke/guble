@@ -2,11 +2,6 @@ package store
 
 import "sync"
 
-type FileCacheEntry struct {
-	minMsgID uint64
-	maxMsgID uint64
-}
-
 type fileCache struct {
 	entries []*FileCacheEntry
 	cacheMutex sync.RWMutex
@@ -29,6 +24,11 @@ func (fc *fileCache) Add(newEl *FileCacheEntry) {
 	fc.cacheMutex.Lock()
 	defer fc.cacheMutex.Unlock()
 	fc.entries = append(fc.entries, newEl)
+}
+
+type FileCacheEntry struct {
+	minMsgID uint64
+	maxMsgID uint64
 }
 
 func (f *FileCacheEntry) hasStartID(req *FetchRequest) bool {
