@@ -133,7 +133,7 @@ func (s *Service) Start() error {
 // Stop stops the registered modules in the required order
 func (s *Service) Stop() error {
 	errors := protocol.NewErrorList("stopping errors: ")
-	for _, iface := range s.modulesSortedByStopOrder() {
+	for _, iface := range s.modulesSortedBy(byStopOrder) {
 		if stoppable, ok := iface.(stopable); ok {
 			name := reflect.TypeOf(iface).String()
 			loggerService.WithFields(log.Fields{
@@ -154,18 +154,13 @@ func (s *Service) Stop() error {
 
 // Modules returns the registered modules sorted by their startOrder property
 func (s *Service) ModulesSortedByStartOrder() []interface{} {
-	var sorted []interface{}
-	by(byStartOrder).sort(s.modules)
-	for _, m := range s.modules {
-		sorted = append(sorted, m.iface)
-	}
-	return sorted
+	return s.modulesSortedBy(byStartOrder)
 }
 
-// Modules returns the registered modules sorted by their stopOrder property
-func (s *Service) modulesSortedByStopOrder() []interface{} {
+// Modules returns the registered modules sorted using a `by` criteria.
+func (s *Service) modulesSortedBy(criteria by) []interface{} {
 	var sorted []interface{}
-	by(byStopOrder).sort(s.modules)
+	by(criteria).sort(s.modules)
 	for _, m := range s.modules {
 		sorted = append(sorted, m.iface)
 	}
