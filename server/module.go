@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"sort"
 )
 
 // Startable interface for modules which provide a start mechanism
@@ -26,14 +27,31 @@ type module struct {
 	stopOrder  int // stopping in ascending order
 }
 
-type startSorter []module
+type by func(m1, m2 *module) bool
 
-func (slice startSorter) Len() int           { return len(slice) }
-func (slice startSorter) Swap(i, j int)      { slice[i], slice[j] = slice[j], slice[i] }
-func (slice startSorter) Less(i, j int) bool { return slice[i].startOrder < slice[j].startOrder }
+type moduleSorter struct {
+	modules []module
+	by      func(m1, m2 *module) bool
+}
 
-type stopSorter []module
+func (b by) sort(modules []module) {
+	ps := &moduleSorter{
+		modules: modules,
+		by:      b,
+	}
+	sort.Sort(ps)
+}
 
-func (slice stopSorter) Len() int           { return len(slice) }
-func (slice stopSorter) Swap(i, j int)      { slice[i], slice[j] = slice[j], slice[i] }
-func (slice stopSorter) Less(i, j int) bool { return slice[i].stopOrder < slice[j].stopOrder }
+func (s *moduleSorter) Len() int { return len(s.modules) }
+
+func (s *moduleSorter) Swap(i, j int) { s.modules[i], s.modules[j] = s.modules[j], s.modules[i] }
+
+func (s *moduleSorter) Less(i, j int) bool { return s.by(&s.modules[i], &s.modules[j]) }
+
+var byStartOrder = func(m1, m2 *module) bool {
+	return m1.startOrder < m2.startOrder
+}
+
+var byStopOrder = func(m1, m2 *module) bool {
+	return m1.stopOrder < m2.stopOrder
+}

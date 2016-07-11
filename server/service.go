@@ -13,7 +13,6 @@ import (
 
 	"github.com/docker/distribution/health"
 	"github.com/smancke/guble/metrics"
-	"sort"
 )
 
 const (
@@ -134,7 +133,7 @@ func (s *Service) Start() error {
 // Stop stops the registered modules in the required order
 func (s *Service) Stop() error {
 	errors := protocol.NewErrorList("stopping errors: ")
-	for _, iface := range s.ModulesSortedByStopOrder() {
+	for _, iface := range s.modulesSortedByStopOrder() {
 		if stoppable, ok := iface.(stopable); ok {
 			name := reflect.TypeOf(iface).String()
 			loggerService.WithFields(log.Fields{
@@ -156,7 +155,7 @@ func (s *Service) Stop() error {
 // Modules returns the registered modules sorted by their startOrder property
 func (s *Service) ModulesSortedByStartOrder() []interface{} {
 	var sorted []interface{}
-	sort.Sort(startSorter(s.modules))
+	by(byStartOrder).sort(s.modules)
 	for _, m := range s.modules {
 		sorted = append(sorted, m.iface)
 	}
@@ -164,9 +163,9 @@ func (s *Service) ModulesSortedByStartOrder() []interface{} {
 }
 
 // Modules returns the registered modules sorted by their stopOrder property
-func (s *Service) ModulesSortedByStopOrder() []interface{} {
+func (s *Service) modulesSortedByStopOrder() []interface{} {
 	var sorted []interface{}
-	sort.Sort(stopSorter(s.modules))
+	by(byStopOrder).sort(s.modules)
 	for _, m := range s.modules {
 		sorted = append(sorted, m.iface)
 	}
@@ -176,9 +175,4 @@ func (s *Service) ModulesSortedByStopOrder() []interface{} {
 // WebServer returns the service *webserver.WebServer instance
 func (s *Service) WebServer() *webserver.WebServer {
 	return s.webserver
-}
-
-// Router returns the service Router instance
-func (s *Service) Router() Router {
-	return s.router
 }
