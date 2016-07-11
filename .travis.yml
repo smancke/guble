@@ -18,7 +18,14 @@ after_success:
   - goveralls -coverprofile=full_cov.out -service=travis-ci
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
       GOOS=linux go build -a --ldflags '-extldflags "-static"' . ;
-      docker build -t cosminrentea/guble . ;
+      docker build -t smancke/guble . ;
       docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" ;
-      docker push cosminrentea/guble ;
+      docker push smancke/guble ;
     fi
+
+env:
+  global:
+  - secure: V9+UswYO6l0EuekA5YBviUdz0OcWfT3QsY1Bgoml8lmWP3/Rdq0fpxGh1hHUWt1pyAl3Aymw5Sc9DU/STmb5k6YjimS649Hu3jZ2AJfjLxh8ZA+vTgFiQc4mN4FqDAFhnPVB/aOSQhGyRlWalxikNy3nhcJrN+uWOpzRqzg0icNOdfTKpSH1cRJO0Ja34f4AEmLuNvGUAyZVpLuZJFL5mE9sJ1G1baqgFf/kTQ67jF+Ezg+1AY+NYaYwd5PUGFgIKf/qVT5Wqtrff26Yxzr/hECEBypAvNmCdLSoV/qyzZvzUTgYZTPmUnDks0uUEup9YzEQZ9XxwIQyHSXZ9D6h2vZxyr0TlZvBtdzWNiLHjBSISF8ZzOthI7NIi/e4YRYlqCF3apZuRo6o2fneHqzonza0OpJQdCKACXgycFe0ZTXk1o7SdT1d1JgeFckmL0kS8H2N4E/DaIAPq8zaC4bOlaYaUYt6vXNwEKK99q0X97gLJFdrBBY7lzKs9bbVa7b2Dhkh67PUt6WhoHUjLSN+9jTn+oda8VEKtXxyaWM6AsCRHgBiy0VaxuHbU2k1mpSCLdBfJGbrDITA4+nyPopv/oky4xHX1FGSMGFw73Ejafu9Xo0cpvIpVcNjeagUugQ5ThPQMSua9hxSZJx6alIUhptDUesiYHJAWUVPQi4N/3A=
+  - secure: SHIH8wBBTWslUnXeIPa3XpPugTX2IgKu3CB0OAbEE9e1nkAop1bbbas5chJgSA276xseBriH7aBSPe25XB4q9JM0YDelC7pK7dmSiLQMiAYvBb8SiGpfTAArBen4hiJiYaJo9hAE51Q4tjZ03vlIvTCYFjJ0rsBoTnbk9W6iVNEQfKzo9KfVBshYcS4BswwBgPSGtck/V3I3oASTmWpPdCGhhDipuOA9UG4hbnyWyeDqi1Mf0Dukggya4Qg+Z2o3WFI5qKGN/L6Qulgse9Rszrlikas5g2iDP11e9eO/tn/2nipIGZd/0xgCcG4tfcoqVn0PzOIOLE33vgqDrUvaaIsmVL/h0nQvC+EhVjgtrNcV/c3gDFH/3GaFX/J2wtT7396CpNCJbje/5fo9pFKS/QXjyqeIRrjq5Rux59RkZNoZIYyXbgM2UW3F8ebHFgaLd4+3Ec67zelxvixJWP1s2iDkZ2C4M7eHSBSvwpM0leebXPDOXeInCPspD5AWkhmo29m7X6J6fT7lwkfbSTyvCAQCKMzuRIsxMaAdxMCco5eVMam8CaAqZoAL/8RbnC+G9BiknyNDxx/W3qLfbnTpXlljKIBapNRYiut0RglrcPjpGAhHwbefXNwjb8AHxzx/GnU3GIHzjkQXCGDGMLJ6cPm/Iik2tVZD/eqgRxGqWNA=
+  - secure: BNjkm6Hb8go2xem0JLsSkFhACUgwxhBhqgsEfcpzJG1+gIC0ZZtvK5ARBusOgEytmT1tsyDbT99FT1MJ3LsucNB4EixLU/8UEoY80r/QD67eK4dKzUIiQdsPmJTUMJnzfTqgyQF2byilu6tHSHWL+MwFVmaQh04R1T1Zo0LyZMFhWjWIGx2lNhHbsLQWjb7KFLLlYx9lg4POf4eTTnrhhdJHTpUOmoty57+jf+Sen+hPOanGGsSajo6GTqN2SMmsLOCykwytsSUA0ZZ/QuEsL+1htm0vpQXqsfUxQ3KAIbyDUVTrSQsAPvULM1ymlEyIeFEeABTCVNUQb8sMpc/5VbKTNd/jEhM6oidZfakLnx3RV6kZCtrHMbkHh6ta8KcxTpt7TcnyGjTnMD5jCVjgAM99j8x7QMfAd+boRr05intzHB8GFv0IDYq9tZ93/umQHyqX8ctN+kNpmy0kSshusd3QPZ+FeZrMgWhfKvYkrjEZ1Pd/wWaqb4Pv0DUfqvlwYKshvCtH7u7TCP63Nbnt2rY+CNgfXWBDfPkxIDoF8UrXIHEZXY2C5JOGfEtS27AjUin46vHFQKr/oaYYMiUXVu25mbTkNNR67Q/6yxD0f7VqVFmWAmT1pWdDd6Gc0uT4fsP8H8Le1PAciPjMGvUFIegQK7W9TnnvDA1w0IsADwE= # DOCKER_PASSWORD
+
