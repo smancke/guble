@@ -152,12 +152,17 @@ func (s *Service) Stop() error {
 	return nil
 }
 
-// Modules returns the registered modules sorted by their startOrder property
+// WebServer returns the service *webserver.WebServer instance
+func (s *Service) WebServer() *webserver.WebServer {
+	return s.webserver
+}
+
+// ModulesSortedByStartOrder returns the registered modules sorted by their startOrder property
 func (s *Service) ModulesSortedByStartOrder() []interface{} {
 	return s.modulesSortedBy(byStartOrder)
 }
 
-// Modules returns the registered modules sorted using a `by` criteria.
+// modulesSortedBy returns the registered modules sorted using a `by` criteria.
 func (s *Service) modulesSortedBy(criteria by) []interface{} {
 	var sorted []interface{}
 	by(criteria).sort(s.modules)
@@ -165,9 +170,4 @@ func (s *Service) modulesSortedBy(criteria by) []interface{} {
 		sorted = append(sorted, m.iface)
 	}
 	return sorted
-}
-
-// WebServer returns the service *webserver.WebServer instance
-func (s *Service) WebServer() *webserver.WebServer {
-	return s.webserver
 }
