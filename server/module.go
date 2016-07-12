@@ -23,8 +23,8 @@ type endpoint interface {
 
 type module struct {
 	iface      interface{}
-	startOrder int // starting in ascending order (e.g. first negative, then positive numbers)
-	stopOrder  int // stopping in ascending order
+	startLevel int
+	stopLevel  int
 }
 
 type by func(m1, m2 *module) bool
@@ -34,24 +34,24 @@ type moduleSorter struct {
 	by      func(m1, m2 *module) bool
 }
 
-func (b by) sort(modules []module) {
-	ps := &moduleSorter{
+func (criteria by) sort(modules []module) {
+	ms := &moduleSorter{
 		modules: modules,
-		by:      b,
+		by:      criteria,
 	}
-	sort.Sort(ps)
+	sort.Sort(ms)
 }
 
-func (s *moduleSorter) Len() int { return len(s.modules) }
+// functions implementing the sort.Interface
 
-func (s *moduleSorter) Swap(i, j int) { s.modules[i], s.modules[j] = s.modules[j], s.modules[i] }
-
+func (s *moduleSorter) Len() int           { return len(s.modules) }
+func (s *moduleSorter) Swap(i, j int)      { s.modules[i], s.modules[j] = s.modules[j], s.modules[i] }
 func (s *moduleSorter) Less(i, j int) bool { return s.by(&s.modules[i], &s.modules[j]) }
 
-var byStartOrder = func(m1, m2 *module) bool {
-	return m1.startOrder < m2.startOrder
+var ascendingStartOrder = func(m1, m2 *module) bool {
+	return m1.startLevel < m2.startLevel
 }
 
-var byStopOrder = func(m1, m2 *module) bool {
-	return m1.stopOrder < m2.stopOrder
+var ascendingStopOrder = func(m1, m2 *module) bool {
+	return m1.stopLevel < m2.stopLevel
 }

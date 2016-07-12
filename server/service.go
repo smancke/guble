@@ -45,11 +45,11 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 	}
 	cluster := router.Cluster()
 	if cluster != nil {
-		s.RegisterModules(-1, 3, cluster)
+		s.RegisterModules(1, 5, cluster)
 		router.Cluster().MessageHandler = router
 	}
-	s.RegisterModules(0, 0, s.router)
-	s.RegisterModules(1, 2, s.webserver)
+	s.RegisterModules(2, 2, s.router)
+	s.RegisterModules(3, 4, s.webserver)
 	return s
 }
 
@@ -64,8 +64,8 @@ func (s *Service) RegisterModules(startOrder int, stopOrder int, ifaces ...inter
 	for _, i := range ifaces {
 		m := module{
 			iface:      i,
-			startOrder: startOrder,
-			stopOrder:  stopOrder,
+			startLevel: startOrder,
+			stopLevel:  stopOrder,
 		}
 		s.modules = append(s.modules, m)
 	}
@@ -89,30 +89,28 @@ func (s *Service) MetricsEndpoint(endpointPrefix string) *Service {
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
 func (s *Service) Start() error {
 	el := protocol.NewErrorList("service: errors occured while starting: ")
-
 	if s.healthEndpoint != "" {
 		loggerService.WithField("healthEndpoint", s.healthEndpoint).Info("Health endpoint")
 		s.webserver.Handle(s.healthEndpoint, http.HandlerFunc(health.StatusHandler))
 	} else {
 		loggerService.Info("Health endpoint disabled")
 	}
-
 	if s.metricsEndpoint != "" {
 		loggerService.WithField("metricsEndpoint", s.metricsEndpoint).Info("Metrics endpoint")
 		s.webserver.Handle(s.metricsEndpoint, http.HandlerFunc(metrics.HttpHandler))
 	} else {
 		loggerService.Info("Metrics endpoint disabled")
 	}
-
-	for _, iface := range s.ModulesSortedByStartOrder() {
+	for order, iface := range s.ModulesSortedByStartOrder() {
 		name := reflect.TypeOf(iface).String()
 		if startable, ok := iface.(startable); ok {
-			loggerService.WithField("name", name).Info("Starting module")
-
+			loggerService.WithFields(log.Fields{"name": name, "order": order}).Info("Starting module")
 			if err := startable.Start(); err != nil {
 				loggerService.WithError(err).WithField("name", name).Error("Error while starting module")
 				el.Add(err)
 			}
+		} else {
+			loggerService.WithFields(log.Fields{"name": name, "order": order}).Debug("Module is not startable")
 		}
 		if checker, ok := iface.(health.Checker); ok && s.healthEndpoint != "" {
 			loggerService.WithField("name", name).Info("Registering module as Health-Checker")
@@ -120,35 +118,30 @@ func (s *Service) Start() error {
 		}
 		if endpoint, ok := iface.(endpoint); ok {
 			prefix := endpoint.GetPrefix()
-			loggerService.WithFields(log.Fields{
-				"name":   name,
-				"prefix": prefix,
-			}).Info("Registering module as Endpoint")
+			loggerService.WithFields(log.Fields{"name": name, "prefix": prefix}).Info("Registering module as Endpoint")
 			s.webserver.Handle(prefix, endpoint)
 		}
 	}
 	return el.ErrorOrNil()
 }
 
-// Stop stops the registered modules in the required order
+// Stop stops the registered modules in their given order
 func (s *Service) Stop() error {
-	errors := protocol.NewErrorList("stopping errors: ")
-	for _, iface := range s.modulesSortedBy(byStopOrder) {
+	errors := protocol.NewErrorList("service stopping errors: ")
+	for order, iface := range s.modulesSortedBy(ascendingStopOrder) {
+		name := reflect.TypeOf(iface).String()
 		if stoppable, ok := iface.(stopable); ok {
-			name := reflect.TypeOf(iface).String()
-			loggerService.WithFields(log.Fields{
-				"name": name,
-			}).Info("Stopping module")
+			loggerService.WithFields(log.Fields{"name": name, "order": order}).Info("Stopping module")
 			if err := stoppable.Stop(); err != nil {
 				errors.Add(err)
 			}
+		} else {
+			loggerService.WithFields(log.Fields{"name": name, "order": order}).Debug("Module is not stoppable")
 		}
 	}
-
 	if err := errors.ErrorOrNil(); err != nil {
 		return fmt.Errorf("service: errors while stopping modules: %s", err)
 	}
-
 	return nil
 }
 
@@ -159,7 +152,7 @@ func (s *Service) WebServer() *webserver.WebServer {
 
 // ModulesSortedByStartOrder returns the registered modules sorted by their startOrder property
 func (s *Service) ModulesSortedByStartOrder() []interface{} {
-	return s.modulesSortedBy(byStartOrder)
+	return s.modulesSortedBy(ascendingStartOrder)
 }
 
 // modulesSortedBy returns the registered modules sorted using a `by` criteria.
