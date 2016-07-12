@@ -75,7 +75,7 @@ func Test_MessagePartition_loadFiles(t *testing.T) {
 	MESSAGES_PER_FILE = uint64(5)
 
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
-	defer os.RemoveAll(dir)
+	// defer os.RemoveAll(dir)
 	mStore, _ := NewMessagePartition(dir, "myMessages")
 
 	msgData := []byte("aaaaaaaaaa")             // 10 bytes message
@@ -105,9 +105,9 @@ func Test_MessagePartition_loadFiles(t *testing.T) {
 	err := mStore.readIdxFiles()
 	a.NoError(err)
 
-	min, max, err := readMinMaxMsgIdFromIndexFile(path.Join(dir, "myMessages-00000000000000000000.idx"))
-	a.Equal(uint64(3), min)
-	a.Equal(uint64(10), max)
+	cEntry, err := readCacheEntryFromIdxFile(path.Join(dir, "myMessages-00000000000000000000.idx"))
+	a.Equal(uint64(3), cEntry.min)
+	a.Equal(uint64(10), cEntry.max)
 	a.NoError(err)
 
 }

@@ -84,49 +84,49 @@ func (p *MessagePartition) readIdxFiles() error {
 		return err
 	}
 
-	indexFilesName := make([]string, 0)
+	indexFilenames := make([]string, 0)
 	for _, fileInfo := range allFiles {
 		if strings.HasPrefix(fileInfo.Name(), p.name+"-") && strings.HasSuffix(fileInfo.Name(), ".idx") {
-			fileIdString := filepath.Join(p.basedir, fileInfo.Name())
-			logger.WithField("IDXname", fileIdString).Info("IDX NAME")
-			indexFilesName = append(indexFilesName, fileIdString)
+			fileIDString := filepath.Join(p.basedir, fileInfo.Name())
+			logger.WithField("name", fileIDString).Info("Index name")
+			indexFilenames = append(indexFilenames, fileIDString)
 		}
 	}
+
 	// if no .idx file are found.. there is nothing to load
-	if len(indexFilesName) == 0 {
+	if len(indexFilenames) == 0 {
 		logger.Info("No .idx files found")
 		return nil
 	}
 
 	//load the filecache from all the files
-	logger.WithField("filenames", indexFilesName).Info("Found files")
-	for i := 0; i < len(indexFilesName)-1; i++ {
-		min, max, err := readMinMaxMsgIdFromIndexFile(indexFilesName[i])
+	logger.WithFields(log.Fields{
+		"filenames":  indexFilenames,
+		"totalFiles": len(indexFilenames),
+	}).Info("Found files")
+
+	for i := 0; i < len(indexFilenames)-1; i++ {
+		cEntry, err := readCacheEntryFromIdxFile(indexFilenames[i])
 		if err != nil {
 			logger.WithFields(log.Fields{
-				"idxFilename": indexFilesName[i],
+				"idxFilename": indexFilenames[i],
 				"err":         err,
 			}).Error("Error loading existing .idxFile")
 			return err
 		}
+		// put entry in file cache
+		p.fileCache.Append(cEntry)
 
 		// check the message id's for max value
-		if max >= p.maxMessageID {
-			p.maxMessageID = max
+		if cEntry.max >= p.maxMessageID {
+			p.maxMessageID = cEntry.max
 		}
-
-		// put entry in file cache
-		p.fileCache.Append(&cacheEntry{
-			min: min,
-			max: max,
-		})
 
 	}
 	// read the  idx file with   biggest id and load in the sorted cache
-	err = p.loadLastIndexList(indexFilesName[len(indexFilesName)-1])
-	if err != nil {
+	if err := p.loadLastIndexList(indexFilenames[len(indexFilenames)-1]); err != nil {
 		logger.WithFields(log.Fields{
-			"idxFilename": indexFilesName[(len(indexFilesName) - 1)],
+			"idxFilename": indexFilenames[(len(indexFilenames) - 1)],
 			"err":         err,
 		}).Error("Error loading last .idx file")
 		return err
@@ -165,8 +165,8 @@ func (p *MessagePartition) closeAppendFiles() error {
 	return nil
 }
 
-// readMinMaxMsgIdFromIndexFile  reads the first and last entry from a idx file which should be sorted
-func readMinMaxMsgIdFromIndexFile(filename string) (min, max uint64, err error) {
+// readCacheEntryFromIdxFile  reads the first and last entry from a idx file which should be sorted
+func readCacheEntryFromIdxFile(filename string) (entry *cacheEntry, err error) {
 	entriesInIndex, err := calculateNoEntries(filename)
 	if err != nil {
 		return
@@ -178,15 +178,17 @@ func readMinMaxMsgIdFromIndexFile(filename string) (min, max uint64, err error) 
 		return
 	}
 
-	min, _, _, err = readIndexEntry(file, 0)
+	min, _, _, err := readIndexEntry(file, 0)
 	if err != nil {
 		return
 	}
-	max, _, _, err = readIndexEntry(file, int64((entriesInIndex-1)*uint64(INDEX_ENTRY_SIZE)))
+	max, _, _, err := readIndexEntry(file, int64((entriesInIndex-1)*uint64(INDEX_ENTRY_SIZE)))
 	if err != nil {
 		return
 	}
-	return min, max, err
+
+	entry = &cacheEntry{min, max}
+	return
 }
 
 func (p *MessagePartition) createNextAppendFiles() error {
@@ -599,7 +601,7 @@ func calculateNoEntries(filename string) (uint64, error) {
 
 // loadLastIndexFile will construct the current Sorted List for fetch entries which corresponds to the idx file with the biggest name
 func (p *MessagePartition) loadLastIndexList(filename string) error {
-	logger.WithField("filename", filename).Info("loadIndexFileInMemory")
+	logger.WithField("filename", filename).Info("Loading last index file")
 
 	l, err := p.loadIndexList(p.fileCache.Len())
 	if err != nil {

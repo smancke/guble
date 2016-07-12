@@ -21,14 +21,15 @@ func newCache() *cache {
 func (fc *cache) Len() int {
 	fc.RLock()
 	defer fc.RUnlock()
+
 	return len(fc.entries)
 }
 
-func (fc *cache) Append(newEl *cacheEntry) {
+func (fc *cache) Append(entry *cacheEntry) {
 	fc.Lock()
 	defer fc.Unlock()
 
-	fc.entries = append(fc.entries, newEl)
+	fc.entries = append(fc.entries, entry)
 }
 
 type cacheEntry struct {
