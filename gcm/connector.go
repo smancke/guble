@@ -69,6 +69,7 @@ func New(router server.Router, prefix string, gcmAPIKey string, nWorkers int) (*
 
 // Start opens the connector, creates more goroutines / workers to handle messages coming from the router
 func (conn *Connector) Start() error {
+	resetGcmMetrics()
 	// blocking until current subs are loaded
 	conn.loadSubscriptions()
 
@@ -137,9 +138,11 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 	result, err := conn.Sender.Send(gcmMessage, sendRetries)
 	if err != nil {
 		pm.errC <- err
+		mTotalSentMessageErrors.Add(1)
 		return
 	}
 	pm.resultC <- result
+	mTotalSentMessages.Add(1)
 }
 
 // GetPrefix is used to satisfy the HTTP handler interface
