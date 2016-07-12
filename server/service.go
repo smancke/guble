@@ -20,31 +20,13 @@ const (
 	defaultHealthThreshold = 1
 )
 
-var loggerService = log.WithFields(log.Fields{
-	"module": "service",
-})
+var loggerService = log.WithField("module", "service")
 
-// Startable interface for modules which provide a start mechanism
-type Startable interface {
-	Start() error
-}
-
-// Stopable interface for modules which provide a stop mechanism
-type Stopable interface {
-	Stop() error
-}
-
-// Endpoint adds a HTTP handler for the `GetPrefix()` to the webserver
-type Endpoint interface {
-	http.Handler
-	GetPrefix() string
-}
-
-// Service is the main class for simple control of a server
+// Service is the main struct for controlling a guble server
 type Service struct {
 	webserver       *webserver.WebServer
 	router          Router
-	modules         []interface{}
+	modules         []module
 	healthEndpoint  string
 	healthFrequency time.Duration
 	healthThreshold int
@@ -63,21 +45,30 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 	}
 	cluster := router.Cluster()
 	if cluster != nil {
-		s.RegisterModules(cluster)
+		s.RegisterModules(1, 5, cluster)
 		router.Cluster().MessageHandler = router
 	}
-	s.RegisterModules(s.router, s.webserver)
+	s.RegisterModules(2, 2, s.router)
+	s.RegisterModules(3, 4, s.webserver)
 	return s
 }
 
-// RegisterModules adds more modules (which can be Startable, Stopable, Endpoint etc.) to the service.
-func (s *Service) RegisterModules(modules ...interface{}) {
+// RegisterModules adds more modules (which can be Startable, Stopable, Endpoint etc.) to the service,
+// with their start and stop ordering across all the service's modules.
+func (s *Service) RegisterModules(startOrder int, stopOrder int, ifaces ...interface{}) {
 	loggerService.WithFields(log.Fields{
-		"numberOfNewModules":      len(modules),
+		"numberOfNewModules":      len(ifaces),
 		"numberOfExistingModules": len(s.modules),
-	}).Info("RegisterModules: adding")
+	}).Info("RegisterModules")
 
-	s.modules = append(s.modules, modules...)
+	for _, i := range ifaces {
+		m := module{
+			iface:      i,
+			startLevel: startOrder,
+			stopLevel:  stopOrder,
+		}
+		s.modules = append(s.modules, m)
+	}
 }
 
 // HealthEndpoint sets the endpoint used for health. Parameter for disabling the endpoint is: "". Returns the updated service.
@@ -98,96 +89,60 @@ func (s *Service) MetricsEndpoint(endpointPrefix string) *Service {
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
 func (s *Service) Start() error {
 	el := protocol.NewErrorList("service: errors occured while starting: ")
-
 	if s.healthEndpoint != "" {
 		loggerService.WithField("healthEndpoint", s.healthEndpoint).Info("Health endpoint")
 		s.webserver.Handle(s.healthEndpoint, http.HandlerFunc(health.StatusHandler))
 	} else {
 		loggerService.Info("Health endpoint disabled")
 	}
-
 	if s.metricsEndpoint != "" {
 		loggerService.WithField("metricsEndpoint", s.metricsEndpoint).Info("Metrics endpoint")
 		s.webserver.Handle(s.metricsEndpoint, http.HandlerFunc(metrics.HttpHandler))
 	} else {
 		loggerService.Info("Metrics endpoint disabled")
 	}
-
-	for _, module := range s.modules {
-		name := reflect.TypeOf(module).String()
-		if startable, ok := module.(Startable); ok {
-			loggerService.WithField("name", name).Info("Starting module")
-
+	for order, iface := range s.ModulesSortedByStartOrder() {
+		name := reflect.TypeOf(iface).String()
+		if startable, ok := iface.(startable); ok {
+			loggerService.WithFields(log.Fields{"name": name, "order": order}).Info("Starting module")
 			if err := startable.Start(); err != nil {
 				loggerService.WithError(err).WithField("name", name).Error("Error while starting module")
 				el.Add(err)
 			}
+		} else {
+			loggerService.WithFields(log.Fields{"name": name, "order": order}).Debug("Module is not startable")
 		}
-		if checker, ok := module.(health.Checker); ok && s.healthEndpoint != "" {
+		if checker, ok := iface.(health.Checker); ok && s.healthEndpoint != "" {
 			loggerService.WithField("name", name).Info("Registering module as Health-Checker")
 			health.RegisterPeriodicThresholdFunc(name, s.healthFrequency, s.healthThreshold, health.CheckFunc(checker.Check))
 		}
-		if endpoint, ok := module.(Endpoint); ok {
+		if endpoint, ok := iface.(endpoint); ok {
 			prefix := endpoint.GetPrefix()
-			loggerService.WithFields(log.Fields{
-				"name":   name,
-				"prefix": prefix,
-			}).Info("Registering module as Endpoint")
+			loggerService.WithFields(log.Fields{"name": name, "prefix": prefix}).Info("Registering module as Endpoint")
 			s.webserver.Handle(prefix, endpoint)
 		}
 	}
 	return el.ErrorOrNil()
 }
 
-// Stop stops the registered modules in the required order
+// Stop stops the registered modules in their given order
 func (s *Service) Stop() error {
-	var stopables []Stopable
-
-	for _, module := range s.modules {
-		if stopable, ok := module.(Stopable); ok {
-			stopables = append(stopables, stopable)
+	errors := protocol.NewErrorList("service stopping errors: ")
+	for order, iface := range s.modulesSortedBy(ascendingStopOrder) {
+		name := reflect.TypeOf(iface).String()
+		if stoppable, ok := iface.(stopable); ok {
+			loggerService.WithFields(log.Fields{"name": name, "order": order}).Info("Stopping module")
+			if err := stoppable.Stop(); err != nil {
+				errors.Add(err)
+			}
+		} else {
+			loggerService.WithFields(log.Fields{"name": name, "order": order}).Debug("Module is not stoppable")
 		}
 	}
-
-	stopOrder := make([]int, len(stopables))
-
-	if s.router.Cluster() == nil {
-		for i := 1; i < len(stopables); i++ {
-			stopOrder[i] = len(stopables) - i
-		}
-	} else {
-		stopOrder[0] = 1
-		for i := 1; i < len(stopables)-1; i++ {
-			stopOrder[i] = len(stopables) - i
-		}
-		stopOrder[len(stopables)-1] = 0
-	}
-
-	loggerService.WithField("stopOrder", stopOrder).Debug("Stopping modules in this order relative to registration")
-
-	errors := protocol.NewErrorList("stopping errors: ")
-	for _, order := range stopOrder {
-		module := stopables[order]
-		name := reflect.TypeOf(module).String()
-		loggerService.WithFields(log.Fields{
-			"name":  name,
-			"order": order,
-		}).Info("Stopping module")
-		if err := module.Stop(); err != nil {
-			errors.Add(err)
-		}
-	}
-
 	if err := errors.ErrorOrNil(); err != nil {
 		return fmt.Errorf("service: errors while stopping modules: %s", err)
 	}
-
 	return nil
-}
-
-// Modules returns the slice of registered modules
-func (s *Service) Modules() []interface{} {
-	return s.modules
 }
 
 // WebServer returns the service *webserver.WebServer instance
@@ -195,7 +150,17 @@ func (s *Service) WebServer() *webserver.WebServer {
 	return s.webserver
 }
 
-// Router returns the service Router instance
-func (s *Service) Router() Router {
-	return s.router
+// ModulesSortedByStartOrder returns the registered modules sorted by their startOrder property
+func (s *Service) ModulesSortedByStartOrder() []interface{} {
+	return s.modulesSortedBy(ascendingStartOrder)
+}
+
+// modulesSortedBy returns the registered modules sorted using a `by` criteria.
+func (s *Service) modulesSortedBy(criteria by) []interface{} {
+	var sorted []interface{}
+	by(criteria).sort(s.modules)
+	for _, m := range s.modules {
+		sorted = append(sorted, m.iface)
+	}
+	return sorted
 }
