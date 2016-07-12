@@ -26,7 +26,6 @@ func (v *emptyInt) Set(value int64) {}
 
 // NewInt returns an expvar.Int or a dummy emptyInt, depending on the Enabled flag
 func NewInt(name string) IntVar {
-	//TODO Cosmin Bogdan the condition should be instead on: *config.Metrics.Enabled
 	if *config.Metrics.Enabled {
 		return expvar.NewInt(name)
 	}
