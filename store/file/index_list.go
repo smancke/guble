@@ -37,13 +37,11 @@ func (l *IndexList) Insert(items ...*Index) {
 }
 
 func (l *IndexList) insertElem(elem *Index) {
-	length := l.Len()
-
 	l.Lock()
 	defer l.Unlock()
 
 	// first element on list just append at the end
-	if length == 0 {
+	if len(l.items) == 0 {
 		l.items = append(l.items, elem)
 		return
 	}
@@ -54,13 +52,13 @@ func (l *IndexList) insertElem(elem *Index) {
 		return
 	}
 
-	if l.items[length-1].id <= elem.id {
+	if l.items[len(l.items)-1].id <= elem.id {
 		l.items = append(l.items, elem)
 		return
 	}
 
 	//found the correct position to make an insertion sort
-	for i := 1; i <= length-1; i++ {
+	for i := 1; i <= len(l.items)-1; i++ {
 		if l.items[i].id > elem.id {
 			l.items = append(l.items[:i], append([]*Index{elem}, l.items[i:]...)...)
 			return
@@ -70,9 +68,6 @@ func (l *IndexList) insertElem(elem *Index) {
 
 // Clear empties the current list
 func (l *IndexList) Clear() {
-	l.Lock()
-	defer l.Unlock()
-
 	l.items = make([]*Index, 0)
 }
 
@@ -83,11 +78,11 @@ func (l *IndexList) Search(searchID uint64) (bool, int, int, *Index) {
 	l.RLock()
 	defer l.RUnlock()
 
-	if l.Len() == 0 {
+	if len(l.items) == 0 {
 		return false, -1, -1, nil
 	}
 
-	h := l.Len() - 1
+	h := len(l.items) - 1
 	f := 0
 	bestIndex := f
 
@@ -111,14 +106,14 @@ func (l *IndexList) Search(searchID uint64) (bool, int, int, *Index) {
 
 //Back retrieves the element with the biggest id or nil if list is empty
 func (l *IndexList) Back() *Index {
-	if l.Len() == 0 {
-		return nil
-	}
-
 	l.RLock()
 	defer l.RUnlock()
 
-	return l.items[l.Len()-1]
+	if len(l.items) == 0 {
+		return nil
+	}
+
+	return l.items[len(l.items)-1]
 }
 
 //Front retrieves the element with the smallest id or nil if list is empty
@@ -126,7 +121,7 @@ func (l *IndexList) Front() *Index {
 	l.RLock()
 	defer l.RUnlock()
 
-	if l.Len() == 0 {
+	if len(l.items) == 0 {
 		return nil
 	}
 
@@ -145,9 +140,9 @@ func (l *IndexList) Get(pos int) *Index {
 	l.RLock()
 	defer l.RUnlock()
 
-	if l.Len() == 0 || pos < 0 || pos >= l.Len() {
+	if len(l.items) == 0 || pos < 0 || pos >= len(l.items) {
 		logger.WithFields(log.Fields{
-			"len": l.Len(),
+			"len": len(l.items),
 			"pos": pos,
 		}).Info("Empty list or invalid index")
 		return nil
@@ -182,13 +177,16 @@ func (l *IndexList) String() string {
 
 // Contains returns true if given ID is between first and last item in the list
 func (l *IndexList) Contains(id uint64) bool {
-	if l.Len() == 0 {
+	l.RLock()
+	defer l.RUnlock()
+
+	if len(l.items) == 0 {
 		return false
 	}
-	return l.Front().id <= id && id <= l.Back().id
+
+	return l.items[0].id <= id && id <= l.items[len(l.items)-1].id
 }
 
-//returns the absolute value for two numbers
 func abs(m1, m2 uint64) uint64 {
 	if m1 > m2 {
 		return m1 - m2

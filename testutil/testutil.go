@@ -1,6 +1,8 @@
 package testutil
 
 import (
+	_ "net/http/pprof"
+
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/alexjlockwood/gcm"
@@ -169,4 +171,10 @@ func SkipIfShort(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
+}
+
+func PprofDebug() {
+	go func() {
+		http.ListenAndServe("localhost:6060", nil)
+	}()
 }

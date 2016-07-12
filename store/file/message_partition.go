@@ -18,7 +18,7 @@ import (
 var (
 	MAGIC_NUMBER        = []byte{42, 249, 180, 108, 82, 75, 222, 182}
 	FILE_FORMAT_VERSION = []byte{1}
-	MESSAGES_PER_FILE   = uint64(1000)
+	MESSAGES_PER_FILE   = uint64(10000)
 	INDEX_ENTRY_SIZE    = 20
 )
 
@@ -364,9 +364,7 @@ func (p *MessagePartition) store(messageID uint64, data []byte) error {
 		size:   uint32(len(data)),
 		fileID: p.fileCache.Len(),
 	}
-	logger.Info("BEFORE DAFUQ")
 	p.list.Insert(e)
-	logger.Info("DAFUQ")
 
 	p.appendFilePosition += uint64(len(sizeAndID) + len(data))
 

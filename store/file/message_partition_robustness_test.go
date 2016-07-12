@@ -1,29 +1,30 @@
 package file
 
 import (
+	"io/ioutil"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/smancke/guble/store"
 	"github.com/stretchr/testify/assert"
 
 	"math"
 	"strconv"
 
-	"io/ioutil"
-	"os"
-	"testing"
-	"time"
-
 	log "github.com/Sirupsen/logrus"
 )
 
 func Test_MessagePartition_forConcurrentWriteAndReads(t *testing.T) {
 	// defer testutil.EnableDebugForMethod()()
+	// testutil.PprofDebug()
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_partition_store_test")
 	defer os.RemoveAll(dir)
 
 	store, _ := NewMessagePartition(dir, "myMessages")
 
-	n := 200 * 100
+	n := 2000 * 100
 	nReaders := 7
 
 	writerDone := make(chan bool)
