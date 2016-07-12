@@ -199,7 +199,7 @@ func (rec *Receiver) fetchOnlyLoop() {
 func (rec *Receiver) fetch() error {
 	fetch := store.FetchRequest{
 		Partition: rec.path.Partition(),
-		MessageC:  make(chan store.MessageAndID, 3),
+		MessageC:  make(chan store.FetchedMessage, 3),
 		ErrorC:    make(chan error),
 		StartC:    make(chan int),
 		Prefix:    []byte(rec.path),

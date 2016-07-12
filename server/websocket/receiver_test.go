@@ -48,8 +48,8 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 
 			r.StartC <- 2
 
-			r.MessageC <- store.MessageAndID{ID: uint64(1), Message: []byte("fetch_first1-a")}
-			r.MessageC <- store.MessageAndID{ID: uint64(2), Message: []byte("fetch_first1-b")}
+			r.MessageC <- store.FetchedMessage{ID: uint64(1), Message: []byte("fetch_first1-a")}
+			r.MessageC <- store.FetchedMessage{ID: uint64(2), Message: []byte("fetch_first1-b")}
 			close(r.MessageC)
 		}()
 	})
@@ -70,7 +70,7 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 			a.Equal(int(math.MaxInt32), r.Count)
 
 			r.StartC <- 1
-			r.MessageC <- store.MessageAndID{ID: uint64(3), Message: []byte("fetch_first2-a")}
+			r.MessageC <- store.FetchedMessage{ID: uint64(3), Message: []byte("fetch_first2-a")}
 			close(r.MessageC)
 		}()
 	})
@@ -99,7 +99,7 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 			a.Equal(int(math.MaxInt32), r.Count)
 
 			r.StartC <- 1
-			r.MessageC <- store.MessageAndID{ID: uint64(6), Message: []byte("fetch_after-a")}
+			r.MessageC <- store.FetchedMessage{ID: uint64(6), Message: []byte("fetch_after-a")}
 			close(r.MessageC)
 		}()
 	})
@@ -167,7 +167,7 @@ func Test_Receiver_Fetch_Returns_Correct_Messages(t *testing.T) {
 		go func() {
 			r.StartC <- len(messages)
 			for i, m := range messages {
-				r.MessageC <- store.MessageAndID{ID: uint64(i + 1), Message: []byte(m)}
+				r.MessageC <- store.FetchedMessage{ID: uint64(i + 1), Message: []byte(m)}
 			}
 			close(r.MessageC)
 			done <- true

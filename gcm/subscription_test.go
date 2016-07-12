@@ -36,7 +36,7 @@ func TestSub_Fetch(t *testing.T) {
 			req.StartC <- 2
 			var id uint64 = 3
 			for i := 0; i < 2; i++ {
-				req.MessageC <- store.MessageAndID{
+				req.MessageC <- store.FetchedMessage{
 					ID:      id,
 					Message: []byte(strings.Replace(fetchMessage, "42", strconv.FormatUint(id, 10), 1)),
 				}
@@ -134,7 +134,7 @@ func TestSub_Restart(t *testing.T) {
 			req.StartC <- 2
 			var id uint64 = 3
 			for i := 0; i < 2; i++ {
-				req.MessageC <- store.MessageAndID{
+				req.MessageC <- store.FetchedMessage{
 					ID:      id,
 					Message: []byte(strings.Replace(fetchMessage, "42", strconv.FormatUint(id, 10), 1)),
 				}

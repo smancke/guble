@@ -7,8 +7,8 @@ import (
 )
 
 type cache struct {
-	entries    []*cacheEntry
-	cacheMutex sync.RWMutex
+	entries []*cacheEntry
+	sync.RWMutex
 }
 
 func newCache() *cache {
@@ -19,14 +19,15 @@ func newCache() *cache {
 }
 
 func (fc *cache) Len() int {
-	fc.cacheMutex.RLock()
-	defer fc.cacheMutex.RUnlock()
+	fc.RLock()
+	defer fc.RUnlock()
 	return len(fc.entries)
 }
 
 func (fc *cache) Append(newEl *cacheEntry) {
-	fc.cacheMutex.Lock()
-	defer fc.cacheMutex.Unlock()
+	fc.Lock()
+	defer fc.Unlock()
+
 	fc.entries = append(fc.entries, newEl)
 }
 
@@ -34,7 +35,9 @@ type cacheEntry struct {
 	min, max uint64
 }
 
-func (f *cacheEntry) has(req *store.FetchRequest) bool {
+// Contains returns true if the req.StartID is between the min and max
+// There is a chance the request messages to be found in this range
+func (f *cacheEntry) Contains(req *store.FetchRequest) bool {
 	if req.StartID == 0 {
 		req.Direction = 1
 		return true

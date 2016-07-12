@@ -39,7 +39,7 @@ func Test_Fetch(t *testing.T) {
 	}
 
 	for _, testcase := range testCases {
-		testcase.req.MessageC = make(chan store.MessageAndID)
+		testcase.req.MessageC = make(chan store.FetchedMessage)
 		testcase.req.ErrorC = make(chan error)
 		testcase.req.StartC = make(chan int)
 

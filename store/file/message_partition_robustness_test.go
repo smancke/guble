@@ -23,7 +23,7 @@ func Test_MessagePartition_forConcurrentWriteAndReads(t *testing.T) {
 
 	store, _ := NewMessagePartition(dir, "myMessages")
 
-	n := 2000 * 100
+	n := 200 * 100
 	nReaders := 7
 
 	writerDone := make(chan bool)
@@ -62,7 +62,7 @@ func messagePartitionReader(name string, a *assert.Assertions, mStore *MessagePa
 	lastReadMessage := 0
 
 	for lastReadMessage < n {
-		msgC := make(chan store.MessageAndID)
+		msgC := make(chan store.FetchedMessage)
 		errorC := make(chan error)
 
 		log.WithFields(log.Fields{

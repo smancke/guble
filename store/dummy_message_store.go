@@ -55,7 +55,7 @@ func (dms *DummyMessageStore) Stop() error {
 
 func (dms *DummyMessageStore) StoreMessage(message *protocol.Message, nodeID int) (int, error) {
 	partitionName := message.Path.Partition()
-	nextID, ts, err := dms.GenerateNextMsgId(partitionName, 0)
+	nextID, ts, err := dms.GenerateNextMsgID(partitionName, 0)
 	if err != nil {
 		return 0, err
 	}
@@ -108,7 +108,7 @@ func (dms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessa
 	return fnToExecute(maxId)
 }
 
-func (dms *DummyMessageStore) GenerateNextMsgId(partitionName string, timestamp int) (uint64, int64, error) {
+func (dms *DummyMessageStore) GenerateNextMsgID(partitionName string, timestamp int) (uint64, int64, error) {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
 	ts := time.Now().Unix()

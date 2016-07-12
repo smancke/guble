@@ -2,14 +2,13 @@ package file
 
 import (
 	"fmt"
-	"github.com/smancke/guble/store"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
 	"time"
 
-	"sync"
+	"github.com/smancke/guble/store"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -26,7 +25,7 @@ func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
 	lastId := uint64(0)
 
 	for i := 0; i < 1000; i++ {
-		id, _, err := mStore.generateNextMsgId(1)
+		id, _, err := mStore.generateNextMsgID(1)
 		generatedIDs = append(generatedIDs, id)
 		a.True(id > lastId, "Ids should be monotonic")
 		lastId = id
@@ -51,8 +50,8 @@ func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
 	lastId := uint64(0)
 
 	for i := 0; i < 1000; i++ {
-		id, _, err := mStore.generateNextMsgId(1)
-		id2, _, err := mStore2.generateNextMsgId(2)
+		id, _, err := mStore.generateNextMsgID(1)
+		id2, _, err := mStore2.generateNextMsgID(2)
 		a.True(id2 > id, "Ids should be monotonic")
 		generatedIDs = append(generatedIDs, id)
 		generatedIDs = append(generatedIDs, id2)
@@ -121,12 +120,12 @@ func Test_MessagePartition_correctIdAfterRestart(t *testing.T) {
 
 	a.NoError(mStore.Store(uint64(1), []byte("aaaaaaaaaa")))
 	a.NoError(mStore.Store(uint64(2), []byte("aaaaaaaaaa")))
-	a.Equal(uint64(2), fne(mStore.MaxMessageId()))
+	a.Equal(uint64(2), fne(mStore.MaxMessageID()))
 	a.NoError(mStore.Close())
 
 	newMStore, err := NewMessagePartition(dir, "myMessages")
 	a.NoError(err)
-	a.Equal(uint64(2), fne(newMStore.MaxMessageId()))
+	a.Equal(uint64(2), fne(newMStore.MaxMessageID()))
 }
 
 func Benchmark_Storing_HelloWorld_Messages(b *testing.B) {
@@ -228,19 +227,19 @@ func Test_calculateFetchList(t *testing.T) {
 		{`direct match`,
 			store.FetchRequest{StartID: 3, Direction: 0, Count: 1},
 			IndexList{
-				{3, uint64(21), 10, 0}, // messageId, offset, size, fileId
+				items: []*Index{{3, uint64(21), 10, 0}}, // messageId, offset, size, fileId
 			},
 		},
 		{`direct match in second file`,
 			store.FetchRequest{StartID: 8, Direction: 0, Count: 1},
 			IndexList{
-				{8, uint64(21), 10, 1}, // messageId, offset, size, fileId,
+				items: []*Index{{8, uint64(21), 10, 1}}, // messageId, offset, size, fileId,
 			},
 		},
 		{`direct match in second file, not first position`,
 			store.FetchRequest{StartID: 13, Direction: 0, Count: 1},
 			IndexList{
-				{13, uint64(65), 10, 1}, // messageId, offset, size, fileId,
+				items: []*Index{{13, uint64(65), 10, 1}}, // messageId, offset, size, fileId,
 			},
 		},
 		// TODO this is caused by hasStartID() functions.This will be done when implementing the EndID logic
@@ -253,8 +252,10 @@ func Test_calculateFetchList(t *testing.T) {
 		{`entry before matches`,
 			store.FetchRequest{StartID: 5, Direction: -1, Count: 2},
 			IndexList{
-				{4, uint64(43), 10, 0},  // messageId, offset, size, fileId
-				{5, uint64(109), 10, 0}, // messageId, offset, size, fileId
+				items: []*Index{
+					{4, uint64(43), 10, 0},  // messageId, offset, size, fileId
+					{5, uint64(109), 10, 0}, // messageId, offset, size, fileId
+				},
 			},
 		},
 		{`backward, no match`,
@@ -272,34 +273,40 @@ func Test_calculateFetchList(t *testing.T) {
 		{`forward, overlapping files`,
 			store.FetchRequest{StartID: 9, Direction: 1, Count: 3},
 			IndexList{
-				{9, uint64(87), 10, 0},  // messageId, offset, size, fileId
-				{10, uint64(65), 10, 0}, // messageId, offset, size, fileId
-				{13, uint64(65), 10, 1}, // messageId, offset, size, fileId
+				items: []*Index{
+					{9, uint64(87), 10, 0},  // messageId, offset, size, fileId
+					{10, uint64(65), 10, 0}, // messageId, offset, size, fileId
+					{13, uint64(65), 10, 1}, // messageId, offset, size, fileId
+				},
 			},
 		},
 		{`backward, overlapping files`,
 			store.FetchRequest{StartID: 26, Direction: -1, Count: 4},
 			IndexList{
-				// {15, uint64(43), 10, 1},  // messageId, offset, size, fileId
-				{22, uint64(87), 10, 1},  // messageId, offset, size, fileId
-				{23, uint64(109), 10, 1}, // messageId, offset, size, fileId
-				{24, uint64(21), 10, 2},  // messageId, offset, size, fileId
-				{26, uint64(43), 10, 2},  // messageId, offset, size, fileId
+				items: []*Index{
+					// {15, uint64(43), 10, 1},  // messageId, offset, size, fileId
+					{22, uint64(87), 10, 1},  // messageId, offset, size, fileId
+					{23, uint64(109), 10, 1}, // messageId, offset, size, fileId
+					{24, uint64(21), 10, 2},  // messageId, offset, size, fileId
+					{26, uint64(43), 10, 2},  // messageId, offset, size, fileId
+				},
 			},
 		},
 		{`forward, over more then 2 files`,
 			store.FetchRequest{StartID: 5, Direction: 1, Count: 10},
 			IndexList{
-				{5, uint64(109), 10, 0},  // messageId, offset, size, fileId
-				{8, uint64(21), 10, 1},   // messageId, offset, size, fileId
-				{9, uint64(87), 10, 0},   // messageId, offset, size, fileId
-				{10, uint64(65), 10, 0},  // messageId, offset, size, fileId
-				{13, uint64(65), 10, 1},  // messageId, offset, size, fileId
-				{15, uint64(43), 10, 1},  // messageId, offset, size, fileId
-				{22, uint64(87), 10, 1},  // messageId, offset, size, fileId
-				{23, uint64(109), 10, 1}, // messageId, offset, size, fileId
-				{24, uint64(21), 10, 2},  // messageId, offset, size, fileId
-				{26, uint64(43), 10, 2},  // messageId, offset, size, fileId
+				items: []*Index{
+					{5, uint64(109), 10, 0},  // messageId, offset, size, fileId
+					{8, uint64(21), 10, 1},   // messageId, offset, size, fileId
+					{9, uint64(87), 10, 0},   // messageId, offset, size, fileId
+					{10, uint64(65), 10, 0},  // messageId, offset, size, fileId
+					{13, uint64(65), 10, 1},  // messageId, offset, size, fileId
+					{15, uint64(43), 10, 1},  // messageId, offset, size, fileId
+					{22, uint64(87), 10, 1},  // messageId, offset, size, fileId
+					{23, uint64(109), 10, 1}, // messageId, offset, size, fileId
+					{24, uint64(21), 10, 2},  // messageId, offset, size, fileId
+					{26, uint64(43), 10, 2},  // messageId, offset, size, fileId
+				},
 			},
 		},
 	}
@@ -313,20 +320,23 @@ func Test_calculateFetchList(t *testing.T) {
 }
 
 func matchSortedList(t *testing.T, expected, actual IndexList) bool {
-	if len(expected) != len(actual) {
-		assert.Equal(t, len(expected), len(actual), "Invalid length")
+	if !assert.Equal(t, expected.Len(), actual.Len(), "Invalid length") {
 		return false
 	}
 
-	for i, entry := range expected {
-		a := actual[i]
-		assert.Equal(t, *entry, *a)
-		if entry.messageID != a.messageID ||
-			entry.offset != a.offset ||
-			entry.size != a.size ||
-			entry.fileID != a.fileID {
-			return false
+	err := expected.Do(func(elem *Index, i int) error {
+		a := actual.Get(i)
+		assert.Equal(t, *elem, *a)
+		if elem.id != a.id ||
+			elem.offset != a.offset ||
+			elem.size != a.size ||
+			elem.fileID != a.fileID {
+			return fmt.Errorf("Element not equal!")
 		}
+		return nil
+	})
+	if !assert.NoError(t, err) {
+		return false
 	}
 
 	return true
@@ -334,12 +344,13 @@ func matchSortedList(t *testing.T, expected, actual IndexList) bool {
 
 func Test_Partition_Fetch(t *testing.T) {
 	a := assert.New(t)
+
 	// allow five messages per file
 	MESSAGES_PER_FILE = uint64(5)
 
-	msgData := []byte("aaaaaaaaaa")  // 10 bytes message
-	msgData2 := []byte("1111111111") // 10 bytes message
-	msgData3 := []byte("bbbbbbbbbb") // 10 bytes message
+	msgData := []byte("1111111111")  // 10 bytes message
+	msgData2 := []byte("2222222222") // 10 bytes message
+	msgData3 := []byte("3333333333") // 10 bytes message
 
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
@@ -380,19 +391,19 @@ func Test_Partition_Fetch(t *testing.T) {
 	}{
 		{`direct match`,
 			store.FetchRequest{StartID: 3, Direction: 0, Count: 1},
-			[]string{"aaaaaaaaaa"},
+			[]string{"1111111111"},
 		},
 		{`direct match in second file`,
 			store.FetchRequest{StartID: 8, Direction: 0, Count: 1},
-			[]string{"1111111111"},
+			[]string{"2222222222"},
 		},
 		{`next entry matches`,
 			store.FetchRequest{StartID: 13, Direction: 0, Count: 1},
-			[]string{"bbbbbbbbbb"},
+			[]string{"3333333333"},
 		},
 		{`entry before matches`,
 			store.FetchRequest{StartID: 5, Direction: -1, Count: 2},
-			[]string{"aaaaaaaaaa", "bbbbbbbbbb"},
+			[]string{"1111111111", "3333333333"},
 		},
 		{`backward, no match`,
 			store.FetchRequest{StartID: 1, Direction: -1, Count: 1},
@@ -403,29 +414,29 @@ func Test_Partition_Fetch(t *testing.T) {
 			[]string{},
 		},
 		{`forward, no match (after last id in last file)`,
-			store.FetchRequest{StartID: mStore.maxMessageId + uint64(8), Direction: 1, Count: 1},
+			store.FetchRequest{StartID: mStore.maxMessageID + uint64(8), Direction: 1, Count: 1},
 			[]string{},
 		},
 		{`forward, overlapping files`,
 			store.FetchRequest{StartID: 9, Direction: 1, Count: 3},
-			[]string{"1111111111", "aaaaaaaaaa", "bbbbbbbbbb"},
+			[]string{"2222222222", "1111111111", "3333333333"},
 		},
 		{`forward, over more then 2 files`,
 			store.FetchRequest{StartID: 5, Direction: 1, Count: 10},
-			[]string{"bbbbbbbbbb", "1111111111", "1111111111", "aaaaaaaaaa", "bbbbbbbbbb", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa"},
+			[]string{"3333333333", "2222222222", "2222222222", "1111111111", "3333333333", "1111111111", "1111111111", "1111111111", "1111111111", "1111111111"},
 		},
 		{`backward, overlapping files`,
 			store.FetchRequest{StartID: 26, Direction: -1, Count: 4},
-			[]string{"aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa"},
+			[]string{"1111111111", "1111111111", "1111111111", "1111111111"},
 		},
 		{`backward, all messages`,
 			store.FetchRequest{StartID: uint64(100), Direction: -1, Count: 100},
-			[]string{"aaaaaaaaaa", "aaaaaaaaaa", "bbbbbbbbbb", "1111111111", "1111111111", "aaaaaaaaaa", "bbbbbbbbbb", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaaa"},
+			[]string{"1111111111", "1111111111", "3333333333", "2222222222", "2222222222", "1111111111", "3333333333", "1111111111", "1111111111", "1111111111", "1111111111", "1111111111", "1111111111"},
 		},
 	}
 	for _, testcase := range testCases {
 		testcase.req.Partition = "myMessages"
-		testcase.req.MessageC = make(chan store.MessageAndID)
+		testcase.req.MessageC = make(chan store.FetchedMessage)
 		testcase.req.ErrorC = make(chan error)
 		testcase.req.StartC = make(chan int)
 
@@ -467,14 +478,13 @@ func TestFilenameGeneration(t *testing.T) {
 	mStore := &MessagePartition{
 		basedir:   "/foo/bar/",
 		name:      "myMessages",
-		mutex:     &sync.RWMutex{},
 		fileCache: newCache(),
 	}
 
 	a.Equal("/foo/bar/myMessages-00000000000000000000.msg", mStore.composeMsgFilename())
-	a.Equal("/foo/bar/myMessages-00000000000000000042.idx", mStore.composeIndexFilenameWithValue(42))
-	a.Equal("/foo/bar/myMessages-00000000000000000000.idx", mStore.composeIndexFilenameWithValue(0))
-	a.Equal(fmt.Sprintf("/foo/bar/myMessages-%020d.idx", MESSAGES_PER_FILE), mStore.composeIndexFilenameWithValue(MESSAGES_PER_FILE))
+	a.Equal("/foo/bar/myMessages-00000000000000000042.idx", mStore.composeIdxFilenameForID(42))
+	a.Equal("/foo/bar/myMessages-00000000000000000000.idx", mStore.composeIdxFilenameForID(0))
+	a.Equal(fmt.Sprintf("/foo/bar/myMessages-%020d.idx", MESSAGES_PER_FILE), mStore.composeIdxFilenameForID(MESSAGES_PER_FILE))
 }
 
 func fne(args ...interface{}) interface{} {
