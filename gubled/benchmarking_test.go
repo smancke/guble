@@ -8,23 +8,24 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/protocol"
 	"io/ioutil"
-	"os"
 	"log"
-	"github.com/smancke/guble/testutil"
+	"os"
+
+	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gubled/config"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/testutil"
 )
 
 type testgroup struct {
-	t                *testing.T
-	groupID          int
-	addr             string
-	done             chan bool
-	messagesToSend   int
-	client1, client2 client.Client
-	topic            string
+	t                   *testing.T
+	groupID             int
+	addr                string
+	done                chan bool
+	messagesToSend      int
+	consumer, publisher client.Client
+	topic               string
 }
 
 func newTestgroup(t *testing.T, groupID int, addr string, messagesToSend int) *testgroup {
@@ -37,77 +38,77 @@ func newTestgroup(t *testing.T, groupID int, addr string, messagesToSend int) *t
 	}
 }
 
- func TestThroughput(t *testing.T) {
- 	testutil.SkipIfShort(t)
- 	//testutil.EnableDebugForMethod()()
- 	defer testutil.ResetDefaultRegistryHealthCheck()
+func TestThroughput(t *testing.T) {
+	// testutil.SkipIfShort(t)
+	defer testutil.EnableDebugForMethod()()
+	defer testutil.ResetDefaultRegistryHealthCheck()
 
- 	dir, _ := ioutil.TempDir("", "guble_benchmarking_test")
- 	defer os.RemoveAll(dir)
+	dir, _ := ioutil.TempDir("", "guble_benchmarking_test")
+	defer os.RemoveAll(dir)
 
- 	*config.HttpListen = "localhost:0"
- 	*config.KVS = "memory"
- 	*config.MS = "file"
- 	*config.StoragePath = dir
+	*config.HttpListen = "localhost:0"
+	*config.KVS = "memory"
+	*config.MS = "file"
+	*config.StoragePath = dir
 
- 	service := StartService()
- 	defer func() {
- 		service.Stop()
- 	}()
- 	time.Sleep(time.Millisecond * 10)
+	service := StartService()
+	defer func() {
+		service.Stop()
+	}()
+	time.Sleep(time.Millisecond * 10)
 
- 	testgroupCount := 4
- 	messagesPerGroup := 100
- 	log.Printf("init the %v testgroups", testgroupCount)
- 	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
- 	for i := range testgroups {
- 		testgroups[i] = newTestgroup(t, i, service.WebServer().GetAddr(), messagesPerGroup)
- 	}
+	testgroupCount := 4
+	messagesPerGroup := 100
+	log.Printf("init the %v testgroups", testgroupCount)
+	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
+	for i := range testgroups {
+		testgroups[i] = newTestgroup(t, i, service.WebServer().GetAddr(), messagesPerGroup)
+	}
 
- 	// init test
- 	log.Print("init the testgroups")
- 	for i := range testgroups {
- 		testgroups[i].Init()
- 	}
+	// init test
+	log.Print("init the testgroups")
+	for i := range testgroups {
+		testgroups[i].Init()
+	}
 
- 	defer func() {
- 		// cleanup tests
- 		log.Print("cleanup the testgroups")
- 		for i := range testgroups {
- 			testgroups[i].Clean()
- 		}
- 	}()
+	defer func() {
+		// cleanup tests
+		log.Print("cleanup the testgroups")
+		for i := range testgroups {
+			testgroups[i].Clean()
+		}
+	}()
 
- 	// start test
- 	log.Print("start the testgroups")
- 	start := time.Now()
- 	for i := range testgroups {
- 		go testgroups[i].Start()
- 	}
+	// start test
+	log.Print("start the testgroups")
+	start := time.Now()
+	for i := range testgroups {
+		go testgroups[i].Start()
+	}
 
- 	log.Print("wait for finishing")
- 	timeout := time.After(time.Second * 60)
- 	for i, test := range testgroups {
- 		//fmt.Printf("wating for test %v\n", i)
- 		select {
- 		case successFlag := <-test.done:
- 			if !successFlag {
- 				t.Logf("testgroup %v returned with error", i)
- 				t.FailNow()
- 				return
- 			}
- 		case <-timeout:
- 			t.Log("timeout. testgroups not ready before timeout")
- 			t.Fail()
- 			return
- 		}
- 	}
+	log.Print("wait for finishing")
+	timeout := time.After(time.Second * 60)
+	for i, test := range testgroups {
+		//fmt.Printf("wating for test %v\n", i)
+		select {
+		case successFlag := <-test.done:
+			if !successFlag {
+				t.Logf("testgroup %v returned with error", i)
+				t.FailNow()
+				return
+			}
+		case <-timeout:
+			t.Log("timeout. testgroups not ready before timeout")
+			t.Fail()
+			return
+		}
+	}
 
- 	end := time.Now()
- 	totalMessages := testgroupCount * messagesPerGroup
- 	throughput := float64(totalMessages) / end.Sub(start).Seconds()
- 	log.Printf("finished! Throughput: %v/sec (%v message in %v)", int(throughput), totalMessages, end.Sub(start))
- }
+	end := time.Now()
+	totalMessages := testgroupCount * messagesPerGroup
+	throughput := float64(totalMessages) / end.Sub(start).Seconds()
+	log.Printf("finished! Throughput: %v/sec (%v message in %v)", int(throughput), totalMessages, end.Sub(start))
+}
 
 func (tg *testgroup) Init() {
 	tg.topic = fmt.Sprintf("/%v-foo", tg.groupID)
@@ -115,25 +116,25 @@ func (tg *testgroup) Init() {
 	location := "ws://" + tg.addr + "/stream/user/xy"
 	//location := "ws://gathermon.mancke.net:8080/stream/"
 	//location := "ws://127.0.0.1:8080/stream/"
-	tg.client1, err = client.Open(location, "http://localhost/", 10, false)
+	tg.consumer, err = client.Open(location, "http://localhost/", 10, false)
 	if err != nil {
 		panic(err)
 	}
-	tg.client2, err = client.Open(location, "http://localhost/", 10, false)
+	tg.publisher, err = client.Open(location, "http://localhost/", 10, false)
 	if err != nil {
 		panic(err)
 	}
 
 	tg.expectStatusMessage(protocol.SUCCESS_CONNECTED, "You are connected to the server.")
 
-	tg.client1.Subscribe(tg.topic)
+	tg.consumer.Subscribe(tg.topic)
 	time.Sleep(time.Millisecond * 1)
 	//test.expectStatusMessage(protocol.SUCCESS_SUBSCRIBED_TO, test.topic)
 }
 
 func (tg *testgroup) expectStatusMessage(name string, arg string) {
 	select {
-	case notify := <-tg.client1.StatusMessages():
+	case notify := <-tg.consumer.StatusMessages():
 		assert.Equal(tg.t, name, notify.Name)
 		assert.Equal(tg.t, arg, notify.Arg)
 	case <-time.After(time.Second * 1):
@@ -148,7 +149,7 @@ func (tg *testgroup) Start() {
 	go func() {
 		for i := 0; i < tg.messagesToSend; i++ {
 			body := fmt.Sprintf("Hallo-%v", i)
-			tg.client2.Send(tg.topic, body, "")
+			tg.publisher.Send(tg.topic, body, "")
 		}
 	}()
 
@@ -156,10 +157,10 @@ func (tg *testgroup) Start() {
 		body := fmt.Sprintf("Hallo-%v", i)
 
 		select {
-		case msg := <-tg.client1.Messages():
+		case msg := <-tg.consumer.Messages():
 			assert.Equal(tg.t, body, msg.BodyAsString())
 			assert.Equal(tg.t, tg.topic, string(msg.Path))
-		case msg := <-tg.client1.Errors():
+		case msg := <-tg.consumer.Errors():
 			tg.t.Logf("[%v] received error: %v", tg.groupID, msg)
 			tg.done <- false
 			tg.t.Fail()
@@ -175,6 +176,6 @@ func (tg *testgroup) Start() {
 }
 
 func (tg *testgroup) Clean() {
-	tg.client1.Close()
-	tg.client2.Close()
+	tg.consumer.Close()
+	tg.publisher.Close()
 }

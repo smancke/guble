@@ -2,7 +2,7 @@ package gubled
 
 import (
 	log "github.com/Sirupsen/logrus"
-	filestore "github.com/smancke/guble/store/file"
+	"github.com/smancke/guble/store/filestore"
 
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/gubled/config"

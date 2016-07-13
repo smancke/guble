@@ -1,4 +1,4 @@
-package file
+package filestore
 
 import (
 	"errors"
@@ -18,14 +18,14 @@ var logger = log.WithFields(log.Fields{
 
 // FileMessageStore is an implementation of the MessageStore interface based on files
 type FileMessageStore struct {
-	partitions map[string]*MessagePartition
+	partitions map[string]*messagePartition
 	basedir    string
 	mutex      sync.RWMutex
 }
 
 func NewFileMessageStore(basedir string) *FileMessageStore {
 	return &FileMessageStore{
-		partitions: make(map[string]*MessagePartition),
+		partitions: make(map[string]*messagePartition),
 		basedir:    basedir,
 	}
 }
@@ -136,7 +136,7 @@ func (fms *FileMessageStore) DoInTx(partition string, fnToExecute func(maxMessag
 	return p.DoInTx(fnToExecute)
 }
 
-func (fms *FileMessageStore) partitionStore(partition string) (*MessagePartition, error) {
+func (fms *FileMessageStore) partitionStore(partition string) (*messagePartition, error) {
 	fms.mutex.Lock()
 	defer fms.mutex.Unlock()
 
@@ -155,7 +155,7 @@ func (fms *FileMessageStore) partitionStore(partition string) (*MessagePartition
 			}
 		}
 		var err error
-		partitionStore, err = NewMessagePartition(dir, partition)
+		partitionStore, err = newMessagePartition(dir, partition)
 		if err != nil {
 			logger.WithField("err", err).Error("partitionStore")
 			return nil, err

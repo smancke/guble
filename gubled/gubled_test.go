@@ -107,6 +107,7 @@ func TestStartServiceModules(t *testing.T) {
 
 	// when starting a simple valid service
 	*config.KVS = "memory"
+	*config.MS = "file"
 	*config.GCM.Enabled = false
 	s := StartService()
 
@@ -117,7 +118,7 @@ func TestStartServiceModules(t *testing.T) {
 		name := reflect.TypeOf(iface).String()
 		moduleNames = append(moduleNames, name)
 	}
-	a.Equal("*store.MemoryKVStore *store.FileMessageStore *server.router *webserver.WebServer *websocket.WSHandler *rest.RestMessageAPI",
+	a.Equal("*store.MemoryKVStore *filestore.FileMessageStore *server.router *webserver.WebServer *websocket.WSHandler *rest.RestMessageAPI",
 		strings.Join(moduleNames, " "))
 }
 

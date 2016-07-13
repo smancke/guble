@@ -1,4 +1,4 @@
-package file
+package filestore
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
 
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
-	mStore, err := NewMessagePartition(dir, "node1")
+	mStore, err := newMessagePartition(dir, "node1")
 	a.Nil(err)
 
 	generatedIDs := make([]uint64, 0)
@@ -38,12 +38,12 @@ func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
 
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
-	mStore, err := NewMessagePartition(dir, "node1")
+	mStore, err := newMessagePartition(dir, "node1")
 	a.Nil(err)
 
 	dir2, _ := ioutil.TempDir("", "guble_message_partition_test2")
 	defer os.RemoveAll(dir2)
-	mStore2, err := NewMessagePartition(dir2, "node1")
+	mStore2, err := newMessagePartition(dir2, "node1")
 	a.Nil(err)
 
 	generatedIDs := make([]uint64, 0)
@@ -76,7 +76,7 @@ func Test_MessagePartition_loadFiles(t *testing.T) {
 
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
-	mStore, _ := NewMessagePartition(dir, "myMessages")
+	mStore, _ := newMessagePartition(dir, "myMessages")
 
 	msgData := []byte("aaaaaaaaaa")             // 10 bytes message
 	a.NoError(mStore.Store(uint64(3), msgData)) // stored offset 21, size: 10
@@ -116,14 +116,14 @@ func Test_MessagePartition_correctIdAfterRestart(t *testing.T) {
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
-	mStore, _ := NewMessagePartition(dir, "myMessages")
+	mStore, _ := newMessagePartition(dir, "myMessages")
 
 	a.NoError(mStore.Store(uint64(1), []byte("aaaaaaaaaa")))
 	a.NoError(mStore.Store(uint64(2), []byte("aaaaaaaaaa")))
 	a.Equal(uint64(2), fne(mStore.MaxMessageID()))
 	a.NoError(mStore.Close())
 
-	newMStore, err := NewMessagePartition(dir, "myMessages")
+	newMStore, err := newMessagePartition(dir, "myMessages")
 	a.NoError(err)
 	a.Equal(uint64(2), fne(newMStore.MaxMessageID()))
 }
@@ -132,7 +132,7 @@ func Benchmark_Storing_HelloWorld_Messages(b *testing.B) {
 	a := assert.New(b)
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
-	mStore, _ := NewMessagePartition(dir, "myMessages")
+	mStore, _ := newMessagePartition(dir, "myMessages")
 
 	b.ResetTimer()
 	for i := 1; i <= b.N; i++ {
@@ -146,7 +146,7 @@ func Benchmark_Storing_1Kb_Messages(b *testing.B) {
 	a := assert.New(b)
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
-	mStore, _ := NewMessagePartition(dir, "myMessages")
+	mStore, _ := newMessagePartition(dir, "myMessages")
 
 	message := make([]byte, 1024)
 	for i := range message {
@@ -165,7 +165,7 @@ func Benchmark_Storing_1MB_Messages(b *testing.B) {
 	a := assert.New(b)
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
-	mStore, _ := NewMessagePartition(dir, "myMessages")
+	mStore, _ := newMessagePartition(dir, "myMessages")
 
 	message := make([]byte, 1024*1024)
 	for i := range message {
@@ -190,7 +190,7 @@ func Test_calculateFetchList(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 
-	mStore, _ := NewMessagePartition(dir, "myMessages")
+	mStore, _ := newMessagePartition(dir, "myMessages")
 
 	// File header: MAGIC_NUMBER + FILE_NUMBER_VERSION = 9 bytes in the file
 	// For each stored message there is a 12 bytes write that contains the msgID and size
@@ -355,7 +355,7 @@ func Test_Partition_Fetch(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 
-	mStore, _ := NewMessagePartition(dir, "myMessages")
+	mStore, _ := newMessagePartition(dir, "myMessages")
 
 	// File header: MAGIC_NUMBER + FILE_NUMBER_VERSION = 9 bytes in the file
 	// For each stored message there is a 12 bytes write that contains the msgID and size
@@ -475,7 +475,7 @@ func Test_Partition_Fetch(t *testing.T) {
 func TestFilenameGeneration(t *testing.T) {
 	a := assert.New(t)
 
-	mStore := &MessagePartition{
+	mStore := &messagePartition{
 		basedir:   "/foo/bar/",
 		name:      "myMessages",
 		fileCache: newCache(),

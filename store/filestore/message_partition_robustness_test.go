@@ -1,4 +1,4 @@
-package file
+package filestore
 
 import (
 	"io/ioutil"
@@ -22,7 +22,7 @@ func Test_MessagePartition_forConcurrentWriteAndReads(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "guble_partition_store_test")
 	defer os.RemoveAll(dir)
 
-	store, _ := NewMessagePartition(dir, "myMessages")
+	store, _ := newMessagePartition(dir, "myMessages")
 
 	n := 2000 * 100
 	nReaders := 7
@@ -51,7 +51,7 @@ func Test_MessagePartition_forConcurrentWriteAndReads(t *testing.T) {
 	}
 }
 
-func messagePartitionWriter(a *assert.Assertions, store *MessagePartition, n int, done chan bool) {
+func messagePartitionWriter(a *assert.Assertions, store *messagePartition, n int, done chan bool) {
 	for i := 1; i <= n; i++ {
 		msg := []byte("Hello " + strconv.Itoa(i))
 		a.NoError(store.Store(uint64(i), msg))
@@ -59,7 +59,7 @@ func messagePartitionWriter(a *assert.Assertions, store *MessagePartition, n int
 	done <- true
 }
 
-func messagePartitionReader(name string, a *assert.Assertions, mStore *MessagePartition, n int, done chan bool) {
+func messagePartitionReader(name string, a *assert.Assertions, mStore *messagePartition, n int, done chan bool) {
 	lastReadMessage := 0
 
 	for lastReadMessage < n {

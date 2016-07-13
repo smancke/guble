@@ -102,7 +102,7 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 }
 
 func TestRouter_HandleMessageNotAllowed(t *testing.T) {
-	defer testutil.EnableDebugForMethod()()
+	// defer testutil.EnableDebugForMethod()()
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	a := assert.New(t)

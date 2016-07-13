@@ -121,16 +121,16 @@ func (_mr *_MockMessageStoreRecorder) Fetch(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Fetch", arg0)
 }
 
-func (_m *MockMessageStore) GenerateNextMsgId(_param0 string, _param1 int) (uint64, int64, error) {
-	ret := _m.ctrl.Call(_m, "GenerateNextMsgId", _param0, _param1)
+func (_m *MockMessageStore) GenerateNextMsgID(_param0 string, _param1 int) (uint64, int64, error) {
+	ret := _m.ctrl.Call(_m, "GenerateNextMsgID", _param0, _param1)
 	ret0, _ := ret[0].(uint64)
 	ret1, _ := ret[1].(int64)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
 
-func (_mr *_MockMessageStoreRecorder) GenerateNextMsgId(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GenerateNextMsgId", arg0, arg1)
+func (_mr *_MockMessageStoreRecorder) GenerateNextMsgID(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GenerateNextMsgID", arg0, arg1)
 }
 
 func (_m *MockMessageStore) MaxMessageID(_param0 string) (uint64, error) {
