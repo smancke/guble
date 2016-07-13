@@ -201,8 +201,15 @@ func (params *benchParams) setUp() {
 
 	params.service = gubled.StartService()
 
-	gcmConnector, ok := params.service.Modules()[4].(*gcm.Connector)
-	a.True(ok, "Modules[4] should be of type GCMConnector")
+	var gcmConnector *gcm.Connector
+	var ok bool
+	for _, iface := range params.service.ModulesSortedByStartOrder() {
+		gcmConnector, ok = iface.(*gcm.Connector)
+		if ok {
+			break
+		}
+	}
+	a.True(ok, "There should be a module of type GCMConnector")
 
 	gcmConnector.Sender = testutil.CreateGcmSender(
 		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, testutil.SuccessGCMResponse, params.receiveC, params.timeout))
