@@ -201,17 +201,19 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 func (router *router) Subscribe(r *Route) (*Route, error) {
 	logger.WithFields(log.Fields{
 		"accessManager": router.accessManager,
-		"userID":        r.UserID,
-		"path":          r.Path,
+		"route":         r,
 	}).Debug("Subscribe")
 
 	if err := router.isStopping(); err != nil {
 		return nil, err
 	}
 
-	accessAllowed := router.accessManager.IsAllowed(auth.READ, r.UserID, r.Path)
+	userID := r.Params.Get("user_id")
+	routePath := r.Options.Path
+
+	accessAllowed := router.accessManager.IsAllowed(auth.READ, userID, routePath)
 	if !accessAllowed {
-		return r, &PermissionDeniedError{UserID: r.UserID, AccessType: auth.READ, Path: r.Path}
+		return r, &PermissionDeniedError{UserID: userID, AccessType: auth.READ, Path: routePath}
 	}
 	req := subRequest{
 		route: r,
@@ -225,8 +227,7 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 func (router *router) Unsubscribe(r *Route) {
 	logger.WithFields(log.Fields{
 		"accessManager": router.accessManager,
-		"userID":        r.UserID,
-		"path":          r.Path,
+		"route":         r,
 	}).Debug("Unsubscribe")
 
 	req := subRequest{
@@ -238,10 +239,11 @@ func (router *router) Unsubscribe(r *Route) {
 }
 
 func (router *router) subscribe(r *Route) {
-	logger.WithFields(log.Fields{"userID": r.UserID, "path": r.Path}).Debug("Internal subscribe")
+	logger.WithField("route", r).Debug("Internal subscribe")
 	mTotalSubscriptionAttempts.Add(1)
 
-	slice, present := router.routes[r.Path]
+	routePath := r.Options.Path
+	slice, present := router.routes[routePath]
 	var removed bool
 	if present {
 		// Try to remove, to avoid double subscriptions of the same app
@@ -249,10 +251,10 @@ func (router *router) subscribe(r *Route) {
 	} else {
 		// Path not present yet. Initialize the slice
 		slice = make([]*Route, 0, 1)
-		router.routes[r.Path] = slice
+		router.routes[routePath] = slice
 		mCurrentRoutes.Add(1)
 	}
-	router.routes[r.Path] = append(slice, r)
+	router.routes[routePath] = append(slice, r)
 	if removed {
 		mTotalDuplicateSubscriptionsAttempts.Add(1)
 	} else {
@@ -262,24 +264,25 @@ func (router *router) subscribe(r *Route) {
 }
 
 func (router *router) unsubscribe(r *Route) {
-	logger.WithFields(log.Fields{"userID": r.UserID, "path": r.Path}).Debug("Internal unsubscribe")
+	logger.WithField("route", r).Debug("Internal unsubscribe")
 	mTotalUnsubscriptionAttempts.Add(1)
 
-	slice, present := router.routes[r.Path]
+	routePath := r.Options.Path
+	slice, present := router.routes[routePath]
 	if !present {
 		mTotalInvalidTopicOnUnsubscriptionAttempts.Add(1)
 		return
 	}
 	var removed bool
-	router.routes[r.Path], removed = removeIfMatching(slice, r)
+	router.routes[routePath], removed = removeIfMatching(slice, r)
 	if removed {
 		mTotalUnsubscriptions.Add(1)
 		mCurrentSubscriptions.Add(-1)
 	} else {
 		mTotalInvalidUnsubscriptionAttempts.Add(1)
 	}
-	if len(router.routes[r.Path]) == 0 {
-		delete(router.routes, r.Path)
+	if len(router.routes[routePath]) == 0 {
+		delete(router.routes, routePath)
 		mCurrentRoutes.Add(-1)
 	}
 }
@@ -361,7 +364,7 @@ func matchesTopic(messagePath, routePath protocol.Path) bool {
 func removeIfMatching(slice []*Route, route *Route) ([]*Route, bool) {
 	position := -1
 	for p, r := range slice {
-		if r.ApplicationID == route.ApplicationID && r.Path == route.Path {
+		if r.equals(route) {
 			position = p
 		}
 	}

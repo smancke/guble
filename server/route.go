@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,51 +22,98 @@ var (
 	errTimeout    = errors.New("Channel sending timeout")
 )
 
+type RouteOptions struct {
+	Path protocol.Path
+
+	// channel buffer size
+	Size int
+
+	// QueueSize
+	QueueSize int
+
+	// Timeout to define how long to wait for the message to be read on the channel
+	// if timeout is reached the route is closed
+	Timeout time.Duration
+}
+
+type RouteParams map[string]string
+
+func (rp *RouteParams) String() string {
+	s := make([]string, 0, len(*rp))
+	for k, v := range *rp {
+		s = append(s, fmt.Sprintf("%s: %s", k, v))
+	}
+	return strings.Join(s, " ")
+}
+
+func (rp *RouteParams) Equal(other RouteParams) bool {
+	if len(*rp) != len(other) {
+		return false
+	}
+
+	for k, v := range *rp {
+		if v2, ok := other[k]; !ok {
+			return false
+		} else if v != v2 {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (rp *RouteParams) Get(key string) string {
+	return (*rp)[key]
+}
+
+func (rp *RouteParams) Set(key, value string) {
+	(*rp)[key] = value
+}
+
 // Route represents a topic for subscription that has a channel to receive messages.
 type Route struct {
+	Options RouteOptions
+	Params  RouteParams
+
 	messagesC chan *protocol.Message
+
 	// queue that will store the messages in correct order
 	//
 	// The queue can have a settable size and if it reaches the capacity the
 	// route is closed
-	queue     *queue
-	queueSize int
+	queue *queue
 
-	// Timeout to define how long to wait for the message to be read on the channel
-	// if timeout is reached the route is closed
-	timeout time.Duration
-	closeC  chan struct{}
+	closeC chan struct{}
 
 	// Indicates if the consumer go routine is running
 	consuming bool
 	invalid   bool
 	mu        sync.RWMutex
 
-	Path          protocol.Path
-	UserID        string // UserID that subscribed or pushes messages to the router
-	ApplicationID string
-	logger        *log.Entry
+	logger *log.Entry
 }
 
 // NewRoute creates a new route pointer
 // 	- `size` is the channel buffer size
 func NewRoute(path, applicationID, userID string, size int) *Route {
-	queueSize := 0
-	route := &Route{
-		messagesC:     make(chan *protocol.Message, size),
-		queue:         newQueue(queueSize),
-		queueSize:     queueSize,
-		timeout:       -1,
-		closeC:        make(chan struct{}),
-		Path:          protocol.Path(path),
-		UserID:        userID,
-		ApplicationID: applicationID,
+	options := RouteOptions{
+		Path: protocol.Path(path),
+		Size: size,
+	}
+	params := RouteParams{
+		"applicationID": applicationID,
+		"userID":        userID,
+	}
 
-		logger: logger.WithFields(log.Fields{
-			"path":          path,
-			"applicationID": applicationID,
-			"userID":        userID,
-		}),
+	route := &Route{
+		Options: options,
+		Params:  params,
+
+		queue:     newQueue(options.QueueSize),
+		messagesC: make(chan *protocol.Message, size),
+		closeC:    make(chan struct{}),
+
+		logger: logger.WithFields(log.Fields{"path": path, "params": params}),
 	}
 	return route
 }
@@ -73,18 +121,18 @@ func NewRoute(path, applicationID, userID string, size int) *Route {
 // SetTimeout sets the timeout duration that the route will wait before it will close a
 // blocking channel
 func (r *Route) SetTimeout(timeout time.Duration) *Route {
-	r.timeout = timeout
+	r.Options.Timeout = timeout
 	return r
 }
 
 // SetQueueSize sets the queue size that is allowed before closing the route channel
 func (r *Route) SetQueueSize(size int) *Route {
-	r.queueSize = size
+	r.Options.QueueSize = size
 	return r
 }
 
 func (r *Route) String() string {
-	return fmt.Sprintf("%s:%s:%s", r.Path, r.UserID, r.ApplicationID)
+	return fmt.Sprintf("Path: %s %s", r.Options.Path, r.Params)
 }
 
 // Deliver takes a messages and adds it to the queue to be delivered in to the
@@ -100,11 +148,11 @@ func (r *Route) Deliver(msg *protocol.Message) error {
 	}
 
 	// not an infinite queue
-	if r.queueSize >= 0 {
+	if r.Options.QueueSize >= 0 {
 		// if size is zero the sending is direct
-		if r.queueSize == 0 {
+		if r.Options.QueueSize == 0 {
 			return r.sendDirect(msg)
-		} else if r.queue.size() >= r.queueSize {
+		} else if r.queue.size() >= r.Options.QueueSize {
 			logger.Debug("Closing route because queue is full")
 			r.Close()
 			mTotalDeliverMessageErrors.Add(1)
@@ -143,9 +191,7 @@ func (r *Route) Close() error {
 }
 
 func (r *Route) equals(other *Route) bool {
-	return r.Path == other.Path &&
-		r.UserID == other.UserID &&
-		r.ApplicationID == other.ApplicationID
+	return r.Options.Path == other.Options.Path && r.Params.Equal(other.Params)
 }
 
 // IsInvalid returns true if the route is invalid, has been closed previously
@@ -229,7 +275,7 @@ func (r *Route) send(msg *protocol.Message) error {
 	r.logger.WithField("message", msg).Debug("Sending message through route channel")
 
 	// no timeout, means we don't close the channel
-	if r.timeout == -1 {
+	if r.Options.Timeout == -1 {
 		r.messagesC <- msg
 		r.logger.WithField("size", len(r.messagesC)).Debug("Channel size")
 		return nil
@@ -240,7 +286,7 @@ func (r *Route) send(msg *protocol.Message) error {
 		return nil
 	case <-r.closeC:
 		return ErrInvalidRoute
-	case <-time.After(r.timeout):
+	case <-time.After(r.Options.Timeout):
 		r.logger.Debug("Closing route because of timeout")
 		r.Close()
 		return errTimeout
