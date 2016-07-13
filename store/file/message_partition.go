@@ -46,7 +46,7 @@ type MessagePartition struct {
 	maxMessageID       uint64
 	sequenceNumber     uint64
 
-	entriesCount uint64 //TODO  MAYBE USE ONLY ONE  FROM THE noOfEntriesInIndexFile AND localSequenceNumber
+	entriesCount uint64
 	list         *IndexList
 	fileCache    *cache
 
@@ -199,7 +199,7 @@ func readCacheEntryFromIdxFile(filename string) (entry *cacheEntry, err error) {
 }
 
 func (p *MessagePartition) createNextAppendFiles() error {
-	filename := p.composeMsgFilename()
+	filename := p.composeMsgFilenameForPosition(uint64(p.fileCache.Len()))
 	logger.WithField("filename", filename).Info("Creating next append files")
 
 	appendfile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -222,7 +222,7 @@ func (p *MessagePartition) createNextAppendFiles() error {
 		}
 	}
 
-	indexfile, errIndex := os.OpenFile(p.composeIdxFilename(), os.O_RDWR|os.O_CREATE, 0666)
+	indexfile, errIndex := os.OpenFile(p.composeIdxFilenameForPosition(uint64(p.fileCache.Len())), os.O_RDWR|os.O_CREATE, 0666)
 	if errIndex != nil {
 		defer appendfile.Close()
 		defer os.Remove(appendfile.Name())
@@ -315,7 +315,7 @@ func (p *MessagePartition) store(messageID uint64, data []byte) error {
 			}).Info("Dumping current file ")
 
 			//sort the indexFile
-			err := p.rewriteSortedIdxFile(p.composeIdxFilename())
+			err := p.rewriteSortedIdxFile(p.composeIdxFilenameForPosition(uint64(p.fileCache.Len())))
 			if err != nil {
 				logger.WithField("err", err).Error("Error dumping file")
 				return err
@@ -413,7 +413,7 @@ func (p *MessagePartition) Fetch(req *store.FetchRequest) {
 // fetchByFetchlist fetches the messages in the supplied fetchlist and sends them to the message-channel
 func (p *MessagePartition) fetchByFetchlist(fetchList *IndexList, messageC chan store.FetchedMessage) error {
 	return fetchList.Do(func(index *Index, _ int) error {
-		filename := p.composeMsgFilenameForID(uint64(index.fileID))
+		filename := p.composeMsgFilenameForPosition(uint64(index.fileID))
 		file, err := os.Open(filename)
 		if err != nil {
 			return err
@@ -451,15 +451,13 @@ func retrieveFromList(l *IndexList, req *store.FetchRequest) *IndexList {
 			"req":        *req,
 		}).Debug("Elem in retrieve")
 
-		if elem == nil { //TODO investigate why nil is returned sometimes
+		if elem == nil {
 			logger.WithFields(log.Fields{
-				"pos":     currentPos,
-				"l.Len":   l.Len(),
-				"len":     potentialEntries.Len(),
-				"startID": req.StartID,
-				"count":   req.Count,
-				"e":       elem,
-				"e.msgId": l.items[currentPos],
+				"pos":                  currentPos,
+				"l.Len":                l.Len(),
+				"potentialEntries.len": potentialEntries.Len(),
+				"startID":              req.StartID,
+				"count":                req.Count,
 			}).Error("Error in retrieving from list.Got nil entry")
 			break
 		}
@@ -624,7 +622,7 @@ func (p *MessagePartition) loadLastIndexList(filename string) error {
 
 // loadIndexFile will read a file and will return a sorted list for fetchEntries
 func (p *MessagePartition) loadIndexList(fileID int) (*IndexList, error) {
-	filename := p.composeIdxFilenameForID(uint64(fileID))
+	filename := p.composeIdxFilenameForPosition(uint64(fileID))
 	l := newList(int(MESSAGES_PER_FILE))
 	logger.WithField("filename", filename).Debug("loadIndexFile")
 
@@ -666,18 +664,10 @@ func (p *MessagePartition) loadIndexList(fileID int) (*IndexList, error) {
 	return l, nil
 }
 
-func (p *MessagePartition) composeMsgFilename() string {
-	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.msg", p.name, uint64(p.fileCache.Len())))
-}
-
-func (p *MessagePartition) composeMsgFilenameForID(value uint64) string {
+func (p *MessagePartition) composeMsgFilenameForPosition(value uint64) string {
 	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.msg", p.name, value))
 }
 
-func (p *MessagePartition) composeIdxFilename() string {
-	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.name, uint64(p.fileCache.Len())))
-}
-
-func (p *MessagePartition) composeIdxFilenameForID(value uint64) string {
+func (p *MessagePartition) composeIdxFilenameForPosition(value uint64) string {
 	return filepath.Join(p.basedir, fmt.Sprintf("%s-%020d.idx", p.name, value))
 }

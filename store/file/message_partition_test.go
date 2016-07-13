@@ -481,10 +481,10 @@ func TestFilenameGeneration(t *testing.T) {
 		fileCache: newCache(),
 	}
 
-	a.Equal("/foo/bar/myMessages-00000000000000000000.msg", mStore.composeMsgFilename())
-	a.Equal("/foo/bar/myMessages-00000000000000000042.idx", mStore.composeIdxFilenameForID(42))
-	a.Equal("/foo/bar/myMessages-00000000000000000000.idx", mStore.composeIdxFilenameForID(0))
-	a.Equal(fmt.Sprintf("/foo/bar/myMessages-%020d.idx", MESSAGES_PER_FILE), mStore.composeIdxFilenameForID(MESSAGES_PER_FILE))
+	a.Equal("/foo/bar/myMessages-00000000000000000000.msg", mStore.composeMsgFilenameForPosition(uint64(mStore.fileCache.Len())))
+	a.Equal("/foo/bar/myMessages-00000000000000000042.idx", mStore.composeIdxFilenameForPosition(42))
+	a.Equal("/foo/bar/myMessages-00000000000000000000.idx", mStore.composeIdxFilenameForPosition(0))
+	a.Equal(fmt.Sprintf("/foo/bar/myMessages-%020d.idx", MESSAGES_PER_FILE), mStore.composeIdxFilenameForPosition(MESSAGES_PER_FILE))
 }
 
 func fne(args ...interface{}) interface{} {
