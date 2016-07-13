@@ -67,6 +67,8 @@ func (p *MessagePartition) initialize() error {
 	p.Lock()
 	defer p.Unlock()
 
+	// reset the cache entries
+	p.fileCache = newCache()
 	err := p.readIdxFiles()
 	if err != nil {
 		logger.WithField("err", err).Error("MessagePartition error on scanFiles")
@@ -79,6 +81,8 @@ func (p *MessagePartition) initialize() error {
 // Returns the start messages ids for all available message files
 // in a sorted list
 func (p *MessagePartition) readIdxFiles() error {
+	logger.WithField("len", p.fileCache.Len()).Info("FileCacheLen Before")
+
 	allFiles, err := ioutil.ReadDir(p.basedir)
 	if err != nil {
 		return err
@@ -114,15 +118,22 @@ func (p *MessagePartition) readIdxFiles() error {
 			}).Error("Error loading existing .idxFile")
 			return err
 		}
+
 		// put entry in file cache
 		p.fileCache.Append(cEntry)
+		logger.
+			WithField("entries", p.fileCache.entries).
+			WithField("filename", indexFilenames[i]).
+			Error("Entries")
 
 		// check the message id's for max value
 		if cEntry.max >= p.maxMessageID {
 			p.maxMessageID = cEntry.max
 		}
-
 	}
+
+	logger.WithField("len", p.fileCache.Len()).Info("FileCacheLen")
+
 	// read the  idx file with   biggest id and load in the sorted cache
 	if err := p.loadLastIndexList(indexFilenames[len(indexFilenames)-1]); err != nil {
 		logger.WithFields(log.Fields{
