@@ -165,17 +165,11 @@ func (fms *FileMessageStore) partitionStore(partition string) (*MessagePartition
 	return partitionStore, nil
 }
 
-// TODO: remake this to use the basedir not current working directory.
 // The app could be running from a disk and storing in another
 func (fms *FileMessageStore) Check() error {
 	var stat syscall.Statfs_t
-	wd, err := os.Getwd()
-	if err != nil {
-		logger.WithField("err", err).Error("Check() failed")
-		return err
-	}
 
-	syscall.Statfs(wd, &stat)
+	syscall.Statfs(fms.basedir, &stat)
 
 	// available space in bytes = available blocks * size per block
 	freeSpace := stat.Bavail * uint64(stat.Bsize)

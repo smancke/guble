@@ -31,8 +31,15 @@ func TestGCM_Restart(t *testing.T) {
 	receiveC := make(chan bool)
 	service := serviceSetUp(t)
 
-	gcmConnector, ok := service.Modules()[4].(*gcm.Connector)
-	a.True(ok, "Modules[4] should be of type GCMConnector")
+	var gcmConnector *gcm.Connector
+	var ok bool
+	for _, iface := range service.ModulesSortedByStartOrder() {
+		gcmConnector, ok = iface.(*gcm.Connector)
+		if ok {
+			break
+		}
+	}
+	a.True(ok, "There should be a module of type GCMConnector")
 
 	// add a high timeout so the messages are processed slow
 	gcmConnector.Sender = testutil.CreateGcmSender(
@@ -45,7 +52,6 @@ func TestGCM_Restart(t *testing.T) {
 	client := clientSetUp(t, service)
 
 	// send 3 messages in the router but read only one and close the service
-
 	for i := 0; i < 3; i++ {
 		client.Send(testTopic, "dummy body", "{dummy: value}")
 	}
@@ -67,7 +73,7 @@ func TestGCM_Restart(t *testing.T) {
 
 	newReceiveC := make(chan bool)
 
-	gcmConnector, ok = service.Modules()[4].(*gcm.Connector)
+	gcmConnector, ok = service.ModulesSortedByStartOrder()[4].(*gcm.Connector)
 	a.True(ok, "Modules[4] should be of type GCMConnector")
 
 	// add a high timeout so the messages are processed slow

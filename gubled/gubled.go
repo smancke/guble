@@ -20,7 +20,6 @@ import (
 	"os"
 	"os/signal"
 	"path"
-	"reflect"
 	"runtime"
 	"syscall"
 )
@@ -42,6 +41,10 @@ var ValidateStoragePath = func() error {
 		os.Remove(testfile)
 	}
 	return nil
+}
+
+var CreateAccessManager = func() auth.AccessManager {
+	return auth.NewAllowAllAccessManager(true)
 }
 
 var CreateKVStore = func() store.KVStore {
@@ -88,7 +91,7 @@ var CreateMessageStore = func() store.MessageStore {
 }
 
 var CreateModules = func(router server.Router) []interface{} {
-	modules := make([]interface{}, 0, 3)
+	var modules []interface{}
 
 	if wsHandler, err := websocket.NewWSHandler(router, "/stream/"); err != nil {
 		logger.WithError(err).Error("Error loading WSHandler module:")
@@ -146,17 +149,6 @@ func Main() {
 		if err != nil {
 			logger.WithError(err).Error("Error when stopping service")
 		}
-		r := service.Router()
-		ms, err := r.MessageStore()
-		if err != nil {
-			logger.WithError(err).Error("Error when getting MessageStore for closing it")
-		}
-		stop(ms)
-		kvs, err := r.KVStore()
-		if err != nil {
-			logger.WithError(err).Error("Error when getting KVStore for closing it")
-		}
-		stop(kvs)
 	})
 }
 
@@ -164,16 +156,16 @@ func Main() {
 func StartService() *server.Service {
 	//TODO StartService could return an error in case it fails to start
 
-	accessManager := auth.NewAllowAllAccessManager(true)
+	accessManager := CreateAccessManager()
 	messageStore := CreateMessageStore()
 	kvStore := CreateKVStore()
 
-	var c *cluster.Cluster
+	var cl *cluster.Cluster
 	var err error
 	if *config.Cluster.NodeID > 0 {
 		exitIfInvalidClusterParams(*config.Cluster.NodeID, *config.Cluster.NodePort, *config.Cluster.Remotes)
 		logger.Info("Starting in cluster-mode")
-		c, err = cluster.New(&cluster.Config{
+		cl, err = cluster.New(&cluster.Config{
 			ID:      *config.Cluster.NodeID,
 			Port:    *config.Cluster.NodePort,
 			Remotes: *config.Cluster.Remotes,
@@ -185,14 +177,15 @@ func StartService() *server.Service {
 		logger.Info("Starting in standalone-mode")
 	}
 
-	router := server.NewRouter(accessManager, messageStore, kvStore, c)
+	router := server.NewRouter(accessManager, messageStore, kvStore, cl)
 	webserver := webserver.New(*config.HttpListen)
 
 	service := server.NewService(router, webserver).
 		HealthEndpoint(*config.HealthEndpoint).
 		MetricsEndpoint(*config.Metrics.Endpoint)
 
-	service.RegisterModules(CreateModules(router)...)
+	service.RegisterModules(0, 6, kvStore, messageStore)
+	service.RegisterModules(4, 3, CreateModules(router)...)
 
 	if err = service.Start(); err != nil {
 		if err = service.Stop(); err != nil {
@@ -212,17 +205,6 @@ func exitIfInvalidClusterParams(nodeID int, nodePort int, remotes []*net.TCPAddr
 			"nodePort":        nodePort,
 			"numberOfRemotes": len(remotes),
 		}).Fatal(errorMessage)
-	}
-}
-
-func stop(iface interface{}) {
-	if stoppable, ok := iface.(server.Stopable); ok {
-		name := reflect.TypeOf(iface).String()
-		logger.WithField("name", name).Info("Stopping")
-		err := stoppable.Stop()
-		if err != nil {
-			logger.WithError(err).WithField("name", name).Error("Failed to Stop")
-		}
 	}
 }
 
