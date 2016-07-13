@@ -37,11 +37,11 @@ func Test_MessagePartition_forConcurrentWriteAndReads(t *testing.T) {
 
 	select {
 	case <-writerDone:
-	case <-time.After(time.Second * 15):
+	case <-time.After(time.Second * 30):
 		a.Fail("writer timed out")
 	}
 
-	timeout := time.After(time.Second * 15)
+	timeout := time.After(time.Second * 30)
 	for i := 0; i < nReaders; i++ {
 		select {
 		case <-readerDone:
