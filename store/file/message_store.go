@@ -165,6 +165,8 @@ func (fms *FileMessageStore) partitionStore(partition string) (*MessagePartition
 	return partitionStore, nil
 }
 
+// TODO: remake this to use the basedir not current working directory.
+// The app could be running from a disk and storing in another
 func (fms *FileMessageStore) Check() error {
 	var stat syscall.Statfs_t
 	wd, err := os.Getwd()
@@ -172,6 +174,7 @@ func (fms *FileMessageStore) Check() error {
 		logger.WithField("err", err).Error("Check() failed")
 		return err
 	}
+
 	syscall.Statfs(wd, &stat)
 
 	// available space in bytes = available blocks * size per block
@@ -183,7 +186,9 @@ func (fms *FileMessageStore) Check() error {
 
 	if usedSpacePercentage > 0.95 {
 		errorMessage := "Disk is almost full."
-		logger.WithField("usedDiskSpacePercentage", usedSpacePercentage).Warn(errorMessage)
+		logger.WithFields(log.Fields{
+			"percentage": usedSpacePercentage,
+		}).Warn(errorMessage)
 		return errors.New(errorMessage)
 	}
 

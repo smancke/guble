@@ -81,8 +81,6 @@ func (p *MessagePartition) initialize() error {
 // Returns the start messages ids for all available message files
 // in a sorted list
 func (p *MessagePartition) readIdxFiles() error {
-	logger.WithField("len", p.fileCache.Len()).Info("FileCacheLen Before")
-
 	allFiles, err := ioutil.ReadDir(p.basedir)
 	if err != nil {
 		return err
@@ -131,8 +129,6 @@ func (p *MessagePartition) readIdxFiles() error {
 			p.maxMessageID = cEntry.max
 		}
 	}
-
-	logger.WithField("len", p.fileCache.Len()).Info("FileCacheLen")
 
 	// read the  idx file with   biggest id and load in the sorted cache
 	if err := p.loadLastIndexList(indexFilenames[len(indexFilenames)-1]); err != nil {
