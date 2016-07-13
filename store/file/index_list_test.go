@@ -37,7 +37,7 @@ func Test_SortedListSanity(t *testing.T) {
 		if min > id {
 			min = id
 		}
-		found, pos, _, foundEntry := pq.Search(id)
+		found, pos, _, foundEntry := pq.search(id)
 		a.True(found)
 		a.Equal(foundEntry.id, id)
 		a.True(pos >= 0 && pos <= len(generatedIds))
@@ -48,7 +48,7 @@ func Test_SortedListSanity(t *testing.T) {
 	a.Equal(min, pq.Front().id)
 	a.Equal(max, pq.Back().id)
 
-	found, pos, bestIndex, foundEntry := pq.Search(uint64(46))
+	found, pos, bestIndex, foundEntry := pq.search(uint64(46))
 	a.False(found, "Element should not be found since is a number greater than the random generated upper limit")
 	a.Equal(pos, -1)
 	a.Nil(foundEntry)

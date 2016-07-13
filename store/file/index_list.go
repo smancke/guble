@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/store"
 )
 
 // SortedIndexList a sorted list of fetch entries
@@ -74,7 +75,12 @@ func (l *IndexList) Clear() {
 // GetIndexEntryFromID performs a binarySearch retrieving the
 // true, the position and list and the actual entry if found
 // false , -1 ,nil if position is not found
-func (l *IndexList) Search(searchID uint64) (bool, int, int, *Index) {
+// search performs a binary search returning:
+// - `true` in case the item was found
+// - `position` position of the item
+// - `bestIndex` where the item was found
+// - `index` the index if found
+func (l *IndexList) search(searchID uint64) (bool, int, int, *Index) {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -185,6 +191,42 @@ func (l *IndexList) Contains(id uint64) bool {
 	}
 
 	return l.items[0].id <= id && id <= l.items[len(l.items)-1].id
+}
+
+// Extract will return a new list containing items requested by the FetchRequest
+func (l *IndexList) Extract(req *store.FetchRequest) *IndexList {
+	potentialEntries := newList(0)
+	found, pos, lastPos, _ := l.search(req.StartID)
+	currentPos := lastPos
+	if found == true {
+		currentPos = pos
+	}
+
+	for potentialEntries.Len() < req.Count && currentPos >= 0 && currentPos < l.Len() {
+		elem := l.Get(currentPos)
+		logger.WithFields(log.Fields{
+			"elem":       *elem,
+			"currentPos": currentPos,
+			"req":        *req,
+		}).Debug("Elem in retrieve")
+
+		if elem == nil { //TODO investigate why nil is returned sometimes
+			logger.WithFields(log.Fields{
+				"pos":     currentPos,
+				"l.Len":   l.Len(),
+				"len":     potentialEntries.Len(),
+				"startID": req.StartID,
+				"count":   req.Count,
+				"e":       elem,
+				"e.msgId": l.items[currentPos],
+			}).Error("Error in retrieving from list.Got nil entry")
+			break
+		}
+
+		potentialEntries.Insert(elem)
+		currentPos += req.Direction
+	}
+	return potentialEntries
 }
 
 func abs(m1, m2 uint64) uint64 {

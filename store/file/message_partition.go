@@ -435,41 +435,6 @@ func (p *MessagePartition) fetchByFetchlist(fetchList *IndexList, messageC chan 
 	})
 }
 
-func retrieveFromList(l *IndexList, req *store.FetchRequest) *IndexList {
-	potentialEntries := newList(0)
-	found, pos, lastPos, _ := l.Search(req.StartID)
-	currentPos := lastPos
-	if found == true {
-		currentPos = pos
-	}
-
-	for potentialEntries.Len() < req.Count && currentPos >= 0 && currentPos < l.Len() {
-		elem := l.Get(currentPos)
-		logger.WithFields(log.Fields{
-			"elem":       *elem,
-			"currentPos": currentPos,
-			"req":        *req,
-		}).Debug("Elem in retrieve")
-
-		if elem == nil { //TODO investigate why nil is returned sometimes
-			logger.WithFields(log.Fields{
-				"pos":     currentPos,
-				"l.Len":   l.Len(),
-				"len":     potentialEntries.Len(),
-				"startID": req.StartID,
-				"count":   req.Count,
-				"e":       elem,
-				"e.msgId": l.items[currentPos],
-			}).Error("Error in retrieving from list.Got nil entry")
-			break
-		}
-
-		potentialEntries.Insert(elem)
-		currentPos += req.Direction
-	}
-	return potentialEntries
-}
-
 // calculateFetchList returns a list of fetchEntry records for all messages in the fetch request.
 func (p *MessagePartition) calculateFetchList(req *store.FetchRequest) (*IndexList, error) {
 	if req.Direction == 0 {
@@ -496,7 +461,7 @@ func (p *MessagePartition) calculateFetchList(req *store.FetchRequest) (*IndexLi
 				return nil, err
 			}
 
-			potentialEntries.Insert(retrieveFromList(l, req).Items()...)
+			potentialEntries.Insert(l.Extract(req).Items()...)
 		} else {
 			prev = false
 		}
@@ -504,11 +469,11 @@ func (p *MessagePartition) calculateFetchList(req *store.FetchRequest) (*IndexLi
 
 	// Read from current cached value (the idx file which size is smaller than MESSAGE_PER_FILE
 	if p.list.Contains(req.StartID) || (prev && potentialEntries.Len() < req.Count) {
-		potentialEntries.Insert(retrieveFromList(p.list, req).Items()...)
+		potentialEntries.Insert(p.list.Extract(req).Items()...)
 	}
 
 	// Currently potentialEntries contains a potentials msgIDs from any files and from inMemory.From this will select only Count Id.
-	fetchList := retrieveFromList(potentialEntries, req)
+	fetchList := potentialEntries.Extract(req)
 
 	p.fileCache.RUnlock()
 
