@@ -37,11 +37,13 @@ var (
 
 	Postgres = struct {
 		Host     *string
+		Port     *int
 		User     *string
 		Password *string
 		DbName   *string
 	}{
 		Host:     kingpin.Flag("pg-host", "The PostgreSQL hostname").Default("localhost").Envar("GUBLE_PG_HOST").String(),
+		Port:     kingpin.Flag("pg-port", "The PostgreSQL port").Default("5432").Envar("GUBLE_PG_PORT").Int(),
 		User:     kingpin.Flag("pg-user", "The PostgreSQL user").Default("guble").Envar("GUBLE_PG_USER").String(),
 		Password: kingpin.Flag("pg-password", "The PostgreSQL password").Default("guble").Envar("GUBLE_PG_PASSWORD").String(),
 		DbName:   kingpin.Flag("pg-dbname", "The PostgreSQL database name").Default("guble").Envar("GUBLE_PG_DBNAME").String(),

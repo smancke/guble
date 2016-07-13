@@ -20,6 +20,7 @@ import (
 	"os/signal"
 	"path"
 	"runtime"
+	"strconv"
 	"syscall"
 )
 
@@ -60,6 +61,7 @@ var CreateKVStore = func() store.KVStore {
 		db := store.NewPostgresKVStore(store.PostgresConfig{
 			ConnParams: map[string]string{
 				"host":     *config.Postgres.Host,
+				"port":     strconv.Itoa(*config.Postgres.Port),
 				"user":     *config.Postgres.User,
 				"password": *config.Postgres.Password,
 				"dbname":   *config.Postgres.DbName,
