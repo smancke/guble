@@ -95,8 +95,8 @@ func TestRouteDeliver_QueueSize(t *testing.T) {
 		a.Fail("Message not delivering.")
 	}
 	time.Sleep(10 * time.Millisecond)
-	a.True(r.invalid)
-	a.False(r.consuming)
+	a.True(r.isInvalid())
+	a.False(r.isConsuming())
 }
 
 func TestRouteDeliver_WithTimeout(t *testing.T) {

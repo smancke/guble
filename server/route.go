@@ -211,6 +211,8 @@ func (r *Route) Close() error {
 	return ErrInvalidRoute
 }
 
+// Equal will check if the route path is matched and all the parameters or just a
+// subsent of specific parameters between the routes
 func (r *Route) Equal(other *Route, keys ...string) bool {
 	return r.Path == other.Path && r.RouteParams.Equal(other.RouteParams, keys...)
 }
@@ -293,6 +295,7 @@ func (r *Route) consume() {
 // send message through the channel
 func (r *Route) send(msg *protocol.Message) error {
 	defer r.invalidRecover()
+
 	r.logger.WithField("message", msg).Debug("Sending message through route channel")
 
 	// no timeout, means we don't close the channel

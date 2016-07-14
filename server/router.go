@@ -56,6 +56,8 @@ type router struct {
 	messageStore  store.MessageStore
 	kvStore       store.KVStore
 	cluster       *cluster.Cluster
+
+	sync.RWMutex
 }
 
 // NewRouter returns a pointer to Router
@@ -103,7 +105,7 @@ func (router *router) Start() error {
 					router.unsubscribe(unsubscriber.route)
 					unsubscriber.doneC <- true
 				case <-router.stopC:
-					router.stopping = true
+					router.setStopping(true)
 				}
 			}()
 		}
@@ -298,10 +300,21 @@ func (router *router) channelsAreEmpty() bool {
 	return len(router.handleC) == 0 && len(router.subscribeC) == 0 && len(router.unsubscribeC) == 0
 }
 
+func (router *router) setStopping(v bool) {
+	router.Lock()
+	defer router.Unlock()
+
+	router.stopping = v
+}
+
 func (router *router) isStopping() error {
+	router.RLock()
+	defer router.RUnlock()
+
 	if router.stopping {
 		return &ModuleStoppingError{"Router"}
 	}
+
 	return nil
 }
 
