@@ -108,7 +108,7 @@ func (rec *Receiver) subscriptionLoop() {
 
 			if err := rec.messageStore.DoInTx(rec.path.Partition(), rec.subscribeIfNoUnreadMessagesAvailable); err != nil {
 				if err == errUnreadMsgsAvailable {
-					//fmt.Printf(" errUnreadMsgsAvailable lastSendId=%v rec=%v \n", rec.lastSendId,rec)
+					fmt.Printf(" errUnreadMsgsAvailable lastSendId=%v rec=%v \n", rec.lastSendId, rec)
 					rec.startId = rec.lastSendId
 					continue // fetch again
 				} else {
@@ -226,11 +226,11 @@ func (rec *Receiver) fetch() error {
 	}
 	maxId, _ := rec.messageStore.MaxMessageID(rec.path.Partition())
 	logger.WithFields(log.Fields{
-		"rec.StartID": rec.startId,
+		"rec.StartID":   rec.startId,
 		"fetch.StartID": fetch.StartID,
-		"fetch.count":  fetch.Count,
-		"maxID": maxId,
-		"partition": rec.path.Partition(),
+		"fetch.count":   fetch.Count,
+		"maxID":         maxId,
+		"partition":     rec.path.Partition(),
 	}).Info("!Fetching in receiver")
 
 	rec.messageStore.Fetch(fetch)
@@ -245,9 +245,10 @@ func (rec *Receiver) fetch() error {
 				return nil
 			}
 			logger.WithFields(log.Fields{
-				"msgId": msgAndID.ID,
-				"msg":   string(msgAndID.Message),
-			}).Debug("Reply sent")
+				"msgId":      msgAndID.ID,
+				"msg":        string(msgAndID.Message),
+				"lastSendId": rec.lastSendId,
+			}).Info("Reply sent")
 
 			rec.lastSendId = msgAndID.ID
 			rec.sendC <- msgAndID.Message

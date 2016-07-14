@@ -267,7 +267,7 @@ func (p *messagePartition) generateNextMsgID(nodeID int) (uint64, int64, error) 
 		"messagePartition":    p.basedir,
 		"localSequenceNumber": p.sequenceNumber,
 		"currentNode":         nodeID,
-	}).Info("Generated id")
+	}).Debug("Generated id")
 
 	return id, timestamp, nil
 }
@@ -577,7 +577,7 @@ func (p *messagePartition) loadLastIndexList(filename string) error {
 
 	l, err := p.loadIndexList(p.fileCache.Len())
 	if err != nil {
-		logger.WithError(err).Error("Error loading filename")
+		logger.WithError(err).Error("Error loading last index")
 		return err
 	}
 

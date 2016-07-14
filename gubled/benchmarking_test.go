@@ -39,12 +39,10 @@ func newTestgroup(t *testing.T, groupID int, addr string, messagesToSend int) *t
 }
 
 func TestThroughput(t *testing.T) {
-	// testutil.SkipIfShort(t)
-	defer testutil.EnableINFOForMethod() ()
+	// defer testutil.EnableDebugForMethod()()
 	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	dir, _ := ioutil.TempDir("", "guble_benchmarking_test")
-	//defer os.RemoveAll(dir)
 
 	*config.HttpListen = "localhost:0"
 	*config.KVS = "memory"
@@ -52,10 +50,8 @@ func TestThroughput(t *testing.T) {
 	*config.StoragePath = dir
 
 	service := StartService()
-	//defer func() {
-	//}()
 
-	testgroupCount := 4
+	testgroupCount := 2
 	messagesPerGroup := 100
 	log.Printf("init the %v testgroups", testgroupCount)
 	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
@@ -69,13 +65,27 @@ func TestThroughput(t *testing.T) {
 		testgroups[i].Init()
 	}
 
+	// Defer methods are executed when the function exit.
+	// So we must cleanup in a specify order
+	// First we disconnect the clients
 	defer func() {
 		// cleanup tests
 		log.Print("cleanup the testgroups")
 		for i := range testgroups {
 			testgroups[i].Clean()
 		}
+
+		// service.Stop()
+
+		// os.RemoveAll(dir)
 	}()
+
+	// // We stop the service
+	// defer
+
+	// // And last we remove the files cause the message store is not using the
+	// // directory anymore
+	// defer
 
 	// start test
 	log.Print("start the testgroups")
@@ -85,17 +95,15 @@ func TestThroughput(t *testing.T) {
 	}
 
 	log.Print("wait for finishing")
-	timeout := time.After(time.Second * 60)
 	for i, test := range testgroups {
-		//fmt.Printf("wating for test %v\n", i)
-	select {
-case successFlag := <-test.done:
-	if !successFlag {
-		t.Logf("testgroup %v returned with error", i)
-		t.FailNow()
-		return
-	}
-		case <-timeout:
+		select {
+		case successFlag := <-test.done:
+			if !successFlag {
+				t.Logf("testgroup %v returned with error", i)
+				t.FailNow()
+				return
+			}
+		case <-time.After(time.Second * 60):
 			t.Log("timeout. testgroups not ready before timeout")
 			t.Fail()
 			return
@@ -107,7 +115,6 @@ case successFlag := <-test.done:
 	throughput := float64(totalMessages) / end.Sub(start).Seconds()
 	log.Printf("finished! Throughput: %v/sec (%v message in %v)", int(throughput), totalMessages, end.Sub(start))
 
-	service.Stop()
 	time.Sleep(time.Second * 5)
 }
 
@@ -159,7 +166,10 @@ func (tg *testgroup) Start() {
 
 		select {
 		case msg := <-tg.consumer.Messages():
-			assert.Equal(tg.t, body, msg.BodyAsString())
+			if !assert.Equal(tg.t, body, msg.BodyAsString()) {
+				tg.t.FailNow()
+				tg.done <- false
+			}
 			assert.Equal(tg.t, tg.topic, string(msg.Path))
 		case msg := <-tg.consumer.Errors():
 			tg.t.Logf("[%v] received error: %v", tg.groupID, msg)

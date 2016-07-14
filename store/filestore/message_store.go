@@ -42,7 +42,7 @@ func (fms *FileMessageStore) Stop() error {
 	fms.mutex.Lock()
 	defer fms.mutex.Unlock()
 
-	logger.Info("Stop")
+	logger.Info("Stopping")
 
 	var returnError error
 	for key, partition := range fms.partitions {
@@ -86,7 +86,7 @@ func (fms *FileMessageStore) StoreMessage(message *protocol.Message, nodeID int)
 		log.WithFields(log.Fields{
 			"generatedID":   id,
 			"generatedTime": message.Time,
-		}).Info("Locally generated ID for message")
+		}).Debug("Locally generated ID for message")
 	}
 
 	data := message.Bytes()
@@ -104,7 +104,7 @@ func (fms *FileMessageStore) StoreMessage(message *protocol.Message, nodeID int)
 		"partition":     partitionName,
 		"messageUserID": message.UserID,
 		"nodeID":        nodeID,
-	}).Info("Stored message")
+	}).Debug("Stored message")
 
 	return len(data), nil
 }

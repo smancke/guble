@@ -46,12 +46,11 @@ func EnableDebugForMethod() func() {
 	return func() { log.SetLevel(reset) }
 }
 
-func EnableINFOForMethod() func() {
+func EnableInfoForMethod() func() {
 	reset := log.GetLevel()
 	log.SetLevel(log.InfoLevel)
 	return func() { log.SetLevel(reset) }
 }
-
 
 // ExpectDone waits to receive a value in the doneChannel for at least a second
 // or fails the test.
