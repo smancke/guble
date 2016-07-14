@@ -2,6 +2,8 @@ package store
 
 import "strings"
 
+// PostgresConfig is a map-based configuration of a Postgresql connection (dbname, host etc.),
+// extended with gorm-specific parameters (e.g. number of open / idle connections).
 type PostgresConfig struct {
 	ConnParams   map[string]string
 	MaxIdleConns int
