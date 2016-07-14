@@ -27,7 +27,7 @@ type Receiver struct {
 	path                protocol.Path
 	doFetch             bool
 	doSubscription      bool
-	startId             int64
+	startId             uint64
 	maxCount            int
 	lastSendId          uint64
 	shouldStop          bool
@@ -67,7 +67,7 @@ func NewReceiverFromCmd(
 
 	if len(args) > 1 {
 		rec.doFetch = true
-		rec.startId, err = strconv.ParseInt(args[1], 10, 64)
+		rec.startId, err = strconv.ParseUint(args[1], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("startid has to be empty or int, but was %q: %v", args[1], err)
 		}
@@ -108,8 +108,8 @@ func (rec *Receiver) subscriptionLoop() {
 
 			if err := rec.messageStore.DoInTx(rec.path.Partition(), rec.subscribeIfNoUnreadMessagesAvailable); err != nil {
 				if err == errUnreadMsgsAvailable {
-					//fmt.Printf(" errUnreadMsgsAvailable lastSendId=%v\n", rec.lastSendId)
-					rec.startId = int64(rec.lastSendId + 1)
+					//fmt.Printf(" errUnreadMsgsAvailable lastSendId=%v rec=%v \n", rec.lastSendId,rec)
+					rec.startId = rec.lastSendId
 					continue // fetch again
 				} else {
 					logger.WithError(err).WithField("recStartId", rec.startId).
@@ -129,7 +129,7 @@ func (rec *Receiver) subscriptionLoop() {
 			//fmt.Printf(" router closed .. on msg: %v\n", rec.lastSendId)
 			// the router kicked us out, because we are too slow for realtime listening,
 			// so we setup parameters for fetching and closing the gap. Than we can subscribe again.
-			rec.startId = int64(rec.lastSendId + 1)
+			rec.startId = rec.lastSendId
 			rec.doFetch = true
 		}
 	}
@@ -224,6 +224,14 @@ func (rec *Receiver) fetch() error {
 			fetch.Count = -1 * int(rec.startId)
 		}
 	}
+	maxId, _ := rec.messageStore.MaxMessageID(rec.path.Partition())
+	logger.WithFields(log.Fields{
+		"rec.StartID": rec.startId,
+		"fetch.StartID": fetch.StartID,
+		"fetch.count":  fetch.Count,
+		"maxID": maxId,
+		"partition": rec.path.Partition(),
+	}).Info("!Fetching in receiver")
 
 	rec.messageStore.Fetch(fetch)
 

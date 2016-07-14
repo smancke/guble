@@ -10,7 +10,7 @@ import (
 
 	"io/ioutil"
 	"log"
-	"os"
+	//"os"
 
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gubled/config"
@@ -40,11 +40,11 @@ func newTestgroup(t *testing.T, groupID int, addr string, messagesToSend int) *t
 
 func TestThroughput(t *testing.T) {
 	// testutil.SkipIfShort(t)
-	defer testutil.EnableDebugForMethod()()
+	defer testutil.EnableINFOForMethod() ()
 	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	dir, _ := ioutil.TempDir("", "guble_benchmarking_test")
-	defer os.RemoveAll(dir)
+	//defer os.RemoveAll(dir)
 
 	*config.HttpListen = "localhost:0"
 	*config.KVS = "memory"
@@ -52,10 +52,8 @@ func TestThroughput(t *testing.T) {
 	*config.StoragePath = dir
 
 	service := StartService()
-	defer func() {
-		service.Stop()
-	}()
-	time.Sleep(time.Millisecond * 10)
+	//defer func() {
+	//}()
 
 	testgroupCount := 4
 	messagesPerGroup := 100
@@ -90,13 +88,13 @@ func TestThroughput(t *testing.T) {
 	timeout := time.After(time.Second * 60)
 	for i, test := range testgroups {
 		//fmt.Printf("wating for test %v\n", i)
-		select {
-		case successFlag := <-test.done:
-			if !successFlag {
-				t.Logf("testgroup %v returned with error", i)
-				t.FailNow()
-				return
-			}
+	select {
+case successFlag := <-test.done:
+	if !successFlag {
+		t.Logf("testgroup %v returned with error", i)
+		t.FailNow()
+		return
+	}
 		case <-timeout:
 			t.Log("timeout. testgroups not ready before timeout")
 			t.Fail()
@@ -108,6 +106,9 @@ func TestThroughput(t *testing.T) {
 	totalMessages := testgroupCount * messagesPerGroup
 	throughput := float64(totalMessages) / end.Sub(start).Seconds()
 	log.Printf("finished! Throughput: %v/sec (%v message in %v)", int(throughput), totalMessages, end.Sub(start))
+
+	service.Stop()
+	time.Sleep(time.Second * 5)
 }
 
 func (tg *testgroup) Init() {

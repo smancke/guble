@@ -147,8 +147,8 @@ func (p *messagePartition) readIdxFiles() error {
 }
 
 func (p *messagePartition) MaxMessageID() (uint64, error) {
-	p.Lock()
-	defer p.Unlock()
+	p.RLock()
+	defer p.RUnlock()
 
 	return p.maxMessageID, nil
 }
