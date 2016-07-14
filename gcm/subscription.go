@@ -47,9 +47,9 @@ func newSubscription(gcm *Connector, route *server.Route, lastID uint64) *subscr
 		route:  route,
 		lastID: lastID,
 		logger: logger.WithFields(log.Fields{
-			"gcmID":  route.Params.Get("application_id"),
-			"userID": route.Params.Get("user_id"),
-			"topic":  string(route.Options.Path),
+			"gcmID":  route.Get("application_id"),
+			"userID": route.Get("user_id"),
+			"topic":  string(route.Path),
 		}),
 	}
 }
@@ -78,7 +78,7 @@ func (s *subscription) subscribe() error {
 // unsubscribe from router and remove KVStore
 func (s *subscription) remove() *subscription {
 	s.gcm.router.Unsubscribe(s.route)
-	s.gcm.kvStore.Delete(schema, s.route.Params.Get("application_id"))
+	s.gcm.kvStore.Delete(schema, s.route.Get("application_id"))
 	return s
 }
 
@@ -94,9 +94,9 @@ func (s *subscription) start() error {
 // recreate the route and resubscribe
 func (s *subscription) restart() error {
 	s.route = server.NewRoute(
-		string(s.route.Options.Path),
-		s.route.Params.Get("application_id"),
-		s.route.Params.Get("user_id"),
+		string(s.route.Path),
+		s.route.Get("application_id"),
+		s.route.Get("user_id"),
 		subBufferSize,
 	)
 
@@ -125,7 +125,7 @@ func (s *subscription) shouldFetch() bool {
 		return false
 	}
 
-	maxID, err := messageStore.MaxMessageID(s.route.Options.Path.Partition())
+	maxID, err := messageStore.MaxMessageID(s.route.Path.Partition())
 	if err != nil {
 		s.logger.WithField("error", err).Error("Error retrieving max message ID")
 		return false
@@ -234,7 +234,7 @@ func (s *subscription) fetch() error {
 
 func (s *subscription) createFetchRequest() store.FetchRequest {
 	return store.FetchRequest{
-		Partition: s.route.Options.Path.Partition(),
+		Partition: s.route.Path.Partition(),
 		StartID:   s.lastID + 1,
 		Direction: 1,
 		Count:     math.MaxInt32,
@@ -257,8 +257,8 @@ func (s *subscription) isStopping() bool {
 // bytes data to store in kvStore
 func (s *subscription) bytes() []byte {
 	return []byte(strings.Join([]string{
-		s.route.Params.Get("user_id"),
-		string(s.route.Options.Path),
+		s.route.Get("user_id"),
+		string(s.route.Path),
 		strconv.FormatUint(s.lastID, 10),
 	}, ":"))
 }
@@ -266,7 +266,7 @@ func (s *subscription) bytes() []byte {
 // store data in kvstore
 func (s *subscription) store() error {
 	s.logger.WithField("lastID", s.lastID).Debug("Storing subscription")
-	err := s.gcm.kvStore.Put(schema, s.route.Params.Get("application_id"), s.bytes())
+	err := s.gcm.kvStore.Put(schema, s.route.Get("application_id"), s.bytes())
 	if err != nil {
 		s.logger.WithError(err).Error("Error storing in KVStore")
 	}
@@ -338,7 +338,7 @@ func (s *subscription) replaceCanonical(newGCMID string) error {
 
 	// reuse the route but change the ApplicationID
 	route := s.route
-	route.Params.Set("application_id", newGCMID)
+	route.Set("application_id", newGCMID)
 	newS := newSubscription(s.gcm, route, s.lastID)
 
 	if err := newS.store(); err != nil {

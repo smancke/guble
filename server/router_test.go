@@ -56,11 +56,11 @@ func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 
 	// the routes are stored
 	a.Equal(2, len(router.routes[protocol.Path("/blah")]))
-	a.True(routeBlah1.equals(router.routes[protocol.Path("/blah")][0]))
-	a.True(routeBlah2.equals(router.routes[protocol.Path("/blah")][1]))
+	a.True(routeBlah1.Equal(router.routes[protocol.Path("/blah")][0]))
+	a.True(routeBlah2.Equal(router.routes[protocol.Path("/blah")][1]))
 
 	a.Equal(1, len(router.routes[protocol.Path("/foo")]))
-	a.True(routeFoo.equals(router.routes[protocol.Path("/foo")][0]))
+	a.True(routeFoo.Equal(router.routes[protocol.Path("/foo")][0]))
 
 	// when i remove routes
 	router.Unsubscribe(routeBlah1)
@@ -68,7 +68,7 @@ func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 
 	// then they are gone
 	a.Equal(1, len(router.routes[protocol.Path("/blah")]))
-	a.True(routeBlah2.equals(router.routes[protocol.Path("/blah")][0]))
+	a.True(routeBlah2.Equal(router.routes[protocol.Path("/blah")][0]))
 
 	a.Nil(router.routes[protocol.Path("/foo")])
 }
@@ -116,27 +116,27 @@ func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 	router.messageStore = msMock
 	router.kvStore = kvsMock
 
-	amMock.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(false)
+	amMock.EXPECT().IsAllowed(auth.WRITE, r.Get("user_id"), r.Path).Return(false)
 
 	// when i send a message to the route
 	e := router.HandleMessage(&protocol.Message{
 		Path:   r.Path,
 		Body:   aTestByteMessage,
-		UserID: r.UserID,
+		UserID: r.Get("user_id"),
 	})
 
 	// an error shall be returned
 	a.NotNil(e)
 
 	// and when permission is granted
-	amMock.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(true)
+	amMock.EXPECT().IsAllowed(auth.WRITE, r.Get("user_id"), r.Path).Return(true)
 	msMock.EXPECT().StoreTx(r.Path.Partition(), gomock.Any()).Return(nil)
 
 	// sending message
 	e = router.HandleMessage(&protocol.Message{
 		Path:   r.Path,
 		Body:   aTestByteMessage,
-		UserID: r.UserID,
+		UserID: r.Get("user_id"),
 	})
 
 	// shall give no error
@@ -157,7 +157,7 @@ func TestRouter_ReplacingOfRoutes(t *testing.T) {
 	// then: the router only contains the new route
 	a.Equal(1, len(router.routes))
 	a.Equal(1, len(router.routes["/blah"]))
-	a.Equal("newUserId", router.routes["/blah"][0].UserID)
+	a.Equal("newUserId", router.routes["/blah"][0].Get("user_id"))
 }
 
 func TestRouter_SimpleMessageSending(t *testing.T) {

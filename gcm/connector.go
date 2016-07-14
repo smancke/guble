@@ -126,7 +126,7 @@ func (conn *Connector) loopPipeline(id int) {
 }
 
 func (conn *Connector) sendMessage(pm *pipeMessage) {
-	gcmID := pm.subscription.route.Params.Get("application_id")
+	gcmID := pm.subscription.route.Get("application_id")
 	payload := pm.payload()
 
 	gcmMessage := gcm.NewMessage(payload, gcmID)

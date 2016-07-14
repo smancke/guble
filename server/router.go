@@ -208,8 +208,8 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 		return nil, err
 	}
 
-	userID := r.Params.Get("user_id")
-	routePath := r.Options.Path
+	userID := r.Get("user_id")
+	routePath := r.Path
 
 	accessAllowed := router.accessManager.IsAllowed(auth.READ, userID, routePath)
 	if !accessAllowed {
@@ -242,7 +242,7 @@ func (router *router) subscribe(r *Route) {
 	logger.WithField("route", r).Debug("Internal subscribe")
 	mTotalSubscriptionAttempts.Add(1)
 
-	routePath := r.Options.Path
+	routePath := r.Path
 	slice, present := router.routes[routePath]
 	var removed bool
 	if present {
@@ -267,7 +267,7 @@ func (router *router) unsubscribe(r *Route) {
 	logger.WithField("route", r).Debug("Internal unsubscribe")
 	mTotalUnsubscriptionAttempts.Add(1)
 
-	routePath := r.Options.Path
+	routePath := r.Path
 	slice, present := router.routes[routePath]
 	if !present {
 		mTotalInvalidTopicOnUnsubscriptionAttempts.Add(1)
@@ -364,7 +364,7 @@ func matchesTopic(messagePath, routePath protocol.Path) bool {
 func removeIfMatching(slice []*Route, route *Route) ([]*Route, bool) {
 	position := -1
 	for p, r := range slice {
-		if r.equals(route) {
+		if r.Equal(route, "application_id") {
 			position = p
 		}
 	}
