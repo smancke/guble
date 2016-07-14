@@ -46,11 +46,20 @@ func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 	router, _, _, _ := aStartedRouter()
 
 	// when i add two routes in the same path
-	routeBlah1, _ := router.Subscribe(NewRoute("/blah", "appid01", "user01", chanSize))
-	routeBlah2, _ := router.Subscribe(NewRoute("/blah", "appid02", "user01", chanSize))
+	routeBlah1, _ := router.Subscribe(NewRoute(
+		RouteOptions{Path: protocol.Path("/blah"), Size: chanSize},
+		RouteParams{"application_id": "appid01", "user_id": "user01"},
+	))
+	routeBlah2, _ := router.Subscribe(NewRoute(
+		RouteOptions{Path: protocol.Path("/blah"), Size: chanSize},
+		RouteParams{"application_id": "appid02", "user_id": "user01"},
+	))
 
 	// and one route in another path
-	routeFoo, _ := router.Subscribe(NewRoute("/foo", "appid01", "user01", chanSize))
+	routeFoo, _ := router.Subscribe(NewRoute(
+		RouteOptions{Path: protocol.Path("/foo"), Size: chanSize},
+		RouteParams{"application_id": "appid01", "user_id": "user01"},
+	))
 
 	// then
 
@@ -87,7 +96,10 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 	router := NewRouter(am, msMock, kvsMock, nil).(*router)
 	router.Start()
 
-	_, e := router.Subscribe(NewRoute("/blah", "appid01", "user01", chanSize))
+	_, e := router.Subscribe(NewRoute(
+		RouteOptions{Path: protocol.Path("/blah"), Size: chanSize},
+		RouteParams{"application_id": "appid01", "user_id": "user01"},
+	))
 
 	// default TestAccessManager denies all
 	a.NotNil(e)
@@ -96,7 +108,10 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 	am.EXPECT().IsAllowed(auth.READ, "user01", protocol.Path("/blah")).Return(true)
 
 	// and user shall be allowed to subscribe
-	_, e = router.Subscribe(NewRoute("/blah", "appid01", "user01", chanSize))
+	_, e = router.Subscribe(NewRoute(
+		RouteOptions{Path: protocol.Path("/blah"), Size: chanSize},
+		RouteParams{"application_id": "appid01", "user_id": "user01"},
+	))
 
 	a.Nil(e)
 }
@@ -149,10 +164,16 @@ func TestRouter_ReplacingOfRoutes(t *testing.T) {
 	// Given a Router with a route
 	router, _, _, _ := aStartedRouter()
 
-	router.Subscribe(NewRoute("/blah", "appid01", "user01", 0))
+	router.Subscribe(NewRoute(
+		RouteOptions{Path: protocol.Path("/blah")},
+		RouteParams{"application_id": "appid01", "user_id": "user01"},
+	))
 
 	// when: i add another route with the same Application Id and Same Path
-	router.Subscribe(NewRoute("/blah", "appid01", "newUserId", 0))
+	router.Subscribe(NewRoute(
+		RouteOptions{Path: protocol.Path("/blah")},
+		RouteParams{"application_id": "appid01", "user_id": "newUserId"},
+	))
 
 	// then: the router only contains the new route
 	a.Equal(1, len(router.routes))
@@ -192,7 +213,10 @@ func TestRouter_RoutingWithSubTopics(t *testing.T) {
 	msMock.EXPECT().StoreTx("blah", gomock.Any()).Return(nil)
 	msMock.EXPECT().StoreTx("blahblub", gomock.Any()).Return(nil)
 
-	r, _ := router.Subscribe(NewRoute("/blah", "appid01", "user01", chanSize))
+	r, _ := router.Subscribe(NewRoute(
+		RouteOptions{Path: protocol.Path("/blah"), Size: chanSize},
+		RouteParams{"application_id": "appid01", "user_id": "user01"},
+	))
 
 	// when i send a message to a subroute
 	router.HandleMessage(&protocol.Message{Path: "/blah/blub", Body: aTestByteMessage})
@@ -338,7 +362,10 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	router, _, _, _ := aStartedRouter()
 	router.messageStore = msMock
 
-	route, err := router.Subscribe(NewRoute("/blah", "appid01", "user01", 3))
+	route, err := router.Subscribe(NewRoute(
+		RouteOptions{Path: protocol.Path("/blah"), Size: 3},
+		RouteParams{"application_id": "appid01", "user_id": "user01"},
+	))
 	assert.Nil(err)
 
 	doneC := make(chan bool)
@@ -466,9 +493,10 @@ func aStartedRouter() (*router, auth.AccessManager, store.MessageStore, store.KV
 
 func aRouterRoute(unused int) (*router, *Route) {
 	router, _, _, _ := aStartedRouter()
-	route, _ := router.Subscribe(
-		NewRoute("/blah", "appid01", "user01", chanSize),
-	)
+	route, _ := router.Subscribe(NewRoute(
+		RouteOptions{Path: protocol.Path("/blah"), Size: chanSize},
+		RouteParams{"application_id": "appid01", "user_id": "user01"},
+	))
 	return router, route
 }
 

@@ -56,7 +56,11 @@ func newSubscription(gcm *Connector, route *server.Route, lastID uint64) *subscr
 
 // creates a subscription and adds it in router/kvstore then starts listening for messages
 func initSubscription(gcm *Connector, topic, userID, gcmID string, lastID uint64) (*subscription, error) {
-	route := server.NewRoute(topic, gcmID, userID, subBufferSize)
+	route := server.NewRoute(server.RouteOptions{
+		Path: protocol.Path(topic),
+		Size: subBufferSize,
+	}, server.RouteParams{"user_id": userID, "application_id": gcmID})
+
 	s := newSubscription(gcm, route, 0)
 	s.logger.Debug("New subscription")
 	if err := s.store(); err != nil {
@@ -93,12 +97,10 @@ func (s *subscription) start() error {
 
 // recreate the route and resubscribe
 func (s *subscription) restart() error {
-	s.route = server.NewRoute(
-		string(s.route.Path),
-		s.route.Get("application_id"),
-		s.route.Get("user_id"),
-		subBufferSize,
-	)
+	s.route = server.NewRoute(server.RouteOptions{
+		Path: s.route.Path,
+		Size: subBufferSize,
+	}, s.route.RouteParams)
 
 	// fetch until we reach the end
 	for s.shouldFetch() {

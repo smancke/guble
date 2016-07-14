@@ -8,6 +8,7 @@ import (
 
 	"github.com/alexjlockwood/gcm"
 	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
@@ -26,7 +27,10 @@ func TestSub_Fetch(t *testing.T) {
 
 	gcm, routerMock, _ := testSimpleGCM(t, false)
 
-	route := server.NewRoute("/foo/bar", "phone01", "user01", subBufferSize)
+	route := server.NewRoute(server.RouteOptions{
+		Path: protocol.Path("/foo/bar"),
+		Size: subBufferSize,
+	}, server.RouteParams{"user_id": "user01", "application_id": "phone01"})
 	sub := newSubscription(gcm, route, 2)
 
 	// simulate the fetch
@@ -96,7 +100,10 @@ func TestSub_Restart(t *testing.T) {
 
 	gcm, routerMock, storeMock := testSimpleGCM(t, true)
 
-	route := server.NewRoute("/foo/bar", "phone01", "user01", subBufferSize)
+	route := server.NewRoute(server.RouteOptions{
+		Path: protocol.Path("/foo/bar"),
+		Size: subBufferSize,
+	}, server.RouteParams{"user_id": "user01", "application_id": "phone01"})
 	sub := newSubscription(gcm, route, 2)
 
 	// start goroutine that will take the messages from the pipeline

@@ -115,26 +115,16 @@ type Route struct {
 
 // NewRoute creates a new route pointer
 // 	- `size` is the channel buffer size
-func NewRoute(path, applicationID, userID string, size int) *Route {
-	options := RouteOptions{
-		Path:    protocol.Path(path),
-		Size:    size,
-		Timeout: -1,
-	}
-	params := RouteParams{
-		"application_id": applicationID,
-		"user_id":        userID,
-	}
-
+func NewRoute(options RouteOptions, params RouteParams) *Route {
 	route := &Route{
 		RouteOptions: options,
 		RouteParams:  params,
 
 		queue:     newQueue(options.QueueSize),
-		messagesC: make(chan *protocol.Message, size),
+		messagesC: make(chan *protocol.Message, options.Size),
 		closeC:    make(chan struct{}),
 
-		logger: logger.WithFields(log.Fields{"path": path, "params": params}),
+		logger: logger.WithFields(log.Fields{"path": options.Path, "params": params}),
 	}
 	return route
 }
