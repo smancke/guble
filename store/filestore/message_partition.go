@@ -577,7 +577,7 @@ func (p *messagePartition) loadLastIndexList(filename string) error {
 
 	l, err := p.loadIndexList(p.fileCache.Len())
 	if err != nil {
-		logger.WithError(err).Error("Error loading last index")
+		logger.WithError(err).Error("Error loading last index filename")
 		return err
 	}
 

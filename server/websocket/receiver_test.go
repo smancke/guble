@@ -190,6 +190,9 @@ func Test_Receiver_Fetch_Returns_Correct_Messages(t *testing.T) {
 }
 
 func Test_Receiver_Fetch_Produces_Correct_Fetch_Requests(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
 	a := assert.New(t)
 
 	testcases := []struct {
@@ -211,19 +214,19 @@ func Test_Receiver_Fetch_Produces_Correct_Fetch_Requests(t *testing.T) {
 		{desc: "backward fetch to top",
 			arg:    "/foo -20",
 			maxId:  42,
-			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartID: uint64(23), Count: 20},
+			expect: store.FetchRequest{Partition: "foo", Direction: -1, StartID: uint64(42), Count: 20},
 		},
 		{desc: "backward fetch with count",
 			arg:    "/foo -1 10",
 			maxId:  42,
-			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartID: uint64(42), Count: 10},
+			expect: store.FetchRequest{Partition: "foo", Direction: -1, StartID: uint64(42), Count: 10},
 		},
 	}
 
 	for _, test := range testcases {
-		ctrl := gomock.NewController(t)
-
 		rec, _, _, messageStore, err := aMockedReceiver(test.arg)
+
+		a.NotNil(rec)
 		a.NoError(err, test.desc)
 
 		if test.maxId != -1 {
@@ -242,7 +245,6 @@ func Test_Receiver_Fetch_Produces_Correct_Fetch_Requests(t *testing.T) {
 
 		go rec.fetchOnlyLoop()
 		testutil.ExpectDone(a, done)
-		ctrl.Finish()
 		rec.Stop()
 	}
 }
@@ -309,6 +311,7 @@ func expectMessages(a *assert.Assertions, msgChannel chan []byte, message ...str
 			a.Equal(m, string(msg))
 		case <-time.After(time.Millisecond * 100):
 			a.Fail("timeout: " + m)
+			return
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package gubled
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -51,7 +52,7 @@ func TestThroughput(t *testing.T) {
 
 	service := StartService()
 
-	testgroupCount := 2
+	testgroupCount := 4
 	messagesPerGroup := 100
 	log.Printf("init the %v testgroups", testgroupCount)
 	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
@@ -65,9 +66,6 @@ func TestThroughput(t *testing.T) {
 		testgroups[i].Init()
 	}
 
-	// Defer methods are executed when the function exit.
-	// So we must cleanup in a specify order
-	// First we disconnect the clients
 	defer func() {
 		// cleanup tests
 		log.Print("cleanup the testgroups")
@@ -75,17 +73,10 @@ func TestThroughput(t *testing.T) {
 			testgroups[i].Clean()
 		}
 
-		// service.Stop()
+		service.Stop()
 
-		// os.RemoveAll(dir)
+		os.RemoveAll(dir)
 	}()
-
-	// // We stop the service
-	// defer
-
-	// // And last we remove the files cause the message store is not using the
-	// // directory anymore
-	// defer
 
 	// start test
 	log.Print("start the testgroups")
@@ -156,21 +147,21 @@ func (tg *testgroup) expectStatusMessage(name string, arg string) {
 func (tg *testgroup) Start() {
 	go func() {
 		for i := 0; i < tg.messagesToSend; i++ {
-			body := fmt.Sprintf("Hallo-%v", i)
+			body := fmt.Sprintf("Hallo-%d", i)
 			tg.publisher.Send(tg.topic, body, "")
 		}
 	}()
 
 	for i := 0; i < tg.messagesToSend; i++ {
-		body := fmt.Sprintf("Hallo-%v", i)
+		body := fmt.Sprintf("Hallo-%d", i)
 
 		select {
 		case msg := <-tg.consumer.Messages():
+			assert.Equal(tg.t, tg.topic, string(msg.Path))
 			if !assert.Equal(tg.t, body, msg.BodyAsString()) {
 				tg.t.FailNow()
 				tg.done <- false
 			}
-			assert.Equal(tg.t, tg.topic, string(msg.Path))
 		case msg := <-tg.consumer.Errors():
 			tg.t.Logf("[%v] received error: %v", tg.groupID, msg)
 			tg.done <- false

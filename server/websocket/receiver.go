@@ -27,9 +27,9 @@ type Receiver struct {
 	path                protocol.Path
 	doFetch             bool
 	doSubscription      bool
-	startId             uint64
+	startId             int64
 	maxCount            int
-	lastSendId          uint64
+	lastSentID          uint64
 	shouldStop          bool
 	route               *server.Route
 	enableNotifications bool
@@ -67,7 +67,7 @@ func NewReceiverFromCmd(
 
 	if len(args) > 1 {
 		rec.doFetch = true
-		rec.startId, err = strconv.ParseUint(args[1], 10, 64)
+		rec.startId, err = strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("startid has to be empty or int, but was %q: %v", args[1], err)
 		}
@@ -108,8 +108,11 @@ func (rec *Receiver) subscriptionLoop() {
 
 			if err := rec.messageStore.DoInTx(rec.path.Partition(), rec.subscribeIfNoUnreadMessagesAvailable); err != nil {
 				if err == errUnreadMsgsAvailable {
-					fmt.Printf(" errUnreadMsgsAvailable lastSendId=%v rec=%v \n", rec.lastSendId, rec)
-					rec.startId = rec.lastSendId
+					logger.WithFields(log.Fields{
+						"lastSentId": rec.lastSentID,
+						"receiver":   rec,
+					}).Error("errUnreadMsgsAvailable")
+					rec.startId = int64(rec.lastSentID) + 1
 					continue // fetch again
 				} else {
 					logger.WithError(err).WithField("recStartId", rec.startId).
@@ -129,14 +132,14 @@ func (rec *Receiver) subscriptionLoop() {
 			//fmt.Printf(" router closed .. on msg: %v\n", rec.lastSendId)
 			// the router kicked us out, because we are too slow for realtime listening,
 			// so we setup parameters for fetching and closing the gap. Than we can subscribe again.
-			rec.startId = rec.lastSendId
+			rec.startId = int64(rec.lastSentID) + 1
 			rec.doFetch = true
 		}
 	}
 }
 
 func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) error {
-	if maxMessageId > rec.lastSendId {
+	if maxMessageId > rec.lastSentID {
 		return errUnreadMsgsAvailable
 	}
 	rec.subscribe()
@@ -170,8 +173,8 @@ func (rec *Receiver) receiveFromSubscription() {
 				"messageMetadata": m.Metadata(),
 			}).Debug("Delivering message")
 
-			if m.ID > rec.lastSendId {
-				rec.lastSendId = m.ID
+			if m.ID > rec.lastSentID {
+				rec.lastSentID = m.ID
 				rec.sendC <- m.Bytes()
 			} else {
 				logger.WithFields(log.Fields{
@@ -213,25 +216,17 @@ func (rec *Receiver) fetch() error {
 			fetch.Count = math.MaxInt32
 		}
 	} else {
-		fetch.Direction = 1
+		fetch.Direction = -1
 		maxId, err := rec.messageStore.MaxMessageID(rec.path.Partition())
 		if err != nil {
 			return err
 		}
 
-		fetch.StartID = maxId + 1 + uint64(rec.startId)
+		fetch.StartID = maxId
 		if rec.maxCount == 0 {
 			fetch.Count = -1 * int(rec.startId)
 		}
 	}
-	maxId, _ := rec.messageStore.MaxMessageID(rec.path.Partition())
-	logger.WithFields(log.Fields{
-		"rec.StartID":   rec.startId,
-		"fetch.StartID": fetch.StartID,
-		"fetch.count":   fetch.Count,
-		"maxID":         maxId,
-		"partition":     rec.path.Partition(),
-	}).Info("!Fetching in receiver")
 
 	rec.messageStore.Fetch(fetch)
 
@@ -247,10 +242,10 @@ func (rec *Receiver) fetch() error {
 			logger.WithFields(log.Fields{
 				"msgId":      msgAndID.ID,
 				"msg":        string(msgAndID.Message),
-				"lastSendId": rec.lastSendId,
+				"lastSendId": rec.lastSentID,
 			}).Info("Reply sent")
 
-			rec.lastSendId = msgAndID.ID
+			rec.lastSentID = msgAndID.ID
 			rec.sendC <- msgAndID.Message
 		case err := <-fetch.ErrorC:
 			return err
