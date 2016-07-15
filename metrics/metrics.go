@@ -39,16 +39,16 @@ func HttpHandler(rw http.ResponseWriter, r *http.Request) {
 }
 
 func writeMetrics(w io.Writer) {
-	fmt.Fprintf(w, "{\n")
+	fmt.Fprint(w, "{\n")
 	first := true
 	expvar.Do(func(kv expvar.KeyValue) {
 		if !first {
-			fmt.Fprintf(w, ",\n")
+			fmt.Fprint(w, ",\n")
 		}
 		first = false
 		fmt.Fprintf(w, "%q: %s", kv.Key, kv.Value)
 	})
-	fmt.Fprintf(w, "\n}\n")
+	fmt.Fprint(w, "\n}\n")
 }
 
 // LogOnDebugLevel logs all the current metrics, if logging is on Debug level.
