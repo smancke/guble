@@ -82,6 +82,8 @@ func NewReceiverFromCmd(
 		}
 	}
 
+	logger.WithField("rec", rec).Error("Receiver")
+
 	return rec, nil
 }
 
@@ -121,9 +123,7 @@ func (rec *Receiver) subscriptionLoop() {
 					return
 				}
 			}
-		}
-
-		if !rec.doFetch {
+		} else {
 			rec.subscribe()
 		}
 		rec.receiveFromSubscription()
@@ -147,7 +147,7 @@ func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) e
 }
 
 func (rec *Receiver) subscribe() {
-	rec.route = server.NewRoute(string(rec.path), rec.applicationId, rec.userId, 3)
+	rec.route = server.NewRoute(string(rec.path), rec.applicationId, rec.userId, 10)
 	_, err := rec.router.Subscribe(rec.route)
 	if err != nil {
 		rec.sendError(protocol.ERROR_SUBSCRIBED_TO, string(rec.path), err.Error())

@@ -52,7 +52,7 @@ func TestThroughput(t *testing.T) {
 
 	service := StartService()
 
-	testgroupCount := 4
+	testgroupCount := 1
 	messagesPerGroup := 100
 	log.Printf("init the %v testgroups", testgroupCount)
 	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
@@ -94,7 +94,7 @@ func TestThroughput(t *testing.T) {
 				t.FailNow()
 				return
 			}
-		case <-time.After(time.Second * 60):
+		case <-time.After(time.Second * 20):
 			t.Log("timeout. testgroups not ready before timeout")
 			t.Fail()
 			return
