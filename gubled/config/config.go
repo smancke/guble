@@ -3,9 +3,6 @@ package config
 // Config package contains the public config vars required in guble
 
 import (
-	"os"
-	"strings"
-
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 
@@ -50,10 +47,8 @@ var (
 	}
 
 	Metrics = struct {
-		Enabled  *bool
 		Endpoint *string
 	}{
-		Enabled: kingpin.Flag("metrics", "Enable collection of metrics").Envar("GUBLE_METRICS").Bool(),
 		Endpoint: kingpin.Flag("metrics-endpoint", `The metrics endpoint to be used by the HTTP server (disabled by default; a possible value for enabling it: "/_metrics" )`).
 			Default("").Envar("GUBLE_METRICS_ENDPOINT").String(),
 	}
@@ -91,6 +86,8 @@ var (
 		Default(log.ErrorLevel.String()).
 		Envar("GUBLE_LOG").
 		Enum(logLevels()...)
+
+	parsed = false
 )
 
 func logLevels() (levels []string) {
@@ -104,13 +101,9 @@ func logLevels() (levels []string) {
 // If there are missing or invalid arguments it will exit the application and display a
 // corresponding message
 func Parse() {
-	kingpin.Parse()
-}
-
-func init() {
-	// skip init if in test mode
-	if strings.HasSuffix(os.Args[0], ".test") {
+	if parsed {
 		return
 	}
-	Parse()
+	kingpin.Parse()
+	parsed = true
 }

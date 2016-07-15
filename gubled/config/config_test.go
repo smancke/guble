@@ -30,9 +30,6 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_HEALTH_ENDPOINT", "health_endpoint")
 	defer os.Unsetenv("GUBLE_HEALTH_ENDPOINT")
 
-	os.Setenv("GUBLE_METRICS", "true")
-	defer os.Unsetenv("GUBLE_METRICS")
-
 	os.Setenv("GUBLE_METRICS_ENDPOINT", "metrics_endpoint")
 	defer os.Unsetenv("GUBLE_METRICS_ENDPOINT")
 
@@ -91,7 +88,6 @@ func TestParsingArgs(t *testing.T) {
 		"--kvs", "kvs-backend",
 		"--ms", "ms-backend",
 		"--health-endpoint", "health_endpoint",
-		"--metrics",
 		"--metrics-endpoint", "metrics_endpoint",
 		"--gcm",
 		"--gcm-api-key", "gcm-api-key",
@@ -119,7 +115,6 @@ func assertArguments(a *assert.Assertions) {
 	a.Equal("ms-backend", *MS)
 	a.Equal("health_endpoint", *HealthEndpoint)
 
-	a.Equal(true, *Metrics.Enabled)
 	a.Equal("metrics_endpoint", *Metrics.Endpoint)
 
 	a.Equal(true, *GCM.Enabled)
