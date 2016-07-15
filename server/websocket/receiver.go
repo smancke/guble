@@ -82,8 +82,6 @@ func NewReceiverFromCmd(
 		}
 	}
 
-	logger.WithField("rec", rec).Error("Receiver")
-
 	return rec, nil
 }
 
