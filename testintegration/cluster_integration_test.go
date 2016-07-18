@@ -3,7 +3,6 @@ package testintegration
 import (
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gubled"
-	//"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 
 	log "github.com/Sirupsen/logrus"
@@ -16,7 +15,6 @@ import (
 	"time"
 
 	"github.com/smancke/guble/testutil"
-	//"github.com/smancke/guble/testutil"
 	"github.com/smancke/guble/protocol"
 )
 
@@ -105,10 +103,7 @@ WAIT:
 				"numReceived":       numReceived,
 			}).Info("Client2 received a message")
 
-			//a.Equal(2, incomingMessage.NodeID)
 			a.Equal(protocol.Path("/testTopic/m"), incomingMessage.Path)
-			//a.Equal("user1", incomingMessage.UserID)
-			//a.Equal("{jsonHeader:1}", incomingMessage.HeaderJSON)
 			a.Equal("body", incomingMessage.BodyAsString())
 			a.True(incomingMessage.ID > 0)
 			idReceived[incomingMessage.ID] = true

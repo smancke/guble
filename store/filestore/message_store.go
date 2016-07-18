@@ -165,7 +165,7 @@ func (fms *FileMessageStore) partitionStore(partition string) (*messagePartition
 	return partitionStore, nil
 }
 
-// The app could be running from a disk and storing in another
+// Check returns if disk space is occupied more than 95%.
 func (fms *FileMessageStore) Check() error {
 	var stat syscall.Statfs_t
 
