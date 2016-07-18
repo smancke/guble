@@ -135,7 +135,7 @@ The Docker image includes the guble commandline client `guble-cli`.
 You can execute it within a running guble container and connect to the server:
 ```
 docker run -d --name guble smancke/guble
-docker exec -it guble /go/bin/guble-cli
+docker exec -it guble /usr/local/bin/guble-cli
 ```
 Visit the [`guble-cli` documentation](https://github.com/smancke/guble/tree/master/guble-cli) for more details.
 
