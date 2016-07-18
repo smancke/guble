@@ -320,12 +320,12 @@ func Test_calculateFetchList(t *testing.T) {
 }
 
 func matchSortedList(t *testing.T, expected, actual IndexList) bool {
-	if !assert.Equal(t, expected.Len(), actual.Len(), "Invalid length") {
+	if !assert.Equal(t, expected.len(), actual.len(), "Invalid length") {
 		return false
 	}
 
-	err := expected.Do(func(elem *Index, i int) error {
-		a := actual.Get(i)
+	err := expected.mapWithPredicate(func(elem *Index, i int) error {
+		a := actual.get(i)
 		assert.Equal(t, *elem, *a)
 		if elem.id != a.id ||
 			elem.offset != a.offset ||

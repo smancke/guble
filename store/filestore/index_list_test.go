@@ -25,7 +25,7 @@ func Test_SortedListSanity(t *testing.T) {
 			offset: 128,
 		}
 
-		pq.Insert(entry)
+		pq.insert(entry)
 	}
 	min := uint64(200)
 	max := uint64(0)
@@ -45,8 +45,8 @@ func Test_SortedListSanity(t *testing.T) {
 
 	logrus.WithField("generatedIds", generatedIds).Info("IdS")
 
-	a.Equal(min, pq.Front().id)
-	a.Equal(max, pq.Back().id)
+	a.Equal(min, pq.front().id)
+	a.Equal(max, pq.back().id)
 
 	found, pos, bestIndex, foundEntry := pq.search(uint64(46))
 	a.False(found, "Element should not be found since is a number greater than the random generated upper limit")
@@ -54,11 +54,11 @@ func Test_SortedListSanity(t *testing.T) {
 	a.Nil(foundEntry)
 	logrus.WithField("bestIndexbestIndex", bestIndex).Info("bEST")
 
-	a.Equal(pq.Front().id, pq.Get(0).id, "First element should contain the smallest element")
-	a.Nil(pq.Get(-1), "Trying to get an invalid index will return nil")
+	a.Equal(pq.front().id, pq.get(0).id, "First element should contain the smallest element")
+	a.Nil(pq.get(-1), "Trying to get an invalid index will return nil")
 
-	pq.Clear()
-	a.Nil(pq.Front())
-	a.Nil(pq.Back())
+	pq.clear()
+	a.Nil(pq.front())
+	a.Nil(pq.back())
 
 }

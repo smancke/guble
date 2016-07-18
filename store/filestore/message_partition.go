@@ -139,8 +139,8 @@ func (p *messagePartition) readIdxFiles() error {
 		return err
 	}
 
-	if p.list.Back().id >= p.maxMessageID {
-		p.maxMessageID = p.list.Back().id
+	if p.list.back().id >= p.maxMessageID {
+		p.maxMessageID = p.list.back().id
 	}
 
 	return nil
@@ -322,12 +322,12 @@ func (p *messagePartition) store(messageID uint64, data []byte) error {
 			}
 			//Add items in the filecache
 			p.fileCache.add(&cacheEntry{
-				min: p.list.Front().id,
-				max: p.list.Back().id,
+				min: p.list.front().id,
+				max: p.list.back().id,
 			})
 
 			//clear the current sorted cache
-			p.list.Clear()
+			p.list.clear()
 			p.entriesCount = 0
 		}
 
@@ -373,7 +373,7 @@ func (p *messagePartition) store(messageID uint64, data []byte) error {
 		size:   uint32(len(data)),
 		fileID: p.fileCache.len(),
 	}
-	p.list.Insert(e)
+	p.list.insert(e)
 
 	p.appendFilePosition += uint64(len(sizeAndID) + len(data))
 
@@ -397,7 +397,7 @@ func (p *messagePartition) Fetch(req *store.FetchRequest) {
 			return
 		}
 
-		req.StartC <- fetchList.Len()
+		req.StartC <- fetchList.len()
 
 		err = p.fetchByFetchlist(fetchList, req.MessageC)
 
@@ -412,7 +412,7 @@ func (p *messagePartition) Fetch(req *store.FetchRequest) {
 
 // fetchByFetchlist fetches the messages in the supplied fetchlist and sends them to the message-channel
 func (p *messagePartition) fetchByFetchlist(fetchList *IndexList, messageC chan store.FetchedMessage) error {
-	return fetchList.Do(func(index *Index, _ int) error {
+	return fetchList.mapWithPredicate(func(index *Index, _ int) error {
 		filename := p.composeMsgFilenameForPosition(uint64(index.fileID))
 		file, err := os.Open(filename)
 		if err != nil {
@@ -452,7 +452,7 @@ func (p *messagePartition) calculateFetchList(req *store.FetchRequest) (*IndexLi
 	p.fileCache.RLock()
 
 	for i, fce := range p.fileCache.entries {
-		if fce.Contains(req) || (prev && potentialEntries.Len() < req.Count) {
+		if fce.Contains(req) || (prev && potentialEntries.len() < req.Count) {
 			prev = true
 
 			l, err := p.loadIndexList(i)
@@ -461,19 +461,19 @@ func (p *messagePartition) calculateFetchList(req *store.FetchRequest) (*IndexLi
 				return nil, err
 			}
 
-			potentialEntries.Insert(l.Extract(req).Items()...)
+			potentialEntries.insert(l.extract(req).toSliceArray()...)
 		} else {
 			prev = false
 		}
 	}
 
 	// Read from current cached value (the idx file which size is smaller than MESSAGE_PER_FILE
-	if p.list.Contains(req.StartID) || (prev && potentialEntries.Len() < req.Count) {
-		potentialEntries.Insert(p.list.Extract(req).Items()...)
+	if p.list.contains(req.StartID) || (prev && potentialEntries.len() < req.Count) {
+		potentialEntries.insert(p.list.extract(req).toSliceArray()...)
 	}
 
 	// Currently potentialEntries contains a potentials msgIDs from any files and from inMemory.From this will select only Count Id.
-	fetchList := potentialEntries.Extract(req)
+	fetchList := potentialEntries.extract(req)
 
 	p.fileCache.RUnlock()
 
@@ -492,8 +492,8 @@ func (p *messagePartition) rewriteSortedIdxFile(filename string) error {
 	}
 
 	lastID := uint64(0)
-	for i := 0; i < p.list.Len(); i++ {
-		item := p.list.Get(i)
+	for i := 0; i < p.list.len(); i++ {
+		item := p.list.get(i)
 
 		if lastID >= item.id {
 			logger.WithFields(log.Fields{
@@ -582,7 +582,7 @@ func (p *messagePartition) loadLastIndexList(filename string) error {
 	}
 
 	p.list = l
-	p.entriesCount = uint64(l.Len())
+	p.entriesCount = uint64(l.len())
 
 	return nil
 }
@@ -625,8 +625,8 @@ func (p *messagePartition) loadIndexList(fileID int) (*IndexList, error) {
 			offset: offset,
 			fileID: fileID,
 		}
-		l.Insert(e)
-		logger.WithField("lenl", l.Len()).Debug("loadIndexFile")
+		l.insert(e)
+		logger.WithField("lenl", l.len()).Debug("loadIndexFile")
 	}
 	return l, nil
 }

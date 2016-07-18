@@ -19,19 +19,19 @@ func newList(size int) *IndexList {
 	return &IndexList{items: make([]*Index, 0, size)}
 }
 
-func (l *IndexList) Len() int {
+func (l *IndexList) len() int {
 	l.RLock()
 	defer l.RUnlock()
 
 	return len(l.items)
 }
 
-func (l *IndexList) InsertList(other *IndexList) {
-	l.Insert(other.Items()...)
+func (l *IndexList) insertList(other *IndexList) {
+	l.insert(other.toSliceArray()...)
 }
 
 //Insert  adds in the sorted list a new element
-func (l *IndexList) Insert(items ...*Index) {
+func (l *IndexList) insert(items ...*Index) {
 	for _, elem := range items {
 		l.insertElem(elem)
 	}
@@ -68,7 +68,7 @@ func (l *IndexList) insertElem(elem *Index) {
 }
 
 // Clear empties the current list
-func (l *IndexList) Clear() {
+func (l *IndexList) clear() {
 	l.items = make([]*Index, 0)
 }
 
@@ -111,7 +111,7 @@ func (l *IndexList) search(searchID uint64) (bool, int, int, *Index) {
 }
 
 //Back retrieves the element with the biggest id or nil if list is empty
-func (l *IndexList) Back() *Index {
+func (l *IndexList) back() *Index {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -123,7 +123,7 @@ func (l *IndexList) Back() *Index {
 }
 
 //Front retrieves the element with the smallest id or nil if list is empty
-func (l *IndexList) Front() *Index {
+func (l *IndexList) front() *Index {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -134,7 +134,7 @@ func (l *IndexList) Front() *Index {
 	return l.items[0]
 }
 
-func (l *IndexList) Items() []*Index {
+func (l *IndexList) toSliceArray() []*Index {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -142,7 +142,7 @@ func (l *IndexList) Items() []*Index {
 }
 
 //Front retrieves the element at the given index or nil if position is incorrect or list is empty
-func (l *IndexList) Get(pos int) *Index {
+func (l *IndexList) get(pos int) *Index {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -157,7 +157,7 @@ func (l *IndexList) Get(pos int) *Index {
 	return l.items[pos]
 }
 
-func (l *IndexList) Do(predicate func(elem *Index, i int) error) error {
+func (l *IndexList) mapWithPredicate(predicate func(elem *Index, i int) error) error {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -182,7 +182,7 @@ func (l *IndexList) String() string {
 }
 
 // Contains returns true if given ID is between first and last item in the list
-func (l *IndexList) Contains(id uint64) bool {
+func (l *IndexList) contains(id uint64) bool {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -194,7 +194,7 @@ func (l *IndexList) Contains(id uint64) bool {
 }
 
 // Extract will return a new list containing items requested by the FetchRequest
-func (l *IndexList) Extract(req *store.FetchRequest) *IndexList {
+func (l *IndexList) extract(req *store.FetchRequest) *IndexList {
 	potentialEntries := newList(0)
 	found, pos, lastPos, _ := l.search(req.StartID)
 	currentPos := lastPos
@@ -202,8 +202,8 @@ func (l *IndexList) Extract(req *store.FetchRequest) *IndexList {
 		currentPos = pos
 	}
 
-	for potentialEntries.Len() < req.Count && currentPos >= 0 && currentPos < l.Len() {
-		elem := l.Get(currentPos)
+	for potentialEntries.len() < req.Count && currentPos >= 0 && currentPos < l.len() {
+		elem := l.get(currentPos)
 		logger.WithFields(log.Fields{
 			"elem":       *elem,
 			"currentPos": currentPos,
@@ -213,15 +213,15 @@ func (l *IndexList) Extract(req *store.FetchRequest) *IndexList {
 		if elem == nil {
 			logger.WithFields(log.Fields{
 				"pos":     currentPos,
-				"l.Len":   l.Len(),
-				"len":     potentialEntries.Len(),
+				"l.Len":   l.len(),
+				"len":     potentialEntries.len(),
 				"startID": req.StartID,
 				"count":   req.Count,
 			}).Error("Error in retrieving from list.Got nil entry")
 			break
 		}
 
-		potentialEntries.Insert(elem)
+		potentialEntries.insert(elem)
 		currentPos += req.Direction
 	}
 	return potentialEntries
