@@ -1,6 +1,5 @@
+// Config package contains the public config vars required in guble.
 package config
-
-// Config package contains the public config vars required in guble
 
 import (
 	log "github.com/Sirupsen/logrus"
