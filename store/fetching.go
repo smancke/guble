@@ -27,12 +27,12 @@ type FetchRequest struct {
 	// MessageC is the channel to send the message back to the receiver
 	MessageC chan FetchedMessage
 
-	// ErrorCallback is a Callback if an error occurs
+	// ErrorC is a channel if an error occurs
 	ErrorC chan error
 
-	// Through the start callback, the total number or result
+	// StartC Through this channel , the total number or result
 	// is returned, before sending the first message.
-	// The Fetch() methods blocks on putting the number to the start callback.
+	// The Fetch() methods blocks on putting the number to the start channel.
 	StartC chan int
 }
 

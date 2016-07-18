@@ -11,7 +11,7 @@ import (
 func Test_SortedListSanity(t *testing.T) {
 
 	a := assert.New(t)
-	pq := newList(1000)
+	list := newIndexList(1000)
 
 	generatedIds := make([]uint64, 0, 11)
 
@@ -25,7 +25,7 @@ func Test_SortedListSanity(t *testing.T) {
 			offset: 128,
 		}
 
-		pq.insert(entry)
+		list.insert(entry)
 	}
 	min := uint64(200)
 	max := uint64(0)
@@ -37,7 +37,7 @@ func Test_SortedListSanity(t *testing.T) {
 		if min > id {
 			min = id
 		}
-		found, pos, _, foundEntry := pq.search(id)
+		found, pos, _, foundEntry := list.search(id)
 		a.True(found)
 		a.Equal(foundEntry.id, id)
 		a.True(pos >= 0 && pos <= len(generatedIds))
@@ -45,20 +45,20 @@ func Test_SortedListSanity(t *testing.T) {
 
 	logrus.WithField("generatedIds", generatedIds).Info("IdS")
 
-	a.Equal(min, pq.front().id)
-	a.Equal(max, pq.back().id)
+	a.Equal(min, list.front().id)
+	a.Equal(max, list.back().id)
 
-	found, pos, bestIndex, foundEntry := pq.search(uint64(46))
+	found, pos, bestIndex, foundEntry := list.search(uint64(46))
 	a.False(found, "Element should not be found since is a number greater than the random generated upper limit")
 	a.Equal(pos, -1)
 	a.Nil(foundEntry)
-	logrus.WithField("bestIndexbestIndex", bestIndex).Info("bEST")
+	logrus.WithField("bestIndex", bestIndex).Info("Seraching for closest position")
 
-	a.Equal(pq.front().id, pq.get(0).id, "First element should contain the smallest element")
-	a.Nil(pq.get(-1), "Trying to get an invalid index will return nil")
+	a.Equal(list.front().id, list.get(0).id, "First element should contain the smallest element")
+	a.Nil(list.get(-1), "Trying to get an invalid index will return nil")
 
-	pq.clear()
-	a.Nil(pq.front())
-	a.Nil(pq.back())
+	list.clear()
+	a.Nil(list.front())
+	a.Nil(list.back())
 
 }

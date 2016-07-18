@@ -23,11 +23,11 @@ var (
 )
 
 const (
-	GubleNodeIdBits    = 3
-	SequenceBits       = 12
-	GubleNodeIdShift   = SequenceBits
-	TimestampLeftShift = SequenceBits + GubleNodeIdBits
-	GubleEpoch         = 1467714505012
+	gubleNodeIdBits = 3
+	sequenceBits = 12
+	gubleNodeIdShift = sequenceBits
+	timestampLeftShift = sequenceBits + gubleNodeIdBits
+	gubleEpoch = 1467714505012
 )
 
 type Index struct {
@@ -47,7 +47,7 @@ type messagePartition struct {
 	sequenceNumber     uint64
 
 	entriesCount uint64
-	list         *IndexList
+	list         *indexList
 	fileCache    *cache
 
 	sync.RWMutex
@@ -57,7 +57,7 @@ func newMessagePartition(basedir string, storeName string) (*messagePartition, e
 	p := &messagePartition{
 		basedir:   basedir,
 		name:      storeName,
-		list:      newList(int(MESSAGES_PER_FILE)),
+		list:      newIndexList(int(MESSAGES_PER_FILE)),
 		fileCache: newCache(),
 	}
 	return p, p.initialize()
@@ -252,13 +252,13 @@ func (p *messagePartition) generateNextMsgID(nodeID int) (uint64, int64, error) 
 	//Use the unixNanoTimestamp for generating id
 	nanoTimestamp := currTime.UnixNano()
 
-	if nanoTimestamp < GubleEpoch {
+	if nanoTimestamp < gubleEpoch {
 		err := fmt.Errorf("Clock is moving backwards. Rejecting requests until %d.", timestamp)
 		return 0, 0, err
 	}
 
-	id := (uint64(nanoTimestamp-GubleEpoch) << TimestampLeftShift) |
-		(uint64(nodeID) << GubleNodeIdShift) | p.sequenceNumber
+	id := (uint64(nanoTimestamp- gubleEpoch) << timestampLeftShift) |
+		(uint64(nodeID) << gubleNodeIdShift) | p.sequenceNumber
 
 	p.sequenceNumber++
 
@@ -411,7 +411,7 @@ func (p *messagePartition) Fetch(req *store.FetchRequest) {
 }
 
 // fetchByFetchlist fetches the messages in the supplied fetchlist and sends them to the message-channel
-func (p *messagePartition) fetchByFetchlist(fetchList *IndexList, messageC chan store.FetchedMessage) error {
+func (p *messagePartition) fetchByFetchlist(fetchList *indexList, messageC chan store.FetchedMessage) error {
 	return fetchList.mapWithPredicate(func(index *Index, _ int) error {
 		filename := p.composeMsgFilenameForPosition(uint64(index.fileID))
 		file, err := os.Open(filename)
@@ -436,12 +436,12 @@ func (p *messagePartition) fetchByFetchlist(fetchList *IndexList, messageC chan 
 }
 
 // calculateFetchList returns a list of fetchEntry records for all messages in the fetch request.
-func (p *messagePartition) calculateFetchList(req *store.FetchRequest) (*IndexList, error) {
+func (p *messagePartition) calculateFetchList(req *store.FetchRequest) (*indexList, error) {
 	if req.Direction == 0 {
 		req.Direction = 1
 	}
 
-	potentialEntries := newList(0)
+	potentialEntries := newIndexList(0)
 
 	// reading from IndexFiles
 	// TODO: fix  prev when EndID logic will be done
@@ -588,9 +588,9 @@ func (p *messagePartition) loadLastIndexList(filename string) error {
 }
 
 // loadIndexFile will read a file and will return a sorted list for fetchEntries
-func (p *messagePartition) loadIndexList(fileID int) (*IndexList, error) {
+func (p *messagePartition) loadIndexList(fileID int) (*indexList, error) {
 	filename := p.composeIdxFilenameForPosition(uint64(fileID))
-	l := newList(int(MESSAGES_PER_FILE))
+	l := newIndexList(int(MESSAGES_PER_FILE))
 	logger.WithField("filename", filename).Debug("loadIndexFile")
 
 	entriesInIndex, err := calculateNoEntries(filename)
