@@ -1,4 +1,4 @@
-package config
+package gubled
 
 import (
 	"bytes"
@@ -8,11 +8,11 @@ import (
 	"testing"
 )
 
-func TestLogstashGubleFormatter_Format(t *testing.T) {
+func TestLogstashFormatter_Format(t *testing.T) {
 
 	assert := assert.New(t)
 
-	lf := LogstashGubleFormatter{Type: "abc", ServiceName: "guble", Env: "prod"}
+	lf := logstashFormatter{Type: "abc", ServiceName: "guble", Env: "prod"}
 
 	fields := logrus.Fields{
 		"message": "def",
