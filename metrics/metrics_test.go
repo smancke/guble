@@ -30,7 +30,7 @@ func TestHttpHandler_MetricsNotEnabled(t *testing.T) {
 	log.Debugf("%s", b)
 }
 
-func TestLogOnDebugLevel_DebugAndDisabled(t *testing.T) {
+func TestLogOnDebugLevel_Debug(t *testing.T) {
 	a := assert.New(t)
 	bufferDebug := bytes.NewBuffer([]byte{})
 	log.SetOutput(bufferDebug)
@@ -40,6 +40,7 @@ func TestLogOnDebugLevel_DebugAndDisabled(t *testing.T) {
 	LogOnDebugLevel()
 
 	logContent, err := ioutil.ReadAll(bufferDebug)
+	log.Debugf("%s", logContent)
 	a.NoError(err)
 
 	a.Contains(string(logContent), "cmdline")

@@ -9,6 +9,8 @@ import (
 	"net/http"
 )
 
+var logger = log.WithField("module", "metrics")
+
 // IntVar is an interface for some of the operations defined on expvar.Int
 type IntVar interface {
 	Add(int64)
@@ -34,11 +36,9 @@ func writeMetrics(w io.Writer) {
 	fmt.Fprint(w, "\n}\n")
 }
 
-var logger = log.WithField("module", "metrics")
-
 // LogOnDebugLevel logs all the current metrics, if logging is on Debug level.
 func LogOnDebugLevel() {
-	if logger.Level == log.DebugLevel {
+	if log.GetLevel() == log.DebugLevel {
 		fields := log.Fields{}
 		expvar.Do(func(kv expvar.KeyValue) {
 			fields[kv.Key] = kv.Value
