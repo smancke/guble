@@ -6,17 +6,11 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"bytes"
-	"expvar"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
-
-func TestNewInt_Enabled(t *testing.T) {
-	_, ok := NewInt("a_name").(expvar.Var)
-	assert.True(t, ok)
-}
 
 func TestHttpHandler_MetricsNotEnabled(t *testing.T) {
 	a := assert.New(t)
