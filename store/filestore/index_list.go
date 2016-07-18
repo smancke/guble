@@ -8,7 +8,7 @@ import (
 	"github.com/smancke/guble/store"
 )
 
-// SortedIndexList a sorted list of fetch entries
+// IndexList a sorted list of fetch entries
 type IndexList struct {
 	items []*Index
 
@@ -78,7 +78,7 @@ func (l *IndexList) Clear() {
 // search performs a binary search returning:
 // - `true` in case the item was found
 // - `position` position of the item
-// - `bestIndex` where the item was found
+// - `bestIndex` the closest index to the searched item if not found.
 // - `index` the index if found
 func (l *IndexList) search(searchID uint64) (bool, int, int, *Index) {
 	l.RLock()
@@ -210,15 +210,13 @@ func (l *IndexList) Extract(req *store.FetchRequest) *IndexList {
 			"req":        *req,
 		}).Debug("Elem in retrieve")
 
-		if elem == nil { //TODO investigate why nil is returned sometimes
+		if elem == nil {
 			logger.WithFields(log.Fields{
 				"pos":     currentPos,
 				"l.Len":   l.Len(),
 				"len":     potentialEntries.Len(),
 				"startID": req.StartID,
 				"count":   req.Count,
-				"e":       elem,
-				"e.msgId": l.items[currentPos],
 			}).Error("Error in retrieving from list.Got nil entry")
 			break
 		}

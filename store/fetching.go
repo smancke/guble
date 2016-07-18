@@ -9,7 +9,7 @@ type FetchRequest struct {
 	// StartId is the message sequence id to start
 	StartID uint64
 
-	//EndId is the message sequence id to finish. If0  will not be used.
+	//EndId is the message sequence id to finish. If  will not be used.
 	EndID uint64
 
 	// Direction has 3 possible values:

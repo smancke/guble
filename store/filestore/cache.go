@@ -12,24 +12,24 @@ type cache struct {
 }
 
 func newCache() *cache {
-	fc := &cache{
+	c := &cache{
 		entries: make([]*cacheEntry, 0),
 	}
-	return fc
+	return c
 }
 
-func (fc *cache) Len() int {
-	fc.RLock()
-	defer fc.RUnlock()
+func (c *cache) len() int {
+	c.RLock()
+	defer c.RUnlock()
 
-	return len(fc.entries)
+	return len(c.entries)
 }
 
-func (fc *cache) Append(entry *cacheEntry) {
-	fc.Lock()
-	defer fc.Unlock()
+func (c *cache) add(entry *cacheEntry) {
+	c.Lock()
+	defer c.Unlock()
 
-	fc.entries = append(fc.entries, entry)
+	c.entries = append(c.entries, entry)
 }
 
 type cacheEntry struct {
@@ -38,15 +38,15 @@ type cacheEntry struct {
 
 // Contains returns true if the req.StartID is between the min and max
 // There is a chance the request messages to be found in this range
-func (f *cacheEntry) Contains(req *store.FetchRequest) bool {
+func (entry *cacheEntry) Contains(req *store.FetchRequest) bool {
 	if req.StartID == 0 {
 		req.Direction = 1
 		return true
 	}
 
 	if req.Direction >= 0 {
-		return req.StartID >= f.min && req.StartID <= f.max
+		return req.StartID >= entry.min && req.StartID <= entry.max
 	} else {
-		return req.StartID >= f.min
+		return req.StartID >= entry.min
 	}
 }

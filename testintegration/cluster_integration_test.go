@@ -86,7 +86,6 @@ func Test_Cluster_Integration(t *testing.T) {
 		//TODO Cosmin this sleep should be eliminated when messages receive correct message-IDs
 		//time.Sleep(time.Millisecond * 20)
 	}
-	//time.Sleep(time.Second* 3)
 	breakTimer := time.After(3 * time.Second)
 	numReceived := 0
 	idReceived := make(map[uint64]bool)
@@ -123,7 +122,4 @@ WAIT:
 		}
 	}
 
-	//a.True(numReceived == numSent)
-	//// there should be no duplicated message-IDs
-	//a.True(numReceived == len(idReceived))
 }

@@ -11,7 +11,6 @@ import (
 
 	"io/ioutil"
 	"log"
-	//"os"
 
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gubled/config"
@@ -106,7 +105,7 @@ func TestThroughput(t *testing.T) {
 	throughput := float64(totalMessages) / end.Sub(start).Seconds()
 	log.Printf("finished! Throughput: %v/sec (%v message in %v)", int(throughput), totalMessages, end.Sub(start))
 
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 1)
 }
 
 func (tg *testgroup) Init() {

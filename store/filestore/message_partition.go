@@ -118,7 +118,7 @@ func (p *messagePartition) readIdxFiles() error {
 		}
 
 		// put entry in file cache
-		p.fileCache.Append(cEntry)
+		p.fileCache.add(cEntry)
 		logger.
 			WithField("entries", p.fileCache.entries).
 			WithField("filename", indexFilenames[i]).
@@ -199,7 +199,7 @@ func readCacheEntryFromIdxFile(filename string) (entry *cacheEntry, err error) {
 }
 
 func (p *messagePartition) createNextAppendFiles() error {
-	filename := p.composeMsgFilenameForPosition(uint64(p.fileCache.Len()))
+	filename := p.composeMsgFilenameForPosition(uint64(p.fileCache.len()))
 	logger.WithField("filename", filename).Info("Creating next append files")
 
 	appendfile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -222,7 +222,7 @@ func (p *messagePartition) createNextAppendFiles() error {
 		}
 	}
 
-	indexfile, errIndex := os.OpenFile(p.composeIdxFilenameForPosition(uint64(p.fileCache.Len())), os.O_RDWR|os.O_CREATE, 0666)
+	indexfile, errIndex := os.OpenFile(p.composeIdxFilenameForPosition(uint64(p.fileCache.len())), os.O_RDWR|os.O_CREATE, 0666)
 	if errIndex != nil {
 		defer appendfile.Close()
 		defer os.Remove(appendfile.Name())
@@ -315,13 +315,13 @@ func (p *messagePartition) store(messageID uint64, data []byte) error {
 			}).Info("Dumping current file ")
 
 			//sort the indexFile
-			err := p.rewriteSortedIdxFile(p.composeIdxFilenameForPosition(uint64(p.fileCache.Len())))
+			err := p.rewriteSortedIdxFile(p.composeIdxFilenameForPosition(uint64(p.fileCache.len())))
 			if err != nil {
 				logger.WithField("err", err).Error("Error dumping file")
 				return err
 			}
 			//Add items in the filecache
-			p.fileCache.Append(&cacheEntry{
+			p.fileCache.add(&cacheEntry{
 				min: p.list.Front().id,
 				max: p.list.Back().id,
 			})
@@ -371,7 +371,7 @@ func (p *messagePartition) store(messageID uint64, data []byte) error {
 		id:     messageID,
 		offset: messageOffset,
 		size:   uint32(len(data)),
-		fileID: p.fileCache.Len(),
+		fileID: p.fileCache.len(),
 	}
 	p.list.Insert(e)
 
@@ -575,7 +575,7 @@ func calculateNoEntries(filename string) (uint64, error) {
 func (p *messagePartition) loadLastIndexList(filename string) error {
 	logger.WithField("filename", filename).Info("Loading last index file")
 
-	l, err := p.loadIndexList(p.fileCache.Len())
+	l, err := p.loadIndexList(p.fileCache.len())
 	if err != nil {
 		logger.WithError(err).Error("Error loading last index filename")
 		return err
