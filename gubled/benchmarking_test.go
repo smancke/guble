@@ -51,7 +51,7 @@ func TestThroughput(t *testing.T) {
 
 	service := StartService()
 
-	testgroupCount := 1
+	testgroupCount := 4
 	messagesPerGroup := 100
 	log.Printf("init the %v testgroups", testgroupCount)
 	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
