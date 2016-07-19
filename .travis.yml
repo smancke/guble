@@ -18,6 +18,7 @@ after_success:
   - goveralls -coverprofile=full_cov.out -service=travis-ci
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
       GOOS=linux go build -a --ldflags '-extldflags "-static"' . ;
+      GOOS=linux go build -a --ldflags '-extldflags "-static"' -o ./guble-cli/guble-cli ./guble-cli ;
       docker build -t smancke/guble . ;
       docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" ;
       docker push smancke/guble ;

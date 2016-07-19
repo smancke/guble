@@ -22,6 +22,7 @@ import (
 	"os/signal"
 	"path"
 	"runtime"
+	"strconv"
 	"syscall"
 )
 
@@ -62,6 +63,7 @@ var CreateKVStore = func() kvstore.KVStore {
 		db := kvstore.NewPostgresKVStore(kvstore.PostgresConfig{
 			ConnParams: map[string]string{
 				"host":     *config.Postgres.Host,
+				"port":     strconv.Itoa(*config.Postgres.Port),
 				"user":     *config.Postgres.User,
 				"password": *config.Postgres.Password,
 				"dbname":   *config.Postgres.DbName,
@@ -125,6 +127,7 @@ var CreateModules = func(router server.Router) []interface{} {
 }
 
 func Main() {
+	log.SetFormatter(&logstashFormatter{})
 	config.Parse()
 	defer func() {
 		if p := recover(); p != nil {
@@ -212,9 +215,7 @@ func exitIfInvalidClusterParams(nodeID int, nodePort int, remotes []*net.TCPAddr
 func waitForTermination(callback func()) {
 	signalC := make(chan os.Signal)
 	signal.Notify(signalC, syscall.SIGINT, syscall.SIGTERM)
-
 	logger.Infof("Got signal '%v' .. exiting gracefully now", <-signalC)
-
 	callback()
 	metrics.LogOnDebugLevel()
 	logger.Info("Exit gracefully now")

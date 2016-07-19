@@ -1,5 +1,5 @@
 FROM alpine
-COPY ./guble /usr/local/bin/guble
+COPY ./guble ./guble-cli/guble-cli /usr/local/bin/
 RUN mkdir -p /var/lib/guble
 VOLUME ["/var/lib/guble"]
 ENTRYPOINT ["/usr/local/bin/guble"]
