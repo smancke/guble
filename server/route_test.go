@@ -151,13 +151,12 @@ func TestQueue_ShiftEmpty(t *testing.T) {
 
 func testRoute() *Route {
 	options := RouteOptions{
-		Path: protocol.Path(dummyPath),
-		Size: chanSize,
+		RouteParams: RouteParams{
+			"application_id": "appID",
+			"user_id":        "userID",
+		},
+		Path:        protocol.Path(dummyPath),
+		ChannelSize: chanSize,
 	}
-	params := RouteParams{
-		"application_id": "appID",
-		"user_id":        "userID",
-	}
-
-	return NewRoute(options, params)
+	return NewRoute(options)
 }

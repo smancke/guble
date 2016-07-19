@@ -17,6 +17,12 @@ import (
 const (
 	// default subscription channel buffer size
 	subBufferSize = 50
+
+	// applicationIDKey is the key name set on the route params to identify the application
+	applicationIDKey = "application_id"
+
+	// userIDKey is the key name set on the route params to identify the user
+	userIDKey = "user_id"
 )
 
 var (
@@ -47,8 +53,8 @@ func newSubscription(gcm *Connector, route *server.Route, lastID uint64) *subscr
 		route:  route,
 		lastID: lastID,
 		logger: logger.WithFields(log.Fields{
-			"gcmID":  route.Get("application_id"),
-			"userID": route.Get("user_id"),
+			"gcmID":  route.Get(applicationIDKey),
+			"userID": route.Get(userIDKey),
 			"topic":  string(route.Path),
 		}),
 	}
@@ -57,9 +63,10 @@ func newSubscription(gcm *Connector, route *server.Route, lastID uint64) *subscr
 // creates a subscription and adds it in router/kvstore then starts listening for messages
 func initSubscription(gcm *Connector, topic, userID, gcmID string, lastID uint64) (*subscription, error) {
 	route := server.NewRoute(server.RouteOptions{
-		Path: protocol.Path(topic),
-		Size: subBufferSize,
-	}, server.RouteParams{"user_id": userID, "application_id": gcmID})
+		RouteParams: server.RouteParams{"user_id": userID, "application_id": gcmID},
+		Path:        protocol.Path(topic),
+		ChannelSize: subBufferSize,
+	})
 
 	s := newSubscription(gcm, route, 0)
 	s.logger.Debug("New subscription")
@@ -82,7 +89,7 @@ func (s *subscription) subscribe() error {
 // unsubscribe from router and remove KVStore
 func (s *subscription) remove() *subscription {
 	s.gcm.router.Unsubscribe(s.route)
-	s.gcm.kvStore.Delete(schema, s.route.Get("application_id"))
+	s.gcm.kvStore.Delete(schema, s.route.Get(applicationIDKey))
 	return s
 }
 
@@ -98,9 +105,10 @@ func (s *subscription) start() error {
 // recreate the route and resubscribe
 func (s *subscription) restart() error {
 	s.route = server.NewRoute(server.RouteOptions{
-		Path: s.route.Path,
-		Size: subBufferSize,
-	}, s.route.RouteParams)
+		RouteParams: s.route.RouteParams,
+		Path:        s.route.Path,
+		ChannelSize: subBufferSize,
+	})
 
 	// fetch until we reach the end
 	for s.shouldFetch() {
@@ -259,7 +267,7 @@ func (s *subscription) isStopping() bool {
 // bytes data to store in kvStore
 func (s *subscription) bytes() []byte {
 	return []byte(strings.Join([]string{
-		s.route.Get("user_id"),
+		s.route.Get(userIDKey),
 		string(s.route.Path),
 		strconv.FormatUint(s.lastID, 10),
 	}, ":"))
@@ -268,7 +276,7 @@ func (s *subscription) bytes() []byte {
 // store data in kvstore
 func (s *subscription) store() error {
 	s.logger.WithField("lastID", s.lastID).Debug("Storing subscription")
-	err := s.gcm.kvStore.Put(schema, s.route.Get("application_id"), s.bytes())
+	err := s.gcm.kvStore.Put(schema, s.route.Get(applicationIDKey), s.bytes())
 	if err != nil {
 		s.logger.WithError(err).Error("Error storing in KVStore")
 	}

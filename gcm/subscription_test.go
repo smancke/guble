@@ -28,9 +28,10 @@ func TestSub_Fetch(t *testing.T) {
 	gcm, routerMock, _ := testSimpleGCM(t, false)
 
 	route := server.NewRoute(server.RouteOptions{
-		Path: protocol.Path("/foo/bar"),
-		Size: subBufferSize,
-	}, server.RouteParams{"user_id": "user01", "application_id": "phone01"})
+		RouteParams: server.RouteParams{"user_id": "user01", "application_id": "phone01"},
+		Path:        protocol.Path("/foo/bar"),
+		ChannelSize: subBufferSize,
+	})
 	sub := newSubscription(gcm, route, 2)
 
 	// simulate the fetch
@@ -101,9 +102,10 @@ func TestSub_Restart(t *testing.T) {
 	gcm, routerMock, storeMock := testSimpleGCM(t, true)
 
 	route := server.NewRoute(server.RouteOptions{
-		Path: protocol.Path("/foo/bar"),
-		Size: subBufferSize,
-	}, server.RouteParams{"user_id": "user01", "application_id": "phone01"})
+		RouteParams: server.RouteParams{"user_id": "user01", "application_id": "phone01"},
+		Path:        protocol.Path("/foo/bar"),
+		ChannelSize: subBufferSize,
+	})
 	sub := newSubscription(gcm, route, 2)
 
 	// start goroutine that will take the messages from the pipeline
@@ -120,6 +122,7 @@ func TestSub_Restart(t *testing.T) {
 	}()
 
 	routerMock.EXPECT().Subscribe(gomock.Eq(route))
+
 	// expect again for a subscription
 	routerMock.EXPECT().Subscribe(gomock.Any())
 	storeMock.EXPECT().MaxMessageID("foo").Return(uint64(4), nil).AnyTimes()

@@ -25,15 +25,19 @@ var (
 type RouteOptions struct {
 	Path protocol.Path
 
-	// channel buffer size
-	Size int
+	ChannelSize int
 
-	// QueueSize
+	// QueueSize specify the size of the internal queue slice.
+	// How many items to hold before the channel is closed.
+	// If set to `0` then the queue will have no capacity and the messages are sent
+	// directly, without buffering
 	QueueSize int
 
 	// Timeout to define how long to wait for the message to be read on the channel
 	// if timeout is reached the route is closed
 	Timeout time.Duration
+
+	RouteParams
 }
 
 type RouteParams map[string]string
@@ -93,7 +97,6 @@ func (rp *RouteParams) Set(key, value string) {
 // Route represents a topic for subscription that has a channel to receive messages.
 type Route struct {
 	RouteOptions
-	RouteParams
 
 	messagesC chan *protocol.Message
 
@@ -114,17 +117,15 @@ type Route struct {
 }
 
 // NewRoute creates a new route pointer
-// 	- `size` is the channel buffer size
-func NewRoute(options RouteOptions, params RouteParams) *Route {
+func NewRoute(options RouteOptions) *Route {
 	route := &Route{
 		RouteOptions: options,
-		RouteParams:  params,
 
 		queue:     newQueue(options.QueueSize),
-		messagesC: make(chan *protocol.Message, options.Size),
+		messagesC: make(chan *protocol.Message, options.ChannelSize),
 		closeC:    make(chan struct{}),
 
-		logger: logger.WithFields(log.Fields{"path": options.Path, "params": params}),
+		logger: logger.WithFields(log.Fields{"path": options.Path, "params": options.RouteParams}),
 	}
 	return route
 }
@@ -202,7 +203,7 @@ func (r *Route) Close() error {
 }
 
 // Equal will check if the route path is matched and all the parameters or just a
-// subsent of specific parameters between the routes
+// subset of specific parameters between the routes
 func (r *Route) Equal(other *Route, keys ...string) bool {
 	return r.Path == other.Path && r.RouteParams.Equal(other.RouteParams, keys...)
 }

@@ -145,8 +145,11 @@ func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) e
 
 func (rec *Receiver) subscribe() {
 	rec.route = server.NewRoute(
-		server.RouteOptions{Path: rec.path, Size: 3},
-		server.RouteParams{"application_id": rec.applicationId, "user_id": rec.userId},
+		server.RouteOptions{
+			RouteParams: server.RouteParams{"application_id": rec.applicationId, "user_id": rec.userId},
+			Path:        rec.path,
+			ChannelSize: 3,
+		},
 	)
 	_, err := rec.router.Subscribe(rec.route)
 	if err != nil {
