@@ -2,10 +2,10 @@ package gubled
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/store/filestore"
 
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/gubled/config"
+	"github.com/smancke/guble/kv"
 	"github.com/smancke/guble/metrics"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
@@ -14,6 +14,7 @@ import (
 	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/server/websocket"
 	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/store/filestore"
 
 	"fmt"
 	"net"
@@ -47,18 +48,18 @@ var CreateAccessManager = func() auth.AccessManager {
 	return auth.NewAllowAllAccessManager(true)
 }
 
-var CreateKVStore = func() store.KVStore {
+var CreateKVStore = func() kv.KVStore {
 	switch *config.KVS {
 	case "memory":
-		return store.NewMemoryKVStore()
+		return kv.NewMemoryKVStore()
 	case "file":
-		db := store.NewSqliteKVStore(path.Join(*config.StoragePath, defaultSqliteFilename), true)
+		db := kv.NewSqliteKVStore(path.Join(*config.StoragePath, defaultSqliteFilename), true)
 		if err := db.Open(); err != nil {
 			logger.WithError(err).Panic("Could not open sqlite database connection")
 		}
 		return db
 	case "postgres":
-		db := store.NewPostgresKVStore(store.PostgresConfig{
+		db := kv.NewPostgresKVStore(kv.PostgresConfig{
 			ConnParams: map[string]string{
 				"host":     *config.Postgres.Host,
 				"user":     *config.Postgres.User,
@@ -81,7 +82,7 @@ var CreateKVStore = func() store.KVStore {
 var CreateMessageStore = func() store.MessageStore {
 	switch *config.MS {
 	case "none", "":
-		return store.NewDummyMessageStore(store.NewMemoryKVStore())
+		return store.NewDummyMessageStore(kv.NewMemoryKVStore())
 	case "file":
 		logger.WithField("storagePath", *config.StoragePath).Info("Using FileMessageStore in directory")
 		return filestore.NewFileMessageStore(*config.StoragePath)

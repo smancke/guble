@@ -5,8 +5,9 @@ package server
 
 import (
 	gomock "github.com/golang/mock/gomock"
+	kv "github.com/smancke/guble/kv"
 	protocol "github.com/smancke/guble/protocol"
-	
+
 	auth "github.com/smancke/guble/server/auth"
 	cluster "github.com/smancke/guble/server/cluster"
 	store "github.com/smancke/guble/store"
@@ -74,9 +75,9 @@ func (_mr *_MockRouterRecorder) HandleMessage(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "HandleMessage", arg0)
 }
 
-func (_m *MockRouter) KVStore() (store.KVStore, error) {
+func (_m *MockRouter) KVStore() (kv.KVStore, error) {
 	ret := _m.ctrl.Call(_m, "KVStore")
-	ret0, _ := ret[0].(store.KVStore)
+	ret0, _ := ret[0].(kv.KVStore)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

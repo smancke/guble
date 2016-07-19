@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/smancke/guble/kv"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_DummyMessageStore_IncreaseOnStore(t *testing.T) {
 	a := assert.New(t)
 
-	store := NewDummyMessageStore(NewMemoryKVStore())
+	store := NewDummyMessageStore(kv.NewMemoryKVStore())
 
 	a.Equal(uint64(0), fne(store.MaxMessageID("partition")))
 	a.NoError(store.Store("partition", 1, []byte{}))
@@ -22,7 +23,7 @@ func Test_DummyMessageStore_IncreaseOnStore(t *testing.T) {
 func Test_DummyMessageStore_ErrorOnWrongMessageId(t *testing.T) {
 	a := assert.New(t)
 
-	store := NewDummyMessageStore(NewMemoryKVStore())
+	store := NewDummyMessageStore(kv.NewMemoryKVStore())
 
 	a.Equal(uint64(0), fne(store.MaxMessageID("partition")))
 	a.Error(store.Store("partition", 42, []byte{}))
@@ -32,7 +33,7 @@ func Test_DummyMessageStore_InitIdsFromKvStore(t *testing.T) {
 	a := assert.New(t)
 
 	// given: as kv store with some values
-	kvStore := NewMemoryKVStore()
+	kvStore := kv.NewMemoryKVStore()
 	kvStore.Put(topicSchema, "partition1", []byte("42"))
 	kvStore.Put(topicSchema, "partition2", []byte("43"))
 	store := NewDummyMessageStore(kvStore)
@@ -46,7 +47,7 @@ func Test_DummyMessageStore_SyncIds(t *testing.T) {
 	a := assert.New(t)
 
 	// given: a store which syncs every 1ms
-	kvStore := NewMemoryKVStore()
+	kvStore := kv.NewMemoryKVStore()
 	store := NewDummyMessageStore(kvStore)
 	store.idSyncDuration = time.Millisecond
 
@@ -75,7 +76,7 @@ func Test_DummyMessageStore_SyncIdsOnStop(t *testing.T) {
 	a := assert.New(t)
 
 	// given: as store which synces nearly never
-	kvStore := NewMemoryKVStore()
+	kvStore := kv.NewMemoryKVStore()
 	store := NewDummyMessageStore(kvStore)
 	store.idSyncDuration = time.Hour
 

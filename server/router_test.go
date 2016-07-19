@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/kv"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/store"
@@ -456,9 +457,9 @@ func TestPanicOnInternalDependencies(t *testing.T) {
 	router.panicIfInternalDependenciesAreNil()
 }
 
-func aStartedRouter() (*router, auth.AccessManager, store.MessageStore, store.KVStore) {
+func aStartedRouter() (*router, auth.AccessManager, store.MessageStore, kv.KVStore) {
 	am := auth.NewAllowAllAccessManager(true)
-	kvs := store.NewMemoryKVStore()
+	kvs := kv.NewMemoryKVStore()
 	ms := store.NewDummyMessageStore(kvs)
 	router := NewRouter(am, ms, kvs, nil).(*router)
 	router.Start()

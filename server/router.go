@@ -9,6 +9,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/health"
 
+	"github.com/smancke/guble/kv"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/cluster"
@@ -26,7 +27,7 @@ const (
 type Router interface {
 	AccessManager() (auth.AccessManager, error)
 	MessageStore() (store.MessageStore, error)
-	KVStore() (store.KVStore, error)
+	KVStore() (kv.KVStore, error)
 	Cluster() *cluster.Cluster
 
 	Fetch(store.FetchRequest) error
@@ -53,12 +54,12 @@ type router struct {
 
 	accessManager auth.AccessManager
 	messageStore  store.MessageStore
-	kvStore       store.KVStore
+	kvStore       kv.KVStore
 	cluster       *cluster.Cluster
 }
 
 // NewRouter returns a pointer to Router
-func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore, cluster *cluster.Cluster) Router {
+func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore kv.KVStore, cluster *cluster.Cluster) Router {
 	return &router{
 		routes: make(map[protocol.Path][]*Route),
 
@@ -376,7 +377,7 @@ func (router *router) MessageStore() (store.MessageStore, error) {
 }
 
 // KVStore returns the `kvStore` provided for the router
-func (router *router) KVStore() (store.KVStore, error) {
+func (router *router) KVStore() (kv.KVStore, error) {
 	if router.kvStore == nil {
 		return nil, ErrServiceNotProvided
 	}

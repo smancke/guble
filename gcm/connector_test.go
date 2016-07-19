@@ -4,11 +4,11 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
-	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
+	"github.com/smancke/guble/kv"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -342,7 +342,7 @@ func testGCMResponse(t *testing.T, jsonResponse string) (*Connector, *MockRouter
 
 func testSimpleGCM(t *testing.T, mockStore bool) (*Connector, *MockRouter, *MockMessageStore) {
 	routerMock := NewMockRouter(testutil.MockCtrl)
-	kvStore := store.NewMemoryKVStore()
+	kvStore := kv.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
 
 	gcm, err := New(routerMock, "/gcm/", "testApi", 1)
