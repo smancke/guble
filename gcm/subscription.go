@@ -63,7 +63,7 @@ func newSubscription(gcm *Connector, route *server.Route, lastID uint64) *subscr
 // creates a subscription and adds it in router/kvstore then starts listening for messages
 func initSubscription(gcm *Connector, topic, userID, gcmID string, lastID uint64) (*subscription, error) {
 	route := server.NewRoute(server.RouteOptions{
-		RouteParams: server.RouteParams{"user_id": userID, "application_id": gcmID},
+		RouteParams: server.RouteParams{userIDKey: userID, applicationIDKey: gcmID},
 		Path:        protocol.Path(topic),
 		ChannelSize: subBufferSize,
 	})
@@ -348,7 +348,7 @@ func (s *subscription) replaceCanonical(newGCMID string) error {
 
 	// reuse the route but change the ApplicationID
 	route := s.route
-	route.Set("application_id", newGCMID)
+	route.Set(applicationIDKey, newGCMID)
 	newS := newSubscription(s.gcm, route, s.lastID)
 
 	if err := newS.store(); err != nil {

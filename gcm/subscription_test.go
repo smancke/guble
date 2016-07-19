@@ -28,7 +28,7 @@ func TestSub_Fetch(t *testing.T) {
 	gcm, routerMock, _ := testSimpleGCM(t, false)
 
 	route := server.NewRoute(server.RouteOptions{
-		RouteParams: server.RouteParams{"user_id": "user01", "application_id": "phone01"},
+		RouteParams: server.RouteParams{userIDKey: "user01", applicationIDKey: "phone01"},
 		Path:        protocol.Path("/foo/bar"),
 		ChannelSize: subBufferSize,
 	})
@@ -102,7 +102,7 @@ func TestSub_Restart(t *testing.T) {
 	gcm, routerMock, storeMock := testSimpleGCM(t, true)
 
 	route := server.NewRoute(server.RouteOptions{
-		RouteParams: server.RouteParams{"user_id": "user01", "application_id": "phone01"},
+		RouteParams: server.RouteParams{userIDKey: "user01", applicationIDKey: "phone01"},
 		Path:        protocol.Path("/foo/bar"),
 		ChannelSize: subBufferSize,
 	})
