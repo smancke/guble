@@ -10,7 +10,7 @@ import (
 
 	"errors"
 	"fmt"
-	"github.com/smancke/guble/kv"
+	"github.com/smancke/guble/kvstore"
 	"net/http"
 	"strings"
 	"sync"
@@ -39,7 +39,7 @@ var logger = log.WithFields(log.Fields{
 type Connector struct {
 	Sender        *gcm.Sender
 	router        server.Router
-	kvStore       kv.KVStore
+	kvStore       kvstore.KVStore
 	prefix        string
 	pipelineC     chan *pipeMessage
 	stopC         chan bool

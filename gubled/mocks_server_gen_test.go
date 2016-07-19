@@ -5,7 +5,7 @@ package gubled
 
 import (
 	gomock "github.com/golang/mock/gomock"
-	kv "github.com/smancke/guble/kv"
+	kvstore "github.com/smancke/guble/kvstore"
 	protocol "github.com/smancke/guble/protocol"
 	server "github.com/smancke/guble/server"
 	auth "github.com/smancke/guble/server/auth"
@@ -75,9 +75,9 @@ func (_mr *_MockRouterRecorder) HandleMessage(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "HandleMessage", arg0)
 }
 
-func (_m *MockRouter) KVStore() (kv.KVStore, error) {
+func (_m *MockRouter) KVStore() (kvstore.KVStore, error) {
 	ret := _m.ctrl.Call(_m, "KVStore")
-	ret0, _ := ret[0].(kv.KVStore)
+	ret0, _ := ret[0].(kvstore.KVStore)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

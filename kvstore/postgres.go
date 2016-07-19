@@ -1,4 +1,4 @@
-package kv
+package kvstore
 
 import (
 	log "github.com/Sirupsen/logrus"

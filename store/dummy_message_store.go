@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smancke/guble/kv"
+	"github.com/smancke/guble/kvstore"
 	"github.com/smancke/guble/protocol"
 )
 
@@ -20,7 +20,7 @@ const topicSchema = "topic_sequence"
 type DummyMessageStore struct {
 	topicSequences     map[string]uint64
 	topicSequencesLock sync.RWMutex
-	kvStore            kv.KVStore
+	kvStore            kvstore.KVStore
 	isSyncStarted      bool
 
 	stopC    chan bool // used to send the stop request to the syc goroutine
@@ -29,7 +29,7 @@ type DummyMessageStore struct {
 	idSyncDuration time.Duration
 }
 
-func NewDummyMessageStore(kvStore kv.KVStore) *DummyMessageStore {
+func NewDummyMessageStore(kvStore kvstore.KVStore) *DummyMessageStore {
 	return &DummyMessageStore{
 		topicSequences: make(map[string]uint64),
 		kvStore:        kvStore,

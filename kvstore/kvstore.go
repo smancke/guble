@@ -1,4 +1,4 @@
-package kv
+package kvstore
 
 // KVStore is an interface for a persistence backend, storing key-value pairs.
 type KVStore interface {

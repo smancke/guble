@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
-	"github.com/smancke/guble/kv"
+	"github.com/smancke/guble/kvstore"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -342,7 +342,7 @@ func testGCMResponse(t *testing.T, jsonResponse string) (*Connector, *MockRouter
 
 func testSimpleGCM(t *testing.T, mockStore bool) (*Connector, *MockRouter, *MockMessageStore) {
 	routerMock := NewMockRouter(testutil.MockCtrl)
-	kvStore := kv.NewMemoryKVStore()
+	kvStore := kvstore.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
 
 	gcm, err := New(routerMock, "/gcm/", "testApi", 1)

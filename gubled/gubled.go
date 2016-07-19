@@ -5,7 +5,7 @@ import (
 
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/gubled/config"
-	"github.com/smancke/guble/kv"
+	"github.com/smancke/guble/kvstore"
 	"github.com/smancke/guble/metrics"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
@@ -48,18 +48,18 @@ var CreateAccessManager = func() auth.AccessManager {
 	return auth.NewAllowAllAccessManager(true)
 }
 
-var CreateKVStore = func() kv.KVStore {
+var CreateKVStore = func() kvstore.KVStore {
 	switch *config.KVS {
 	case "memory":
-		return kv.NewMemoryKVStore()
+		return kvstore.NewMemoryKVStore()
 	case "file":
-		db := kv.NewSqliteKVStore(path.Join(*config.StoragePath, defaultSqliteFilename), true)
+		db := kvstore.NewSqliteKVStore(path.Join(*config.StoragePath, defaultSqliteFilename), true)
 		if err := db.Open(); err != nil {
 			logger.WithError(err).Panic("Could not open sqlite database connection")
 		}
 		return db
 	case "postgres":
-		db := kv.NewPostgresKVStore(kv.PostgresConfig{
+		db := kvstore.NewPostgresKVStore(kvstore.PostgresConfig{
 			ConnParams: map[string]string{
 				"host":     *config.Postgres.Host,
 				"user":     *config.Postgres.User,
@@ -82,7 +82,7 @@ var CreateKVStore = func() kv.KVStore {
 var CreateMessageStore = func() store.MessageStore {
 	switch *config.MS {
 	case "none", "":
-		return store.NewDummyMessageStore(kv.NewMemoryKVStore())
+		return store.NewDummyMessageStore(kvstore.NewMemoryKVStore())
 	case "file":
 		logger.WithField("storagePath", *config.StoragePath).Info("Using FileMessageStore in directory")
 		return filestore.NewFileMessageStore(*config.StoragePath)

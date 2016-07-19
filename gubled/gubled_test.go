@@ -5,7 +5,7 @@ import (
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/smancke/guble/kv"
+	"github.com/smancke/guble/kvstore"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -35,7 +35,7 @@ func TestCreateKVStoreBackend(t *testing.T) {
 	a := assert.New(t)
 	*config.KVS = "memory"
 	memory := CreateKVStore()
-	a.Equal("*kv.MemoryKVStore", reflect.TypeOf(memory).String())
+	a.Equal("*kvstore.MemoryKVStore", reflect.TypeOf(memory).String())
 
 	dir, _ := ioutil.TempDir("", "guble_test")
 	defer os.RemoveAll(dir)
@@ -43,7 +43,7 @@ func TestCreateKVStoreBackend(t *testing.T) {
 	*config.KVS = "file"
 	*config.StoragePath = dir
 	sqlite := CreateKVStore()
-	a.Equal("*kv.SqliteKVStore", reflect.TypeOf(sqlite).String())
+	a.Equal("*kvstore.SqliteKVStore", reflect.TypeOf(sqlite).String())
 }
 
 func TestGcmOnlyStartedIfEnabled(t *testing.T) {
@@ -53,7 +53,7 @@ func TestGcmOnlyStartedIfEnabled(t *testing.T) {
 	a := assert.New(t)
 
 	routerMock := initRouterMock()
-	routerMock.EXPECT().KVStore().Return(kv.NewMemoryKVStore(), nil)
+	routerMock.EXPECT().KVStore().Return(kvstore.NewMemoryKVStore(), nil)
 
 	*config.GCM.Enabled = true
 	*config.GCM.APIKey = "xyz"
@@ -118,7 +118,7 @@ func TestStartServiceModules(t *testing.T) {
 		name := reflect.TypeOf(iface).String()
 		moduleNames = append(moduleNames, name)
 	}
-	a.Equal("*kv.MemoryKVStore *filestore.FileMessageStore *server.router *webserver.WebServer *websocket.WSHandler *rest.RestMessageAPI",
+	a.Equal("*kvstore.MemoryKVStore *filestore.FileMessageStore *server.router *webserver.WebServer *websocket.WSHandler *rest.RestMessageAPI",
 		strings.Join(moduleNames, " "))
 }
 

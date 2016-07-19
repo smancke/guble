@@ -31,8 +31,8 @@ $MOCKGEN -self_package server -package server \
       MessageStore
 
 $MOCKGEN -self_package server -package server \
-      -destination server/mocks_kv_gen_test.go \
-      github.com/smancke/guble/kv \
+      -destination server/mocks_kvstore_gen_test.go \
+      github.com/smancke/guble/kvstore \
       KVStore
 
 $MOCKGEN -self_package server -package server \
@@ -60,8 +60,8 @@ $MOCKGEN -package gcm \
       Router
 
 $MOCKGEN -self_package gcm -package gcm \
-      -destination gcm/mocks_kv_gen_test.go \
-      github.com/smancke/guble/kv \
+      -destination gcm/mocks_kvstore_gen_test.go \
+      github.com/smancke/guble/kvstore \
       KVStore
 
 $MOCKGEN -self_package gcm -package gcm \
