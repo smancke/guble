@@ -23,14 +23,13 @@ var (
 
 // Route represents a topic for subscription that has a channel to receive messages.
 type Route struct {
-	RouteOptions
+	RouteConfig
 
 	messagesC chan *protocol.Message
 
-	// queue that will store the messages in correct order
-	//
-	// The queue can have a settable size and if it reaches the capacity the
-	// route is closed
+	// queue that will store the messages in correct order.
+	// The queue can have a settable size;
+	// if it reaches the capacity the route is closed.
 	queue *queue
 
 	closeC chan struct{}
@@ -44,9 +43,9 @@ type Route struct {
 }
 
 // NewRoute creates a new route pointer
-func NewRoute(options RouteOptions) *Route {
+func NewRoute(options RouteConfig) *Route {
 	route := &Route{
-		RouteOptions: options,
+		RouteConfig: options,
 
 		queue:     newQueue(options.QueueSize),
 		messagesC: make(chan *protocol.Message, options.ChannelSize),
@@ -57,25 +56,24 @@ func NewRoute(options RouteOptions) *Route {
 	return route
 }
 
-// SetTimeout sets the timeout duration that the route will wait before it will close a
-// blocking channel
-func (r *Route) SetTimeout(timeout time.Duration) *Route {
+// setTimeout sets the timeout duration that the route will wait
+// before it will close a blocking channel
+func (r *Route) setTimeout(timeout time.Duration) *Route {
 	r.Timeout = timeout
 	return r
 }
 
-// SetQueueSize sets the queue size that is allowed before closing the route channel
-func (r *Route) SetQueueSize(size int) *Route {
+// setQueueSize sets the queue size that is allowed before closing the route channel
+func (r *Route) setQueueSize(size int) *Route {
 	r.QueueSize = size
 	return r
 }
 
 func (r *Route) String() string {
-	return fmt.Sprintf("Path: %s %s", r.Path, r.RouteParams)
+	return fmt.Sprintf("Path: %s , Params: %s", r.Path, r.RouteParams)
 }
 
-// Deliver takes a messages and adds it to the queue to be delivered in to the
-// channel
+// Deliver takes a messages and adds it to the queue to be delivered in to the channel
 func (r *Route) Deliver(msg *protocol.Message) error {
 	logger := r.logger.WithField("message", msg)
 	logger.Debug("Delivering message")
@@ -235,10 +233,10 @@ func (r *Route) send(msg *protocol.Message) error {
 	}
 }
 
-// invalidRecover is used to recoverd in case we end up sending on a closed channel
+// invalidRecover is used to recover in case we end up sending on a closed channel
 func (r *Route) invalidRecover() error {
 	if rc := recover(); rc != nil && r.isInvalid() {
-		r.logger.WithField("error", rc).Debug("Recovered closed router")
+		r.logger.WithField("error", rc).Debug("Recovered closed route")
 		return ErrInvalidRoute
 	}
 	return nil
