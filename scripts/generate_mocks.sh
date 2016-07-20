@@ -28,7 +28,12 @@ replace "server/mocks_server_gen_test.go" "server \"github.com\/smancke\/guble\/
 $MOCKGEN -self_package server -package server \
       -destination server/mocks_store_gen_test.go \
       github.com/smancke/guble/store \
-      MessageStore,KVStore
+      MessageStore
+
+$MOCKGEN -self_package server -package server \
+      -destination server/mocks_kvstore_gen_test.go \
+      github.com/smancke/guble/kvstore \
+      KVStore
 
 $MOCKGEN -self_package server -package server \
       -destination server/mocks_checker_gen_test.go \
@@ -55,9 +60,14 @@ $MOCKGEN -package gcm \
       Router
 
 $MOCKGEN -self_package gcm -package gcm \
+      -destination gcm/mocks_kvstore_gen_test.go \
+      github.com/smancke/guble/kvstore \
+      KVStore
+
+$MOCKGEN -self_package gcm -package gcm \
       -destination gcm/mocks_store_gen_test.go \
       github.com/smancke/guble/store \
-      KVStore,MessageStore
+      MessageStore
 
 # gubled mocks
 $MOCKGEN -package gubled \

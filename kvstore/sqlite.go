@@ -1,4 +1,4 @@
-package store
+package kvstore
 
 import (
 	// needed because of gorm / sql

@@ -29,7 +29,7 @@ type Receiver struct {
 	doSubscription      bool
 	startId             int64
 	maxCount            int
-	lastSendId          uint64
+	lastSentID          uint64
 	shouldStop          bool
 	route               *server.Route
 	enableNotifications bool
@@ -108,8 +108,11 @@ func (rec *Receiver) subscriptionLoop() {
 
 			if err := rec.messageStore.DoInTx(rec.path.Partition(), rec.subscribeIfNoUnreadMessagesAvailable); err != nil {
 				if err == errUnreadMsgsAvailable {
-					//fmt.Printf(" errUnreadMsgsAvailable lastSendId=%v\n", rec.lastSendId)
-					rec.startId = int64(rec.lastSendId + 1)
+					logger.WithFields(log.Fields{
+						"lastSentId": rec.lastSentID,
+						"receiver":   rec,
+					}).Error("errUnreadMsgsAvailable")
+					rec.startId = int64(rec.lastSentID) + 1
 					continue // fetch again
 				} else {
 					logger.WithError(err).WithField("recStartId", rec.startId).
@@ -118,9 +121,7 @@ func (rec *Receiver) subscriptionLoop() {
 					return
 				}
 			}
-		}
-
-		if !rec.doFetch {
+		} else {
 			rec.subscribe()
 		}
 		rec.receiveFromSubscription()
@@ -129,14 +130,14 @@ func (rec *Receiver) subscriptionLoop() {
 			//fmt.Printf(" router closed .. on msg: %v\n", rec.lastSendId)
 			// the router kicked us out, because we are too slow for realtime listening,
 			// so we setup parameters for fetching and closing the gap. Than we can subscribe again.
-			rec.startId = int64(rec.lastSendId + 1)
+			rec.startId = int64(rec.lastSentID) + 1
 			rec.doFetch = true
 		}
 	}
 }
 
 func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) error {
-	if maxMessageId > rec.lastSendId {
+	if maxMessageId > rec.lastSentID {
 		return errUnreadMsgsAvailable
 	}
 	rec.subscribe()
@@ -146,11 +147,12 @@ func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) e
 func (rec *Receiver) subscribe() {
 	rec.route = server.NewRoute(
 		server.RouteOptions{
-			RouteParams: server.RouteParams{"application_id": rec.applicationId, "user_id": rec.userId},
+			RouteParams: server.RouteParams{"appliation_id": rec.applicationId, "user_id": rec.userId},
 			Path:        rec.path,
-			ChannelSize: 3,
+			ChannelSize: 10,
 		},
 	)
+
 	_, err := rec.router.Subscribe(rec.route)
 	if err != nil {
 		rec.sendError(protocol.ERROR_SUBSCRIBED_TO, string(rec.path), err.Error())
@@ -176,8 +178,8 @@ func (rec *Receiver) receiveFromSubscription() {
 				"messageMetadata": m.Metadata(),
 			}).Debug("Delivering message")
 
-			if m.ID > rec.lastSendId {
-				rec.lastSendId = m.ID
+			if m.ID > rec.lastSentID {
+				rec.lastSentID = m.ID
 				rec.sendC <- m.Bytes()
 			} else {
 				logger.WithFields(log.Fields{
@@ -205,7 +207,7 @@ func (rec *Receiver) fetchOnlyLoop() {
 func (rec *Receiver) fetch() error {
 	fetch := store.FetchRequest{
 		Partition: rec.path.Partition(),
-		MessageC:  make(chan store.MessageAndID, 3),
+		MessageC:  make(chan store.FetchedMessage, 10), //TODO MAKE more tests when the receiver will be refactored after the route params is integrated.Initial capacity was 3
 		ErrorC:    make(chan error),
 		StartC:    make(chan int),
 		Prefix:    []byte(rec.path),
@@ -219,13 +221,13 @@ func (rec *Receiver) fetch() error {
 			fetch.Count = math.MaxInt32
 		}
 	} else {
-		fetch.Direction = 1
+		fetch.Direction = -1
 		maxId, err := rec.messageStore.MaxMessageID(rec.path.Partition())
 		if err != nil {
 			return err
 		}
 
-		fetch.StartID = maxId + 1 + uint64(rec.startId)
+		fetch.StartID = maxId
 		if rec.maxCount == 0 {
 			fetch.Count = -1 * int(rec.startId)
 		}
@@ -243,11 +245,12 @@ func (rec *Receiver) fetch() error {
 				return nil
 			}
 			logger.WithFields(log.Fields{
-				"msgId": msgAndID.ID,
-				"msg":   string(msgAndID.Message),
-			}).Debug("Reply sent")
+				"msgId":      msgAndID.ID,
+				"msg":        string(msgAndID.Message),
+				"lastSendId": rec.lastSentID,
+			}).Info("Reply sent")
 
-			rec.lastSendId = msgAndID.ID
+			rec.lastSentID = msgAndID.ID
 			rec.sendC <- msgAndID.Message
 		case err := <-fetch.ErrorC:
 			return err

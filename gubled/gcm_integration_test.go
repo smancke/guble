@@ -25,7 +25,7 @@ var (
 // Test that restarting the service continues to fetch messages from store
 // for a subscription from lastID
 func TestGCM_Restart(t *testing.T) {
-	defer testutil.EnableDebugForMethod()()
+	// defer testutil.EnableDebugForMethod()()
 	a := assert.New(t)
 
 	receiveC := make(chan bool)
