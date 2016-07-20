@@ -145,7 +145,14 @@ func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) e
 }
 
 func (rec *Receiver) subscribe() {
-	rec.route = server.NewRoute(string(rec.path), rec.applicationId, rec.userId, 10)
+	rec.route = server.NewRoute(
+		server.RouteOptions{
+			RouteParams: server.RouteParams{"appliation_id": rec.applicationId, "user_id": rec.userId},
+			Path:        rec.path,
+			ChannelSize: 10,
+		},
+	)
+
 	_, err := rec.router.Subscribe(rec.route)
 	if err != nil {
 		rec.sendError(protocol.ERROR_SUBSCRIBED_TO, string(rec.path), err.Error())
@@ -200,7 +207,7 @@ func (rec *Receiver) fetchOnlyLoop() {
 func (rec *Receiver) fetch() error {
 	fetch := store.FetchRequest{
 		Partition: rec.path.Partition(),
-		MessageC:  make(chan store.FetchedMessage, 10),   //TODO MAKE more tests when the receiver will be refactored after the route params is integrated.Initial capacity was 3
+		MessageC:  make(chan store.FetchedMessage, 10), //TODO MAKE more tests when the receiver will be refactored after the route params is integrated.Initial capacity was 3
 		ErrorC:    make(chan error),
 		StartC:    make(chan int),
 		Prefix:    []byte(rec.path),

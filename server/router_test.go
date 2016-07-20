@@ -47,21 +47,39 @@ func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 	router, _, _, _ := aStartedRouter()
 
 	// when i add two routes in the same path
-	routeBlah1, _ := router.Subscribe(NewRoute("/blah", "appid01", "user01", chanSize))
-	routeBlah2, _ := router.Subscribe(NewRoute("/blah", "appid02", "user01", chanSize))
+	routeBlah1, _ := router.Subscribe(NewRoute(
+		RouteOptions{
+			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
+			Path:        protocol.Path("/blah"),
+			ChannelSize: chanSize,
+		},
+	))
+	routeBlah2, _ := router.Subscribe(NewRoute(
+		RouteOptions{
+			RouteParams: RouteParams{"application_id": "appid02", "user_id": "user01"},
+			Path:        protocol.Path("/blah"),
+			ChannelSize: chanSize,
+		},
+	))
 
 	// and one route in another path
-	routeFoo, _ := router.Subscribe(NewRoute("/foo", "appid01", "user01", chanSize))
+	routeFoo, _ := router.Subscribe(NewRoute(
+		RouteOptions{
+			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
+			Path:        protocol.Path("/foo"),
+			ChannelSize: chanSize,
+		},
+	))
 
 	// then
 
 	// the routes are stored
 	a.Equal(2, len(router.routes[protocol.Path("/blah")]))
-	a.True(routeBlah1.equals(router.routes[protocol.Path("/blah")][0]))
-	a.True(routeBlah2.equals(router.routes[protocol.Path("/blah")][1]))
+	a.True(routeBlah1.Equal(router.routes[protocol.Path("/blah")][0]))
+	a.True(routeBlah2.Equal(router.routes[protocol.Path("/blah")][1]))
 
 	a.Equal(1, len(router.routes[protocol.Path("/foo")]))
-	a.True(routeFoo.equals(router.routes[protocol.Path("/foo")][0]))
+	a.True(routeFoo.Equal(router.routes[protocol.Path("/foo")][0]))
 
 	// when i remove routes
 	router.Unsubscribe(routeBlah1)
@@ -69,7 +87,7 @@ func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 
 	// then they are gone
 	a.Equal(1, len(router.routes[protocol.Path("/blah")]))
-	a.True(routeBlah2.equals(router.routes[protocol.Path("/blah")][0]))
+	a.True(routeBlah2.Equal(router.routes[protocol.Path("/blah")][0]))
 
 	a.Nil(router.routes[protocol.Path("/foo")])
 }
@@ -88,7 +106,13 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 	router := NewRouter(am, msMock, kvsMock, nil).(*router)
 	router.Start()
 
-	_, e := router.Subscribe(NewRoute("/blah", "appid01", "user01", chanSize))
+	_, e := router.Subscribe(NewRoute(
+		RouteOptions{
+			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
+			Path:        protocol.Path("/blah"),
+			ChannelSize: chanSize,
+		},
+	))
 
 	// default TestAccessManager denies all
 	a.NotNil(e)
@@ -97,7 +121,13 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 	am.EXPECT().IsAllowed(auth.READ, "user01", protocol.Path("/blah")).Return(true)
 
 	// and user shall be allowed to subscribe
-	_, e = router.Subscribe(NewRoute("/blah", "appid01", "user01", chanSize))
+	_, e = router.Subscribe(NewRoute(
+		RouteOptions{
+			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
+			Path:        protocol.Path("/blah"),
+			ChannelSize: chanSize,
+		},
+	))
 
 	a.Nil(e)
 }
@@ -118,13 +148,13 @@ func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 	router.messageStore = msMock
 	router.kvStore = kvsMock
 
-	amMock.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(false)
+	amMock.EXPECT().IsAllowed(auth.WRITE, r.Get("user_id"), r.Path).Return(false)
 
 	// when i send a message to the route
 	err := router.HandleMessage(&protocol.Message{
 		Path:   r.Path,
 		Body:   aTestByteMessage,
-		UserID: r.UserID,
+		UserID: r.Get("user_id"),
 	})
 
 	// an error shall be returned
@@ -133,7 +163,7 @@ func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 	// and when permission is granted
 	id, ts := uint64(2), time.Now().Unix()
 
-	amMock.EXPECT().IsAllowed(auth.WRITE, r.UserID, r.Path).Return(true)
+	amMock.EXPECT().IsAllowed(auth.WRITE, r.Get("user_id"), r.Path).Return(true)
 	msMock.EXPECT().
 		StoreMessage(gomock.Any(), gomock.Any()).
 		Do(func(m *protocol.Message, nodeID int) (int, error) {
@@ -147,7 +177,7 @@ func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 	err = router.HandleMessage(&protocol.Message{
 		Path:   r.Path,
 		Body:   aTestByteMessage,
-		UserID: r.UserID,
+		UserID: r.Get("user_id"),
 	})
 
 	// shall give no error
@@ -160,15 +190,26 @@ func TestRouter_ReplacingOfRoutes(t *testing.T) {
 	// Given a Router with a route
 	router, _, _, _ := aStartedRouter()
 
-	router.Subscribe(NewRoute("/blah", "appid01", "user01", 0))
+	router.Subscribe(NewRoute(
+
+		RouteOptions{
+			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
+			Path:        protocol.Path("/blah"),
+		},
+	))
 
 	// when: i add another route with the same Application Id and Same Path
-	router.Subscribe(NewRoute("/blah", "appid01", "newUserId", 0))
+	router.Subscribe(NewRoute(
+		RouteOptions{
+			RouteParams: RouteParams{"application_id": "appid01", "user_id": "newUserId"},
+			Path:        protocol.Path("/blah"),
+		},
+	))
 
 	// then: the router only contains the new route
 	a.Equal(1, len(router.routes))
 	a.Equal(1, len(router.routes["/blah"]))
-	a.Equal("newUserId", router.routes["/blah"][0].UserID)
+	a.Equal("newUserId", router.routes["/blah"][0].Get("user_id"))
 }
 
 func TestRouter_SimpleMessageSending(t *testing.T) {
@@ -223,7 +264,13 @@ func TestRouter_RoutingWithSubTopics(t *testing.T) {
 			return 0, nil
 		})
 
-	r, _ := router.Subscribe(NewRoute("/blah", "appid01", "user01", chanSize))
+	r, _ := router.Subscribe(NewRoute(
+		RouteOptions{
+			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
+			Path:        protocol.Path("/blah"),
+			ChannelSize: chanSize,
+		},
+	))
 
 	// when i send a message to a subroute
 	router.HandleMessage(&protocol.Message{Path: "/blah/blub", Body: aTestByteMessage})
@@ -340,7 +387,13 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	router, _, _, _ := aStartedRouter()
 	router.messageStore = msMock
 
-	route, err := router.Subscribe(NewRoute("/blah", "appid01", "user01", 3))
+	route, err := router.Subscribe(NewRoute(
+		RouteOptions{
+			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
+			Path:        protocol.Path("/blah"),
+			ChannelSize: 3,
+		},
+	))
 	assert.Nil(err)
 
 	doneC := make(chan bool)
@@ -468,9 +521,13 @@ func aStartedRouter() (*router, auth.AccessManager, store.MessageStore, kvstore.
 
 func aRouterRoute(unused int) (*router, *Route) {
 	router, _, _, _ := aStartedRouter()
-	route, _ := router.Subscribe(
-		NewRoute("/blah", "appid01", "user01", chanSize),
-	)
+	route, _ := router.Subscribe(NewRoute(
+		RouteOptions{
+			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
+			Path:        protocol.Path("/blah"),
+			ChannelSize: chanSize,
+		},
+	))
 	return router, route
 }
 

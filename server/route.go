@@ -23,49 +23,36 @@ var (
 
 // Route represents a topic for subscription that has a channel to receive messages.
 type Route struct {
+	RouteOptions
+
 	messagesC chan *protocol.Message
+
 	// queue that will store the messages in correct order
 	//
 	// The queue can have a settable size and if it reaches the capacity the
 	// route is closed
-	queue     *queue
-	queueSize int
+	queue *queue
 
-	// Timeout to define how long to wait for the message to be read on the channel
-	// if timeout is reached the route is closed
-	timeout time.Duration
-	closeC  chan struct{}
+	closeC chan struct{}
 
 	// Indicates if the consumer go routine is running
 	consuming bool
 	invalid   bool
 	mu        sync.RWMutex
 
-	Path          protocol.Path
-	UserID        string // UserID that subscribed or pushes messages to the router
-	ApplicationID string
-	logger        *log.Entry
+	logger *log.Entry
 }
 
 // NewRoute creates a new route pointer
-// 	- `size` is the channel buffer size
-func NewRoute(path, applicationID, userID string, size int) *Route {
-	queueSize := 0
+func NewRoute(options RouteOptions) *Route {
 	route := &Route{
-		messagesC:     make(chan *protocol.Message, size),
-		queue:         newQueue(queueSize),
-		queueSize:     queueSize,
-		timeout:       -1,
-		closeC:        make(chan struct{}),
-		Path:          protocol.Path(path),
-		UserID:        userID,
-		ApplicationID: applicationID,
+		RouteOptions: options,
 
-		logger: logger.WithFields(log.Fields{
-			"path":          path,
-			"applicationID": applicationID,
-			"userID":        userID,
-		}),
+		queue:     newQueue(options.QueueSize),
+		messagesC: make(chan *protocol.Message, options.ChannelSize),
+		closeC:    make(chan struct{}),
+
+		logger: logger.WithFields(log.Fields{"path": options.Path, "params": options.RouteParams}),
 	}
 	return route
 }
@@ -73,18 +60,18 @@ func NewRoute(path, applicationID, userID string, size int) *Route {
 // SetTimeout sets the timeout duration that the route will wait before it will close a
 // blocking channel
 func (r *Route) SetTimeout(timeout time.Duration) *Route {
-	r.timeout = timeout
+	r.Timeout = timeout
 	return r
 }
 
 // SetQueueSize sets the queue size that is allowed before closing the route channel
 func (r *Route) SetQueueSize(size int) *Route {
-	r.queueSize = size
+	r.QueueSize = size
 	return r
 }
 
 func (r *Route) String() string {
-	return fmt.Sprintf("%s:%s:%s", r.Path, r.UserID, r.ApplicationID)
+	return fmt.Sprintf("Path: %s %s", r.Path, r.RouteParams)
 }
 
 // Deliver takes a messages and adds it to the queue to be delivered in to the
@@ -100,11 +87,11 @@ func (r *Route) Deliver(msg *protocol.Message) error {
 	}
 
 	// not an infinite queue
-	if r.queueSize >= 0 {
+	if r.QueueSize >= 0 {
 		// if size is zero the sending is direct
-		if r.queueSize == 0 {
+		if r.QueueSize == 0 {
 			return r.sendDirect(msg)
-		} else if r.queue.size() >= r.queueSize {
+		} else if r.queue.size() >= r.QueueSize {
 			logger.Debug("Closing route because queue is full")
 			r.Close()
 			mTotalDeliverMessageErrors.Add(1)
@@ -142,10 +129,10 @@ func (r *Route) Close() error {
 	return ErrInvalidRoute
 }
 
-func (r *Route) equals(other *Route) bool {
-	return r.Path == other.Path &&
-		r.UserID == other.UserID &&
-		r.ApplicationID == other.ApplicationID
+// Equal will check if the route path is matched and all the parameters or just a
+// subset of specific parameters between the routes
+func (r *Route) Equal(other *Route, keys ...string) bool {
+	return r.Path == other.Path && r.RouteParams.Equal(other.RouteParams, keys...)
 }
 
 // IsInvalid returns true if the route is invalid, has been closed previously
@@ -226,10 +213,11 @@ func (r *Route) consume() {
 // send message through the channel
 func (r *Route) send(msg *protocol.Message) error {
 	defer r.invalidRecover()
+
 	r.logger.WithField("message", msg).Debug("Sending message through route channel")
 
 	// no timeout, means we don't close the channel
-	if r.timeout == -1 {
+	if r.Timeout == -1 {
 		r.messagesC <- msg
 		r.logger.WithField("size", len(r.messagesC)).Debug("Channel size")
 		return nil
@@ -240,7 +228,7 @@ func (r *Route) send(msg *protocol.Message) error {
 		return nil
 	case <-r.closeC:
 		return ErrInvalidRoute
-	case <-time.After(r.timeout):
+	case <-time.After(r.Timeout):
 		r.logger.Debug("Closing route because of timeout")
 		r.Close()
 		return errTimeout
