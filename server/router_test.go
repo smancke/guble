@@ -279,7 +279,7 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 
 	// Given a Router with route
 	router, r := aRouterRoute(chanSize)
-	r.setTimeout(5 * time.Millisecond)
+	r.timeout = 5 * time.Millisecond
 
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock

@@ -21,11 +21,11 @@ type RouteConfig struct {
 	// How many items to hold before the channel is closed.
 	// If set to `0` then the queue will have no capacity and the messages
 	// are directly sent, without buffering.
-	QueueSize int
+	queueSize int
 
-	// Timeout defines how long to wait for the message to be read on the channel.
+	// timeout defines how long to wait for the message to be read on the channel.
 	// If timeout is reached the route is closed.
-	Timeout time.Duration
+	timeout time.Duration
 }
 
 func (rp *RouteParams) String() string {

@@ -43,30 +43,17 @@ type Route struct {
 }
 
 // NewRoute creates a new route pointer
-func NewRoute(options RouteConfig) *Route {
+func NewRoute(config RouteConfig) *Route {
 	route := &Route{
-		RouteConfig: options,
+		RouteConfig: config,
 
-		queue:     newQueue(options.QueueSize),
-		messagesC: make(chan *protocol.Message, options.ChannelSize),
+		queue:     newQueue(config.queueSize),
+		messagesC: make(chan *protocol.Message, config.ChannelSize),
 		closeC:    make(chan struct{}),
 
-		logger: logger.WithFields(log.Fields{"path": options.Path, "params": options.RouteParams}),
+		logger: logger.WithFields(log.Fields{"path": config.Path, "params": config.RouteParams}),
 	}
 	return route
-}
-
-// setTimeout sets the timeout duration that the route will wait
-// before it will close a blocking channel
-func (r *Route) setTimeout(timeout time.Duration) *Route {
-	r.Timeout = timeout
-	return r
-}
-
-// setQueueSize sets the queue size that is allowed before closing the route channel
-func (r *Route) setQueueSize(size int) *Route {
-	r.QueueSize = size
-	return r
 }
 
 func (r *Route) String() string {
@@ -85,11 +72,11 @@ func (r *Route) Deliver(msg *protocol.Message) error {
 	}
 
 	// not an infinite queue
-	if r.QueueSize >= 0 {
+	if r.queueSize >= 0 {
 		// if size is zero the sending is direct
-		if r.QueueSize == 0 {
+		if r.queueSize == 0 {
 			return r.sendDirect(msg)
-		} else if r.queue.size() >= r.QueueSize {
+		} else if r.queue.size() >= r.queueSize {
 			logger.Debug("Closing route because queue is full")
 			r.Close()
 			mTotalDeliverMessageErrors.Add(1)
@@ -215,7 +202,7 @@ func (r *Route) send(msg *protocol.Message) error {
 	r.logger.WithField("message", msg).Debug("Sending message through route channel")
 
 	// no timeout, means we don't close the channel
-	if r.Timeout == -1 {
+	if r.timeout == -1 {
 		r.messagesC <- msg
 		r.logger.WithField("size", len(r.messagesC)).Debug("Channel size")
 		return nil
@@ -226,7 +213,7 @@ func (r *Route) send(msg *protocol.Message) error {
 		return nil
 	case <-r.closeC:
 		return ErrInvalidRoute
-	case <-time.After(r.Timeout):
+	case <-time.After(r.timeout):
 		r.logger.Debug("Closing route because of timeout")
 		r.Close()
 		return errTimeout
