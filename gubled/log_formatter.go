@@ -1,4 +1,4 @@
-package config
+package gubled
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 
 // LogstashGubleFormatter generates json in logstash format.
 // Logstash site: http://logstash.net/
-type LogstashGubleFormatter struct {
+type logstashFormatter struct {
 
 	//Type of the fields
 	Type string // if not empty use for logstash type field.
@@ -31,7 +31,7 @@ type LogstashGubleFormatter struct {
 	TimestampFormat string
 }
 
-func (f *LogstashGubleFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+func (f *logstashFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	fields := make(logrus.Fields)
 	for k, v := range entry.Data {
 		fields[k] = v

@@ -2,7 +2,13 @@
 
 Guble is a simple user-facing messaging and data replication server written in Go.
 
-[![Release](https://img.shields.io/github/release/smancke/guble.svg)](https://github.com/smancke/guble/releases/latest) [![Docker](https://img.shields.io/docker/pulls/smancke/guble.svg)](https://hub.docker.com/r/smancke/guble/) [![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble) [![Coverage Status](https://coveralls.io/repos/smancke/guble/badge.svg?branch=master&service=github)](https://coveralls.io/github/smancke/guble?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/smancke/guble)](https://goreportcard.com/report/github.com/smancke/guble) [![GoDoc](https://godoc.org/github.com/smancke/guble?status.svg)](https://godoc.org/github.com/smancke/guble)
+[![Release](https://img.shields.io/github/release/smancke/guble.svg)](https://github.com/smancke/guble/releases/latest)
+[![Docker](https://img.shields.io/docker/pulls/smancke/guble.svg)](https://hub.docker.com/r/smancke/guble/)
+[![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble)
+[![Go Report Card](https://goreportcard.com/badge/github.com/smancke/guble)](https://goreportcard.com/report/github.com/smancke/guble)
+[![codebeat badge](https://codebeat.co/badges/7f317892-0a7b-4e31-97f4-a530cf779889)](https://codebeat.co/projects/github-com-smancke-guble)
+[![Coverage Status](https://coveralls.io/repos/smancke/guble/badge.svg?branch=master&service=github)](https://coveralls.io/github/smancke/guble?branch=master)
+[![GoDoc](https://godoc.org/github.com/smancke/guble?status.svg)](https://godoc.org/github.com/smancke/guble)
 
 # Overview
 Guble is in an early state. It is already working well and is very useful, but the protocol, API and storage formats may
@@ -129,7 +135,7 @@ The Docker image includes the guble commandline client `guble-cli`.
 You can execute it within a running guble container and connect to the server:
 ```
 docker run -d --name guble smancke/guble
-docker exec -it guble /go/bin/guble-cli
+docker exec -it guble /usr/local/bin/guble-cli
 ```
 Visit the [`guble-cli` documentation](https://github.com/smancke/guble/tree/master/guble-cli) for more details.
 

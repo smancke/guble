@@ -5,6 +5,9 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/smancke/guble/kvstore"
+	"github.com/smancke/guble/protocol"
 )
 
 const topicSchema = "topic_sequence"
@@ -17,7 +20,7 @@ const topicSchema = "topic_sequence"
 type DummyMessageStore struct {
 	topicSequences     map[string]uint64
 	topicSequencesLock sync.RWMutex
-	kvStore            KVStore
+	kvStore            kvstore.KVStore
 	isSyncStarted      bool
 
 	stopC    chan bool // used to send the stop request to the syc goroutine
@@ -26,7 +29,7 @@ type DummyMessageStore struct {
 	idSyncDuration time.Duration
 }
 
-func NewDummyMessageStore(kvStore KVStore) *DummyMessageStore {
+func NewDummyMessageStore(kvStore kvstore.KVStore) *DummyMessageStore {
 	return &DummyMessageStore{
 		topicSequences: make(map[string]uint64),
 		kvStore:        kvStore,
@@ -51,18 +54,20 @@ func (dms *DummyMessageStore) Stop() error {
 	return nil
 }
 
-func (dms *DummyMessageStore) StoreTx(partition string,
-	callback func(msgId uint64) (msg []byte)) error {
-
-	dms.topicSequencesLock.Lock()
-	defer dms.topicSequencesLock.Unlock()
-
-	msgId, err := dms.maxMessageId(partition)
+func (dms *DummyMessageStore) StoreMessage(message *protocol.Message, nodeID int) (int, error) {
+	partitionName := message.Path.Partition()
+	nextID, ts, err := dms.GenerateNextMsgID(partitionName, 0)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	msgId++
-	return dms.store(partition, msgId, callback(msgId))
+	message.ID = nextID
+	message.Time = ts
+	message.NodeID = nodeID
+	data := message.Bytes()
+	if err := dms.Store(partitionName, nextID, data); err != nil {
+		return 0, err
+	}
+	return len(data), nil
 }
 
 func (dms *DummyMessageStore) Store(partition string, msgId uint64, msg []byte) error {
@@ -102,6 +107,19 @@ func (dms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessa
 		return err
 	}
 	return fnToExecute(maxId)
+}
+
+func (dms *DummyMessageStore) GenerateNextMsgID(partitionName string, timestamp int) (uint64, int64, error) {
+	dms.topicSequencesLock.Lock()
+	defer dms.topicSequencesLock.Unlock()
+	ts := time.Now().Unix()
+	max, err := dms.maxMessageId(partitionName)
+	if err != nil {
+		return 0, 0, err
+	}
+	next := max + 1
+	dms.setId(partitionName, next)
+	return next, ts, nil
 }
 
 func (dms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {

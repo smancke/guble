@@ -5,11 +5,11 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/health"
 
+	"github.com/smancke/guble/kvstore"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/cluster"
@@ -27,7 +27,7 @@ const (
 type Router interface {
 	AccessManager() (auth.AccessManager, error)
 	MessageStore() (store.MessageStore, error)
-	KVStore() (store.KVStore, error)
+	KVStore() (kvstore.KVStore, error)
 	Cluster() *cluster.Cluster
 
 	Fetch(store.FetchRequest) error
@@ -54,14 +54,14 @@ type router struct {
 
 	accessManager auth.AccessManager
 	messageStore  store.MessageStore
-	kvStore       store.KVStore
+	kvStore       kvstore.KVStore
 	cluster       *cluster.Cluster
 
 	sync.RWMutex
 }
 
 // NewRouter returns a pointer to Router
-func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore store.KVStore, cluster *cluster.Cluster) Router {
+func NewRouter(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore kvstore.KVStore, cluster *cluster.Cluster) Router {
 	return &router{
 		routes: make(map[protocol.Path][]*Route),
 
@@ -150,8 +150,7 @@ func (router *router) Check() error {
 func (router *router) HandleMessage(message *protocol.Message) error {
 	logger.WithFields(log.Fields{
 		"userID": message.UserID,
-		"path":   message.Path,
-	}).Debug("HandleMessage")
+		"path":   message.Path}).Debug("HandleMessage")
 
 	mTotalMessagesIncoming.Add(1)
 	if err := router.isStopping(); err != nil {
@@ -163,30 +162,20 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
 	}
 
-	lenMessage := int64(len(message.Bytes()))
-	mTotalMessagesIncomingBytes.Add(lenMessage)
-
-	msgPathPartition := message.Path.Partition()
-	if router.cluster == nil || (router.cluster != nil && message.NodeID == router.cluster.Config.ID) {
-		// for a new locally-generated message, we need to generate a new message-ID
-		txCallback := func(msgId uint64) []byte {
-			message.ID = msgId
-			message.Time = time.Now().Unix()
-			return message.Bytes()
-		}
-		if err := router.messageStore.StoreTx(msgPathPartition, txCallback); err != nil {
-			logger.WithError(err).WithField("msgPartition", msgPathPartition).Error("Error storing new local message in partition")
-			mTotalMessageStoreErrors.Add(1)
-			return err
-		}
-	} else {
-		if err := router.messageStore.Store(msgPathPartition, message.ID, message.Bytes()); err != nil {
-			logger.WithError(err).WithField("msgPartition", msgPathPartition).Error("Error storing message from cluster in partition")
-			mTotalMessageStoreErrors.Add(1)
-			return err
-		}
+	// for a new locally-generated message, we need to generate a new message-ID
+	var nodeID int
+	if router.cluster != nil {
+		nodeID = router.cluster.Config.ID
 	}
-	mTotalMessagesStoredBytes.Add(lenMessage)
+
+	mTotalMessagesIncomingBytes.Add(int64(len(message.Bytes())))
+	if size, err := router.messageStore.StoreMessage(message, nodeID); err != nil {
+		logger.WithError(err).Error("Error storing message")
+		mTotalMessageStoreErrors.Add(1)
+		return err
+	} else {
+		mTotalMessagesStoredBytes.Add(int64(size))
+	}
 
 	router.handleOverloadedChannel()
 
@@ -404,7 +393,7 @@ func (router *router) MessageStore() (store.MessageStore, error) {
 }
 
 // KVStore returns the `kvStore` provided for the router
-func (router *router) KVStore() (store.KVStore, error) {
+func (router *router) KVStore() (kvstore.KVStore, error) {
 	if router.kvStore == nil {
 		return nil, ErrServiceNotProvided
 	}

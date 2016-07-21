@@ -1,4 +1,4 @@
-package store
+package kvstore
 
 import (
 	log "github.com/Sirupsen/logrus"
@@ -9,11 +9,13 @@ import (
 
 const postgresGormLogMode = false
 
+// PostgresKVStore extends a gorm-based kvStore with a Postgresql-specific configuration.
 type PostgresKVStore struct {
 	*kvStore
 	config PostgresConfig
 }
 
+// NewPostgresKVStore returns a new configured PostgresKVStore (not opened yet).
 func NewPostgresKVStore(postgresConfig PostgresConfig) *PostgresKVStore {
 	return &PostgresKVStore{
 		kvStore: &kvStore{logger: log.WithFields(log.Fields{"module": "kv-postgres"})},
@@ -21,6 +23,7 @@ func NewPostgresKVStore(postgresConfig PostgresConfig) *PostgresKVStore {
 	}
 }
 
+// Open a connection to Postgresql database, or return an error.
 func (kvStore *PostgresKVStore) Open() error {
 	logger := kvStore.logger.WithField("config", kvStore.config)
 	logger.Info("Opening database")

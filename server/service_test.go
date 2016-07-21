@@ -8,6 +8,7 @@ import (
 
 	"errors"
 	"fmt"
+	"github.com/smancke/guble/kvstore"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -159,8 +160,8 @@ func TestMetricsEnabled(t *testing.T) {
 	a.True(len(body) > 0)
 }
 
-func aMockedServiceWithMockedRouterStandalone() (*Service, store.KVStore, store.MessageStore, *MockRouter) {
-	kvStore := store.NewMemoryKVStore()
+func aMockedServiceWithMockedRouterStandalone() (*Service, kvstore.KVStore, store.MessageStore, *MockRouter) {
+	kvStore := kvstore.NewMemoryKVStore()
 	messageStore := store.NewDummyMessageStore(kvStore)
 	routerMock := NewMockRouter(testutil.MockCtrl)
 	routerMock.EXPECT().Cluster().Return(nil).MaxTimes(2)

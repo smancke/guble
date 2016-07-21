@@ -1,6 +1,8 @@
 package testutil
 
 import (
+	_ "net/http/pprof"
+
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/alexjlockwood/gcm"
@@ -41,6 +43,12 @@ func NewMockCtrl(t *testing.T) (*gomock.Controller, func()) {
 func EnableDebugForMethod() func() {
 	reset := log.GetLevel()
 	log.SetLevel(log.DebugLevel)
+	return func() { log.SetLevel(reset) }
+}
+
+func EnableInfoForMethod() func() {
+	reset := log.GetLevel()
+	log.SetLevel(log.InfoLevel)
 	return func() { log.SetLevel(reset) }
 }
 
@@ -169,4 +177,10 @@ func SkipIfShort(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
+}
+
+func PprofDebug() {
+	go func() {
+		http.ListenAndServe("localhost:6060", nil)
+	}()
 }

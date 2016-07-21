@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/kvstore"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/store"
@@ -132,6 +133,7 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 }
 
 func TestRouter_HandleMessageNotAllowed(t *testing.T) {
+	// defer testutil.EnableDebugForMethod()()
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	a := assert.New(t)
@@ -149,28 +151,37 @@ func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 	amMock.EXPECT().IsAllowed(auth.WRITE, r.Get("user_id"), r.Path).Return(false)
 
 	// when i send a message to the route
-	e := router.HandleMessage(&protocol.Message{
+	err := router.HandleMessage(&protocol.Message{
 		Path:   r.Path,
 		Body:   aTestByteMessage,
 		UserID: r.Get("user_id"),
 	})
 
 	// an error shall be returned
-	a.NotNil(e)
+	a.Error(err)
 
 	// and when permission is granted
+	id, ts := uint64(2), time.Now().Unix()
+
 	amMock.EXPECT().IsAllowed(auth.WRITE, r.Get("user_id"), r.Path).Return(true)
-	msMock.EXPECT().StoreTx(r.Path.Partition(), gomock.Any()).Return(nil)
+	msMock.EXPECT().
+		StoreMessage(gomock.Any(), gomock.Any()).
+		Do(func(m *protocol.Message, nodeID int) (int, error) {
+			m.ID = id
+			m.Time = ts
+			m.NodeID = nodeID
+			return len(m.Bytes()), nil
+		})
 
 	// sending message
-	e = router.HandleMessage(&protocol.Message{
+	err = router.HandleMessage(&protocol.Message{
 		Path:   r.Path,
 		Body:   aTestByteMessage,
 		UserID: r.Get("user_id"),
 	})
 
 	// shall give no error
-	a.Nil(e)
+	a.NoError(err)
 }
 
 func TestRouter_ReplacingOfRoutes(t *testing.T) {
@@ -209,7 +220,16 @@ func TestRouter_SimpleMessageSending(t *testing.T) {
 	router, r := aRouterRoute(chanSize)
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
-	msMock.EXPECT().StoreTx(r.Path.Partition(), gomock.Any()).Return(nil)
+
+	id, ts := uint64(2), time.Now().Unix()
+	msMock.EXPECT().
+		StoreMessage(gomock.Any(), gomock.Any()).
+		Do(func(m *protocol.Message, nodeID int) (int, error) {
+			m.ID = id
+			m.Time = ts
+			m.NodeID = nodeID
+			return len(m.Bytes()), nil
+		})
 
 	// when i send a message to the route
 	router.HandleMessage(&protocol.Message{Path: r.Path, Body: aTestByteMessage})
@@ -229,8 +249,19 @@ func TestRouter_RoutingWithSubTopics(t *testing.T) {
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
 	// expect a message to `blah` partition first and `blahblub` second
-	msMock.EXPECT().StoreTx("blah", gomock.Any()).Return(nil)
-	msMock.EXPECT().StoreTx("blahblub", gomock.Any()).Return(nil)
+	msMock.EXPECT().
+		StoreMessage(gomock.Any(), gomock.Any()).
+		Do(func(m *protocol.Message, nodeID int) (int, error) {
+			a.Equal("/blah/blub", string(m.Path))
+			return 0, nil
+		})
+
+	msMock.EXPECT().
+		StoreMessage(gomock.Any(), gomock.Any()).
+		Do(func(m *protocol.Message, nodeID int) (int, error) {
+			a.Equal("/blahblub", string(m.Path))
+			return 0, nil
+		})
 
 	r, _ := router.Subscribe(NewRoute(
 		RouteConfig{
@@ -283,7 +314,13 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
-	msMock.EXPECT().StoreTx(gomock.Any(), gomock.Any()).MaxTimes(chanSize + 1)
+
+	msMock.EXPECT().
+		StoreMessage(gomock.Any(), gomock.Any()).
+		Do(func(m *protocol.Message, nodeID int) (int, error) {
+			a.Equal(r.Path, m.Path)
+			return 0, nil
+		}).MaxTimes(chanSize + 1)
 
 	// where the channel is full of messages
 	for i := 0; i < chanSize; i++ {
@@ -326,41 +363,6 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 	}
 }
 
-func TestRouter_storeInTxAndHandle(t *testing.T) {
-	ctrl, finish := testutil.NewMockCtrl(t)
-	defer finish()
-	a := assert.New(t)
-	startTime := time.Now()
-
-	msg := &protocol.Message{Path: protocol.Path("/topic1")}
-	var storedMsg []byte
-
-	am := auth.NewAllowAllAccessManager(true)
-	msMock := NewMockMessageStore(ctrl)
-	router := NewRouter(am, msMock, nil, nil).(*router)
-
-	msMock.EXPECT().StoreTx("topic1", gomock.Any()).
-		Do(func(topic string, callback func(msgId uint64) []byte) {
-			storedMsg = callback(uint64(42))
-		})
-
-	receive := make(chan *protocol.Message)
-	go func() {
-		msg := <-router.handleC
-
-		a.Equal(uint64(42), msg.ID)
-		t := time.Unix(msg.Time, 0) // publishing time
-		a.True(t.After(startTime.Add(-1 * time.Second)))
-		a.True(t.Before(time.Now().Add(time.Second)))
-
-		receive <- msg
-	}()
-	router.HandleMessage(msg)
-	routedMsg := <-receive
-
-	a.Equal(routedMsg.Bytes(), storedMsg)
-}
-
 // Router should handle the buffered messages also after the closing of the route
 func TestRouter_CleanShutdown(t *testing.T) {
 	//testutil.EnableDebugForMethod()
@@ -372,7 +374,7 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	var ID uint64
 
 	msMock := NewMockMessageStore(ctrl)
-	msMock.EXPECT().StoreTx("blah", gomock.Any()).
+	msMock.EXPECT().Store("blah", gomock.Any(), gomock.Any()).
 		Return(nil).
 		Do(func(partition string, callback func(msgID uint64) []byte) error {
 			ID++
@@ -507,9 +509,9 @@ func TestPanicOnInternalDependencies(t *testing.T) {
 	router.panicIfInternalDependenciesAreNil()
 }
 
-func aStartedRouter() (*router, auth.AccessManager, store.MessageStore, store.KVStore) {
+func aStartedRouter() (*router, auth.AccessManager, store.MessageStore, kvstore.KVStore) {
 	am := auth.NewAllowAllAccessManager(true)
-	kvs := store.NewMemoryKVStore()
+	kvs := kvstore.NewMemoryKVStore()
 	ms := store.NewDummyMessageStore(kvs)
 	router := NewRouter(am, ms, kvs, nil).(*router)
 	router.Start()
