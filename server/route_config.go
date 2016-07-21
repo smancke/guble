@@ -17,8 +17,8 @@ type RouteConfig struct {
 
 	ChannelSize int
 
-	// QueueSize specify the size of the internal queue slice.
-	// How many items to hold before the channel is closed.
+	// queueSize specifies the size of the internal queue slice
+	// (how many items to hold before the channel is closed).
 	// If set to `0` then the queue will have no capacity and the messages
 	// are directly sent, without buffering.
 	queueSize int
