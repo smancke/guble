@@ -3,7 +3,9 @@ package testintegration
 import (
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gubled"
+	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/testutil"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -13,9 +15,6 @@ import (
 	"os"
 	"testing"
 	"time"
-
-	"github.com/smancke/guble/testutil"
-	"github.com/smancke/guble/protocol"
 )
 
 func createService(storagePath, nodeID, nodePort, httpListen string, remotes string) *server.Service {

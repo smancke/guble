@@ -23,11 +23,11 @@ var (
 )
 
 const (
-	gubleNodeIdBits = 3
-	sequenceBits = 12
-	gubleNodeIdShift = sequenceBits
+	gubleNodeIdBits    = 3
+	sequenceBits       = 12
+	gubleNodeIdShift   = sequenceBits
 	timestampLeftShift = sequenceBits + gubleNodeIdBits
-	gubleEpoch = 1467714505012
+	gubleEpoch         = 1467714505012
 )
 
 type Index struct {
@@ -257,7 +257,7 @@ func (p *messagePartition) generateNextMsgID(nodeID int) (uint64, int64, error) 
 		return 0, 0, err
 	}
 
-	id := (uint64(nanoTimestamp- gubleEpoch) << timestampLeftShift) |
+	id := (uint64(nanoTimestamp-gubleEpoch) << timestampLeftShift) |
 		(uint64(nodeID) << gubleNodeIdShift) | p.sequenceNumber
 
 	p.sequenceNumber++

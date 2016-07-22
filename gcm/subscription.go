@@ -60,9 +60,9 @@ func newSubscription(gcm *Connector, route *server.Route, lastID uint64) *subscr
 	}
 }
 
-// creates a subscription and adds it in router/kvstore then starts listening for messages
-func initSubscription(gcm *Connector, topic, userID, gcmID string, lastID uint64) (*subscription, error) {
-	route := server.NewRoute(server.RouteOptions{
+// initSubscription creates a subscription and adds it in router/kvstore then starts listening for messages
+func initSubscription(gcm *Connector, topic, userID, gcmID string, unusedLastID uint64) (*subscription, error) {
+	route := server.NewRoute(server.RouteConfig{
 		RouteParams: server.RouteParams{userIDKey: userID, applicationIDKey: gcmID},
 		Path:        protocol.Path(topic),
 		ChannelSize: subBufferSize,
@@ -104,7 +104,7 @@ func (s *subscription) start() error {
 
 // recreate the route and resubscribe
 func (s *subscription) restart() error {
-	s.route = server.NewRoute(server.RouteOptions{
+	s.route = server.NewRoute(server.RouteConfig{
 		RouteParams: s.route.RouteParams,
 		Path:        s.route.Path,
 		ChannelSize: subBufferSize,

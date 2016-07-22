@@ -206,7 +206,7 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 
 	// put a dummy gcm message with minimum information
 	route := &server.Route{
-		RouteOptions: server.RouteOptions{
+		RouteConfig: server.RouteConfig{
 			RouteParams: server.RouteParams{applicationIDKey: "id"},
 		},
 	}
