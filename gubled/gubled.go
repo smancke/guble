@@ -27,8 +27,7 @@ import (
 )
 
 const (
-	fileOption            = "file"
-	defaultSqliteFilename = "kv-store.db"
+	fileOption = "file"
 )
 
 var ValidateStoragePath = func() error {
@@ -54,7 +53,7 @@ var CreateKVStore = func() kvstore.KVStore {
 	case "memory":
 		return kvstore.NewMemoryKVStore()
 	case "file":
-		db := kvstore.NewSqliteKVStore(path.Join(*config.StoragePath, defaultSqliteFilename), true)
+		db := kvstore.NewSqliteKVStore(path.Join(*config.StoragePath, "kv-store.db"), true)
 		if err := db.Open(); err != nil {
 			logger.WithError(err).Panic("Could not open sqlite database connection")
 		}
