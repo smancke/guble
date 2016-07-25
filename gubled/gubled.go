@@ -4,7 +4,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/smancke/guble/gcm"
-	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/logformatter"
 	"github.com/smancke/guble/metrics"
 	"github.com/smancke/guble/server"
@@ -128,7 +127,7 @@ var CreateModules = func(router server.Router) []interface{} {
 
 func Main() {
 	log.SetFormatter(&logformatter.LogstashFormatter{})
-	config.Parse()
+	parseConfig()
 	defer func() {
 		if p := recover(); p != nil {
 			logger.Fatal("Fatal error in gubled after recover")
@@ -186,7 +185,7 @@ func StartService() *server.Service {
 
 	service := server.NewService(router, webserver).
 		HealthEndpoint(*config.HealthEndpoint).
-		MetricsEndpoint(*config.Metrics.Endpoint)
+		MetricsEndpoint(*config.MetricsEndpoint)
 
 	service.RegisterModules(0, 6, kvStore, messageStore)
 	service.RegisterModules(4, 3, CreateModules(router)...)

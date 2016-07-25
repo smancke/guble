@@ -2,7 +2,7 @@ package gubled
 
 import (
 	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/gubled/config"
+	"github.com/smancke/guble/testutil"
 
 	"github.com/stretchr/testify/assert"
 
@@ -12,8 +12,6 @@ import (
 	"strconv"
 	"testing"
 	"time"
-
-	"github.com/smancke/guble/testutil"
 )
 
 func Benchmark_E2E_Fetch_HelloWorld_Messages(b *testing.B) {

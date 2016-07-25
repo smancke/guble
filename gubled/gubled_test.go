@@ -1,7 +1,6 @@
 package gubled
 
 import (
-	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/server/kvstore"
 
 	"github.com/smancke/guble/testutil"

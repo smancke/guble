@@ -1,4 +1,4 @@
-package config
+package gubled
 
 import (
 	"os"
@@ -67,7 +67,7 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	defer os.Unsetenv("GUBLE_PG_DBNAME")
 
 	// when we parse the arguments from environment variables
-	Parse()
+	parseConfig()
 
 	// then the parsed parameters are correctly set
 	assertArguments(a)
@@ -102,33 +102,33 @@ func TestParsingArgs(t *testing.T) {
 	}
 
 	// when we parse the arguments from command-line flags
-	Parse()
+	parseConfig()
 
 	// then the parsed parameters are correctly set
 	assertArguments(a)
 }
 
 func assertArguments(a *assert.Assertions) {
-	a.Equal("http_listen", *HttpListen)
-	a.Equal("kvs-backend", *KVS)
-	a.Equal(os.TempDir(), *StoragePath)
-	a.Equal("ms-backend", *MS)
-	a.Equal("health_endpoint", *HealthEndpoint)
+	a.Equal("http_listen", *config.HttpListen)
+	a.Equal("kvs-backend", *config.KVS)
+	a.Equal(os.TempDir(), *config.StoragePath)
+	a.Equal("ms-backend", *config.MS)
+	a.Equal("health_endpoint", *config.HealthEndpoint)
 
-	a.Equal("metrics_endpoint", *Metrics.Endpoint)
+	a.Equal("metrics_endpoint", *config.MetricsEndpoint)
 
-	a.Equal(true, *GCM.Enabled)
-	a.Equal("gcm-api-key", *GCM.APIKey)
-	a.Equal(3, *GCM.Workers)
+	a.Equal(true, *config.GCM.Enabled)
+	a.Equal("gcm-api-key", *config.GCM.APIKey)
+	a.Equal(3, *config.GCM.Workers)
 
-	a.Equal(1, *Cluster.NodeID)
-	a.Equal(10000, *Cluster.NodePort)
+	a.Equal(1, *config.Cluster.NodeID)
+	a.Equal(10000, *config.Cluster.NodePort)
 
-	a.Equal("pg-host", *Postgres.Host)
-	a.Equal(5432, *Postgres.Port)
-	a.Equal("pg-user", *Postgres.User)
-	a.Equal("pg-password", *Postgres.Password)
-	a.Equal("pg-dbname", *Postgres.DbName)
+	a.Equal("pg-host", *config.Postgres.Host)
+	a.Equal(5432, *config.Postgres.Port)
+	a.Equal("pg-user", *config.Postgres.User)
+	a.Equal("pg-password", *config.Postgres.Password)
+	a.Equal("pg-dbname", *config.Postgres.DbName)
 
-	a.Equal("debug", *Log)
+	a.Equal("debug", *config.Log)
 }

@@ -12,7 +12,6 @@ import (
 
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gcm"
-	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
