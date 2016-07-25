@@ -5,11 +5,12 @@ import (
 
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/gubled/config"
-	"github.com/smancke/guble/kvstore"
+	"github.com/smancke/guble/logformatter"
 	"github.com/smancke/guble/metrics"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/cluster"
+	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/rest"
 	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/server/websocket"
@@ -27,8 +28,7 @@ import (
 )
 
 const (
-	fileOption            = "file"
-	defaultSqliteFilename = "kv-store.db"
+	fileOption = "file"
 )
 
 var ValidateStoragePath = func() error {
@@ -54,7 +54,7 @@ var CreateKVStore = func() kvstore.KVStore {
 	case "memory":
 		return kvstore.NewMemoryKVStore()
 	case "file":
-		db := kvstore.NewSqliteKVStore(path.Join(*config.StoragePath, defaultSqliteFilename), true)
+		db := kvstore.NewSqliteKVStore(path.Join(*config.StoragePath, "kv-store.db"), true)
 		if err := db.Open(); err != nil {
 			logger.WithError(err).Panic("Could not open sqlite database connection")
 		}
@@ -127,7 +127,7 @@ var CreateModules = func(router server.Router) []interface{} {
 }
 
 func Main() {
-	log.SetFormatter(&logstashFormatter{})
+	log.SetFormatter(&logformatter.LogstashFormatter{})
 	config.Parse()
 	defer func() {
 		if p := recover(); p != nil {

@@ -1,14 +1,15 @@
 package server
 
 import (
+	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
+
 	"github.com/stretchr/testify/assert"
 
 	"errors"
 	"fmt"
-	"github.com/smancke/guble/kvstore"
 	"io/ioutil"
 	"net/http"
 	"testing"

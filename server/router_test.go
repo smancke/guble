@@ -5,12 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/kvstore"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 

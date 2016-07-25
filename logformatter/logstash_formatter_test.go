@@ -1,4 +1,4 @@
-package gubled
+package logformatter
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ func TestLogstashFormatter_Format(t *testing.T) {
 
 	assert := assert.New(t)
 
-	lf := logstashFormatter{Type: "abc", ServiceName: "guble", Env: "prod"}
+	lf := LogstashFormatter{Type: "abc", ServiceName: "guble", Env: "prod"}
 
 	fields := logrus.Fields{
 		"message": "def",
