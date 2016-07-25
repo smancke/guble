@@ -3,7 +3,7 @@ package rest
 import (
 	"errors"
 	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/router"
 
 	"github.com/rs/xid"
 
@@ -18,11 +18,11 @@ const X_HEADER_PREFIX = "x-guble-"
 var errNotFound = errors.New("Not Found.")
 
 type RestMessageAPI struct {
-	router server.Router
+	router router.Router
 	prefix string
 }
 
-func NewRestMessageAPI(router server.Router, prefix string) *RestMessageAPI {
+func NewRestMessageAPI(router router.Router, prefix string) *RestMessageAPI {
 	return &RestMessageAPI{router, prefix}
 }
 

@@ -2,17 +2,17 @@ package websocket
 
 import (
 	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
-	"sync"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
-	"github.com/smancke/guble/server/auth"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -242,7 +242,7 @@ type routeMatcher struct {
 }
 
 func (n routeMatcher) Matches(x interface{}) bool {
-	return n.path == string(x.(*server.Route).Path)
+	return n.path == string(x.(*router.Route).Path)
 }
 
 func (n routeMatcher) String() string {

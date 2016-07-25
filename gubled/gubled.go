@@ -18,6 +18,7 @@ import (
 	"github.com/smancke/guble/store/filestore"
 
 	"fmt"
+	"github.com/smancke/guble/server/router"
 	"net"
 	"os"
 	"os/signal"
@@ -93,7 +94,7 @@ var CreateMessageStore = func() store.MessageStore {
 	}
 }
 
-var CreateModules = func(router server.Router) []interface{} {
+var CreateModules = func(router router.Router) []interface{} {
 	var modules []interface{}
 
 	if wsHandler, err := websocket.NewWSHandler(router, "/stream/"); err != nil {
@@ -181,7 +182,7 @@ func StartService() *server.Service {
 		logger.Info("Starting in standalone-mode")
 	}
 
-	router := server.NewRouter(accessManager, messageStore, kvStore, cl)
+	router := router.NewRouter(accessManager, messageStore, kvStore, cl)
 	webserver := webserver.New(*config.HttpListen)
 
 	service := server.NewService(router, webserver).

@@ -5,8 +5,8 @@ import (
 	"github.com/alexjlockwood/gcm"
 
 	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/kvstore"
+	"github.com/smancke/guble/server/router"
 
 	"errors"
 	"fmt"
@@ -38,7 +38,7 @@ var logger = log.WithFields(log.Fields{
 // Connector is the structure for handling the communication with Google Cloud Messaging
 type Connector struct {
 	Sender        *gcm.Sender
-	router        server.Router
+	router        router.Router
 	kvStore       kvstore.KVStore
 	prefix        string
 	pipelineC     chan *pipeMessage
@@ -49,7 +49,7 @@ type Connector struct {
 }
 
 // New creates a new *Connector without starting it
-func New(router server.Router, prefix string, gcmAPIKey string, nWorkers int) (*Connector, error) {
+func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int) (*Connector, error) {
 	kvStore, err := router.KVStore()
 	if err != nil {
 		return nil, err
