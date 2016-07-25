@@ -9,10 +9,10 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/health"
 
-	"github.com/smancke/guble/kvstore"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/cluster"
+	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/store"
 )
 

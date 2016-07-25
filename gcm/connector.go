@@ -1,17 +1,17 @@
 package gcm
 
 import (
-	"strconv"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/alexjlockwood/gcm"
+
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/kvstore"
 
 	"errors"
 	"fmt"
-	"github.com/smancke/guble/kvstore"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 )

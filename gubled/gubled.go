@@ -5,11 +5,11 @@ import (
 
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/gubled/config"
-	"github.com/smancke/guble/kvstore"
 	"github.com/smancke/guble/metrics"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/cluster"
+	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/rest"
 	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/server/websocket"

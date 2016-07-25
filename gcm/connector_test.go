@@ -1,14 +1,15 @@
 package gcm
 
 import (
-	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
-	"github.com/smancke/guble/kvstore"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
