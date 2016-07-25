@@ -5,6 +5,7 @@ import (
 
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/gubled/config"
+	"github.com/smancke/guble/logformatter"
 	"github.com/smancke/guble/metrics"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
@@ -126,7 +127,7 @@ var CreateModules = func(router server.Router) []interface{} {
 }
 
 func Main() {
-	log.SetFormatter(&logstashFormatter{})
+	log.SetFormatter(&logformatter.LogstashFormatter{})
 	config.Parse()
 	defer func() {
 		if p := recover(); p != nil {
