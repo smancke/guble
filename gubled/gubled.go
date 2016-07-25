@@ -14,6 +14,7 @@ import (
 	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/server/websocket"
 	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/store/dummystore"
 	"github.com/smancke/guble/store/filestore"
 
 	"fmt"
@@ -83,7 +84,7 @@ var CreateKVStore = func() kvstore.KVStore {
 var CreateMessageStore = func() store.MessageStore {
 	switch *config.MS {
 	case "none", "":
-		return store.NewDummyMessageStore(kvstore.NewMemoryKVStore())
+		return dummystore.NewDummyMessageStore(kvstore.NewMemoryKVStore())
 	case "file":
 		logger.WithField("storagePath", *config.StoragePath).Info("Using FileMessageStore in directory")
 		return filestore.NewFileMessageStore(*config.StoragePath)
