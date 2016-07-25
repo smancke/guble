@@ -74,7 +74,8 @@ func TestRouteDeliver_Invalid(t *testing.T) {
 func TestRouteDeliver_QueueSize(t *testing.T) {
 	a := assert.New(t)
 	// create a route with a queue size
-	r := testRoute().SetQueueSize(queueSize)
+	r := testRoute()
+	r.queueSize = queueSize
 
 	// fill the channel buffer and the queue
 	for i := 0; i < chanSize+queueSize; i++ {
@@ -103,9 +104,9 @@ func TestRouteDeliver_WithTimeout(t *testing.T) {
 	a := assert.New(t)
 
 	// create a route with timeout and infinite queue size
-	r := testRoute().
-		SetTimeout(10 * time.Millisecond).
-		SetQueueSize(-1) // infinite queue size
+	r := testRoute()
+	r.queueSize = -1 // infinite queue size
+	r.timeout = 10 * time.Millisecond
 
 	// fill the channel buffer
 	for i := 0; i < chanSize; i++ {
@@ -150,7 +151,7 @@ func TestQueue_ShiftEmpty(t *testing.T) {
 }
 
 func testRoute() *Route {
-	options := RouteOptions{
+	options := RouteConfig{
 		RouteParams: RouteParams{
 			"application_id": "appID",
 			"user_id":        "userID",

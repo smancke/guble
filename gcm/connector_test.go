@@ -1,14 +1,15 @@
 package gcm
 
 import (
-	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
-	"github.com/smancke/guble/kvstore"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -206,7 +207,7 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 
 	// put a dummy gcm message with minimum information
 	route := &server.Route{
-		RouteOptions: server.RouteOptions{
+		RouteConfig: server.RouteConfig{
 			RouteParams: server.RouteParams{applicationIDKey: "id"},
 		},
 	}

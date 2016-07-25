@@ -8,25 +8,25 @@ import (
 	"github.com/smancke/guble/protocol"
 )
 
-type RouteOptions struct {
+type RouteParams map[string]string
+
+type RouteConfig struct {
+	RouteParams
+
 	Path protocol.Path
 
 	ChannelSize int
 
-	// QueueSize specify the size of the internal queue slice.
-	// How many items to hold before the channel is closed.
-	// If set to `0` then the queue will have no capacity and the messages are sent
-	// directly, without buffering
-	QueueSize int
+	// queueSize specifies the size of the internal queue slice
+	// (how many items to hold before the channel is closed).
+	// If set to `0` then the queue will have no capacity and the messages
+	// are directly sent, without buffering.
+	queueSize int
 
-	// Timeout to define how long to wait for the message to be read on the channel
-	// if timeout is reached the route is closed
-	Timeout time.Duration
-
-	RouteParams
+	// timeout defines how long to wait for the message to be read on the channel.
+	// If timeout is reached the route is closed.
+	timeout time.Duration
 }
-
-type RouteParams map[string]string
 
 func (rp *RouteParams) String() string {
 	s := make([]string, 0, len(*rp))
@@ -36,19 +36,16 @@ func (rp *RouteParams) String() string {
 	return strings.Join(s, " ")
 }
 
-// Equal verifies if the `receiver` params are the same as `other` params
-// the `keys` param specifies which keys to check in case the match has to be
-// done only on a separate set of keys and not all
+// Equal verifies if the `receiver` params are the same as `other` params.
+// The `keys` param specifies which keys to check in case the match has to be
+// done only on a separate set of keys and not on all keys.
 func (rp *RouteParams) Equal(other RouteParams, keys ...string) bool {
 	if len(keys) > 0 {
 		return rp.partialEqual(other, keys)
-
 	}
-
 	if len(*rp) != len(other) {
 		return false
 	}
-
 	for k, v := range *rp {
 		if v2, ok := other[k]; !ok {
 			return false
@@ -56,7 +53,6 @@ func (rp *RouteParams) Equal(other RouteParams, keys ...string) bool {
 			return false
 		}
 	}
-
 	return true
 }
 
@@ -68,7 +64,6 @@ func (rp *RouteParams) partialEqual(other RouteParams, fields []string) bool {
 			return false
 		}
 	}
-
 	return true
 }
 

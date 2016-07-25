@@ -2,10 +2,11 @@ package gubled
 
 import (
 	"github.com/smancke/guble/gubled/config"
+	"github.com/smancke/guble/server/kvstore"
+
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/smancke/guble/kvstore"
 	"io/ioutil"
 	"os"
 	"reflect"

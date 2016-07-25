@@ -5,12 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/kvstore"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -48,14 +49,14 @@ func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 
 	// when i add two routes in the same path
 	routeBlah1, _ := router.Subscribe(NewRoute(
-		RouteOptions{
+		RouteConfig{
 			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
 			Path:        protocol.Path("/blah"),
 			ChannelSize: chanSize,
 		},
 	))
 	routeBlah2, _ := router.Subscribe(NewRoute(
-		RouteOptions{
+		RouteConfig{
 			RouteParams: RouteParams{"application_id": "appid02", "user_id": "user01"},
 			Path:        protocol.Path("/blah"),
 			ChannelSize: chanSize,
@@ -64,7 +65,7 @@ func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 
 	// and one route in another path
 	routeFoo, _ := router.Subscribe(NewRoute(
-		RouteOptions{
+		RouteConfig{
 			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
 			Path:        protocol.Path("/foo"),
 			ChannelSize: chanSize,
@@ -107,7 +108,7 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 	router.Start()
 
 	_, e := router.Subscribe(NewRoute(
-		RouteOptions{
+		RouteConfig{
 			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
 			Path:        protocol.Path("/blah"),
 			ChannelSize: chanSize,
@@ -122,7 +123,7 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 
 	// and user shall be allowed to subscribe
 	_, e = router.Subscribe(NewRoute(
-		RouteOptions{
+		RouteConfig{
 			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
 			Path:        protocol.Path("/blah"),
 			ChannelSize: chanSize,
@@ -191,8 +192,7 @@ func TestRouter_ReplacingOfRoutes(t *testing.T) {
 	router, _, _, _ := aStartedRouter()
 
 	router.Subscribe(NewRoute(
-
-		RouteOptions{
+		RouteConfig{
 			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
 			Path:        protocol.Path("/blah"),
 		},
@@ -200,7 +200,7 @@ func TestRouter_ReplacingOfRoutes(t *testing.T) {
 
 	// when: i add another route with the same Application Id and Same Path
 	router.Subscribe(NewRoute(
-		RouteOptions{
+		RouteConfig{
 			RouteParams: RouteParams{"application_id": "appid01", "user_id": "newUserId"},
 			Path:        protocol.Path("/blah"),
 		},
@@ -265,7 +265,7 @@ func TestRouter_RoutingWithSubTopics(t *testing.T) {
 		})
 
 	r, _ := router.Subscribe(NewRoute(
-		RouteOptions{
+		RouteConfig{
 			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
 			Path:        protocol.Path("/blah"),
 			ChannelSize: chanSize,
@@ -311,7 +311,7 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 
 	// Given a Router with route
 	router, r := aRouterRoute(chanSize)
-	r.SetTimeout(5 * time.Millisecond)
+	r.timeout = 5 * time.Millisecond
 
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
@@ -388,7 +388,7 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	router.messageStore = msMock
 
 	route, err := router.Subscribe(NewRoute(
-		RouteOptions{
+		RouteConfig{
 			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
 			Path:        protocol.Path("/blah"),
 			ChannelSize: 3,
@@ -522,7 +522,7 @@ func aStartedRouter() (*router, auth.AccessManager, store.MessageStore, kvstore.
 func aRouterRoute(unused int) (*router, *Route) {
 	router, _, _, _ := aStartedRouter()
 	route, _ := router.Subscribe(NewRoute(
-		RouteOptions{
+		RouteConfig{
 			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
 			Path:        protocol.Path("/blah"),
 			ChannelSize: chanSize,

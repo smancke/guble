@@ -5,11 +5,11 @@ package gcm
 
 import (
 	gomock "github.com/golang/mock/gomock"
-	kvstore "github.com/smancke/guble/kvstore"
 	protocol "github.com/smancke/guble/protocol"
 	server "github.com/smancke/guble/server"
 	auth "github.com/smancke/guble/server/auth"
 	cluster "github.com/smancke/guble/server/cluster"
+	kvstore "github.com/smancke/guble/server/kvstore"
 	store "github.com/smancke/guble/store"
 )
 

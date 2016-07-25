@@ -23,14 +23,13 @@ var (
 
 // Route represents a topic for subscription that has a channel to receive messages.
 type Route struct {
-	RouteOptions
+	RouteConfig
 
 	messagesC chan *protocol.Message
 
-	// queue that will store the messages in correct order
-	//
-	// The queue can have a settable size and if it reaches the capacity the
-	// route is closed
+	// queue that will store the messages in correct order.
+	// The queue can have a settable size;
+	// if it reaches the capacity the route is closed.
 	queue *queue
 
 	closeC chan struct{}
@@ -44,38 +43,24 @@ type Route struct {
 }
 
 // NewRoute creates a new route pointer
-func NewRoute(options RouteOptions) *Route {
+func NewRoute(config RouteConfig) *Route {
 	route := &Route{
-		RouteOptions: options,
+		RouteConfig: config,
 
-		queue:     newQueue(options.QueueSize),
-		messagesC: make(chan *protocol.Message, options.ChannelSize),
+		queue:     newQueue(config.queueSize),
+		messagesC: make(chan *protocol.Message, config.ChannelSize),
 		closeC:    make(chan struct{}),
 
-		logger: logger.WithFields(log.Fields{"path": options.Path, "params": options.RouteParams}),
+		logger: logger.WithFields(log.Fields{"path": config.Path, "params": config.RouteParams}),
 	}
 	return route
 }
 
-// SetTimeout sets the timeout duration that the route will wait before it will close a
-// blocking channel
-func (r *Route) SetTimeout(timeout time.Duration) *Route {
-	r.Timeout = timeout
-	return r
-}
-
-// SetQueueSize sets the queue size that is allowed before closing the route channel
-func (r *Route) SetQueueSize(size int) *Route {
-	r.QueueSize = size
-	return r
-}
-
 func (r *Route) String() string {
-	return fmt.Sprintf("Path: %s %s", r.Path, r.RouteParams)
+	return fmt.Sprintf("Path: %s , Params: %s", r.Path, r.RouteParams)
 }
 
-// Deliver takes a messages and adds it to the queue to be delivered in to the
-// channel
+// Deliver takes a messages and adds it to the queue to be delivered in to the channel
 func (r *Route) Deliver(msg *protocol.Message) error {
 	logger := r.logger.WithField("message", msg)
 	logger.Debug("Delivering message")
@@ -87,11 +72,11 @@ func (r *Route) Deliver(msg *protocol.Message) error {
 	}
 
 	// not an infinite queue
-	if r.QueueSize >= 0 {
+	if r.queueSize >= 0 {
 		// if size is zero the sending is direct
-		if r.QueueSize == 0 {
+		if r.queueSize == 0 {
 			return r.sendDirect(msg)
-		} else if r.queue.size() >= r.QueueSize {
+		} else if r.queue.size() >= r.queueSize {
 			logger.Debug("Closing route because queue is full")
 			r.Close()
 			mTotalDeliverMessageErrors.Add(1)
@@ -217,7 +202,7 @@ func (r *Route) send(msg *protocol.Message) error {
 	r.logger.WithField("message", msg).Debug("Sending message through route channel")
 
 	// no timeout, means we don't close the channel
-	if r.Timeout == -1 {
+	if r.timeout == -1 {
 		r.messagesC <- msg
 		r.logger.WithField("size", len(r.messagesC)).Debug("Channel size")
 		return nil
@@ -228,17 +213,17 @@ func (r *Route) send(msg *protocol.Message) error {
 		return nil
 	case <-r.closeC:
 		return ErrInvalidRoute
-	case <-time.After(r.Timeout):
+	case <-time.After(r.timeout):
 		r.logger.Debug("Closing route because of timeout")
 		r.Close()
 		return errTimeout
 	}
 }
 
-// invalidRecover is used to recoverd in case we end up sending on a closed channel
+// invalidRecover is used to recover in case we end up sending on a closed channel
 func (r *Route) invalidRecover() error {
 	if rc := recover(); rc != nil && r.isInvalid() {
-		r.logger.WithField("error", rc).Debug("Recovered closed router")
+		r.logger.WithField("error", rc).Debug("Recovered closed route")
 		return ErrInvalidRoute
 	}
 	return nil

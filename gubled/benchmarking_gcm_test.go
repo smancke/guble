@@ -1,37 +1,35 @@
-// GCM benchmarks
-// Default number of clients and subscriptions are 8, for tests that do not
-// specify this in their name
-package benchmarks
+package gubled
 
 import (
-	"bytes"
-	"fmt"
-	"strings"
-	"sync"
-	"time"
-
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gcm"
-	"github.com/smancke/guble/gubled"
 	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/testutil"
 
 	"github.com/stretchr/testify/assert"
 
+	"bytes"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
-var (
+const (
 	gcmTopic = "/topic"
 )
 
+// GCM benchmarks
+// Default number of clients and subscriptions are 8, for tests that do not
+// specify this in their name
 func BenchmarkGCM_1Workers50MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
@@ -199,7 +197,7 @@ func (params *benchParams) setUp() {
 	*config.GCM.APIKey = "WILL BE OVERWRITTEN"
 	*config.GCM.Workers = params.workers
 
-	params.service = gubled.StartService()
+	params.service = StartService()
 
 	var gcmConnector *gcm.Connector
 	var ok bool

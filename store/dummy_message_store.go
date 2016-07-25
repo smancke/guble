@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smancke/guble/kvstore"
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/kvstore"
 )
 
 const topicSchema = "topic_sequence"
