@@ -34,6 +34,50 @@ func createService(storagePath, nodeID, nodePort, httpListen string, remotes str
 	return service
 }
 
+func Test_Cluster_Subscribe_To_Random_Node(t *testing.T) {
+	a := assert.New(t)
+
+
+	dir1, err1 := ioutil.TempDir("", "guble_cluster_redundancy_test1")
+	a.NoError(err1)
+	defer os.RemoveAll(dir1)
+
+	dir2, err2 := ioutil.TempDir("", "guble_cluster_redundancy_test1")
+	a.NoError(err2)
+	defer os.RemoveAll(dir2)
+
+	service1 := createService("/tmp/s3", "1", "10000", ":8080", "127.0.0.1:10000")
+	a.NotNil(service1)
+
+	service2 := createService("/tmp/s4", "2", "10001", ":8081", "127.0.0.1:10000")
+	a.NotNil(service2)
+
+
+	defer func() {
+		errStop1 := service1.Stop()
+		errStop2 := service2.Stop()
+		a.NoError(errStop1)
+		a.NoError(errStop2)
+	}()
+
+	client1, err := client.Open("ws://127.0.0.1:8080/stream/user/user1", "http://localhost", 10, false)
+	a.NoError(err,"Connection to first node should return no error")
+
+	err = client1.Subscribe("/foo/bar")
+	a.NoError(err,"Subscribe to first node should work")
+
+	client1.Close()
+
+	time.Sleep(50 * time.Millisecond)
+
+	client1, err = client.Open("ws://127.0.0.1:8081/stream/user/user1", "http://localhost", 10, false)
+	a.NoError(err,"Connection to second node should return no error")
+
+	err = client1.Subscribe("/foo/bar")
+	a.NoError(err,"Subscribe to second node should work")
+
+}
+
 func Test_Cluster_Integration(t *testing.T) {
 	testutil.SkipIfShort(t)
 
