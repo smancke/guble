@@ -5,7 +5,7 @@ import (
 
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gcm"
-	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/testutil"
 
 	"github.com/stretchr/testify/assert"
@@ -123,7 +123,7 @@ type benchParams struct {
 	sent          int           // sent messages
 	received      int           // received messages
 
-	service  *server.Service
+	service  *service.Service
 	receiveC chan bool
 	doneC    chan struct{}
 

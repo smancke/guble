@@ -5,12 +5,12 @@ import (
 
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/logformatter"
-	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/cluster"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/rest"
+	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/server/websocket"
 	"github.com/smancke/guble/store"
@@ -158,7 +158,7 @@ func Main() {
 }
 
 // StartService starts a server.Service after first creating the router (and its dependencies), the webserver.
-func StartService() *server.Service {
+func StartService() *service.Service {
 	//TODO StartService could return an error in case it fails to start
 
 	accessManager := CreateAccessManager()
@@ -185,7 +185,7 @@ func StartService() *server.Service {
 	router := router.NewRouter(accessManager, messageStore, kvStore, cl)
 	webserver := webserver.New(*config.HttpListen)
 
-	service := server.NewService(router, webserver).
+	service := service.New(router, webserver).
 		HealthEndpoint(*config.HealthEndpoint).
 		MetricsEndpoint(*config.MetricsEndpoint)
 

@@ -4,7 +4,7 @@ import (
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gubled"
 	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/testutil"
 
 	log "github.com/Sirupsen/logrus"
@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-func createService(storagePath, nodeID, nodePort, httpListen string, remotes string) *server.Service {
+func createService(storagePath, nodeID, nodePort, httpListen string, remotes string) *service.Service {
 	os.Args = []string{os.Args[0],
 		"--log", "debug",
 		"--http", httpListen,

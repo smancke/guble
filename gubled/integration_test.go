@@ -3,14 +3,12 @@ package gubled
 import (
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server"
-
-	"testing"
+	"github.com/smancke/guble/server/service"
 
 	"github.com/stretchr/testify/assert"
 
 	"encoding/json"
-	// "github.com/smancke/guble/testutil"
+	"testing"
 	"time"
 )
 
@@ -42,7 +40,7 @@ import (
 // 	}
 // }
 
-func initServerAndClients(t *testing.T) (*server.Service, client.Client, client.Client, func()) {
+func initServerAndClients(t *testing.T) (*service.Service, client.Client, client.Client, func()) {
 	*config.HttpListen = "localhost:0"
 	*config.KVS = "memory"
 	service := StartService()

@@ -18,14 +18,14 @@ function replace {
 
 MOCKGEN=$GOPATH/bin/mockgen
 
-# server mocks
-$MOCKGEN  -self_package server -package server \
-      -destination server/mocks_router_gen_test.go \
+# service mocks
+$MOCKGEN  -self_package service -package service \
+      -destination server/service/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
       Router
 
-$MOCKGEN -self_package server -package server \
-      -destination server/mocks_checker_gen_test.go \
+$MOCKGEN -self_package service -package service \
+      -destination server/service/mocks_checker_gen_test.go \
       github.com/docker/distribution/health \
       Checker
 
