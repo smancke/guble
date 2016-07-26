@@ -9,8 +9,9 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/alexjlockwood/gcm"
+
 	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/store"
 )
 
@@ -40,14 +41,14 @@ func (e *jsonError) Error() string {
 // subscription represent a GCM subscription
 type subscription struct {
 	gcm    *Connector
-	route  *server.Route
+	route  *router.Route
 	lastID uint64 // Last sent message id
 
 	logger *log.Entry
 }
 
 // Creates a subscription and returns the pointer
-func newSubscription(gcm *Connector, route *server.Route, lastID uint64) *subscription {
+func newSubscription(gcm *Connector, route *router.Route, lastID uint64) *subscription {
 	return &subscription{
 		gcm:    gcm,
 		route:  route,
@@ -62,8 +63,8 @@ func newSubscription(gcm *Connector, route *server.Route, lastID uint64) *subscr
 
 // initSubscription creates a subscription and adds it in router/kvstore then starts listening for messages
 func initSubscription(gcm *Connector, topic, userID, gcmID string, unusedLastID uint64) (*subscription, error) {
-	route := server.NewRoute(server.RouteConfig{
-		RouteParams: server.RouteParams{userIDKey: userID, applicationIDKey: gcmID},
+	route := router.NewRoute(router.RouteConfig{
+		RouteParams: router.RouteParams{userIDKey: userID, applicationIDKey: gcmID},
 		Path:        protocol.Path(topic),
 		ChannelSize: subBufferSize,
 	})
@@ -104,7 +105,7 @@ func (s *subscription) start() error {
 
 // recreate the route and resubscribe
 func (s *subscription) restart() error {
-	s.route = server.NewRoute(server.RouteConfig{
+	s.route = router.NewRoute(router.RouteConfig{
 		RouteParams: s.route.RouteParams,
 		Path:        s.route.Path,
 		ChannelSize: subBufferSize,
@@ -192,7 +193,7 @@ func (s *subscription) subscriptionLoop() {
 	// assume that the route channel has been closed because of slow processing
 	// try restarting, by fetching from lastId and then subscribing again
 	if err := s.restart(); err != nil {
-		if stoppingErr, ok := err.(*server.ModuleStoppingError); ok {
+		if stoppingErr, ok := err.(*router.ModuleStoppingError); ok {
 			s.logger.WithField("error", stoppingErr).Debug("Error restarting subscription")
 		}
 	}
@@ -292,7 +293,7 @@ func (s *subscription) setLastID(ID uint64) error {
 // pipe sends a message into the pipeline and waits for response saving the last id in the kvstore
 func (s *subscription) pipe(m *protocol.Message) error {
 	pipeMessage := newPipeMessage(s, m)
-	defer pipeMessage.close()
+	defer pipeMessage.closeChannels()
 
 	s.gcm.pipelineC <- pipeMessage
 
@@ -374,7 +375,7 @@ func (pm *pipeMessage) payload() map[string]interface{} {
 	return messageMap(pm.message)
 }
 
-func (pm *pipeMessage) close() {
+func (pm *pipeMessage) closeChannels() {
 	close(pm.resultC)
 	close(pm.errC)
 }

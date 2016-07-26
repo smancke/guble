@@ -12,7 +12,6 @@ import (
 
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gcm"
-	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +24,9 @@ var (
 // Test that restarting the service continues to fetch messages from store
 // for a subscription from lastID
 func TestGCM_Restart(t *testing.T) {
-	// defer testutil.EnableDebugForMethod()()
+	//	defer testutil.EnableDebugForMethod()()
+	defer testutil.ResetDefaultRegistryHealthCheck()
+
 	a := assert.New(t)
 
 	receiveC := make(chan bool)
@@ -73,8 +74,13 @@ func TestGCM_Restart(t *testing.T) {
 
 	newReceiveC := make(chan bool)
 
-	gcmConnector, ok = service.ModulesSortedByStartOrder()[4].(*gcm.Connector)
-	a.True(ok, "Modules[4] should be of type GCMConnector")
+	for _, iface := range service.ModulesSortedByStartOrder() {
+		gcmConnector, ok = iface.(*gcm.Connector)
+		if ok {
+			break
+		}
+	}
+	a.True(ok, "There should be a module of type GCMConnector")
 
 	// add a high timeout so the messages are processed slow
 	gcmConnector.Sender = testutil.CreateGcmSender(
@@ -105,6 +111,7 @@ func serviceSetUp(t *testing.T) *server.Service {
 	*config.HttpListen = "localhost:0"
 	*config.KVS = "memory"
 	*config.MS = "file"
+	*config.Cluster.NodeID = 0
 	*config.StoragePath = dir
 	*config.GCM.Enabled = true
 	*config.GCM.APIKey = "WILL BE OVERWRITTEN"

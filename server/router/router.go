@@ -1,4 +1,4 @@
-package server
+package router
 
 import (
 	"fmt"
@@ -159,7 +159,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 	}
 
 	if !router.accessManager.IsAllowed(auth.WRITE, message.UserID, message.Path) {
-		return &PermissionDeniedError{message.UserID, auth.WRITE, message.Path}
+		return &PermissionDeniedError{UserID: message.UserID, AccessType: auth.WRITE, Path: message.Path}
 	}
 
 	// for a new locally-generated message, we need to generate a new message-ID

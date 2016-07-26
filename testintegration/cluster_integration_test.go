@@ -79,6 +79,7 @@ func Test_Cluster_Subscribe_To_Random_Node(t *testing.T) {
 
 func Test_Cluster_Integration(t *testing.T) {
 	testutil.SkipIfShort(t)
+	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	a := assert.New(t)
 	//defer testutil.EnableDebugForMethod()()

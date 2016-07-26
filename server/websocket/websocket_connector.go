@@ -2,8 +2,8 @@ package websocket
 
 import (
 	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/server/router"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
@@ -20,12 +20,12 @@ var webSocketUpgrader = websocket.Upgrader{
 }
 
 type WSHandler struct {
-	Router        server.Router
+	Router        router.Router
 	prefix        string
 	accessManager auth.AccessManager
 }
 
-func NewWSHandler(router server.Router, prefix string) (*WSHandler, error) {
+func NewWSHandler(router router.Router, prefix string) (*WSHandler, error) {
 	accessManager, err := router.AccessManager()
 	if err != nil {
 		return nil, err

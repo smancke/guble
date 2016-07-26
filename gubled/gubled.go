@@ -4,7 +4,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/smancke/guble/gcm"
-	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/logformatter"
 	"github.com/smancke/guble/metrics"
 	"github.com/smancke/guble/server"
@@ -15,9 +14,11 @@ import (
 	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/server/websocket"
 	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/store/dummystore"
 	"github.com/smancke/guble/store/filestore"
 
 	"fmt"
+	"github.com/smancke/guble/server/router"
 	"net"
 	"os"
 	"os/signal"
@@ -84,7 +85,7 @@ var CreateKVStore = func() kvstore.KVStore {
 var CreateMessageStore = func() store.MessageStore {
 	switch *config.MS {
 	case "none", "":
-		return store.NewDummyMessageStore(kvstore.NewMemoryKVStore())
+		return dummystore.NewDummyMessageStore(kvstore.NewMemoryKVStore())
 	case "file":
 		logger.WithField("storagePath", *config.StoragePath).Info("Using FileMessageStore in directory")
 		return filestore.NewFileMessageStore(*config.StoragePath)
@@ -93,7 +94,7 @@ var CreateMessageStore = func() store.MessageStore {
 	}
 }
 
-var CreateModules = func(router server.Router) []interface{} {
+var CreateModules = func(router router.Router) []interface{} {
 	var modules []interface{}
 
 	if wsHandler, err := websocket.NewWSHandler(router, "/stream/"); err != nil {
@@ -128,7 +129,7 @@ var CreateModules = func(router server.Router) []interface{} {
 
 func Main() {
 	log.SetFormatter(&logformatter.LogstashFormatter{})
-	config.Parse()
+	parseConfig()
 	defer func() {
 		if p := recover(); p != nil {
 			logger.Fatal("Fatal error in gubled after recover")
@@ -181,12 +182,12 @@ func StartService() *server.Service {
 		logger.Info("Starting in standalone-mode")
 	}
 
-	router := server.NewRouter(accessManager, messageStore, kvStore, cl)
+	router := router.NewRouter(accessManager, messageStore, kvStore, cl)
 	webserver := webserver.New(*config.HttpListen)
 
 	service := server.NewService(router, webserver).
 		HealthEndpoint(*config.HealthEndpoint).
-		MetricsEndpoint(*config.Metrics.Endpoint)
+		MetricsEndpoint(*config.MetricsEndpoint)
 
 	service.RegisterModules(0, 6, kvStore, messageStore)
 	service.RegisterModules(4, 3, CreateModules(router)...)

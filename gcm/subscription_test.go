@@ -9,7 +9,7 @@ import (
 	"github.com/alexjlockwood/gcm"
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
@@ -27,8 +27,8 @@ func TestSub_Fetch(t *testing.T) {
 
 	gcm, routerMock, _ := testSimpleGCM(t, false)
 
-	route := server.NewRoute(server.RouteConfig{
-		RouteParams: server.RouteParams{userIDKey: "user01", applicationIDKey: "phone01"},
+	route := router.NewRoute(router.RouteConfig{
+		RouteParams: router.RouteParams{userIDKey: "user01", applicationIDKey: "phone01"},
 		Path:        protocol.Path("/foo/bar"),
 		ChannelSize: subBufferSize,
 	})
@@ -101,8 +101,8 @@ func TestSub_Restart(t *testing.T) {
 
 	gcm, routerMock, storeMock := testSimpleGCM(t, true)
 
-	route := server.NewRoute(server.RouteConfig{
-		RouteParams: server.RouteParams{userIDKey: "user01", applicationIDKey: "phone01"},
+	route := router.NewRoute(router.RouteConfig{
+		RouteParams: router.RouteParams{userIDKey: "user01", applicationIDKey: "phone01"},
 		Path:        protocol.Path("/foo/bar"),
 		ChannelSize: subBufferSize,
 	})
