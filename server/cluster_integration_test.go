@@ -1,9 +1,8 @@
-package testintegration
+package server
 
 import (
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/testutil"
 
@@ -29,16 +28,16 @@ func createService(storagePath, nodeID, nodePort, httpListen string, remotes str
 	}
 
 	kingpin.Parse()
-	service := server.StartService()
+	service := StartService()
 	return service
 }
 
 func Test_Cluster_Integration(t *testing.T) {
 	testutil.SkipIfShort(t)
 	defer testutil.ResetDefaultRegistryHealthCheck()
+	//defer testutil.EnableDebugForMethod()()
 
 	a := assert.New(t)
-	//defer testutil.EnableDebugForMethod()()
 
 	dir1, err1 := ioutil.TempDir("", "guble_cluster_integration_test")
 	a.NoError(err1)

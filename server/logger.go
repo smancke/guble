@@ -5,5 +5,5 @@ import (
 )
 
 var logger = log.WithFields(log.Fields{
-	"module": "gubled",
+	"module": "server",
 })
