@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/server/store"
 
 	log "github.com/Sirupsen/logrus"
 )

@@ -1,13 +1,16 @@
 package server
 
 import (
+	log "github.com/Sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/smancke/guble/client"
+	"github.com/smancke/guble/server/gcm"
+	"github.com/smancke/guble/server/service"
+	"github.com/smancke/guble/testutil"
+
 	"bytes"
 	"fmt"
-	"github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/gcm"
-	"github.com/smancke/guble/testutil"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -15,7 +18,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"github.com/smancke/guble/server/service"
 )
 
 type param struct {
@@ -59,7 +61,7 @@ func checkNumberOfRcvMsgOnGCM(t *testing.T, p *param, expectedCount int) {
 			return
 		}
 	}
-	logger.WithFields(logrus.Fields{
+	logger.WithFields(log.Fields{
 		"cond":           p.received == expectedCount,
 		"p.rece":         p.received,
 		"expectedCpount": expectedCount,
@@ -133,6 +135,7 @@ func startService(t *testing.T, listenPort, dirName string, nodeID, nodePort int
 }
 
 func Test_Subscribe_on_random_node(t *testing.T) {
+	testutil.SkipIfShort(t)
 
 	defer testutil.EnableDebugForMethod()()
 
@@ -159,16 +162,15 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 
 	subscribeToServiceNode(t, secondServiceParam.service)
 
-
 	//TODO MARIAN  add stop
-	defer func () {
+	defer func() {
 
 		err = firstServiceParam.service.Stop()
 		a.NoError(err)
 
 		err = secondServiceParam.service.Stop()
 		a.NoError(err)
-	} ()
+	}()
 }
 
 func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
@@ -218,13 +220,13 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	checkNumberOfRcvMsgOnGCM(t, secondServiceParam, 0)
 
 	//clean up
-	defer func () {
+	defer func() {
 		err = restartedServiceParam.service.Stop()
 		a.NoError(err)
 
 		err = secondServiceParam.service.Stop()
 		a.NoError(err)
-	} ()
+	}()
 
 	errRemove := os.RemoveAll(restartedServiceParam.dir)
 	a.NoError(errRemove)

@@ -116,8 +116,8 @@ func (conn *Connector) loopPipeline(id int) {
 	for {
 		select {
 		case pm := <-conn.pipelineC:
-		        // only forward to gcm message which have subscription on this node and not the other received from cluster
-			if pm != nil && conn.router.Cluster().Config.ID == pm.message.NodeID  {
+			// only forward to gcm message which have subscription on this node and not the other received from cluster
+			if pm != nil && conn.router.Cluster().Config.ID == pm.message.NodeID {
 				conn.sendMessage(pm)
 			}
 		case <-conn.stopC:
