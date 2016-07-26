@@ -2,8 +2,8 @@ package gcm
 
 import (
 	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/kvstore"
+	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/testutil"
 
 	"github.com/golang/mock/gomock"
@@ -25,7 +25,7 @@ func TestServeHTTPSuccess(t *testing.T) {
 	a := assert.New(t)
 	gcm, routerMock, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
 
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
 		a.Equal("/notifications", string(route.Path))
 		a.Equal("marvin", route.Get(userIDKey))
 		a.Equal("gcmId123", route.Get(applicationIDKey))
@@ -107,7 +107,7 @@ func TestGCM_SaveAndLoadSubs(t *testing.T) {
 		"athur:/erde:42":   true,
 	}
 
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
 		// delete the route from the map, if we got it in the test
 		delete(testRoutes, fmt.Sprintf("%v:%v:%v", route.Get(userIDKey), route.Path, route.Get(applicationIDKey)))
 	}).AnyTimes()
@@ -206,9 +206,9 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	gcm, _, done := testGCMResponse(t, testutil.SuccessGCMResponse)
 
 	// put a dummy gcm message with minimum information
-	route := &server.Route{
-		RouteConfig: server.RouteConfig{
-			RouteParams: server.RouteParams{applicationIDKey: "id"},
+	route := &router.Route{
+		RouteConfig: router.RouteConfig{
+			RouteParams: router.RouteParams{applicationIDKey: "id"},
 		},
 	}
 	s := newSubscription(gcm, route, 0)
@@ -289,18 +289,18 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	gcm, routerMock, done := testGCMResponse(t, testutil.ErrorGCMResponse)
 
 	// expect the route unsubscribed from removeSubscription
-	routerMock.EXPECT().Unsubscribe(gomock.Any()).Do(func(route *server.Route) {
+	routerMock.EXPECT().Unsubscribe(gomock.Any()).Do(func(route *router.Route) {
 		a.Equal("/path", string(route.Path))
 		a.Equal("id", route.Get(applicationIDKey))
 	})
 
 	// expect the route subscribe with the new canonicalId from replaceSubscriptionWithCanonicalID
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
 		a.Equal("/path", string(route.Path))
 		a.Equal("marvin", route.Get(userIDKey))
 		a.Equal("id", route.Get(applicationIDKey))
 	})
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *server.Route) {
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
 		a.Equal("/path", string(route.Path))
 		a.Equal("marvin", route.Get(userIDKey))
 		a.Equal("gcmCanonicalID", route.Get(applicationIDKey))

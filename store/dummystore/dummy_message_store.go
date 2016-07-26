@@ -1,4 +1,4 @@
-package store
+package dummystore
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/kvstore"
+	"github.com/smancke/guble/store"
 )
 
 const topicSchema = "topic_sequence"
@@ -90,7 +91,7 @@ func (dms *DummyMessageStore) store(partition string, msgId uint64, msg []byte) 
 }
 
 // Fetch does nothing in this dummy implementation
-func (dms *DummyMessageStore) Fetch(req FetchRequest) {
+func (dms *DummyMessageStore) Fetch(req store.FetchRequest) {
 }
 
 func (dms *DummyMessageStore) MaxMessageID(partition string) (uint64, error) {

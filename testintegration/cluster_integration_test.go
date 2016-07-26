@@ -35,6 +35,7 @@ func createService(storagePath, nodeID, nodePort, httpListen string, remotes str
 
 func Test_Cluster_Integration(t *testing.T) {
 	testutil.SkipIfShort(t)
+	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	a := assert.New(t)
 	//defer testutil.EnableDebugForMethod()()

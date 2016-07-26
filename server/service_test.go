@@ -4,6 +4,7 @@ import (
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/store/dummystore"
 	"github.com/smancke/guble/testutil"
 
 	"github.com/stretchr/testify/assert"
@@ -163,7 +164,7 @@ func TestMetricsEnabled(t *testing.T) {
 
 func aMockedServiceWithMockedRouterStandalone() (*Service, kvstore.KVStore, store.MessageStore, *MockRouter) {
 	kvStore := kvstore.NewMemoryKVStore()
-	messageStore := store.NewDummyMessageStore(kvStore)
+	messageStore := dummystore.NewDummyMessageStore(kvStore)
 	routerMock := NewMockRouter(testutil.MockCtrl)
 	routerMock.EXPECT().Cluster().Return(nil).MaxTimes(2)
 	service := NewService(routerMock, webserver.New("localhost:0"))

@@ -13,6 +13,7 @@ import (
 
 	"github.com/docker/distribution/health"
 	"github.com/smancke/guble/metrics"
+	"github.com/smancke/guble/server/router"
 )
 
 const (
@@ -20,12 +21,10 @@ const (
 	defaultHealthThreshold = 1
 )
 
-var loggerService = log.WithField("module", "service")
-
 // Service is the main struct for controlling a guble server
 type Service struct {
 	webserver       *webserver.WebServer
-	router          Router
+	router          router.Router
 	modules         []module
 	healthEndpoint  string
 	healthFrequency time.Duration
@@ -36,7 +35,7 @@ type Service struct {
 // NewService creates a new Service, using the given Router and WebServer.
 // If the router has already a configured Cluster, it is registered as a service module.
 // The Router and Webserver are then registered as modules.
-func NewService(router Router, webserver *webserver.WebServer) *Service {
+func NewService(router router.Router, webserver *webserver.WebServer) *Service {
 	s := &Service{
 		webserver:       webserver,
 		router:          router,
@@ -56,7 +55,7 @@ func NewService(router Router, webserver *webserver.WebServer) *Service {
 // RegisterModules adds more modules (which can be Startable, Stopable, Endpoint etc.) to the service,
 // with their start and stop ordering across all the service's modules.
 func (s *Service) RegisterModules(startOrder int, stopOrder int, ifaces ...interface{}) {
-	loggerService.WithFields(log.Fields{
+	logger.WithFields(log.Fields{
 		"numberOfNewModules":      len(ifaces),
 		"numberOfExistingModules": len(s.modules),
 	}).Info("RegisterModules")
@@ -90,35 +89,35 @@ func (s *Service) MetricsEndpoint(endpointPrefix string) *Service {
 func (s *Service) Start() error {
 	el := protocol.NewErrorList("service: errors occured while starting: ")
 	if s.healthEndpoint != "" {
-		loggerService.WithField("healthEndpoint", s.healthEndpoint).Info("Health endpoint")
+		logger.WithField("healthEndpoint", s.healthEndpoint).Info("Health endpoint")
 		s.webserver.Handle(s.healthEndpoint, http.HandlerFunc(health.StatusHandler))
 	} else {
-		loggerService.Info("Health endpoint disabled")
+		logger.Info("Health endpoint disabled")
 	}
 	if s.metricsEndpoint != "" {
-		loggerService.WithField("metricsEndpoint", s.metricsEndpoint).Info("Metrics endpoint")
+		logger.WithField("metricsEndpoint", s.metricsEndpoint).Info("Metrics endpoint")
 		s.webserver.Handle(s.metricsEndpoint, http.HandlerFunc(metrics.HttpHandler))
 	} else {
-		loggerService.Info("Metrics endpoint disabled")
+		logger.Info("Metrics endpoint disabled")
 	}
 	for order, iface := range s.ModulesSortedByStartOrder() {
 		name := reflect.TypeOf(iface).String()
 		if startable, ok := iface.(startable); ok {
-			loggerService.WithFields(log.Fields{"name": name, "order": order}).Info("Starting module")
+			logger.WithFields(log.Fields{"name": name, "order": order}).Info("Starting module")
 			if err := startable.Start(); err != nil {
-				loggerService.WithError(err).WithField("name", name).Error("Error while starting module")
+				logger.WithError(err).WithField("name", name).Error("Error while starting module")
 				el.Add(err)
 			}
 		} else {
-			loggerService.WithFields(log.Fields{"name": name, "order": order}).Debug("Module is not startable")
+			logger.WithFields(log.Fields{"name": name, "order": order}).Debug("Module is not startable")
 		}
 		if checker, ok := iface.(health.Checker); ok && s.healthEndpoint != "" {
-			loggerService.WithField("name", name).Info("Registering module as Health-Checker")
+			logger.WithField("name", name).Info("Registering module as Health-Checker")
 			health.RegisterPeriodicThresholdFunc(name, s.healthFrequency, s.healthThreshold, health.CheckFunc(checker.Check))
 		}
 		if endpoint, ok := iface.(endpoint); ok {
 			prefix := endpoint.GetPrefix()
-			loggerService.WithFields(log.Fields{"name": name, "prefix": prefix}).Info("Registering module as Endpoint")
+			logger.WithFields(log.Fields{"name": name, "prefix": prefix}).Info("Registering module as Endpoint")
 			s.webserver.Handle(prefix, endpoint)
 		}
 	}
@@ -131,12 +130,12 @@ func (s *Service) Stop() error {
 	for order, iface := range s.modulesSortedBy(ascendingStopOrder) {
 		name := reflect.TypeOf(iface).String()
 		if stoppable, ok := iface.(stopable); ok {
-			loggerService.WithFields(log.Fields{"name": name, "order": order}).Info("Stopping module")
+			logger.WithFields(log.Fields{"name": name, "order": order}).Info("Stopping module")
 			if err := stoppable.Stop(); err != nil {
 				errors.Add(err)
 			}
 		} else {
-			loggerService.WithFields(log.Fields{"name": name, "order": order}).Debug("Module is not stoppable")
+			logger.WithFields(log.Fields{"name": name, "order": order}).Debug("Module is not stoppable")
 		}
 	}
 	if err := errors.ErrorOrNil(); err != nil {

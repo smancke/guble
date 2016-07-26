@@ -2,7 +2,6 @@ package gubled
 
 import (
 	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/gubled/config"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server"
 

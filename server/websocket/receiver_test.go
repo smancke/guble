@@ -2,7 +2,7 @@ package websocket
 
 import (
 	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/store"
 	"github.com/smancke/guble/testutil"
 
@@ -84,7 +84,7 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	messageId2.After(fetchFirst2)
 
 	// subscribe
-	subscribe := routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *server.Route) {
+	subscribe := routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *router.Route) {
 		a.Equal(r.Path, protocol.Path("/foo"))
 		r.Deliver(&protocol.Message{ID: uint64(4), Body: []byte("router-a"), Time: 1405544146})
 		r.Deliver(&protocol.Message{ID: uint64(5), Body: []byte("router-b"), Time: 1405544146})
