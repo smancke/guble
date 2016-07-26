@@ -182,7 +182,7 @@ func StartService() *service.Service {
 		logger.Info("Starting in standalone-mode")
 	}
 
-	router := router.NewRouter(accessManager, messageStore, kvStore, cl)
+	router := router.New(accessManager, messageStore, kvStore, cl)
 	webserver := webserver.New(*config.HttpListen)
 
 	service := service.New(router, webserver).

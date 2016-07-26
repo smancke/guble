@@ -105,7 +105,7 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 
 	am.EXPECT().IsAllowed(auth.READ, "user01", protocol.Path("/blah")).Return(false)
 
-	router := NewRouter(am, msMock, kvsMock, nil).(*router)
+	router := New(am, msMock, kvsMock, nil).(*router)
 	router.Start()
 
 	_, e := router.Subscribe(NewRoute(
@@ -507,7 +507,7 @@ func TestRouter_Check(t *testing.T) {
 
 func TestPanicOnInternalDependencies(t *testing.T) {
 	defer testutil.ExpectPanic(t)
-	router := NewRouter(nil, nil, nil, nil).(*router)
+	router := New(nil, nil, nil, nil).(*router)
 	router.panicIfInternalDependenciesAreNil()
 }
 
@@ -515,7 +515,7 @@ func aStartedRouter() (*router, auth.AccessManager, store.MessageStore, kvstore.
 	am := auth.NewAllowAllAccessManager(true)
 	kvs := kvstore.NewMemoryKVStore()
 	ms := dummystore.New(kvs)
-	router := NewRouter(am, ms, kvs, nil).(*router)
+	router := New(am, ms, kvs, nil).(*router)
 	router.Start()
 	return router, am, ms, kvs
 }
