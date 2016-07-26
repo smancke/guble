@@ -23,7 +23,7 @@ type FileMessageStore struct {
 	mutex      sync.RWMutex
 }
 
-func NewFileMessageStore(basedir string) *FileMessageStore {
+func New(basedir string) *FileMessageStore {
 	return &FileMessageStore{
 		partitions: make(map[string]*messagePartition),
 		basedir:    basedir,

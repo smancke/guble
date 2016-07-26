@@ -1,4 +1,4 @@
-package gubled
+package server
 
 import (
 	"os"

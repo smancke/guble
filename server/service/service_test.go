@@ -1,4 +1,4 @@
-package server
+package service
 
 import (
 	"github.com/smancke/guble/server/kvstore"
@@ -132,7 +132,7 @@ func TestHealthDown(t *testing.T) {
 	a.Equal(503, result.StatusCode)
 	body, err := ioutil.ReadAll(result.Body)
 	a.NoError(err)
-	a.Equal("{\"*server.MockChecker\":\"sick\"}", string(body))
+	a.Equal("{\"*service.MockChecker\":\"sick\"}", string(body))
 }
 
 func TestMetricsEnabled(t *testing.T) {
@@ -164,10 +164,10 @@ func TestMetricsEnabled(t *testing.T) {
 
 func aMockedServiceWithMockedRouterStandalone() (*Service, kvstore.KVStore, store.MessageStore, *MockRouter) {
 	kvStore := kvstore.NewMemoryKVStore()
-	messageStore := dummystore.NewDummyMessageStore(kvStore)
+	messageStore := dummystore.New(kvStore)
 	routerMock := NewMockRouter(testutil.MockCtrl)
 	routerMock.EXPECT().Cluster().Return(nil).MaxTimes(2)
-	service := NewService(routerMock, webserver.New("localhost:0"))
+	service := New(routerMock, webserver.New("localhost:0"))
 	return service, kvStore, messageStore, routerMock
 }
 

@@ -1,4 +1,4 @@
-package gubled
+package server
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gcm"
-	"github.com/smancke/guble/server"
+	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -98,7 +98,7 @@ func TestGCM_Restart(t *testing.T) {
 	}
 }
 
-func serviceSetUp(t *testing.T) *server.Service {
+func serviceSetUp(t *testing.T) *service.Service {
 	dir, errTempDir := ioutil.TempDir("", "guble_gcm_test")
 	defer func() {
 		errRemove := os.RemoveAll(dir)
@@ -121,14 +121,14 @@ func serviceSetUp(t *testing.T) *server.Service {
 	return service
 }
 
-func clientSetUp(t *testing.T, service *server.Service) client.Client {
+func clientSetUp(t *testing.T, service *service.Service) client.Client {
 	wsURL := "ws://" + service.WebServer().GetAddr() + "/stream/user/user01"
 	client, err := client.Open(wsURL, "http://localhost/", 1000, false)
 	assert.NoError(t, err)
 	return client
 }
 
-func subscriptionSetUp(t *testing.T, service *server.Service) {
+func subscriptionSetUp(t *testing.T, service *service.Service) {
 	a := assert.New(t)
 
 	urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/%%s", service.WebServer().GetAddr())

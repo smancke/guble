@@ -30,7 +30,7 @@ type DummyMessageStore struct {
 	idSyncDuration time.Duration
 }
 
-func NewDummyMessageStore(kvStore kvstore.KVStore) *DummyMessageStore {
+func New(kvStore kvstore.KVStore) *DummyMessageStore {
 	return &DummyMessageStore{
 		topicSequences: make(map[string]uint64),
 		kvStore:        kvStore,

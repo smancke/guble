@@ -12,7 +12,7 @@ import (
 func Test_DummyMessageStore_IncreaseOnStore(t *testing.T) {
 	a := assert.New(t)
 
-	store := NewDummyMessageStore(kvstore.NewMemoryKVStore())
+	store := New(kvstore.NewMemoryKVStore())
 
 	a.Equal(uint64(0), fne(store.MaxMessageID("partition")))
 	a.NoError(store.Store("partition", 1, []byte{}))
@@ -23,7 +23,7 @@ func Test_DummyMessageStore_IncreaseOnStore(t *testing.T) {
 func Test_DummyMessageStore_ErrorOnWrongMessageId(t *testing.T) {
 	a := assert.New(t)
 
-	store := NewDummyMessageStore(kvstore.NewMemoryKVStore())
+	store := New(kvstore.NewMemoryKVStore())
 
 	a.Equal(uint64(0), fne(store.MaxMessageID("partition")))
 	a.Error(store.Store("partition", 42, []byte{}))
@@ -36,7 +36,7 @@ func Test_DummyMessageStore_InitIdsFromKvStore(t *testing.T) {
 	kvStore := kvstore.NewMemoryKVStore()
 	kvStore.Put(topicSchema, "partition1", []byte("42"))
 	kvStore.Put(topicSchema, "partition2", []byte("43"))
-	store := NewDummyMessageStore(kvStore)
+	store := New(kvStore)
 
 	// then
 	a.Equal(uint64(42), fne(store.MaxMessageID("partition1")))
@@ -48,7 +48,7 @@ func Test_DummyMessageStore_SyncIds(t *testing.T) {
 
 	// given: a store which syncs every 1ms
 	kvStore := kvstore.NewMemoryKVStore()
-	store := NewDummyMessageStore(kvStore)
+	store := New(kvStore)
 	store.idSyncDuration = time.Millisecond
 
 	a.Equal(uint64(0), fne(store.MaxMessageID("partition")))
@@ -77,7 +77,7 @@ func Test_DummyMessageStore_SyncIdsOnStop(t *testing.T) {
 
 	// given: as store which synces nearly never
 	kvStore := kvstore.NewMemoryKVStore()
-	store := NewDummyMessageStore(kvStore)
+	store := New(kvStore)
 	store.idSyncDuration = time.Hour
 
 	// and is started

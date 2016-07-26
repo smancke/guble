@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/smancke/guble/gubled"
+	"github.com/smancke/guble/server"
 )
 
 func main() {
-	gubled.Main()
+	server.Main()
 }

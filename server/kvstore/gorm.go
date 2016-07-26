@@ -24,7 +24,6 @@ type kvStore struct {
 	logger *log.Entry
 }
 
-//TODO Cosmin should Stop be invoked from Router, Service, or gubled?
 func (store *kvStore) Stop() error {
 	if store.db != nil {
 		err := store.db.Close()

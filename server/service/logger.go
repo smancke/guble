@@ -1,9 +1,9 @@
-package gubled
+package service
 
 import (
 	log "github.com/Sirupsen/logrus"
 )
 
 var logger = log.WithFields(log.Fields{
-	"module": "gubled",
+	"module": "service",
 })
