@@ -3,9 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-
-	"gopkg.in/alecthomas/kingpin.v2"
-
 	"os"
 	"os/signal"
 	"strings"
@@ -14,6 +11,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/protocol"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (

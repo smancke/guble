@@ -1,19 +1,17 @@
 package server
 
 import (
-	"fmt"
-
 	log "github.com/Sirupsen/logrus"
+	"github.com/docker/distribution/health"
+
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/webserver"
 
+	"fmt"
 	"net/http"
 	"reflect"
 	"time"
-
-	"github.com/docker/distribution/health"
-	"github.com/smancke/guble/metrics"
-	"github.com/smancke/guble/server/router"
 )
 
 const (
