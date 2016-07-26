@@ -2,8 +2,8 @@ package testintegration
 
 import (
 	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/gubled"
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/testutil"
 
@@ -29,7 +29,7 @@ func createService(storagePath, nodeID, nodePort, httpListen string, remotes str
 	}
 
 	kingpin.Parse()
-	service := gubled.StartService()
+	service := server.StartService()
 	return service
 }
 

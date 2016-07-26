@@ -80,19 +80,19 @@ $MOCKGEN -self_package gcm -package gcm \
       github.com/smancke/guble/store \
       MessageStore
 
-# gubled mocks
-$MOCKGEN -package gubled \
-      -destination gubled/mocks_router_gen_test.go \
+# server mocks
+$MOCKGEN -package server \
+      -destination server/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
       Router
 
-$MOCKGEN -self_package gubled -package gubled \
-      -destination gubled/mocks_auth_gen_test.go \
+$MOCKGEN -self_package server -package server \
+      -destination server/mocks_auth_gen_test.go \
       github.com/smancke/guble/server/auth \
       AccessManager
 
-$MOCKGEN -self_package gubled -package gubled \
-      -destination gubled/mocks_store_gen_test.go \
+$MOCKGEN -self_package server -package server \
+      -destination server/mocks_store_gen_test.go \
       github.com/smancke/guble/store \
       MessageStore
 

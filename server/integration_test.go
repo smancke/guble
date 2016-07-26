@@ -1,4 +1,4 @@
-package gubled
+package server
 
 import (
 	"github.com/smancke/guble/client"
