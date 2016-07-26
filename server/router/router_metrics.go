@@ -1,7 +1,7 @@
 package router
 
 import (
-	"github.com/smancke/guble/metrics"
+	"github.com/smancke/guble/server/metrics"
 )
 
 var (

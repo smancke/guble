@@ -1,16 +1,16 @@
-package gubled
+package server
 
 import (
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/logformatter"
-	"github.com/smancke/guble/metrics"
-	"github.com/smancke/guble/server"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/cluster"
 	"github.com/smancke/guble/server/kvstore"
+	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/rest"
+	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/server/websocket"
 	"github.com/smancke/guble/store"
@@ -85,10 +85,10 @@ var CreateKVStore = func() kvstore.KVStore {
 var CreateMessageStore = func() store.MessageStore {
 	switch *config.MS {
 	case "none", "":
-		return dummystore.NewDummyMessageStore(kvstore.NewMemoryKVStore())
+		return dummystore.New(kvstore.NewMemoryKVStore())
 	case "file":
 		logger.WithField("storagePath", *config.StoragePath).Info("Using FileMessageStore in directory")
-		return filestore.NewFileMessageStore(*config.StoragePath)
+		return filestore.New(*config.StoragePath)
 	default:
 		panic(fmt.Errorf("Unknown message-store backend: %q", *config.MS))
 	}
@@ -158,7 +158,7 @@ func Main() {
 }
 
 // StartService starts a server.Service after first creating the router (and its dependencies), the webserver.
-func StartService() *server.Service {
+func StartService() *service.Service {
 	//TODO StartService could return an error in case it fails to start
 
 	accessManager := CreateAccessManager()
@@ -182,10 +182,10 @@ func StartService() *server.Service {
 		logger.Info("Starting in standalone-mode")
 	}
 
-	router := router.NewRouter(accessManager, messageStore, kvStore, cl)
+	router := router.New(accessManager, messageStore, kvStore, cl)
 	webserver := webserver.New(*config.HttpListen)
 
-	service := server.NewService(router, webserver).
+	service := service.New(router, webserver).
 		HealthEndpoint(*config.HealthEndpoint).
 		MetricsEndpoint(*config.MetricsEndpoint)
 

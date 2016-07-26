@@ -17,7 +17,7 @@ func Test_Fetch(t *testing.T) {
 	//defer os.RemoveAll(dir)
 
 	// when i store a message
-	mStore := NewFileMessageStore(dir)
+	mStore := New(dir)
 	a.NoError(mStore.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
 	a.NoError(mStore.Store("p1", uint64(2), []byte("bbbbbbbbbb")))
 	a.NoError(mStore.Store("p2", uint64(1), []byte("1111111111")))
@@ -81,7 +81,7 @@ func Test_MessageStore_Close(t *testing.T) {
 	//defer os.RemoveAll(dir)
 
 	// when i store a message
-	store := NewFileMessageStore(dir)
+	store := New(dir)
 	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
 	a.NoError(store.Store("p2", uint64(1), []byte("1111111111")))
 
@@ -99,7 +99,7 @@ func Test_MaxMessageId(t *testing.T) {
 	expectedMaxId := 2
 
 	// when i store a message
-	store := NewFileMessageStore(dir)
+	store := New(dir)
 	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
 	a.NoError(store.Store("p1", uint64(expectedMaxId), []byte("bbbbbbbbbb")))
 
@@ -110,7 +110,7 @@ func Test_MaxMessageId(t *testing.T) {
 
 func Test_MaxMessageIdError(t *testing.T) {
 	a := assert.New(t)
-	store := NewFileMessageStore("/TestDir")
+	store := New("/TestDir")
 
 	_, err := store.MaxMessageID("p2")
 	a.NotNil(err)
@@ -119,19 +119,19 @@ func Test_MaxMessageIdError(t *testing.T) {
 func Test_MessagePartitionReturningError(t *testing.T) {
 	a := assert.New(t)
 
-	store := NewFileMessageStore("/TestDir")
+	store := New("/TestDir")
 	_, err := store.partitionStore("p1")
 	a.NotNil(err)
 	fmt.Println(err)
 
-	store2 := NewFileMessageStore("/")
+	store2 := New("/")
 	_, err2 := store2.partitionStore("p1")
 	fmt.Println(err2)
 }
 
 func Test_FetchWithError(t *testing.T) {
 	a := assert.New(t)
-	mStore := NewFileMessageStore("/TestDir")
+	mStore := New("/TestDir")
 
 	chanCallBack := make(chan error, 1)
 	aFetchRequest := store.FetchRequest{Partition: "p1", StartID: 2, Count: 1, ErrorC: chanCallBack}
@@ -142,7 +142,7 @@ func Test_FetchWithError(t *testing.T) {
 
 func Test_StoreWithError(t *testing.T) {
 	a := assert.New(t)
-	mStore := NewFileMessageStore("/TestDir")
+	mStore := New("/TestDir")
 
 	err := mStore.Store("p1", uint64(1), []byte("124151qfas"))
 	a.NotNil(err)
@@ -151,7 +151,7 @@ func Test_StoreWithError(t *testing.T) {
 func Test_DoInTx(t *testing.T) {
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_store_test")
-	mStore := NewFileMessageStore(dir)
+	mStore := New(dir)
 	a.NoError(mStore.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
 
 	err := mStore.DoInTx("p1", func(maxId uint64) error {
@@ -162,7 +162,7 @@ func Test_DoInTx(t *testing.T) {
 
 func Test_DoInTxError(t *testing.T) {
 	a := assert.New(t)
-	mStore := NewFileMessageStore("/TestDir")
+	mStore := New("/TestDir")
 
 	err := mStore.DoInTx("p2", nil)
 	a.NotNil(err)
@@ -171,7 +171,7 @@ func Test_DoInTxError(t *testing.T) {
 func Test_Check(t *testing.T) {
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_store_test")
-	mStore := NewFileMessageStore(dir)
+	mStore := New(dir)
 	a.NoError(mStore.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
 
 	err := mStore.Check()

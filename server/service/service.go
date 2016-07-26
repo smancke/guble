@@ -1,19 +1,18 @@
-package server
+package service
 
 import (
-	"fmt"
-
 	log "github.com/Sirupsen/logrus"
+	"github.com/docker/distribution/health"
+
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/metrics"
+	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/webserver"
 
+	"fmt"
 	"net/http"
 	"reflect"
 	"time"
-
-	"github.com/docker/distribution/health"
-	"github.com/smancke/guble/metrics"
-	"github.com/smancke/guble/server/router"
 )
 
 const (
@@ -35,7 +34,7 @@ type Service struct {
 // NewService creates a new Service, using the given Router and WebServer.
 // If the router has already a configured Cluster, it is registered as a service module.
 // The Router and Webserver are then registered as modules.
-func NewService(router router.Router, webserver *webserver.WebServer) *Service {
+func New(router router.Router, webserver *webserver.WebServer) *Service {
 	s := &Service{
 		webserver:       webserver,
 		router:          router,

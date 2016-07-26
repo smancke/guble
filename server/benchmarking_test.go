@@ -1,16 +1,14 @@
-package gubled
+package server
 
 import (
-	"os"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-
 	"fmt"
-	"time"
-
 	"io/ioutil"
 	"log"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/protocol"
