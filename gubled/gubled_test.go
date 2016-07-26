@@ -103,6 +103,8 @@ func TestCreateStoreBackendPanicInvalidBackend(t *testing.T) {
 }
 
 func TestStartServiceModules(t *testing.T) {
+	defer testutil.ResetDefaultRegistryHealthCheck()
+
 	a := assert.New(t)
 
 	// when starting a simple valid service
@@ -118,7 +120,7 @@ func TestStartServiceModules(t *testing.T) {
 		name := reflect.TypeOf(iface).String()
 		moduleNames = append(moduleNames, name)
 	}
-	a.Equal("*kvstore.MemoryKVStore *filestore.FileMessageStore *server.router *webserver.WebServer *websocket.WSHandler *rest.RestMessageAPI",
+	a.Equal("*kvstore.MemoryKVStore *filestore.FileMessageStore *router.router *webserver.WebServer *websocket.WSHandler *rest.RestMessageAPI",
 		strings.Join(moduleNames, " "))
 }
 
