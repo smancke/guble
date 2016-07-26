@@ -3,6 +3,7 @@ package redundancy
 import (
 	"bytes"
 	"fmt"
+	"github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/gubled"
@@ -26,7 +27,6 @@ var (
 type param struct {
 	timeout   time.Duration // gcm timeout response
 	receiveC  chan bool
-	doneC     chan struct{}
 	connector *gcm.Connector
 	service   *server.Service
 	sent      int // sent messages
@@ -51,30 +51,32 @@ func subscribeToServiceNode(t *testing.T, service *server.Service) {
 
 }
 
-func checkForGcmSubscribe(t *testing.T, p *param, expectedCount int) {
-	logger.Info("mamaa masssiii")
+func checkNumberOfRcvMsgOnGCM(t *testing.T, p *param, expectedCount int) {
 
 	a := assert.New(t)
-	go func() {
-		for {
-			select {
-			case <-p.receiveC:
-				p.received++
-				logger.WithField("received", p.received).Info("Received gcm call")
-			case <-p.doneC:
-				return
-			}
+	for {
+
+		select {
+		case <-p.receiveC:
+			p.received++
+			logger.WithField("received", p.received).Info("++Received gcm call")
+		case <-time.After(time.Second * 2):
+			a.Equal(p.received, expectedCount)
+			return
 		}
+	}
+	logger.WithFields(logrus.Fields{
+		"cond":           p.received == expectedCount,
+		"p.rece":         p.received,
+		"expectedCpount": expectedCount,
+	}).Info("++Out")
 
-		a.Equal(p.received, expectedCount)
-
-	}()
-
+	a.Equal(expectedCount, p.received)
 }
 
 func startService(t *testing.T, listenPort, dirName string, nodeID, nodePort int, useTempFolder bool) *param {
 	receiveC := make(chan bool)
-	doneC := make(chan struct{})
+	//doneC := make(chan struct{}, 1)
 	timeout := time.Millisecond * 100
 	a := assert.New(t)
 
@@ -129,7 +131,6 @@ func startService(t *testing.T, listenPort, dirName string, nodeID, nodePort int
 	return &param{
 		timeout:   timeout,
 		receiveC:  receiveC,
-		doneC:     doneC,
 		connector: gcmConnector,
 		service:   service,
 		dir:       dir,
@@ -159,8 +160,8 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 	a.NoError(err)
 
 	//only one message should be received but only on the first node.Every message should be delivered only once.
-	checkForGcmSubscribe(t, firstServiceParam, 1)
-	checkForGcmSubscribe(t, secondServiceParam, 0)
+	checkNumberOfRcvMsgOnGCM(t, firstServiceParam, 1)
+	checkNumberOfRcvMsgOnGCM(t, secondServiceParam, 0)
 
 	subscribeToServiceNode(t, secondServiceParam.service)
 }
@@ -187,8 +188,8 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	a.NoError(err)
 
 	//only one message should be received but only on the first node.Every message should be delivered only once.
-	checkForGcmSubscribe(t, firstServiceParam, 1)
-	checkForGcmSubscribe(t, secondServiceParam, 0)
+	checkNumberOfRcvMsgOnGCM(t, firstServiceParam, 1)
+	checkNumberOfRcvMsgOnGCM(t, secondServiceParam, 0)
 
 	// stop a node
 	err = firstServiceParam.service.Stop()
@@ -207,9 +208,8 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	a.NoError(err, "Subscription should work even after node restart")
 
 	//only one message should be received but only on the first node.Every message should be delivered only once.
-	time.Sleep(time.Millisecond * 150)
-	checkForGcmSubscribe(t, restartedServiceParam, 1)
-	checkForGcmSubscribe(t, secondServiceParam, 0)
+	checkNumberOfRcvMsgOnGCM(t, restartedServiceParam, 1)
+	checkNumberOfRcvMsgOnGCM(t, secondServiceParam, 0)
 
 	//clean up
 
@@ -230,6 +230,14 @@ func Test_independent_Receiveing(t *testing.T) {
 
 	secondServiceParam := startService(t, "8081", "dir2", 2, 10001, true)
 	a.NotNil(secondServiceParam)
+
+	//clean-up
+	defer func() {
+		errRemove := os.RemoveAll(firstServiceParam.dir)
+		a.NoError(errRemove)
+		errRemove = os.RemoveAll(secondServiceParam.dir)
+		a.NoError(errRemove)
+	}()
 	//subscribe on first node
 	subscribeToServiceNode(t, firstServiceParam.service)
 
@@ -241,9 +249,11 @@ func Test_independent_Receiveing(t *testing.T) {
 	a.NoError(err)
 
 	//only one message should be received but only on the first node.Every message should be delivered only once.
-	checkForGcmSubscribe(t, firstServiceParam, 1)
-	checkForGcmSubscribe(t, secondServiceParam, 0)
+	checkNumberOfRcvMsgOnGCM(t, firstServiceParam, 1)
+	checkNumberOfRcvMsgOnGCM(t, secondServiceParam, 0)
 
+	// reset the counter
+	firstServiceParam.received = 0
 	//subscribeToServiceNode(t, secondServiceParam.service)
 
 	//NOW connect to second node
@@ -254,7 +264,7 @@ func Test_independent_Receiveing(t *testing.T) {
 	a.NoError(err)
 
 	//only one message should be received but only on the first node.Every message should be delivered only once.
-	checkForGcmSubscribe(t, firstServiceParam, 0)
-	checkForGcmSubscribe(t, secondServiceParam, 1)
+	checkNumberOfRcvMsgOnGCM(t, firstServiceParam, 0)
+	checkNumberOfRcvMsgOnGCM(t, secondServiceParam, 1)
 
 }
