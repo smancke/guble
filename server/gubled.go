@@ -85,10 +85,10 @@ var CreateKVStore = func() kvstore.KVStore {
 var CreateMessageStore = func() store.MessageStore {
 	switch *config.MS {
 	case "none", "":
-		return dummystore.NewDummyMessageStore(kvstore.NewMemoryKVStore())
+		return dummystore.New(kvstore.NewMemoryKVStore())
 	case "file":
 		logger.WithField("storagePath", *config.StoragePath).Info("Using FileMessageStore in directory")
-		return filestore.NewFileMessageStore(*config.StoragePath)
+		return filestore.New(*config.StoragePath)
 	default:
 		panic(fmt.Errorf("Unknown message-store backend: %q", *config.MS))
 	}

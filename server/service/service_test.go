@@ -164,7 +164,7 @@ func TestMetricsEnabled(t *testing.T) {
 
 func aMockedServiceWithMockedRouterStandalone() (*Service, kvstore.KVStore, store.MessageStore, *MockRouter) {
 	kvStore := kvstore.NewMemoryKVStore()
-	messageStore := dummystore.NewDummyMessageStore(kvStore)
+	messageStore := dummystore.New(kvStore)
 	routerMock := NewMockRouter(testutil.MockCtrl)
 	routerMock.EXPECT().Cluster().Return(nil).MaxTimes(2)
 	service := New(routerMock, webserver.New("localhost:0"))

@@ -514,7 +514,7 @@ func TestPanicOnInternalDependencies(t *testing.T) {
 func aStartedRouter() (*router, auth.AccessManager, store.MessageStore, kvstore.KVStore) {
 	am := auth.NewAllowAllAccessManager(true)
 	kvs := kvstore.NewMemoryKVStore()
-	ms := dummystore.NewDummyMessageStore(kvs)
+	ms := dummystore.New(kvs)
 	router := NewRouter(am, ms, kvs, nil).(*router)
 	router.Start()
 	return router, am, ms, kvs
