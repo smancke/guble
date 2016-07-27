@@ -187,6 +187,7 @@ func (s *subscription) subscriptionLoop() {
 				s.logger.WithError(err).Error("Error pipelining message")
 			}
 		case <-s.gcm.stopC:
+			logger.Debug("DAFUQQQ")
 			return
 		}
 	}

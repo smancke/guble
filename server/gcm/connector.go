@@ -75,16 +75,15 @@ func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int) (*
 func (conn *Connector) Start() error {
 	resetGcmMetrics()
 
-	// start subscription sync loop
-	if err := conn.syncLoop(); err != nil {
-		return err
-	}
+	// // start subscription sync loop
+	// if err := conn.syncLoop(); err != nil {
+	// 	return err
+	// }
 
 	// blocking until current subs are loaded
 	conn.loadSubscriptions()
 
 	go func() {
-		conn.wg.Add(conn.nWorkers)
 		for id := 1; id <= conn.nWorkers; id++ {
 			go conn.loopPipeline(id)
 		}
@@ -117,6 +116,7 @@ func (conn *Connector) Check() error {
 // loopPipeline awaits in a loop for messages subscriptions to be forwarded to GCM,
 // until the stop-channel is closed
 func (conn *Connector) loopPipeline(id int) {
+	conn.wg.Add(1)
 	defer func() {
 		logger.WithField("id", id).Debug("Worker stopped")
 		conn.wg.Done()

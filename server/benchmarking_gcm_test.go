@@ -122,6 +122,7 @@ type benchParams struct {
 	sender        sender        // the function that will send the messages
 	sent          int           // sent messages
 	received      int           // received messages
+	dir           string
 
 	service  *service.Service
 	receiveC chan bool
@@ -180,13 +181,9 @@ func (params *benchParams) setUp() {
 	a := assert.New(params)
 
 	dir, errTempDir := ioutil.TempDir("", "guble_benchmarking_gcm_test")
-	defer func() {
-		errRemove := os.RemoveAll(dir)
-		if errRemove != nil {
-			logger.WithError(errRemove).WithField("module", "testing").Error("Could not remove directory")
-		}
-	}()
 	a.NoError(errTempDir)
+
+	params.dir = dir
 
 	*config.HttpListen = "localhost:0"
 	*config.KVS = "memory"
@@ -231,6 +228,11 @@ func (params *benchParams) setUp() {
 func (params *benchParams) tearDown() {
 	assert.NoError(params, params.service.Stop())
 	params.service = nil
+	errRemove := os.RemoveAll(params.dir)
+	if errRemove != nil {
+		logger.WithError(errRemove).WithField("module", "testing").Error("Could not remove directory")
+	}
+
 }
 
 func (params *benchParams) createClients() []client.Client {
