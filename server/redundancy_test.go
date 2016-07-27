@@ -163,14 +163,14 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 	subscribeToServiceNode(t, secondServiceParam.service)
 
 	//TODO MARIAN  add stop
-	defer func() {
-
-		err = firstServiceParam.service.Stop()
-		a.NoError(err)
-
-		err = secondServiceParam.service.Stop()
-		a.NoError(err)
-	}()
+	//defer func() {
+	//
+	//	err = firstServiceParam.service.Stop()
+	//	a.NoError(err)
+	//
+	//	err = secondServiceParam.service.Stop()
+	//	a.NoError(err)
+	//}()
 }
 
 func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
