@@ -1,6 +1,8 @@
 package gcm
 
 import (
+	"encoding/json"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/alexjlockwood/gcm"
 
@@ -27,6 +29,8 @@ const (
 
 	// default channel buffer size
 	bufferSize = 1000
+
+	syncPath = protocol.Path("/gcm/sync")
 )
 
 var logger = log.WithFields(log.Fields{
@@ -70,6 +74,12 @@ func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int) (*
 // Start opens the connector, creates more goroutines / workers to handle messages coming from the router
 func (conn *Connector) Start() error {
 	resetGcmMetrics()
+
+	// start subscription sync loop
+	if err := conn.syncLoop(); err != nil {
+		return err
+	}
+
 	// blocking until current subs are loaded
 	conn.loadSubscriptions()
 
@@ -151,6 +161,7 @@ func (conn *Connector) GetPrefix() string {
 	return conn.prefix
 }
 
+// ServeHTTP handles the subscription in GCM
 func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		logger.WithField("method", r.Method).Error("Only HTTP post method supported.")
@@ -163,7 +174,7 @@ func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid Parameters in request", http.StatusBadRequest)
 		return
 	}
-	initSubscription(conn, topic, userID, gcmID, 0)
+	initSubscription(conn, topic, userID, gcmID, 0, true)
 	fmt.Fprintf(w, "registered: %v\n", topic)
 }
 
@@ -221,13 +232,98 @@ func (conn *Connector) loadSubscription(entry [2]string) {
 		lastID = 0
 	}
 
-	initSubscription(conn, topic, userID, gcmID, lastID)
+	initSubscription(conn, topic, userID, gcmID, lastID, false)
 
 	logger.WithFields(log.Fields{
 		"gcmID":  gcmID,
 		"userID": userID,
 		"topic":  topic,
 	}).Debug("Loaded GCM subscription")
+}
+
+// Creates a route and listens for subscription synchronization
+func (conn *Connector) syncLoop() error {
+	r := router.NewRoute(router.RouteConfig{
+		Path:        syncPath,
+		ChannelSize: 100,
+	})
+	_, err := conn.router.Subscribe(r)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		conn.wg.Add(1)
+
+		defer func() {
+			logger.Debug("Sync loop stopped")
+			conn.wg.Done()
+		}()
+
+		for {
+			select {
+			case m, opened := <-r.MessagesChannel():
+				if !opened {
+					logger.Error("Sync loop channel closed")
+					return
+				}
+
+				if m.NodeID == conn.router.Cluster().Config.ID {
+					continue
+				}
+
+				subscriptionSync, err := (&subscriptionSync{}).Decode(m.Body)
+				if err != nil {
+					logger.WithError(err).Error("Error decoding subscription sync")
+					continue
+				}
+
+				if _, err := initSubscription(
+					conn,
+					subscriptionSync.Topic,
+					subscriptionSync.UserID,
+					subscriptionSync.GCMID,
+					0,
+					false); err != nil {
+					logger.WithError(err).Error("Error synchronizing subscription")
+				}
+			case <-conn.stopC:
+				return
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (conn *Connector) synchronizeSubscription(topic, userID, gcmID string) error {
+	data, err := (&subscriptionSync{topic, userID, gcmID}).Encode()
+	if err != nil {
+		return err
+	}
+
+	return conn.router.HandleMessage(&protocol.Message{
+		Path: syncPath,
+		Body: data,
+	})
+}
+
+// used to sync subscriptions with other nodes
+type subscriptionSync struct {
+	Topic  string
+	UserID string
+	GCMID  string
+}
+
+func (s *subscriptionSync) Encode() ([]byte, error) {
+	return json.Marshal(s)
+}
+
+func (s *subscriptionSync) Decode(data []byte) (*subscriptionSync, error) {
+	if err := json.Unmarshal(data, s); err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 func removeTrailingSlash(path string) string {

@@ -118,7 +118,7 @@ func TestGCM_SaveAndLoadSubs(t *testing.T) {
 		userID := splitKey[0]
 		topic := splitKey[1]
 		gcmID := splitKey[2]
-		initSubscription(gcm, topic, userID, gcmID, 0)
+		initSubscription(gcm, topic, userID, gcmID, 0, true)
 	}
 
 	// and reload the routes

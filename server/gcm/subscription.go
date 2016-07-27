@@ -62,7 +62,7 @@ func newSubscription(gcm *Connector, route *router.Route, lastID uint64) *subscr
 }
 
 // initSubscription creates a subscription and adds it in router/kvstore then starts listening for messages
-func initSubscription(gcm *Connector, topic, userID, gcmID string, unusedLastID uint64) (*subscription, error) {
+func initSubscription(gcm *Connector, topic, userID, gcmID string, unusedLastID uint64, store bool) (*subscription, error) {
 	route := router.NewRoute(router.RouteConfig{
 		RouteParams: router.RouteParams{userIDKey: userID, applicationIDKey: gcmID},
 		Path:        protocol.Path(topic),
@@ -70,12 +70,18 @@ func initSubscription(gcm *Connector, topic, userID, gcmID string, unusedLastID 
 	})
 
 	s := newSubscription(gcm, route, 0)
+
 	s.logger.Debug("New subscription")
-	if err := s.store(); err != nil {
-		return nil, err
+	if store {
+		if err := s.store(); err != nil {
+			return nil, err
+		}
 	}
-	s.restart()
-	return s, nil
+
+	// synchronize subscription after storing if cluster exists
+	gcm.synchronizeSubscription(topic, userID, gcmID)
+
+	return s, s.restart()
 }
 
 func (s *subscription) subscribe() error {
@@ -146,7 +152,7 @@ func (s *subscription) shouldFetch() bool {
 }
 
 // subscriptionLoop that will run in a goroutine and pipe messages from route to gcm
-// Attention: in order for this loop to finish the route channel must be closed
+// Attention: in order for this loop to finish the route channel must stop sending messages
 func (s *subscription) subscriptionLoop() {
 	s.logger.Debug("Starting subscription loop")
 
