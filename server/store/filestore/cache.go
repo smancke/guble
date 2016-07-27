@@ -3,7 +3,7 @@ package filestore
 import (
 	"sync"
 
-	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/server/store"
 )
 
 type cache struct {

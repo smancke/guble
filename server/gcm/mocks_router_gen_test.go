@@ -10,7 +10,7 @@ import (
 	cluster "github.com/smancke/guble/server/cluster"
 	kvstore "github.com/smancke/guble/server/kvstore"
 	router "github.com/smancke/guble/server/router"
-	store "github.com/smancke/guble/store"
+	store "github.com/smancke/guble/server/store"
 )
 
 // Mock of Router interface

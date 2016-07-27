@@ -4,7 +4,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/gcm"
+	"github.com/smancke/guble/server/gcm"
 	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/testutil"
 

@@ -8,8 +8,8 @@ import (
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/store"
-	"github.com/smancke/guble/store/dummystore"
+	"github.com/smancke/guble/server/store"
+	"github.com/smancke/guble/server/store/dummystore"
 	"github.com/smancke/guble/testutil"
 
 	"github.com/golang/mock/gomock"

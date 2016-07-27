@@ -8,7 +8,7 @@ import (
 
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/server/store"
 )
 
 const topicSchema = "topic_sequence"

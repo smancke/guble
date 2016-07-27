@@ -3,19 +3,19 @@ package server
 import (
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/smancke/guble/gcm"
 	"github.com/smancke/guble/logformatter"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/cluster"
+	"github.com/smancke/guble/server/gcm"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/rest"
 	"github.com/smancke/guble/server/service"
+	"github.com/smancke/guble/server/store"
+	"github.com/smancke/guble/server/store/dummystore"
+	"github.com/smancke/guble/server/store/filestore"
 	"github.com/smancke/guble/server/webserver"
 	"github.com/smancke/guble/server/websocket"
-	"github.com/smancke/guble/store"
-	"github.com/smancke/guble/store/dummystore"
-	"github.com/smancke/guble/store/filestore"
 
 	"fmt"
 	"github.com/smancke/guble/server/router"

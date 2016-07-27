@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/server/store"
 	"github.com/stretchr/testify/assert"
 
 	"math"

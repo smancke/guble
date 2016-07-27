@@ -6,7 +6,6 @@ package auth
 import (
 	gomock "github.com/golang/mock/gomock"
 	protocol "github.com/smancke/guble/protocol"
-	
 )
 
 // Mock of AccessManager interface

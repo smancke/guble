@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/server/store"
 )
 
 // IndexList a sorted list of fetch entries

@@ -18,7 +18,7 @@ function replace {
 
 MOCKGEN=$GOPATH/bin/mockgen
 
-# service mocks
+# server/service mocks
 $MOCKGEN  -self_package service -package service \
       -destination server/service/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
@@ -29,7 +29,7 @@ $MOCKGEN -self_package service -package service \
       github.com/docker/distribution/health \
       Checker
 
-# router mocks
+# server/router mocks
 $MOCKGEN  -self_package router -package router \
       -destination server/router/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
@@ -38,7 +38,7 @@ replace "server/router/mocks_router_gen_test.go" "router \"github.com\/smancke\/
 
 $MOCKGEN -self_package router -package router \
       -destination server/router/mocks_store_gen_test.go \
-      github.com/smancke/guble/store \
+      github.com/smancke/guble/server/store \
       MessageStore
 
 $MOCKGEN -self_package router -package router \
@@ -64,20 +64,20 @@ $MOCKGEN  -self_package client -package client \
 replace "client/mocks_client_gen_test.go" "client \"github.com\/smancke\/guble\/client\"" "client\."
 
 
-# gcm mocks
+# server/gcm mocks
 $MOCKGEN -package gcm \
-      -destination gcm/mocks_router_gen_test.go \
+      -destination server/gcm/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
       Router
 
 $MOCKGEN -self_package gcm -package gcm \
-      -destination gcm/mocks_kvstore_gen_test.go \
+      -destination server/gcm/mocks_kvstore_gen_test.go \
       github.com/smancke/guble/server/kvstore \
       KVStore
 
 $MOCKGEN -self_package gcm -package gcm \
-      -destination gcm/mocks_store_gen_test.go \
-      github.com/smancke/guble/store \
+      -destination server/gcm/mocks_store_gen_test.go \
+      github.com/smancke/guble/server/store \
       MessageStore
 
 # server mocks
@@ -93,11 +93,11 @@ $MOCKGEN -self_package server -package server \
 
 $MOCKGEN -self_package server -package server \
       -destination server/mocks_store_gen_test.go \
-      github.com/smancke/guble/store \
+      github.com/smancke/guble/server/store \
       MessageStore
 
 
-# auth mocks
+# server/auth mocks
 $MOCKGEN -self_package auth -package auth \
       -destination server/auth/mocks_auth_gen_test.go \
       github.com/smancke/guble/server/auth \
@@ -122,7 +122,7 @@ $MOCKGEN -self_package websocket -package websocket \
 
 $MOCKGEN -self_package websocket -package websocket \
       -destination server/websocket/mocks_store_gen_test.go \
-      github.com/smancke/guble/store \
+      github.com/smancke/guble/server/store \
       MessageStore
 
 $MOCKGEN -self_package websocket -package websocket \
@@ -130,7 +130,7 @@ $MOCKGEN -self_package websocket -package websocket \
       github.com/smancke/guble/server/auth \
       AccessManager
 
-# Server/Rest Mocks
+# server/rest Mocks
 $MOCKGEN -package rest \
       -destination server/rest/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
