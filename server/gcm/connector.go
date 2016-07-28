@@ -315,6 +315,11 @@ func (conn *Connector) syncLoop() error {
 }
 
 func (conn *Connector) synchronizeSubscription(topic, userID, gcmID string) error {
+	// there is no cluster setup, no need for synchronization of subscription
+	if conn.cluster == nil {
+		return nil
+	}
+
 	data, err := (&subscriptionSync{topic, userID, gcmID}).Encode()
 	if err != nil {
 		return err

@@ -128,10 +128,6 @@ func startService(t *testing.T, listenPort string, nodeID, nodePort int, reusedD
 }
 
 func Test_Subscribe_on_random_node(t *testing.T) {
-	testutil.SkipIfShort(t)
-
-	defer testutil.EnableDebugForMethod()()
-
 	a := assert.New(t)
 
 	firstServiceParam := startService(t, "8080", 1, 10000, "")
@@ -155,32 +151,26 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 
 	subscribeToServiceNode(t, secondServiceParam.service)
 
-	defer func() {
-		err := firstServiceParam.service.Stop()
-		a.NoError(err)
+	err = firstServiceParam.service.Stop()
+	a.NoError(err)
 
-		err = secondServiceParam.service.Stop()
-		a.NoError(err)
+	err = secondServiceParam.service.Stop()
+	a.NoError(err)
 
-		errRemove := os.RemoveAll(firstServiceParam.dir)
-		a.NoError(errRemove)
+	errRemove := os.RemoveAll(firstServiceParam.dir)
+	a.NoError(errRemove)
 
-		errRemove = os.RemoveAll(secondServiceParam.dir)
-		a.NoError(errRemove)
-	}()
+	errRemove = os.RemoveAll(secondServiceParam.dir)
+	a.NoError(errRemove)
 }
 
 func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
-	//TODO MARIAN   removed this after stop is working
-	testutil.SkipIfShort(t)
-	defer testutil.EnableDebugForMethod()()
-
 	a := assert.New(t)
 
-	firstServiceParam := startService(t, "8080", 1, 10000, "")
+	firstServiceParam := startService(t, "8082", 1, 10000, "")
 	a.NotNil(firstServiceParam)
 
-	secondServiceParam := startService(t, "8081", 2, 10001, "")
+	secondServiceParam := startService(t, "8083", 2, 10001, "")
 	a.NotNil(secondServiceParam)
 	//subscribe on first node
 	subscribeToServiceNode(t, firstServiceParam.service)
@@ -202,7 +192,7 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	time.Sleep(time.Millisecond * 150)
 
 	// // restart the service
-	restartedServiceParam := startService(t, "8080", 1, 10000, firstServiceParam.dir)
+	restartedServiceParam := startService(t, "8082", 1, 10000, firstServiceParam.dir)
 	a.NotNil(restartedServiceParam)
 
 	//   send a message to the former subscription.
@@ -218,47 +208,26 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	time.Sleep(time.Millisecond * 150)
 
 	// //clean up
-	defer func() {
-		err = restartedServiceParam.service.Stop()
-		a.NoError(err)
+	err = restartedServiceParam.service.Stop()
+	a.NoError(err)
 
-		err = secondServiceParam.service.Stop()
-		a.NoError(err)
+	err = secondServiceParam.service.Stop()
+	a.NoError(err)
 
-		errRemove := os.RemoveAll(restartedServiceParam.dir)
-		a.NoError(errRemove)
-		errRemove = os.RemoveAll(secondServiceParam.dir)
-		a.NoError(errRemove)
-	}()
+	errRemove := os.RemoveAll(restartedServiceParam.dir)
+	a.NoError(errRemove)
+	errRemove = os.RemoveAll(secondServiceParam.dir)
+	a.NoError(errRemove)
 }
 
 func Test_Independent_Receiving(t *testing.T) {
-	//TODO MARIAN   removed this after stop is working
-	testutil.SkipIfShort(t)
-	defer testutil.EnableDebugForMethod()()
-
 	a := assert.New(t)
 
-	firstServiceParam := startService(t, "8080", 1, 10000, "")
+	firstServiceParam := startService(t, "8084", 1, 10000, "")
 	a.NotNil(firstServiceParam)
 
-	secondServiceParam := startService(t, "8081", 2, 10001, "")
+	secondServiceParam := startService(t, "8085", 2, 10001, "")
 	a.NotNil(secondServiceParam)
-
-	//clean-up
-	defer func() {
-		err := firstServiceParam.service.Stop()
-		a.NoError(err)
-
-		err = secondServiceParam.service.Stop()
-		a.NoError(err)
-
-		err = os.RemoveAll(firstServiceParam.dir)
-		a.NoError(err)
-
-		err = os.RemoveAll(secondServiceParam.dir)
-		a.NoError(err)
-	}()
 
 	//subscribe on first node
 	subscribeToServiceNode(t, firstServiceParam.service)
@@ -288,4 +257,17 @@ func Test_Independent_Receiving(t *testing.T) {
 	//only one message should be received but only on the first node.Every message should be delivered only once.
 	checkNumberOfRcvMsgOnGCM(t, firstServiceParam, 0)
 	checkNumberOfRcvMsgOnGCM(t, secondServiceParam, 1)
+
+	//clean-up
+	err = firstServiceParam.service.Stop()
+	a.NoError(err)
+
+	err = secondServiceParam.service.Stop()
+	a.NoError(err)
+
+	err = os.RemoveAll(firstServiceParam.dir)
+	a.NoError(err)
+
+	err = os.RemoveAll(secondServiceParam.dir)
+	a.NoError(err)
 }

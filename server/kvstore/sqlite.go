@@ -59,6 +59,7 @@ func (kvStore *SqliteKVStore) Open() error {
 
 	if err := gormdb.DB().Ping(); err != nil {
 		kvStore.logger.WithError(err).Error("Error pinging database")
+		return err
 	} else {
 		kvStore.logger.Info("Ping reply from database")
 	}
