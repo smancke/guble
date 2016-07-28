@@ -38,8 +38,9 @@ func subscribeToServiceNode(t *testing.T, service *service.Service) {
 	response, errPost := http.Post(
 		fmt.Sprintf(urlFormat, 1, 1, strings.TrimPrefix(gcmTopic, "/")), "text/plain", bytes.NewBufferString(""),
 	)
-	a.NoError(errPost)
-	a.Equal(response.StatusCode, 200)
+	if a.NoError(errPost) {
+		a.Equal(response.StatusCode, 200)
+	}
 
 	body, errReadAll := ioutil.ReadAll(response.Body)
 	a.NoError(errReadAll)
@@ -69,22 +70,20 @@ func checkNumberOfRcvMsgOnGCM(t *testing.T, p *param, expectedCount int) {
 	a.Equal(expectedCount, p.received)
 }
 
-func startService(t *testing.T, listenPort, dirName string, nodeID, nodePort int, useTempFolder bool) *param {
+func startService(t *testing.T, listenPort string, nodeID, nodePort int, reusedDir string) *param {
+	var (
+		dir string
+		err error
+	)
 	receiveC := make(chan bool, 10)
 
 	timeout := time.Millisecond * 100
 	a := assert.New(t)
 
-	var dir string
-	if useTempFolder {
-		var errTempDir error
-		dir, errTempDir = ioutil.TempDir("", dirName)
-		a.NoError(errTempDir)
-	} else {
-		dir = "/tmp/" + dirName
-		errTempDir := os.MkdirAll(dir, 0777)
-		a.NoError(errTempDir)
-		logger.Warn("Directory should be deleted manually")
+	dir = reusedDir
+	if dir == "" {
+		dir, err = ioutil.TempDir("", "guble_test")
+		a.NoError(err)
 	}
 
 	*config.HttpListen = "localhost:" + listenPort
@@ -135,10 +134,10 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 
 	a := assert.New(t)
 
-	firstServiceParam := startService(t, "8080", "dir1", 1, 10000, true)
+	firstServiceParam := startService(t, "8080", 1, 10000, "")
 	a.NotNil(firstServiceParam)
 
-	secondServiceParam := startService(t, "8081", "dir2", 2, 10001, true)
+	secondServiceParam := startService(t, "8081", 2, 10001, "")
 	a.NotNil(secondServiceParam)
 	//subscribe on first node
 	subscribeToServiceNode(t, firstServiceParam.service)
@@ -150,15 +149,14 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 	err := client1.Send(gcmTopic, "body", "{jsonHeader:1}")
 	a.NoError(err)
 
-	//only one message should be received but only on the first node.Every message should be delivered only once.
+	// //only one message should be received but only on the first node.Every message should be delivered only once.
 	checkNumberOfRcvMsgOnGCM(t, firstServiceParam, 1)
 	checkNumberOfRcvMsgOnGCM(t, secondServiceParam, 0)
 
 	subscribeToServiceNode(t, secondServiceParam.service)
 
-	//TODO MARIAN  add stop
 	defer func() {
-		err = firstServiceParam.service.Stop()
+		err := firstServiceParam.service.Stop()
 		a.NoError(err)
 
 		err = secondServiceParam.service.Stop()
@@ -179,10 +177,10 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 
 	a := assert.New(t)
 
-	firstServiceParam := startService(t, "8080", "dir1", 1, 10000, false)
+	firstServiceParam := startService(t, "8080", 1, 10000, "")
 	a.NotNil(firstServiceParam)
 
-	secondServiceParam := startService(t, "8081", "dir2", 2, 10001, false)
+	secondServiceParam := startService(t, "8081", 2, 10001, "")
 	a.NotNil(secondServiceParam)
 	//subscribe on first node
 	subscribeToServiceNode(t, firstServiceParam.service)
@@ -204,7 +202,7 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	time.Sleep(time.Millisecond * 150)
 
 	// // restart the service
-	restartedServiceParam := startService(t, "8080", "dir1", 1, 10000, false)
+	restartedServiceParam := startService(t, "8080", 1, 10000, firstServiceParam.dir)
 	a.NotNil(restartedServiceParam)
 
 	//   send a message to the former subscription.
@@ -234,17 +232,17 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	}()
 }
 
-func Test_independent_Receiveing(t *testing.T) {
+func Test_Independent_Receiving(t *testing.T) {
 	//TODO MARIAN   removed this after stop is working
 	testutil.SkipIfShort(t)
 	defer testutil.EnableDebugForMethod()()
 
 	a := assert.New(t)
 
-	firstServiceParam := startService(t, "8080", "dir1", 1, 10000, false)
+	firstServiceParam := startService(t, "8080", 1, 10000, "")
 	a.NotNil(firstServiceParam)
 
-	secondServiceParam := startService(t, "8081", "dir2", 2, 10001, false)
+	secondServiceParam := startService(t, "8081", 2, 10001, "")
 	a.NotNil(secondServiceParam)
 
 	//clean-up
@@ -252,8 +250,8 @@ func Test_independent_Receiveing(t *testing.T) {
 		err := firstServiceParam.service.Stop()
 		a.NoError(err)
 
-		// err = secondServiceParam.service.Stop()
-		// a.NoError(err)
+		err = secondServiceParam.service.Stop()
+		a.NoError(err)
 
 		err = os.RemoveAll(firstServiceParam.dir)
 		a.NoError(err)

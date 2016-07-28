@@ -27,7 +27,8 @@ const (
 )
 
 var (
-	errSubReplaced = errors.New("Subscription replaced")
+	errSubReplaced   = errors.New("Subscription replaced")
+	errIgnoreMessage = errors.New("Message ignored")
 )
 
 type jsonError struct {
@@ -49,15 +50,20 @@ type subscription struct {
 
 // Creates a subscription and returns the pointer
 func newSubscription(gcm *Connector, route *router.Route, lastID uint64) *subscription {
+	subLogger := logger.WithFields(log.Fields{
+		"gcmID":  route.Get(applicationIDKey),
+		"userID": route.Get(userIDKey),
+		"topic":  string(route.Path),
+	})
+	if gcm.cluster != nil {
+		subLogger = subLogger.WithField("nodeID", gcm.cluster.Config.ID)
+	}
+
 	return &subscription{
 		gcm:    gcm,
 		route:  route,
 		lastID: lastID,
-		logger: logger.WithFields(log.Fields{
-			"gcmID":  route.Get(applicationIDKey),
-			"userID": route.Get(userIDKey),
-			"topic":  string(route.Path),
-		}),
+		logger: subLogger,
 	}
 }
 
@@ -77,9 +83,6 @@ func initSubscription(gcm *Connector, topic, userID, gcmID string, unusedLastID 
 			return nil, err
 		}
 	}
-
-	// synchronize subscription after storing if cluster exists
-	gcm.synchronizeSubscription(topic, userID, gcmID)
 
 	return s, s.restart()
 }
@@ -187,7 +190,6 @@ func (s *subscription) subscriptionLoop() {
 				s.logger.WithError(err).Error("Error pipelining message")
 			}
 		case <-s.gcm.stopC:
-			logger.Debug("DAFUQQQ")
 			return
 		}
 	}
@@ -283,6 +285,12 @@ func (s *subscription) bytes() []byte {
 
 // store data in kvstore
 func (s *subscription) store() error {
+	// TODO Bogdan remove this
+	// defer func() {
+	// 	if err := recover(); err != nil {
+	// 		s.logger.WithField("err", err).Error("Error saving in KV")
+	// 	}
+	// }()
 	s.logger.WithField("lastID", s.lastID).Debug("Storing subscription")
 	err := s.gcm.kvStore.Put(schema, s.route.Get(applicationIDKey), s.bytes())
 	if err != nil {
@@ -312,6 +320,10 @@ func (s *subscription) pipe(m *protocol.Message) error {
 		}
 		return s.handleGCMResponse(response)
 	case err := <-pipeMessage.errC:
+		if err == errIgnoreMessage {
+			s.logger.WithField("message", m).Info("Ignoring message")
+			return nil
+		}
 		s.logger.WithError(err).Error("Error sending message to GCM")
 		return err
 	}
@@ -385,6 +397,11 @@ func (pm *pipeMessage) payload() map[string]interface{} {
 func (pm *pipeMessage) closeChannels() {
 	close(pm.resultC)
 	close(pm.errC)
+}
+
+// ignoreMessage will send a errIgnoreMessage in to the error channel so the processing can continue
+func (pm *pipeMessage) ignoreMessage() {
+	pm.errC <- errIgnoreMessage
 }
 
 func messageMap(m *protocol.Message) map[string]interface{} {

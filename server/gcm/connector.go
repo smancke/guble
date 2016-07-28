@@ -7,6 +7,7 @@ import (
 	"github.com/alexjlockwood/gcm"
 
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/cluster"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
 
@@ -43,6 +44,7 @@ var logger = log.WithFields(log.Fields{
 type Connector struct {
 	Sender        *gcm.Sender
 	router        router.Router
+	cluster       *cluster.Cluster
 	kvStore       kvstore.KVStore
 	prefix        string
 	pipelineC     chan *pipeMessage
@@ -62,6 +64,7 @@ func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int) (*
 	return &Connector{
 		Sender:        &gcm.Sender{ApiKey: gcmAPIKey},
 		router:        router,
+		cluster:       router.Cluster(),
 		kvStore:       kvStore,
 		prefix:        prefix,
 		pipelineC:     make(chan *pipeMessage, bufferSize),
@@ -75,10 +78,12 @@ func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int) (*
 func (conn *Connector) Start() error {
 	resetGcmMetrics()
 
-	// // start subscription sync loop
-	// if err := conn.syncLoop(); err != nil {
-	// 	return err
-	// }
+	// start subscription sync loop if we are in cluster mode
+	if conn.cluster != nil {
+		if err := conn.syncLoop(); err != nil {
+			return err
+		}
+	}
 
 	// blocking until current subs are loaded
 	conn.loadSubscriptions()
@@ -127,8 +132,14 @@ func (conn *Connector) loopPipeline(id int) {
 		select {
 		case pm := <-conn.pipelineC:
 			// only forward to gcm message which have subscription on this node and not the other received from cluster
-			if pm != nil && conn.router.Cluster().Config.ID == pm.message.NodeID {
+			if pm != nil {
+				if conn.cluster != nil && conn.cluster.Config.ID != pm.message.NodeID {
+					pm.ignoreMessage()
+					continue
+				}
+
 				conn.sendMessage(pm)
+
 			}
 		case <-conn.stopC:
 			return
@@ -175,6 +186,10 @@ func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	initSubscription(conn, topic, userID, gcmID, 0, true)
+
+	// synchronize subscription after storing if cluster exists
+	conn.synchronizeSubscription(topic, userID, gcmID)
+
 	fmt.Fprintf(w, "registered: %v\n", topic)
 }
 
@@ -253,10 +268,11 @@ func (conn *Connector) syncLoop() error {
 	}
 
 	go func() {
+		logger.Info("Sync loop starting")
 		conn.wg.Add(1)
 
 		defer func() {
-			logger.Debug("Sync loop stopped")
+			logger.Info("Sync loop stopped")
 			conn.wg.Done()
 		}()
 
@@ -268,7 +284,8 @@ func (conn *Connector) syncLoop() error {
 					return
 				}
 
-				if m.NodeID == conn.router.Cluster().Config.ID {
+				if m.NodeID == conn.cluster.Config.ID {
+					logger.Debug("Received own subscription loop")
 					continue
 				}
 
@@ -278,6 +295,7 @@ func (conn *Connector) syncLoop() error {
 					continue
 				}
 
+				logger.Debug("Initializing sync subscription without storing it.")
 				if _, err := initSubscription(
 					conn,
 					subscriptionSync.Topic,

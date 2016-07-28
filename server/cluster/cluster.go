@@ -193,7 +193,10 @@ func (cluster *Cluster) broadcastClusterMessage(cMessage *message) error {
 }
 
 func (cluster *Cluster) sendToNode(node *memberlist.Node, msgBytes []byte) error {
-	logger.WithField("node", node.Name).Debug("Sending cluster-message to a node")
+	logger.WithFields(log.Fields{
+		"node": cluster.Config.ID,
+		"to":   node.Name,
+	}).Debug("Sending cluster-message to a node")
 
 	err := cluster.memberlist.SendToTCP(node, msgBytes)
 	if err != nil {
