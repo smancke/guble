@@ -3,9 +3,9 @@ package testutil
 import (
 	_ "net/http/pprof"
 
-	log "github.com/Sirupsen/logrus"
-
 	"github.com/alexjlockwood/gcm"
+
+	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/health"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
