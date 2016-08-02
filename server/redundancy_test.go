@@ -48,7 +48,6 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 	// Every message should be delivered only once.
 	node1.GCM.CheckReceived(1)
 	node2.GCM.CheckReceived(0)
-
 }
 
 func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
