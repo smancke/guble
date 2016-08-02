@@ -117,15 +117,14 @@ func NewTestClusterNode(t *testing.T, nodeConfig TestClusterNodeConfig) *TestClu
 }
 
 func (tcn *TestClusterNode) Client(userID string, bufferSize int, autoReconnect bool) (client.Client, error) {
-	serverAddr := tcn.Service.WebServer().GetAddr()
-	wsURL := "ws://" + serverAddr + "/stream/user/" + userID
-	httpURL := "http://" + serverAddr
+	wsURL := "ws://" + tcn.HttpListen + "/stream/user/" + userID
+	httpURL := "http://" + tcn.HttpListen
 
 	return client.Open(wsURL, httpURL, bufferSize, autoReconnect)
 }
 
 func (tcn *TestClusterNode) Subscribe(topic string) {
-	tcn.GCM.subscribe(tcn.Service.WebServer().GetAddr(), topic)
+	tcn.GCM.subscribe(tcn.HttpListen, topic)
 }
 
 func (tcn *TestClusterNode) Cleanup(removeDir bool) {
