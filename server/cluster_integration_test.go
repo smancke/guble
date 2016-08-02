@@ -43,10 +43,10 @@ func Test_Cluster_Subscribe_To_Random_Node(t *testing.T) {
 	a.NoError(err2)
 	defer os.RemoveAll(dir2)
 
-	service1 := createService(dir1, "1", "10000", ":8080", "127.0.0.1:10000")
+	service1 := createService(dir1, "1", "10000", "0.0.0.0:8080", "0.0.0.0:10000")
 	a.NotNil(service1)
 
-	service2 := createService(dir2, "2", "10001", ":8081", "127.0.0.1:10000")
+	service2 := createService(dir2, "2", "10001", "0.0.0.0:8081", "0.0.0.0:10000")
 	a.NotNil(service2)
 
 	defer func() {
@@ -56,7 +56,7 @@ func Test_Cluster_Subscribe_To_Random_Node(t *testing.T) {
 		a.NoError(errStop2)
 	}()
 
-	client1, err := client.Open("ws://127.0.0.1:8080/stream/user/user1", "http://localhost", 10, false)
+	client1, err := client.Open("ws://0.0.0.0:8080/stream/user/user1", "http://0.0.0.0", 10, false)
 	a.NoError(err, "Connection to first node should return no error")
 
 	err = client1.Subscribe("/foo/bar")
@@ -66,7 +66,7 @@ func Test_Cluster_Subscribe_To_Random_Node(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	client1, err = client.Open("ws://127.0.0.1:8081/stream/user/user1", "http://localhost", 10, false)
+	client1, err = client.Open("ws://0.0.0.0:8081/stream/user/user1", "http://0.0.0.0", 10, false)
 	a.NoError(err, "Connection to second node should return no error")
 
 	err = client1.Subscribe("/foo/bar")
@@ -89,10 +89,10 @@ func Test_Cluster_Integration(t *testing.T) {
 	a.NoError(err2)
 	defer os.RemoveAll(dir2)
 
-	service1 := createService(dir1, "1", "10000", ":8080", "127.0.0.1:10000")
+	service1 := createService(dir1, "1", "10000", "0.0.0.0:8080", "0.0.0.0:10000")
 	a.NotNil(service1)
 
-	service2 := createService(dir2, "2", "10001", ":8081", "127.0.0.1:10000")
+	service2 := createService(dir2, "2", "10001", "0.0.0.0:8081", "0.0.0.0:10000")
 	a.NotNil(service2)
 
 	defer func() {
@@ -102,16 +102,16 @@ func Test_Cluster_Integration(t *testing.T) {
 		a.NoError(errStop2)
 	}()
 
-	client1, err1 := client.Open("ws://127.0.0.1:8080/stream/user/user1", "http://localhost", 10, false)
+	client1, err1 := client.Open("ws://0.0.0.0:8080/stream/user/user1", "http://0.0.0.0", 10, false)
 	a.NoError(err1)
 
-	client2, err2 := client.Open("ws://localhost:8080/stream/user/user2", "http://localhost", 10, false)
+	client2, err2 := client.Open("ws://0.0.0.0:8080/stream/user/user2", "http://0.0.0.0", 10, false)
 	a.NoError(err2)
 
 	err2 = client2.Subscribe("/testTopic/m")
 	a.NoError(err2)
 
-	client3, err3 := client.Open("ws://127.0.0.1:8080/stream/user/user3", "http://localhost", 10, false)
+	client3, err3 := client.Open("ws://0.0.0.0:8080/stream/user/user3", "http://0.0.0.0", 10, false)
 	a.NoError(err3)
 
 	numSent := 3
