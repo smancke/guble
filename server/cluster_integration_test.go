@@ -15,19 +15,19 @@ func Test_Cluster_Subscribe_To_Random_Node(t *testing.T) {
 	a := assert.New(t)
 
 	node1 := NewTestClusterNode(t, TestClusterNodeConfig{
-		HttpListen: "0.0.0.0:8080",
+		HttpListen: ":8080",
 		NodeID:     1,
 		NodePort:   10000,
-		Remotes:    []string{"0.0.0.0:10000"},
+		Remotes:    []string{"127.0.0.1:10000"},
 	})
 	a.NotNil(node1)
 	defer node1.Cleanup(true)
 
 	node2 := NewTestClusterNode(t, TestClusterNodeConfig{
-		HttpListen: "0.0.0.0:8081",
+		HttpListen: ":8081",
 		NodeID:     2,
 		NodePort:   10001,
-		Remotes:    []string{"0.0.0.0:10000"},
+		Remotes:    []string{"127.0.0.1:10000"},
 	})
 	a.NotNil(node2)
 	defer node2.Cleanup(true)
@@ -57,19 +57,19 @@ func Test_Cluster_Integration(t *testing.T) {
 	a := assert.New(t)
 
 	node1 := NewTestClusterNode(t, TestClusterNodeConfig{
-		HttpListen: "0.0.0.0:8080",
+		HttpListen: ":8080",
 		NodeID:     1,
 		NodePort:   10000,
-		Remotes:    []string{"0.0.0.0:10000"},
+		Remotes:    []string{"127.0.0.1:10000"},
 	})
 	a.NotNil(node1)
 	defer node1.Cleanup(true)
 
 	node2 := NewTestClusterNode(t, TestClusterNodeConfig{
-		HttpListen: "0.0.0.0:8081",
+		HttpListen: ":8081",
 		NodeID:     2,
 		NodePort:   10001,
-		Remotes:    []string{"0.0.0.0:10000"},
+		Remotes:    []string{"127.0.0.1:10000"},
 	})
 	a.NotNil(node2)
 	defer node2.Cleanup(true)
