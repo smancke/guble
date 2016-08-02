@@ -31,6 +31,7 @@ func Test_Cluster_Subscribe_To_Random_Node(t *testing.T) {
 	})
 	a.NotNil(node2)
 	defer node2.Cleanup(true)
+	time.Sleep(50 * time.Millisecond)
 
 	client1, err := node1.Client("user1", 10, true)
 	a.NoError(err)
