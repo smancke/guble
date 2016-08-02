@@ -12,7 +12,7 @@ import (
 func Test_Subscribe_on_random_node(t *testing.T) {
 	a := assert.New(t)
 
-	node1 := NewTestClusterNode(t, TestNodeConfig{
+	node1 := NewTestClusterNode(t, TestClusterNodeConfig{
 		HttpListen: ":8080",
 		NodeID:     1,
 		NodePort:   10000,
@@ -21,7 +21,7 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 	a.NotNil(node1)
 	defer node1.Cleanup(true)
 
-	node2 := NewTestClusterNode(t, TestNodeConfig{
+	node2 := NewTestClusterNode(t, TestClusterNodeConfig{
 		HttpListen: ":8081",
 		NodeID:     2,
 		NodePort:   10001,
@@ -54,7 +54,7 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	a := assert.New(t)
 
-	node1 := NewTestClusterNode(t, TestNodeConfig{
+	node1 := NewTestClusterNode(t, TestClusterNodeConfig{
 		HttpListen: ":8082",
 		NodeID:     1,
 		NodePort:   10000,
@@ -62,7 +62,7 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	})
 	a.NotNil(node1)
 
-	node2 := NewTestClusterNode(t, TestNodeConfig{
+	node2 := NewTestClusterNode(t, TestClusterNodeConfig{
 		HttpListen: ":8083",
 		NodeID:     2,
 		NodePort:   10001,
@@ -93,7 +93,7 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	time.Sleep(time.Millisecond * 150)
 
 	// restart the service
-	restartedNode1 := NewTestClusterNode(t, TestNodeConfig{
+	restartedNode1 := NewTestClusterNode(t, TestClusterNodeConfig{
 		HttpListen:  ":8082",
 		StoragePath: node1.StoragePath,
 		NodeID:      1,
@@ -122,7 +122,7 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 func Test_Independent_Receiving(t *testing.T) {
 	a := assert.New(t)
 
-	node1 := NewTestClusterNode(t, TestNodeConfig{
+	node1 := NewTestClusterNode(t, TestClusterNodeConfig{
 		HttpListen: ":8084",
 		NodeID:     1,
 		NodePort:   10000,
@@ -131,7 +131,7 @@ func Test_Independent_Receiving(t *testing.T) {
 	a.NotNil(node1)
 	defer node1.Cleanup(true)
 
-	node2 := NewTestClusterNode(t, TestNodeConfig{
+	node2 := NewTestClusterNode(t, TestClusterNodeConfig{
 		HttpListen: ":8085",
 		NodeID:     2,
 		NodePort:   10001,

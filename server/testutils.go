@@ -21,7 +21,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-type TestNodeConfig struct {
+type TestClusterNodeConfig struct {
 	HttpListen  string // "host:port" format or just ":port"
 	NodeID      int
 	NodePort    int
@@ -31,7 +31,7 @@ type TestNodeConfig struct {
 	Remotes     []string
 }
 
-func (tnc *TestNodeConfig) parseConfig() error {
+func (tnc *TestClusterNodeConfig) parseConfig() error {
 	var err error
 
 	dir := tnc.StoragePath
@@ -76,13 +76,13 @@ func (tnc *TestNodeConfig) parseConfig() error {
 }
 
 type TestClusterNode struct {
-	TestNodeConfig
+	TestClusterNodeConfig
 	t       *testing.T
 	GCM     *TestGCM
 	Service *service.Service
 }
 
-func NewTestClusterNode(t *testing.T, nodeConfig TestNodeConfig) *TestClusterNode {
+func NewTestClusterNode(t *testing.T, nodeConfig TestClusterNodeConfig) *TestClusterNode {
 	a := assert.New(t)
 
 	err := nodeConfig.parseConfig()
@@ -106,8 +106,8 @@ func NewTestClusterNode(t *testing.T, nodeConfig TestNodeConfig) *TestClusterNod
 	}
 
 	return &TestClusterNode{
-		TestNodeConfig: nodeConfig,
-		t:              t,
+		TestClusterNodeConfig: nodeConfig,
+		t: t,
 		GCM: &TestGCM{
 			t:         t,
 			Connector: gcmConnector,
