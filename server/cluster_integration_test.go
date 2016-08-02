@@ -58,7 +58,7 @@ func Test_Cluster_Integration(t *testing.T) {
 	a := assert.New(t)
 
 	node1 := NewTestClusterNode(t, TestClusterNodeConfig{
-		HttpListen: ":8080",
+		HttpListen: ":8082",
 		NodeID:     1,
 		NodePort:   10000,
 		Remotes:    []string{"127.0.0.1:10000"},
@@ -67,7 +67,7 @@ func Test_Cluster_Integration(t *testing.T) {
 	defer node1.Cleanup(true)
 
 	node2 := NewTestClusterNode(t, TestClusterNodeConfig{
-		HttpListen: ":8081",
+		HttpListen: ":8083",
 		NodeID:     2,
 		NodePort:   10001,
 		Remotes:    []string{"127.0.0.1:10000"},
