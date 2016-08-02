@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	defaultEnvName        = "dev"
 	defaultHttpListen     = ":8080"
 	defaultHealthEndpoint = "/_health"
 	defaultKVSBackend     = "file"
@@ -38,6 +39,7 @@ type (
 	}
 	Config struct {
 		Log             *string
+		EnvName         *string
 		HttpListen      *string
 		KVS             *string
 		MS              *string
@@ -59,6 +61,8 @@ var (
 			Enum(logLevels()...),
 		HttpListen: kingpin.Flag("http", `The address to for the HTTP server to listen on (format: "[Host]:Port")`).
 			Default(defaultHttpListen).Envar("GUBLE_HTTP_LISTEN").String(),
+		EnvName: kingpin.Flag("env", `Name of the environment on which the application is running`).
+			Default(defaultEnvName).Envar("GUBLE_ENV_NAME").String(),
 		KVS: kingpin.Flag("kvs", "The storage backend for the key-value store to use : file | memory").
 			Default(defaultKVSBackend).HintOptions([]string{"file", "memory"}...).Envar("GUBLE_KVS").String(),
 		MS: kingpin.Flag("ms", "The message storage backend : file | memory").
