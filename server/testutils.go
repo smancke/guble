@@ -128,13 +128,15 @@ func (tcn *TestClusterNode) Subscribe(topic string) {
 	tcn.GCM.subscribe(tcn.Service.WebServer().GetAddr(), topic)
 }
 
-func (tcn *TestClusterNode) Cleanup() {
+func (tcn *TestClusterNode) Cleanup(removeDir bool) {
 	tcn.GCM.Cleanup()
 	err := tcn.Service.Stop()
 	assert.NoError(tcn.t, err)
 
-	err = os.RemoveAll(tcn.StoragePath)
-	assert.NoError(tcn.t, err)
+	if removeDir {
+		err = os.RemoveAll(tcn.StoragePath)
+		assert.NoError(tcn.t, err)
+	}
 }
 
 type TestGCM struct {
@@ -153,6 +155,9 @@ func (tgcm *TestGCM) SetupRoundTripper(timeout time.Duration, bufferSize int, re
 	tgcm.timeout = timeout
 	tgcm.Connector.Sender = testutil.CreateGcmSender(
 		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, response, tgcm.receiveC, timeout))
+
+	// start counting the received messages to GCM
+	tgcm.Receive()
 }
 
 func (tgcm *TestGCM) subscribe(addr, topic string) {
@@ -170,8 +175,6 @@ func (tgcm *TestGCM) subscribe(addr, topic string) {
 	body, err := ioutil.ReadAll(response.Body)
 	a.NoError(err)
 	a.Equal("registered: /topic\n", string(body))
-
-	tgcm.Receive()
 }
 
 // Wait waits count * tgcm.timeout, wait ensure count number of messages have been waited to pass
@@ -208,6 +211,8 @@ func (tgcm *TestGCM) CheckReceived(expected int) {
 }
 
 func (tgcm *TestGCM) Reset() {
+	tgcm.Lock()
+	defer tgcm.Unlock()
 	tgcm.Received = 0
 }
 
