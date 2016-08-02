@@ -42,13 +42,14 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 	client1, err := node1.Client("user1", 1000, true)
 	a.NoError(err)
 
-	// only one message should be received but only on the first node.
-	// Every message should be delivered only once.
-	node1.GCM.CheckReceived(1, time.Second)
-	node2.GCM.CheckReceived(0, time.Second)
-
 	err = client1.Send(gcmTopic, "body", "{jsonHeader:1}")
 	a.NoError(err)
+
+	// only one message should be received but only on the first node.
+	// Every message should be delivered only once.
+	node1.GCM.CheckReceived(1)
+	node2.GCM.CheckReceived(0)
+
 }
 
 // func Test_Subscribe_working_After_Node_Restart(t *testing.T) {

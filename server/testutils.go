@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -139,10 +140,12 @@ func (tcn *TestClusterNode) Cleanup() {
 type TestGCM struct {
 	t         *testing.T
 	Connector *gcm.Connector
-	timeout   time.Duration
 	Received  int // received messages
-	receiveC  chan bool
-	stopC     chan struct{}
+
+	receiveC chan bool
+	timeout  time.Duration
+	stopC    chan struct{}
+	sync.RWMutex
 }
 
 func (tgcm *TestGCM) SetupRoundTripper(timeout time.Duration, bufferSize int, response string) {
@@ -167,6 +170,8 @@ func (tgcm *TestGCM) subscribe(addr, topic string) {
 	body, err := ioutil.ReadAll(response.Body)
 	a.NoError(err)
 	a.Equal("registered: /topic\n", string(body))
+
+	tgcm.Receive()
 }
 
 // Wait waits count * tgcm.timeout, wait ensure count number of messages have been waited to pass
@@ -177,37 +182,28 @@ func (tgcm *TestGCM) Wait(count int) {
 
 // Receive starts a goroutine that will receive on the receiveC and increment the Received counter
 // Returns an error if channel is not create
-// func (tgcm *TestGCM) Receive() error {
-// 	if tgcm.receiveC == nil {
-// 		return fmt.Errorf("Round tripper not created")
-// 	}
-
-// 	go func() {
-// 		for {
-// 			if _, opened := <-tgcm.receiveC; opened {
-// 				tgcm.Lock()
-// 				tgcm.Received++
-// 				tgcm.Unlock()
-// 			}
-// 		}
-// 	}()
-
-// 	return nil
-// }
-
-func (tgcm *TestGCM) CheckReceived(expected int, to time.Duration) {
-	for {
-		select {
-		case _, opened := <-tgcm.receiveC:
-			if !opened {
-				break
-			}
-			tgcm.Received++
-		case <-time.After(to):
-			assert.Fail(tgcm.t, "Failed to receive GCM message before timeout")
-		}
+func (tgcm *TestGCM) Receive() error {
+	if tgcm.receiveC == nil {
+		return fmt.Errorf("Round tripper not created")
 	}
 
+	go func() {
+		for {
+			if _, opened := <-tgcm.receiveC; opened {
+				tgcm.Lock()
+				tgcm.Received++
+				tgcm.Unlock()
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (tgcm *TestGCM) CheckReceived(expected int) {
+	time.Sleep((50 * time.Millisecond) + tgcm.timeout)
+	tgcm.RLock()
+	defer tgcm.RUnlock()
 	assert.Equal(tgcm.t, expected, tgcm.Received)
 }
 
