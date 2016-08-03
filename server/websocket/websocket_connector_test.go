@@ -4,7 +4,7 @@ import (
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/server/store"
 	"github.com/smancke/guble/testutil"
 
 	"github.com/golang/mock/gomock"

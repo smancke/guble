@@ -126,6 +126,7 @@ func TestStartServiceModules(t *testing.T) {
 
 func initRouterMock() *MockRouter {
 	routerMock := NewMockRouter(testutil.MockCtrl)
+	routerMock.EXPECT().Cluster().Return(nil).AnyTimes()
 	amMock := NewMockAccessManager(testutil.MockCtrl)
 	msMock := NewMockMessageStore(testutil.MockCtrl)
 

@@ -12,7 +12,7 @@ import (
 
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/server/store"
 )
 
 const (
@@ -27,7 +27,8 @@ const (
 )
 
 var (
-	errSubReplaced = errors.New("Subscription replaced")
+	errSubReplaced   = errors.New("Subscription replaced")
+	errIgnoreMessage = errors.New("Message ignored")
 )
 
 type jsonError struct {
@@ -49,20 +50,25 @@ type subscription struct {
 
 // Creates a subscription and returns the pointer
 func newSubscription(gcm *Connector, route *router.Route, lastID uint64) *subscription {
+	subLogger := logger.WithFields(log.Fields{
+		"gcmID":  route.Get(applicationIDKey),
+		"userID": route.Get(userIDKey),
+		"topic":  string(route.Path),
+	})
+	if gcm.cluster != nil {
+		subLogger = subLogger.WithField("nodeID", gcm.cluster.Config.ID)
+	}
+
 	return &subscription{
 		gcm:    gcm,
 		route:  route,
 		lastID: lastID,
-		logger: logger.WithFields(log.Fields{
-			"gcmID":  route.Get(applicationIDKey),
-			"userID": route.Get(userIDKey),
-			"topic":  string(route.Path),
-		}),
+		logger: subLogger,
 	}
 }
 
 // initSubscription creates a subscription and adds it in router/kvstore then starts listening for messages
-func initSubscription(gcm *Connector, topic, userID, gcmID string, unusedLastID uint64) (*subscription, error) {
+func initSubscription(gcm *Connector, topic, userID, gcmID string, unusedLastID uint64, store bool) (*subscription, error) {
 	route := router.NewRoute(router.RouteConfig{
 		RouteParams: router.RouteParams{userIDKey: userID, applicationIDKey: gcmID},
 		Path:        protocol.Path(topic),
@@ -70,12 +76,15 @@ func initSubscription(gcm *Connector, topic, userID, gcmID string, unusedLastID 
 	})
 
 	s := newSubscription(gcm, route, 0)
+
 	s.logger.Debug("New subscription")
-	if err := s.store(); err != nil {
-		return nil, err
+	if store {
+		if err := s.store(); err != nil {
+			return nil, err
+		}
 	}
-	s.restart()
-	return s, nil
+
+	return s, s.restart()
 }
 
 func (s *subscription) subscribe() error {
@@ -146,7 +155,7 @@ func (s *subscription) shouldFetch() bool {
 }
 
 // subscriptionLoop that will run in a goroutine and pipe messages from route to gcm
-// Attention: in order for this loop to finish the route channel must be closed
+// Attention: in order for this loop to finish the route channel must stop sending messages
 func (s *subscription) subscriptionLoop() {
 	s.logger.Debug("Starting subscription loop")
 
@@ -276,6 +285,12 @@ func (s *subscription) bytes() []byte {
 
 // store data in kvstore
 func (s *subscription) store() error {
+	// TODO Bogdan remove this
+	// defer func() {
+	// 	if err := recover(); err != nil {
+	// 		s.logger.WithField("err", err).Error("Error saving in KV")
+	// 	}
+	// }()
 	s.logger.WithField("lastID", s.lastID).Debug("Storing subscription")
 	err := s.gcm.kvStore.Put(schema, s.route.Get(applicationIDKey), s.bytes())
 	if err != nil {
@@ -305,6 +320,10 @@ func (s *subscription) pipe(m *protocol.Message) error {
 		}
 		return s.handleGCMResponse(response)
 	case err := <-pipeMessage.errC:
+		if err == errIgnoreMessage {
+			s.logger.WithField("message", m).Info("Ignoring message")
+			return nil
+		}
 		s.logger.WithError(err).Error("Error sending message to GCM")
 		return err
 	}
@@ -378,6 +397,11 @@ func (pm *pipeMessage) payload() map[string]interface{} {
 func (pm *pipeMessage) closeChannels() {
 	close(pm.resultC)
 	close(pm.errC)
+}
+
+// ignoreMessage will send a errIgnoreMessage in to the error channel so the processing can continue
+func (pm *pipeMessage) ignoreMessage() {
+	pm.errC <- errIgnoreMessage
 }
 
 func messageMap(m *protocol.Message) map[string]interface{} {

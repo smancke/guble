@@ -1,11 +1,12 @@
 package webserver
 
 import (
-	log "github.com/Sirupsen/logrus"
 	"net"
 	"net/http"
 	"strings"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 type WebServer struct {

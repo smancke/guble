@@ -9,7 +9,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/server/store"
 )
 
 var logger = log.WithFields(log.Fields{

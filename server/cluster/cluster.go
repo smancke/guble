@@ -79,7 +79,7 @@ func (cluster *Cluster) Start() error {
 	}
 	if num == 0 {
 		errorMessage := "No remote hosts were successfuly contacted when this node wanted to join the cluster"
-		logger.Error(errorMessage)
+		logger.WithField("remotes", cluster.remotesAsStrings()).Error(errorMessage)
 		return errors.New(errorMessage)
 	}
 	logger.Debug("Started Cluster")
@@ -192,15 +192,40 @@ func (cluster *Cluster) broadcastClusterMessage(cMessage *message) error {
 	return nil
 }
 
-func (cluster *Cluster) sendToNode(node *memberlist.Node, msgBytes []byte) {
-	logger.WithField("nodeName", node.Name).Debug("Sending cluster-message to a node")
+func (cluster *Cluster) sendToNode(node *memberlist.Node, msgBytes []byte) error {
+	logger.WithFields(log.Fields{
+		"node": cluster.Config.ID,
+		"to":   node.Name,
+	}).Debug("Sending cluster-message to a node")
+
 	err := cluster.memberlist.SendToTCP(node, msgBytes)
 	if err != nil {
 		logger.WithFields(log.Fields{
 			"err":  err,
 			"node": node,
 		}).Error("Error sending cluster-message to a node")
+
+		return err
 	}
+
+	return nil
+}
+
+func (cluster *Cluster) sendMessageToNode(node *memberlist.Node, cmsg *message) error {
+	logger.WithField("node", node.Name).Debug("Sending message to a node")
+
+	bytes, err := cmsg.encode()
+	if err != nil {
+		logger.WithError(err).Error("Could not encode and broadcast cluster-message")
+		return err
+	}
+
+	if err = cluster.memberlist.SendToTCP(node, bytes); err != nil {
+		logger.WithField("node", node.Name).WithError(err).Error("Error send message to node")
+		return err
+	}
+
+	return nil
 }
 
 func (cluster *Cluster) remotesAsStrings() (strings []string) {

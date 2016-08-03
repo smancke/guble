@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smancke/guble/store"
+	"github.com/smancke/guble/server/store"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -139,8 +139,10 @@ func (p *messagePartition) readIdxFiles() error {
 		return err
 	}
 
-	if p.list.back().id >= p.maxMessageID {
-		p.maxMessageID = p.list.back().id
+	back := p.list.back()
+
+	if back != nil && back.id >= p.maxMessageID {
+		p.maxMessageID = back.id
 	}
 
 	return nil
