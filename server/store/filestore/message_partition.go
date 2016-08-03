@@ -16,10 +16,10 @@ import (
 )
 
 var (
-	MAGIC_NUMBER        = []byte{42, 249, 180, 108, 82, 75, 222, 182}
-	FILE_FORMAT_VERSION = []byte{1}
-	MESSAGES_PER_FILE   = uint64(10000)
-	INDEX_ENTRY_SIZE    = 20
+	magicNumber       = []byte{42, 249, 180, 108, 82, 75, 222, 182}
+	fileFormatVersion = []byte{1}
+	messagesPerFile   = uint64(10000)
+	indexEntrySize    = 20
 )
 
 const (
@@ -57,7 +57,7 @@ func newMessagePartition(basedir string, storeName string) (*messagePartition, e
 	p := &messagePartition{
 		basedir:   basedir,
 		name:      storeName,
-		list:      newIndexList(int(MESSAGES_PER_FILE)),
+		list:      newIndexList(int(messagesPerFile)),
 		fileCache: newCache(),
 	}
 	return p, p.initialize()
@@ -191,7 +191,7 @@ func readCacheEntryFromIdxFile(filename string) (entry *cacheEntry, err error) {
 	if err != nil {
 		return
 	}
-	max, _, _, err := readIndexEntry(file, int64((entriesInIndex-1)*uint64(INDEX_ENTRY_SIZE)))
+	max, _, _, err := readIndexEntry(file, int64((entriesInIndex-1)*uint64(indexEntrySize)))
 	if err != nil {
 		return
 	}
@@ -213,12 +213,12 @@ func (p *messagePartition) createNextAppendFiles() error {
 	if stat, _ := appendfile.Stat(); stat.Size() == 0 {
 		p.appendFilePosition = uint64(stat.Size())
 
-		_, err = appendfile.Write(MAGIC_NUMBER)
+		_, err = appendfile.Write(magicNumber)
 		if err != nil {
 			return err
 		}
 
-		_, err = appendfile.Write(FILE_FORMAT_VERSION)
+		_, err = appendfile.Write(fileFormatVersion)
 		if err != nil {
 			return err
 		}
@@ -295,7 +295,7 @@ func (p *messagePartition) Store(msgId uint64, msg []byte) error {
 }
 
 func (p *messagePartition) store(messageID uint64, data []byte) error {
-	if p.entriesCount == MESSAGES_PER_FILE ||
+	if p.entriesCount == messagesPerFile ||
 		p.appendFile == nil ||
 		p.indexFile == nil {
 
@@ -309,7 +309,7 @@ func (p *messagePartition) store(messageID uint64, data []byte) error {
 			return err
 		}
 
-		if p.entriesCount == MESSAGES_PER_FILE {
+		if p.entriesCount == messagesPerFile {
 
 			logger.WithFields(log.Fields{
 				"msgId":        messageID,
@@ -526,7 +526,7 @@ func (p *messagePartition) rewriteSortedIdxFile(filename string) error {
 
 // readIndexEntry reads from a .idx file from the given `position` the msgID msgOffset and msgSize
 func readIndexEntry(file *os.File, position int64) (uint64, uint64, uint32, error) {
-	offsetBuffer := make([]byte, INDEX_ENTRY_SIZE)
+	offsetBuffer := make([]byte, indexEntrySize)
 	if _, err := file.ReadAt(offsetBuffer, position); err != nil {
 		logger.WithFields(log.Fields{
 			"err":      err,
@@ -544,8 +544,8 @@ func readIndexEntry(file *os.File, position int64) (uint64, uint64, uint32, erro
 
 // writeIndexEntry write in a .idx file to  the given `pos` the msgIDm msgOffset and msgSize
 func writeIndexEntry(file *os.File, id uint64, offset uint64, size uint32, pos uint64) error {
-	position := int64(uint64(INDEX_ENTRY_SIZE) * pos)
-	offsetBuffer := make([]byte, INDEX_ENTRY_SIZE)
+	position := int64(uint64(indexEntrySize) * pos)
+	offsetBuffer := make([]byte, indexEntrySize)
 
 	binary.LittleEndian.PutUint64(offsetBuffer, id)
 	binary.LittleEndian.PutUint64(offsetBuffer[8:], offset)
@@ -569,7 +569,7 @@ func calculateNoEntries(filename string) (uint64, error) {
 		logger.WithField("err", err).Error("Stat failed")
 		return 0, err
 	}
-	entriesInIndex := uint64(stat.Size() / int64(INDEX_ENTRY_SIZE))
+	entriesInIndex := uint64(stat.Size() / int64(indexEntrySize))
 	return entriesInIndex, nil
 }
 
@@ -592,7 +592,7 @@ func (p *messagePartition) loadLastIndexList(filename string) error {
 // loadIndexFile will read a file and will return a sorted list for fetchEntries
 func (p *messagePartition) loadIndexList(fileID int) (*indexList, error) {
 	filename := p.composeIdxFilenameForPosition(uint64(fileID))
-	l := newIndexList(int(MESSAGES_PER_FILE))
+	l := newIndexList(int(messagesPerFile))
 	logger.WithField("filename", filename).Debug("loadIndexFile")
 
 	entriesInIndex, err := calculateNoEntries(filename)
@@ -608,7 +608,7 @@ func (p *messagePartition) loadIndexList(fileID int) (*indexList, error) {
 	}
 
 	for i := uint64(0); i < entriesInIndex; i++ {
-		id, offset, size, err := readIndexEntry(file, int64(i*uint64(INDEX_ENTRY_SIZE)))
+		id, offset, size, err := readIndexEntry(file, int64(i*uint64(indexEntrySize)))
 		logger.WithFields(log.Fields{
 			"offset": offset,
 			"size":   size,

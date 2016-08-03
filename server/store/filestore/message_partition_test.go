@@ -72,7 +72,7 @@ func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
 func Test_MessagePartition_loadFiles(t *testing.T) {
 	a := assert.New(t)
 	// allow five messages per file
-	MESSAGES_PER_FILE = uint64(5)
+	messagesPerFile = uint64(5)
 
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
@@ -182,7 +182,7 @@ func Benchmark_Storing_1MB_Messages(b *testing.B) {
 
 func Test_calculateFetchList(t *testing.T) {
 	// allow five messages per file
-	MESSAGES_PER_FILE = uint64(5)
+	messagesPerFile = uint64(5)
 
 	msgData := []byte("aaaaaaaaaa") // 10 bytes message
 
@@ -346,7 +346,7 @@ func Test_Partition_Fetch(t *testing.T) {
 	a := assert.New(t)
 
 	// allow five messages per file
-	MESSAGES_PER_FILE = uint64(5)
+	messagesPerFile = uint64(5)
 
 	msgData := []byte("1111111111")  // 10 bytes message
 	msgData2 := []byte("2222222222") // 10 bytes message
@@ -484,7 +484,7 @@ func TestFilenameGeneration(t *testing.T) {
 	a.Equal("/foo/bar/myMessages-00000000000000000000.msg", mStore.composeMsgFilenameForPosition(uint64(mStore.fileCache.length())))
 	a.Equal("/foo/bar/myMessages-00000000000000000042.idx", mStore.composeIdxFilenameForPosition(42))
 	a.Equal("/foo/bar/myMessages-00000000000000000000.idx", mStore.composeIdxFilenameForPosition(0))
-	a.Equal(fmt.Sprintf("/foo/bar/myMessages-%020d.idx", MESSAGES_PER_FILE), mStore.composeIdxFilenameForPosition(MESSAGES_PER_FILE))
+	a.Equal(fmt.Sprintf("/foo/bar/myMessages-%020d.idx", messagesPerFile), mStore.composeIdxFilenameForPosition(messagesPerFile))
 }
 
 func fne(args ...interface{}) interface{} {
