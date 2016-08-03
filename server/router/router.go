@@ -79,18 +79,16 @@ func New(accessManager auth.AccessManager, messageStore store.MessageStore, kvSt
 
 func (router *router) Start() error {
 	router.panicIfInternalDependenciesAreNil()
-	resetRouterMetrics()
 	logger.Info("Starting router")
-
+	resetRouterMetrics()
+	router.wg.Add(1)
 	go func() {
-		router.wg.Add(1)
 		for {
 			if router.stopping && router.channelsAreEmpty() {
 				router.closeRoutes()
 				router.wg.Done()
 				return
 			}
-
 			func() {
 				defer protocol.PanicLogger()
 
@@ -110,7 +108,6 @@ func (router *router) Start() error {
 			}()
 		}
 	}()
-
 	return nil
 }
 
