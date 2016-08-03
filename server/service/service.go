@@ -86,7 +86,7 @@ func (s *Service) MetricsEndpoint(endpointPrefix string) *Service {
 //   health.Checker:
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
 func (s *Service) Start() error {
-	el := protocol.NewErrorList("service: errors occured while starting: ")
+	el := protocol.NewErrorList("service: errors occurred while starting: ")
 	if s.healthEndpoint != "" {
 		logger.WithField("healthEndpoint", s.healthEndpoint).Info("Health endpoint")
 		s.webserver.Handle(s.healthEndpoint, http.HandlerFunc(health.StatusHandler))
