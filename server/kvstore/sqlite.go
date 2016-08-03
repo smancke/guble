@@ -60,9 +60,8 @@ func (kvStore *SqliteKVStore) Open() error {
 	if err := gormdb.DB().Ping(); err != nil {
 		kvStore.logger.WithError(err).Error("Error pinging database")
 		return err
-	} else {
-		kvStore.logger.Info("Ping reply from database")
 	}
+	kvStore.logger.Info("Ping reply from database")
 
 	gormdb.LogMode(sqliteGormLogMode)
 	gormdb.SingularTable(true)
@@ -73,7 +72,6 @@ func (kvStore *SqliteKVStore) Open() error {
 		kvStore.logger.WithError(err).Error("Error in schema migration")
 		return err
 	}
-
 	kvStore.logger.Info("Ensured database schema")
 
 	if !kvStore.syncOnWrite {
