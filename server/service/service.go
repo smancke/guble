@@ -101,9 +101,9 @@ func (s *Service) Start() error {
 	}
 	for order, iface := range s.ModulesSortedByStartOrder() {
 		name := reflect.TypeOf(iface).String()
-		if startable, ok := iface.(startable); ok {
+		if s, ok := iface.(startable); ok {
 			logger.WithFields(log.Fields{"name": name, "order": order}).Info("Starting module")
-			if err := startable.Start(); err != nil {
+			if err := s.Start(); err != nil {
 				logger.WithError(err).WithField("name", name).Error("Error while starting module")
 				el.Add(err)
 			}
@@ -128,9 +128,9 @@ func (s *Service) Stop() error {
 	errors := protocol.NewErrorList("service stopping errors: ")
 	for order, iface := range s.modulesSortedBy(ascendingStopOrder) {
 		name := reflect.TypeOf(iface).String()
-		if stoppable, ok := iface.(stopable); ok {
+		if s, ok := iface.(stopable); ok {
 			logger.WithFields(log.Fields{"name": name, "order": order}).Info("Stopping module")
-			if err := stoppable.Stop(); err != nil {
+			if err := s.Stop(); err != nil {
 				errors.Add(err)
 			}
 		} else {
