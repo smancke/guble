@@ -15,25 +15,25 @@ func Test_Cluster_Subscribe_To_Random_Node(t *testing.T) {
 	testutil.SkipIfShort(t)
 	a := assert.New(t)
 
-	node1 := NewTestClusterNode(t, TestClusterNodeConfig{
+	node1 := newTestClusterNode(t, testClusterNodeConfig{
 		HttpListen: ":8080",
 		NodeID:     1,
 		NodePort:   10000,
 		Remotes:    []string{"127.0.0.1:10000"},
 	})
 	a.NotNil(node1)
-	defer node1.Cleanup(true)
+	defer node1.cleanup(true)
 
-	node2 := NewTestClusterNode(t, TestClusterNodeConfig{
+	node2 := newTestClusterNode(t, testClusterNodeConfig{
 		HttpListen: ":8081",
 		NodeID:     2,
 		NodePort:   10001,
 		Remotes:    []string{"127.0.0.1:10000"},
 	})
 	a.NotNil(node2)
-	defer node2.Cleanup(true)
+	defer node2.cleanup(true)
 
-	client1, err := node1.Client("user1", 10, true)
+	client1, err := node1.client("user1", 10, true)
 	a.NoError(err)
 
 	err = client1.Subscribe("/foo/bar")
@@ -43,7 +43,7 @@ func Test_Cluster_Subscribe_To_Random_Node(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	client1, err = node2.Client("user1", 10, true)
+	client1, err = node2.client("user1", 10, true)
 	a.NoError(err, "Connection to second node should return no error")
 
 	err = client1.Subscribe("/foo/bar")
@@ -57,34 +57,34 @@ func Test_Cluster_Integration(t *testing.T) {
 
 	a := assert.New(t)
 
-	node1 := NewTestClusterNode(t, TestClusterNodeConfig{
+	node1 := newTestClusterNode(t, testClusterNodeConfig{
 		HttpListen: ":8080",
 		NodeID:     1,
 		NodePort:   10000,
 		Remotes:    []string{"127.0.0.1:10000"},
 	})
 	a.NotNil(node1)
-	defer node1.Cleanup(true)
+	defer node1.cleanup(true)
 
-	node2 := NewTestClusterNode(t, TestClusterNodeConfig{
+	node2 := newTestClusterNode(t, testClusterNodeConfig{
 		HttpListen: ":8081",
 		NodeID:     2,
 		NodePort:   10001,
 		Remotes:    []string{"127.0.0.1:10000"},
 	})
 	a.NotNil(node2)
-	defer node2.Cleanup(true)
+	defer node2.cleanup(true)
 
-	client1, err := node1.Client("user1", 10, false)
+	client1, err := node1.client("user1", 10, false)
 	a.NoError(err)
 
-	client2, err := node2.Client("user2", 10, false)
+	client2, err := node2.client("user2", 10, false)
 	a.NoError(err)
 
 	err = client2.Subscribe("/testTopic/m")
 	a.NoError(err)
 
-	client3, err := node1.Client("user3", 10, false)
+	client3, err := node1.client("user3", 10, false)
 	a.NoError(err)
 
 	numSent := 3
