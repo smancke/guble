@@ -66,7 +66,7 @@ func CommonTestIterate(t *testing.T, kvs1 KVStore, kvs2 KVStore) {
 }
 
 func assertChannelContainsEntries(a *assert.Assertions, entryC chan [2]string, expectedEntries ...[2]string) {
-	allEntries := make([][2]string, 0)
+	var allEntries [][2]string
 
 WAITLOOP:
 	for {
@@ -111,7 +111,7 @@ func CommonTestIterateKeys(t *testing.T, kvs1 KVStore, kvs2 KVStore) {
 }
 
 func assertChannelContains(a *assert.Assertions, entryC chan string, expectedEntries ...string) {
-	allEntries := make([]string, 0)
+	var allEntries []string
 
 WAITLOOP:
 	for {
