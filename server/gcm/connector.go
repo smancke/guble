@@ -221,19 +221,12 @@ func (conn *Connector) parseParams(path string) (userID, gcmID, topic string, er
 }
 
 func (conn *Connector) loadSubscriptions() {
-	subscriptions := conn.kvStore.Iterate(schema, "")
 	count := 0
-	for {
-		select {
-		case entry, ok := <-subscriptions:
-			if !ok {
-				logger.WithField("count", count).Info("Loaded GCM subscriptions")
-				return
-			}
-			conn.loadSubscription(entry)
-			count++
-		}
+	for entry := range conn.kvStore.Iterate(schema, "") {
+		conn.loadSubscription(entry)
+		count++
 	}
+	logger.WithField("count", count).Info("Loaded GCM subscriptions")
 }
 
 // loadSubscription loads a kvstore entry and creates a subscription from it
