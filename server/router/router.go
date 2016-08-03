@@ -60,7 +60,7 @@ type router struct {
 	sync.RWMutex
 }
 
-// NewRouter returns a pointer to Router
+// New returns a pointer to Router
 func New(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore kvstore.KVStore, cluster *cluster.Cluster) Router {
 	return &router{
 		routes: make(map[protocol.Path][]*Route),
