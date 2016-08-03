@@ -96,16 +96,16 @@ func Test_MaxMessageId(t *testing.T) {
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_store_test")
 	//defer os.RemoveAll(dir)
-	expectedMaxId := 2
+	expectedMaxID := 2
 
 	// when i store a message
 	store := New(dir)
 	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
-	a.NoError(store.Store("p1", uint64(expectedMaxId), []byte("bbbbbbbbbb")))
+	a.NoError(store.Store("p1", uint64(expectedMaxID), []byte("bbbbbbbbbb")))
 
 	maxID, err := store.MaxMessageID("p1")
 	a.Nil(err, "No error should be received for partition p1")
-	a.Equal(maxID, uint64(expectedMaxId), fmt.Sprintf("MaxId should be [%d]", expectedMaxId))
+	a.Equal(maxID, uint64(expectedMaxID), fmt.Sprintf("MaxId should be [%d]", expectedMaxID))
 }
 
 func Test_MaxMessageIdError(t *testing.T) {

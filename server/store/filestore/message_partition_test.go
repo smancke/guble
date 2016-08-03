@@ -21,14 +21,14 @@ func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
 	mStore, err := newMessagePartition(dir, "node1")
 	a.Nil(err)
 
-	generatedIDs := make([]uint64, 0)
-	lastId := uint64(0)
+	var generatedIDs []uint64
+	lastID := uint64(0)
 
 	for i := 0; i < 1000; i++ {
 		id, _, err := mStore.generateNextMsgID(1)
 		generatedIDs = append(generatedIDs, id)
-		a.True(id > lastId, "Ids should be monotonic")
-		lastId = id
+		a.True(id > lastID, "Ids should be monotonic")
+		lastID = id
 		a.Nil(err)
 	}
 }
@@ -46,8 +46,8 @@ func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
 	mStore2, err := newMessagePartition(dir2, "node1")
 	a.Nil(err)
 
-	generatedIDs := make([]uint64, 0)
-	lastId := uint64(0)
+	var generatedIDs []uint64
+	lastID := uint64(0)
 
 	for i := 0; i < 1000; i++ {
 		id, _, err := mStore.generateNextMsgID(1)
@@ -56,9 +56,9 @@ func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
 		generatedIDs = append(generatedIDs, id)
 		generatedIDs = append(generatedIDs, id2)
 		time.Sleep(1 * time.Millisecond)
-		a.True(id > lastId, "Ids should be monotonic")
-		a.True(id2 > lastId, "Ids should be monotonic")
-		lastId = id2
+		a.True(id > lastID, "Ids should be monotonic")
+		a.True(id2 > lastID, "Ids should be monotonic")
+		lastID = id2
 		a.Nil(err)
 	}
 
