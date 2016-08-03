@@ -182,10 +182,10 @@ func readCacheEntryFromIdxFile(filename string) (entry *cacheEntry, err error) {
 	}
 
 	file, err := os.Open(filename)
-	defer file.Close()
 	if err != nil {
 		return
 	}
+	defer file.Close()
 
 	min, _, _, err := readIndexEntry(file, 0)
 	if err != nil {
@@ -488,10 +488,10 @@ func (p *messagePartition) rewriteSortedIdxFile(filename string) error {
 	}).Info("Dumping Sorted list")
 
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0666)
-	defer file.Close()
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	lastID := uint64(0)
 	for i := 0; i < p.list.len(); i++ {
@@ -600,11 +600,11 @@ func (p *messagePartition) loadIndexList(fileID int) (*indexList, error) {
 	}
 
 	file, err := os.Open(filename)
-	defer file.Close()
 	if err != nil {
 		logger.WithField("err", err).Error("os.Open failed")
 		return nil, err
 	}
+	defer file.Close()
 
 	for i := uint64(0); i < entriesInIndex; i++ {
 		id, offset, size, err := readIndexEntry(file, int64(i*uint64(indexEntrySize)))
@@ -627,7 +627,7 @@ func (p *messagePartition) loadIndexList(fileID int) (*indexList, error) {
 			fileID: fileID,
 		}
 		l.insert(e)
-		logger.WithField("lenl", l.len()).Debug("loadIndexFile")
+		logger.WithField("len", l.len()).Debug("loadIndexFile")
 	}
 	return l, nil
 }
