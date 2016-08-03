@@ -1,3 +1,4 @@
+// Package metrics implements simple general counter-metrics.
 // Metrics are enabled by default. If you want to disable metrics, build with:
 // go build -tags disablemetrics
 package metrics
