@@ -303,7 +303,7 @@ func (p *messagePartition) store(messageID uint64, data []byte) error {
 			"msgId":        messageID,
 			"entriesCount": p.entriesCount,
 			"fileCache":    p.fileCache,
-		}).Debug("In store")
+		}).Debug("store")
 
 		if err := p.closeAppendFiles(); err != nil {
 			return err
@@ -314,12 +314,12 @@ func (p *messagePartition) store(messageID uint64, data []byte) error {
 			logger.WithFields(log.Fields{
 				"msgId":        messageID,
 				"entriesCount": p.entriesCount,
-			}).Info("Dumping current file ")
+			}).Info("Dumping current file")
 
 			//sort the indexFile
 			err := p.rewriteSortedIdxFile(p.composeIdxFilenameForPosition(uint64(p.fileCache.length())))
 			if err != nil {
-				logger.WithField("err", err).Error("Error dumping file")
+				logger.WithError(err).Error("Error dumping file")
 				return err
 			}
 			//Add items in the filecache
@@ -521,7 +521,6 @@ func (p *messagePartition) rewriteSortedIdxFile(filename string) error {
 		}
 	}
 	return nil
-
 }
 
 // readIndexEntry reads from a .idx file from the given `position` the msgID msgOffset and msgSize
