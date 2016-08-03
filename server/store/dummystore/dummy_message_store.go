@@ -74,20 +74,20 @@ func (dms *DummyMessageStore) StoreMessage(message *protocol.Message, nodeID int
 	return len(data), nil
 }
 
-func (dms *DummyMessageStore) Store(partition string, msgId uint64, msg []byte) error {
+func (dms *DummyMessageStore) Store(partition string, msgID uint64, msg []byte) error {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
-	return dms.store(partition, msgId, msg)
+	return dms.store(partition, msgID, msg)
 }
 
 func (dms *DummyMessageStore) store(partition string, msgId uint64, msg []byte) error {
-	maxId, err := dms.maxMessageID(partition)
+	maxID, err := dms.maxMessageID(partition)
 	if err != nil {
 		return err
 	}
-	if msgId > 1+maxId {
+	if msgId > 1+maxID {
 		return fmt.Errorf("DummyMessageStore: Invalid message id for partition %v. Next id should be %v, but was %q",
-			partition, 1+maxId, msgId)
+			partition, 1+maxID, msgId)
 	}
 	dms.setID(partition, msgId)
 	return nil
@@ -106,11 +106,11 @@ func (dms *DummyMessageStore) MaxMessageID(partition string) (uint64, error) {
 func (dms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
-	maxId, err := dms.maxMessageID(partition)
+	maxID, err := dms.maxMessageID(partition)
 	if err != nil {
 		return err
 	}
-	return fnToExecute(maxId)
+	return fnToExecute(maxID)
 }
 
 func (dms *DummyMessageStore) GenerateNextMsgID(partitionName string, timestamp int) (uint64, int64, error) {
