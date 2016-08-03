@@ -52,6 +52,7 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 }
 
 func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
+	testutil.SkipIfShort(t)
 	a := assert.New(t)
 
 	node1 := NewTestClusterNode(t, TestClusterNodeConfig{
@@ -120,6 +121,7 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 }
 
 func Test_Independent_Receiving(t *testing.T) {
+	testutil.SkipIfShort(t)
 	a := assert.New(t)
 
 	node1 := NewTestClusterNode(t, TestClusterNodeConfig{
