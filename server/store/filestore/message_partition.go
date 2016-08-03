@@ -13,6 +13,7 @@ import (
 	"github.com/smancke/guble/server/store"
 
 	log "github.com/Sirupsen/logrus"
+	"io"
 )
 
 var (
@@ -542,7 +543,7 @@ func readIndexEntry(file *os.File, position int64) (uint64, uint64, uint32, erro
 }
 
 // writeIndexEntry write in a .idx file to  the given `pos` the msgIDm msgOffset and msgSize
-func writeIndexEntry(file *os.File, id uint64, offset uint64, size uint32, pos uint64) error {
+func writeIndexEntry(w io.WriterAt, id uint64, offset uint64, size uint32, pos uint64) error {
 	position := int64(uint64(indexEntrySize) * pos)
 	offsetBuffer := make([]byte, indexEntrySize)
 
@@ -550,7 +551,7 @@ func writeIndexEntry(file *os.File, id uint64, offset uint64, size uint32, pos u
 	binary.LittleEndian.PutUint64(offsetBuffer[8:], offset)
 	binary.LittleEndian.PutUint32(offsetBuffer[16:], size)
 
-	if _, err := file.WriteAt(offsetBuffer, position); err != nil {
+	if _, err := w.WriteAt(offsetBuffer, position); err != nil {
 		logger.WithFields(log.Fields{
 			"err":      err,
 			"position": position,
