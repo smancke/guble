@@ -134,7 +134,10 @@ func (dms *DummyMessageStore) maxMessageID(partition string) (uint64, error) {
 			return 0, err
 		}
 		if existInKVStore {
-			sequenceValue, _ = strconv.ParseUint(string(val), 10, 0)
+			sequenceValue, err = strconv.ParseUint(string(val), 10, 0)
+			if err != nil {
+				return 0, err
+			}
 		} else {
 			sequenceValue = uint64(0)
 		}
