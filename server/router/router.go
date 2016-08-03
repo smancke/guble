@@ -159,20 +159,19 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		return &PermissionDeniedError{UserID: message.UserID, AccessType: auth.WRITE, Path: message.Path}
 	}
 
-	// for a new locally-generated message, we need to generate a new message-ID
 	var nodeID int
 	if router.cluster != nil {
 		nodeID = router.cluster.Config.ID
 	}
 
 	mTotalMessagesIncomingBytes.Add(int64(len(message.Bytes())))
-	if size, err := router.messageStore.StoreMessage(message, nodeID); err != nil {
+	size, err := router.messageStore.StoreMessage(message, nodeID)
+	if err != nil {
 		logger.WithError(err).Error("Error storing message")
 		mTotalMessageStoreErrors.Add(1)
 		return err
-	} else {
-		mTotalMessagesStoredBytes.Add(int64(size))
 	}
+	mTotalMessagesStoredBytes.Add(int64(size))
 
 	router.handleOverloadedChannel()
 
