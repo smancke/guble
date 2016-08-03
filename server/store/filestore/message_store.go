@@ -143,15 +143,15 @@ func (fms *FileMessageStore) partitionStore(partition string) (*messagePartition
 	partitionStore, exist := fms.partitions[partition]
 	if !exist {
 		dir := path.Join(fms.basedir, partition)
-		if _, err := os.Stat(dir); err != nil {
-			if os.IsNotExist(err) {
-				if err := os.MkdirAll(dir, 0700); err != nil {
-					logger.WithField("err", err).Error("partitionStore")
-					return nil, err
+		if _, errStat := os.Stat(dir); errStat != nil {
+			if os.IsNotExist(errStat) {
+				if errMkdir := os.MkdirAll(dir, 0700); errMkdir != nil {
+					logger.WithError(errMkdir).Error("partitionStore")
+					return nil, errMkdir
 				}
 			} else {
-				logger.WithField("err", err).Error("partitionStore")
-				return nil, err
+				logger.WithError(errStat).Error("partitionStore")
+				return nil, errStat
 			}
 		}
 		var err error
