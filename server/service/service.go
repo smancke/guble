@@ -110,14 +110,14 @@ func (s *Service) Start() error {
 		} else {
 			logger.WithFields(log.Fields{"name": name, "order": order}).Debug("Module is not startable")
 		}
-		if checker, ok := iface.(health.Checker); ok && s.healthEndpoint != "" {
+		if c, ok := iface.(health.Checker); ok && s.healthEndpoint != "" {
 			logger.WithField("name", name).Info("Registering module as Health-Checker")
-			health.RegisterPeriodicThresholdFunc(name, s.healthFrequency, s.healthThreshold, health.CheckFunc(checker.Check))
+			health.RegisterPeriodicThresholdFunc(name, s.healthFrequency, s.healthThreshold, health.CheckFunc(c.Check))
 		}
-		if endpoint, ok := iface.(endpoint); ok {
-			prefix := endpoint.GetPrefix()
+		if e, ok := iface.(endpoint); ok {
+			prefix := e.GetPrefix()
 			logger.WithFields(log.Fields{"name": name, "prefix": prefix}).Info("Registering module as Endpoint")
-			s.webserver.Handle(prefix, endpoint)
+			s.webserver.Handle(prefix, e)
 		}
 	}
 	return el.ErrorOrNil()
