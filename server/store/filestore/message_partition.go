@@ -30,7 +30,7 @@ const (
 	gubleEpoch         = 1467714505012
 )
 
-type Index struct {
+type index struct {
 	id     uint64
 	offset uint64
 	size   uint32
@@ -369,7 +369,7 @@ func (p *messagePartition) store(messageID uint64, data []byte) error {
 	}).Debug("Wrote in indexFile")
 
 	//create entry for l
-	e := &Index{
+	e := &index{
 		id:     messageID,
 		offset: messageOffset,
 		size:   uint32(len(data)),
@@ -414,7 +414,7 @@ func (p *messagePartition) Fetch(req *store.FetchRequest) {
 
 // fetchByFetchlist fetches the messages in the supplied fetchlist and sends them to the message-channel
 func (p *messagePartition) fetchByFetchlist(fetchList *indexList, messageC chan store.FetchedMessage) error {
-	return fetchList.mapWithPredicate(func(index *Index, _ int) error {
+	return fetchList.mapWithPredicate(func(index *index, _ int) error {
 		filename := p.composeMsgFilenameForPosition(uint64(index.fileID))
 		file, err := os.Open(filename)
 		if err != nil {
@@ -621,7 +621,7 @@ func (p *messagePartition) loadIndexList(fileID int) (*indexList, error) {
 			return nil, err
 		}
 
-		e := &Index{
+		e := &index{
 			id:     id,
 			size:   size,
 			offset: offset,

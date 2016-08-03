@@ -227,19 +227,19 @@ func Test_calculateFetchList(t *testing.T) {
 		{`direct match`,
 			store.FetchRequest{StartID: 3, Direction: 0, Count: 1},
 			indexList{
-				items: []*Index{{3, uint64(21), 10, 0}}, // messageId, offset, size, fileId
+				items: []*index{{3, uint64(21), 10, 0}}, // messageId, offset, size, fileId
 			},
 		},
 		{`direct match in second file`,
 			store.FetchRequest{StartID: 8, Direction: 0, Count: 1},
 			indexList{
-				items: []*Index{{8, uint64(21), 10, 1}}, // messageId, offset, size, fileId,
+				items: []*index{{8, uint64(21), 10, 1}}, // messageId, offset, size, fileId,
 			},
 		},
 		{`direct match in second file, not first position`,
 			store.FetchRequest{StartID: 13, Direction: 0, Count: 1},
 			indexList{
-				items: []*Index{{13, uint64(65), 10, 1}}, // messageId, offset, size, fileId,
+				items: []*index{{13, uint64(65), 10, 1}}, // messageId, offset, size, fileId,
 			},
 		},
 		// TODO this is caused by hasStartID() functions.This will be done when implementing the EndID logic
@@ -252,7 +252,7 @@ func Test_calculateFetchList(t *testing.T) {
 		{`entry before matches`,
 			store.FetchRequest{StartID: 5, Direction: -1, Count: 2},
 			indexList{
-				items: []*Index{
+				items: []*index{
 					{4, uint64(43), 10, 0},  // messageId, offset, size, fileId
 					{5, uint64(109), 10, 0}, // messageId, offset, size, fileId
 				},
@@ -273,7 +273,7 @@ func Test_calculateFetchList(t *testing.T) {
 		{`forward, overlapping files`,
 			store.FetchRequest{StartID: 9, Direction: 1, Count: 3},
 			indexList{
-				items: []*Index{
+				items: []*index{
 					{9, uint64(87), 10, 0},  // messageId, offset, size, fileId
 					{10, uint64(65), 10, 0}, // messageId, offset, size, fileId
 					{13, uint64(65), 10, 1}, // messageId, offset, size, fileId
@@ -283,7 +283,7 @@ func Test_calculateFetchList(t *testing.T) {
 		{`backward, overlapping files`,
 			store.FetchRequest{StartID: 26, Direction: -1, Count: 4},
 			indexList{
-				items: []*Index{
+				items: []*index{
 					// {15, uint64(43), 10, 1},  // messageId, offset, size, fileId
 					{22, uint64(87), 10, 1},  // messageId, offset, size, fileId
 					{23, uint64(109), 10, 1}, // messageId, offset, size, fileId
@@ -295,7 +295,7 @@ func Test_calculateFetchList(t *testing.T) {
 		{`forward, over more then 2 files`,
 			store.FetchRequest{StartID: 5, Direction: 1, Count: 10},
 			indexList{
-				items: []*Index{
+				items: []*index{
 					{5, uint64(109), 10, 0},  // messageId, offset, size, fileId
 					{8, uint64(21), 10, 1},   // messageId, offset, size, fileId
 					{9, uint64(87), 10, 0},   // messageId, offset, size, fileId
@@ -324,7 +324,7 @@ func matchSortedList(t *testing.T, expected, actual indexList) bool {
 		return false
 	}
 
-	err := expected.mapWithPredicate(func(elem *Index, i int) error {
+	err := expected.mapWithPredicate(func(elem *index, i int) error {
 		a := actual.get(i)
 		assert.Equal(t, *elem, *a)
 		if elem.id != a.id ||
