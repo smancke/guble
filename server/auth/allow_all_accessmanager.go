@@ -13,6 +13,6 @@ func NewAllowAllAccessManager(allowAll bool) AllowAllAccessManager {
 }
 
 //IsAllowed returns always the same value, given at construction time (true or false).
-func (am AllowAllAccessManager) IsAllowed(accessType AccessType, userId string, path protocol.Path) bool {
+func (am AllowAllAccessManager) IsAllowed(accessType AccessType, userID string, path protocol.Path) bool {
 	return bool(am)
 }
