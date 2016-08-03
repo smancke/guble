@@ -179,7 +179,7 @@ func (fms *FileMessageStore) Check() error {
 	usedSpacePercentage := 1 - (float64(freeSpace) / float64(totalSpace))
 
 	if usedSpacePercentage > 0.95 {
-		errorMessage := "Disk is almost full."
+		errorMessage := "Storage is almost full"
 		logger.WithFields(log.Fields{
 			"percentage": usedSpacePercentage,
 		}).Warn(errorMessage)
