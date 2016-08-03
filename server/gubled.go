@@ -129,38 +129,21 @@ var CreateModules = func(router router.Router) []interface{} {
 
 func parseEnvName(envName string) error {
 
-	if envName != "" {
-		switch envName {
-		case "dev":
-			log.SetFormatter(&logformatter.LogstashFormatter{Env: envName})
-			return nil
-		case "int":
-			log.SetFormatter(&logformatter.LogstashFormatter{Env: envName})
-			return nil
-		case "pre":
-			log.SetFormatter(&logformatter.LogstashFormatter{Env: envName})
-			return nil
-		case "prod":
-			log.SetFormatter(&logformatter.LogstashFormatter{Env: envName})
-			return nil
-		default:
-			log.SetFormatter(&logformatter.LogstashFormatter{Env: defaultEnvName})
-			return    fmt.Errorf("not a valid  logging environment.Using dev environament name")
-		}
-
+	if envName == "dev" || envName == "int" || envName == "pre" || envName == "prod" {
+		log.SetFormatter(&logformatter.LogstashFormatter{Env: envName})
+		return nil
 	}
 	log.SetFormatter(&logformatter.LogstashFormatter{Env: defaultEnvName})
-	return nil
-
+	return fmt.Errorf("not a valid  logging environment.Using dev environament name")
 }
 
 func Main() {
 	parseConfig()
 
-	err :=  parseEnvName(*config.EnvName)
+	err := parseEnvName(*config.EnvName)
 
 	if err != nil {
-		logger.WithError(err).Fatal("Invalid env")
+		logger.WithError(err).Error("Invalid env")
 	}
 
 	defer func() {
