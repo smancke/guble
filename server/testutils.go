@@ -15,6 +15,7 @@ import (
 	"github.com/smancke/guble/server/gcm"
 	"github.com/smancke/guble/testutil"
 
+	"errors"
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/server/service"
 	"github.com/stretchr/testify/assert"
@@ -146,7 +147,6 @@ type TestGCM struct {
 
 	receiveC chan bool
 	timeout  time.Duration
-	stopC    chan struct{}
 	sync.RWMutex
 }
 
@@ -187,7 +187,7 @@ func (tgcm *TestGCM) Wait(count int) {
 // Returns an error if channel is not create
 func (tgcm *TestGCM) Receive() error {
 	if tgcm.receiveC == nil {
-		return fmt.Errorf("Round tripper not created")
+		return errors.New("Round tripper not created")
 	}
 
 	go func() {
