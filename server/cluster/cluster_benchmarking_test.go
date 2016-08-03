@@ -47,8 +47,8 @@ func benchmarkCluster(b *testing.B, num int, timeoutForAllJoins time.Duration, l
 		defer newMember.Shutdown()
 
 		if i > 0 {
-			num, err := newMember.Join([]string{firstMemberName})
-			if num == 0 || err != nil {
+			numContacted, err := newMember.Join([]string{firstMemberName})
+			if numContacted == 0 || err != nil {
 				log.WithField("error", err).Fatal("Unexpected fatal error when node wanted to join the cluster")
 			}
 		}
