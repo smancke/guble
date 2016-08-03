@@ -30,6 +30,7 @@ type DummyMessageStore struct {
 	idSyncDuration time.Duration
 }
 
+// New returns a new DummyMessageStore.
 func New(kvStore kvstore.KVStore) *DummyMessageStore {
 	return &DummyMessageStore{
 		topicSequences: make(map[string]uint64),
@@ -40,12 +41,14 @@ func New(kvStore kvstore.KVStore) *DummyMessageStore {
 	}
 }
 
+// Start the DummyMessageStore.
 func (dms *DummyMessageStore) Start() error {
 	go dms.startSequenceSync()
 	dms.isSyncStarted = true
 	return nil
 }
 
+// Stop the DummyMessageStore.
 func (dms *DummyMessageStore) Stop() error {
 	if !dms.isSyncStarted {
 		return nil
@@ -78,7 +81,7 @@ func (dms *DummyMessageStore) Store(partition string, msgId uint64, msg []byte) 
 }
 
 func (dms *DummyMessageStore) store(partition string, msgId uint64, msg []byte) error {
-	maxId, err := dms.maxMessageId(partition)
+	maxId, err := dms.maxMessageID(partition)
 	if err != nil {
 		return err
 	}
@@ -86,7 +89,7 @@ func (dms *DummyMessageStore) store(partition string, msgId uint64, msg []byte) 
 		return fmt.Errorf("DummyMessageStore: Invalid message id for partition %v. Next id should be %v, but was %q",
 			partition, 1+maxId, msgId)
 	}
-	dms.setId(partition, msgId)
+	dms.setID(partition, msgId)
 	return nil
 }
 
@@ -97,13 +100,13 @@ func (dms *DummyMessageStore) Fetch(req store.FetchRequest) {
 func (dms *DummyMessageStore) MaxMessageID(partition string) (uint64, error) {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
-	return dms.maxMessageId(partition)
+	return dms.maxMessageID(partition)
 }
 
 func (dms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
-	maxId, err := dms.maxMessageId(partition)
+	maxId, err := dms.maxMessageID(partition)
 	if err != nil {
 		return err
 	}
@@ -114,16 +117,16 @@ func (dms *DummyMessageStore) GenerateNextMsgID(partitionName string, timestamp 
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
 	ts := time.Now().Unix()
-	max, err := dms.maxMessageId(partitionName)
+	max, err := dms.maxMessageID(partitionName)
 	if err != nil {
 		return 0, 0, err
 	}
 	next := max + 1
-	dms.setId(partitionName, next)
+	dms.setID(partitionName, next)
 	return next, ts, nil
 }
 
-func (dms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
+func (dms *DummyMessageStore) maxMessageID(partition string) (uint64, error) {
 	sequenceValue, exist := dms.topicSequences[partition]
 	if !exist {
 		val, existInKVStore, err := dms.kvStore.Get(topicSchema, partition)
@@ -141,7 +144,7 @@ func (dms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
 }
 
 // the id to a new value
-func (dms *DummyMessageStore) setId(partition string, id uint64) {
+func (dms *DummyMessageStore) setID(partition string, id uint64) {
 	dms.topicSequences[partition] = id
 }
 

@@ -62,7 +62,7 @@ func Test_DummyMessageStore_SyncIds(t *testing.T) {
 	// when: we set an id and wait for 4ms
 	// Lock/unlock mutex here, because normal invocation of setId() in the code is done while already protected by mutex
 	store.topicSequencesLock.Lock()
-	store.setId("partition", uint64(42))
+	store.setID("partition", uint64(42))
 	store.topicSequencesLock.Unlock()
 	time.Sleep(time.Millisecond * 4)
 
@@ -84,7 +84,7 @@ func Test_DummyMessageStore_SyncIdsOnStop(t *testing.T) {
 	store.Start()
 
 	// when: we set an id
-	store.setId("partition", uint64(42))
+	store.setID("partition", uint64(42))
 
 	// then it is not synced after some wait
 	time.Sleep(time.Millisecond * 2)
