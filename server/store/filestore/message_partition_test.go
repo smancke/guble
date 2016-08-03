@@ -481,7 +481,7 @@ func TestFilenameGeneration(t *testing.T) {
 		fileCache: newCache(),
 	}
 
-	a.Equal("/foo/bar/myMessages-00000000000000000000.msg", mStore.composeMsgFilenameForPosition(uint64(mStore.fileCache.len())))
+	a.Equal("/foo/bar/myMessages-00000000000000000000.msg", mStore.composeMsgFilenameForPosition(uint64(mStore.fileCache.length())))
 	a.Equal("/foo/bar/myMessages-00000000000000000042.idx", mStore.composeIdxFilenameForPosition(42))
 	a.Equal("/foo/bar/myMessages-00000000000000000000.idx", mStore.composeIdxFilenameForPosition(0))
 	a.Equal(fmt.Sprintf("/foo/bar/myMessages-%020d.idx", MESSAGES_PER_FILE), mStore.composeIdxFilenameForPosition(MESSAGES_PER_FILE))

@@ -201,7 +201,7 @@ func readCacheEntryFromIdxFile(filename string) (entry *cacheEntry, err error) {
 }
 
 func (p *messagePartition) createNextAppendFiles() error {
-	filename := p.composeMsgFilenameForPosition(uint64(p.fileCache.len()))
+	filename := p.composeMsgFilenameForPosition(uint64(p.fileCache.length()))
 	logger.WithField("filename", filename).Info("Creating next append files")
 
 	appendfile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -224,7 +224,7 @@ func (p *messagePartition) createNextAppendFiles() error {
 		}
 	}
 
-	indexfile, errIndex := os.OpenFile(p.composeIdxFilenameForPosition(uint64(p.fileCache.len())), os.O_RDWR|os.O_CREATE, 0666)
+	indexfile, errIndex := os.OpenFile(p.composeIdxFilenameForPosition(uint64(p.fileCache.length())), os.O_RDWR|os.O_CREATE, 0666)
 	if errIndex != nil {
 		defer appendfile.Close()
 		defer os.Remove(appendfile.Name())
@@ -317,7 +317,7 @@ func (p *messagePartition) store(messageID uint64, data []byte) error {
 			}).Info("Dumping current file ")
 
 			//sort the indexFile
-			err := p.rewriteSortedIdxFile(p.composeIdxFilenameForPosition(uint64(p.fileCache.len())))
+			err := p.rewriteSortedIdxFile(p.composeIdxFilenameForPosition(uint64(p.fileCache.length())))
 			if err != nil {
 				logger.WithField("err", err).Error("Error dumping file")
 				return err
@@ -373,7 +373,7 @@ func (p *messagePartition) store(messageID uint64, data []byte) error {
 		id:     messageID,
 		offset: messageOffset,
 		size:   uint32(len(data)),
-		fileID: p.fileCache.len(),
+		fileID: p.fileCache.length(),
 	}
 	p.list.insert(e)
 
@@ -577,7 +577,7 @@ func calculateNoEntries(filename string) (uint64, error) {
 func (p *messagePartition) loadLastIndexList(filename string) error {
 	logger.WithField("filename", filename).Info("Loading last index file")
 
-	l, err := p.loadIndexList(p.fileCache.len())
+	l, err := p.loadIndexList(p.fileCache.length())
 	if err != nil {
 		logger.WithError(err).Error("Error loading last index filename")
 		return err

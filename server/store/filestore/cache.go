@@ -18,7 +18,7 @@ func newCache() *cache {
 	return c
 }
 
-func (c *cache) len() int {
+func (c *cache) length() int {
 	c.RLock()
 	defer c.RUnlock()
 
@@ -43,10 +43,8 @@ func (entry *cacheEntry) Contains(req *store.FetchRequest) bool {
 		req.Direction = 1
 		return true
 	}
-
 	if req.Direction >= 0 {
 		return req.StartID >= entry.min && req.StartID <= entry.max
-	} else {
-		return req.StartID >= entry.min
 	}
+	return req.StartID >= entry.min
 }
