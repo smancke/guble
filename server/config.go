@@ -68,12 +68,12 @@ var (
 			String(),
 		KVS: kingpin.Flag("kvs", "The storage backend for the key-value store to use : file | memory").
 			Default(defaultKVSBackend).
-			HintOptions([]string{"file", "memory"}...).
+			HintOptions("file", "memory").
 			Envar("GUBLE_KVS").
 			String(),
 		MS: kingpin.Flag("ms", "The message storage backend : file | memory").
 			Default(defaultMSBackend).
-			HintOptions([]string{"file", "memory"}...).
+			HintOptions("file", "memory").
 			Envar("GUBLE_MS").
 			String(),
 		StoragePath: kingpin.Flag("storage-path", "The path for storing messages and key-value data if 'file' is selected").
