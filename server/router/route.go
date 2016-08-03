@@ -62,11 +62,10 @@ func (r *Route) String() string {
 
 // Deliver takes a messages and adds it to the queue to be delivered in to the channel
 func (r *Route) Deliver(msg *protocol.Message) error {
-	logger := r.logger.WithField("message", msg)
-	logger.Debug("Delivering message")
+	loggerMessage := r.logger.WithField("message", msg)
 
 	if r.isInvalid() {
-		logger.Debug("Cannot deliver because route is invalid")
+		loggerMessage.Error("Cannot deliver because route is invalid")
 		mTotalDeliverMessageErrors.Add(1)
 		return ErrInvalidRoute
 	}
@@ -77,7 +76,7 @@ func (r *Route) Deliver(msg *protocol.Message) error {
 		if r.queueSize == 0 {
 			return r.sendDirect(msg)
 		} else if r.queue.size() >= r.queueSize {
-			logger.Debug("Closing route because queue is full")
+			loggerMessage.Error("Closing route because queue is full")
 			r.Close()
 			mTotalDeliverMessageErrors.Add(1)
 			return ErrQueueFull
@@ -85,7 +84,7 @@ func (r *Route) Deliver(msg *protocol.Message) error {
 	}
 
 	r.queue.push(msg)
-	logger.WithField("size", r.queue.size()).Debug("Queue size")
+	loggerMessage.WithField("size", r.queue.size()).Debug("Deliver: queue size")
 
 	r.consume()
 	return nil
