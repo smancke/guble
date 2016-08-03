@@ -198,7 +198,7 @@ func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (conn *Connector) parseParams(path string) (userID, gcmID, topic string, err error) {
 	currentURLPath := removeTrailingSlash(path)
 
-	if strings.HasPrefix(currentURLPath, conn.prefix) != true {
+	if !strings.HasPrefix(currentURLPath, conn.prefix) {
 		err = errors.New("gcm: GCM request is not starting with gcm prefix")
 		return
 	}
@@ -212,7 +212,7 @@ func (conn *Connector) parseParams(path string) (userID, gcmID, topic string, er
 	userID = splitParams[0]
 	gcmID = splitParams[1]
 
-	if strings.HasPrefix(splitParams[2], subscribePrefixPath+"/") != true {
+	if !strings.HasPrefix(splitParams[2], subscribePrefixPath+"/") {
 		err = errors.New("gcm: GCM request third param is not subscribe")
 		return
 	}
