@@ -11,12 +11,10 @@ import (
 )
 
 func BenchmarkMemberListCluster(b *testing.B) {
-	benchmarkCluster(b, 32, 10*time.Second, 15000)
+	benchmarkCluster(b, 36, 10*time.Second, 15000)
 }
 
 func benchmarkCluster(b *testing.B, num int, timeoutForAllJoins time.Duration, lowestPort int) {
-	log.WithField("num", b.N).Fatal("Unexpected error when creating the memberlist")
-
 	startTime := time.Now()
 
 	var nodes []*memberlist.Memberlist
@@ -48,7 +46,7 @@ func benchmarkCluster(b *testing.B, num int, timeoutForAllJoins time.Duration, l
 		nodes = append(nodes, newMember)
 		defer newMember.Shutdown()
 
-		if i >= 0 {
+		if i > 0 {
 			num, err := newMember.Join([]string{firstMemberName})
 			if num == 0 || err != nil {
 				log.WithField("error", err).Fatal("Unexpected fatal error when node wanted to join the cluster")
@@ -56,6 +54,17 @@ func benchmarkCluster(b *testing.B, num int, timeoutForAllJoins time.Duration, l
 		}
 	}
 
+	if convergence(nodes, num, eventC, timeoutForAllJoins) {
+		endTime := time.Now()
+		log.WithField("durationSeconds", endTime.Sub(startTime).Seconds()).Info("Cluster convergence reached")
+	}
+
+	b.StartTimer()
+	sendMessagesInCluster(nodes, b.N)
+	b.StopTimer()
+}
+
+func convergence(nodes []*memberlist.Memberlist, num int, eventC chan memberlist.NodeEvent, timeoutForAllJoins time.Duration) bool {
 	breakTimer := time.After(timeoutForAllJoins)
 	numJoins := 0
 WAIT:
@@ -105,22 +114,17 @@ WAIT:
 			}
 		}
 	}
-	endTime := time.Now()
-	if numJoins == num {
-		log.WithField("durationSeconds", endTime.Sub(startTime).Seconds()).Info("Cluster convergence reached")
-	}
+	return numJoins == num
+}
 
-	b.StartTimer()
-
+func sendMessagesInCluster(nodes []*memberlist.Memberlist, numMessages int) {
 	for senderID, node := range nodes {
 		for receiverID, member := range node.Members() {
-			for i := 0; i < b.N; i++ {
+			for i := 0; i < numMessages; i++ {
 				message := fmt.Sprintf("Hello from %v to %v !", senderID, receiverID)
 				log.WithField("message", message).Debug("SendToTCP")
 				node.SendToTCP(member, []byte(message))
 			}
 		}
 	}
-
-	b.StopTimer()
 }
