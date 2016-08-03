@@ -128,8 +128,9 @@ var CreateModules = func(router router.Router) []interface{} {
 }
 
 func Main() {
-	log.SetFormatter(&logformatter.LogstashFormatter{})
 	parseConfig()
+
+	log.SetFormatter(&logformatter.LogstashFormatter{Env: *config.EnvName})
 	defer func() {
 		if p := recover(); p != nil {
 			logger.Fatal("Fatal error in gubled after recover")

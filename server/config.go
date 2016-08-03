@@ -38,6 +38,7 @@ type (
 	}
 	Config struct {
 		Log             *string
+		EnvName         *string
 		HttpListen      *string
 		KVS             *string
 		MS              *string
@@ -57,18 +58,36 @@ var (
 			Default(log.ErrorLevel.String()).
 			Envar("GUBLE_LOG").
 			Enum(logLevels()...),
+		EnvName: kingpin.Flag("env", `Name of the environment on which the application is running`).
+			Default(Dev).
+			Envar("GUBLE_ENV_NAME").
+			Enum(AllEnvName...),
 		HttpListen: kingpin.Flag("http", `The address to for the HTTP server to listen on (format: "[Host]:Port")`).
-			Default(defaultHttpListen).Envar("GUBLE_HTTP_LISTEN").String(),
+			Default(defaultHttpListen).
+			Envar("GUBLE_HTTP_LISTEN").
+			String(),
 		KVS: kingpin.Flag("kvs", "The storage backend for the key-value store to use : file | memory").
-			Default(defaultKVSBackend).HintOptions([]string{"file", "memory"}...).Envar("GUBLE_KVS").String(),
+			Default(defaultKVSBackend).
+			HintOptions("file", "memory").
+			Envar("GUBLE_KVS").
+			String(),
 		MS: kingpin.Flag("ms", "The message storage backend : file | memory").
-			Default(defaultMSBackend).HintOptions([]string{"file", "memory"}...).Envar("GUBLE_MS").String(),
+			Default(defaultMSBackend).
+			HintOptions("file", "memory").
+			Envar("GUBLE_MS").
+			String(),
 		StoragePath: kingpin.Flag("storage-path", "The path for storing messages and key-value data if 'file' is selected").
-			Default(defaultStoragePath).Envar("GUBLE_STORAGE_PATH").ExistingDir(),
+			Default(defaultStoragePath).
+			Envar("GUBLE_STORAGE_PATH").
+			ExistingDir(),
 		HealthEndpoint: kingpin.Flag("health-endpoint", `The health endpoint to be used by the HTTP server (value for disabling it: "")`).
-			Default(defaultHealthEndpoint).Envar("GUBLE_HEALTH_ENDPOINT").String(),
+			Default(defaultHealthEndpoint).
+			Envar("GUBLE_HEALTH_ENDPOINT").
+			String(),
 		MetricsEndpoint: kingpin.Flag("metrics-endpoint", `The metrics endpoint to be used by the HTTP server (disabled by default; a possible value for enabling it: "/_metrics" )`).
-			Default("").Envar("GUBLE_METRICS_ENDPOINT").String(),
+			Default("").
+			Envar("GUBLE_METRICS_ENDPOINT").
+			String(),
 		Postgres: PostgresConfig{
 			Host:     kingpin.Flag("pg-host", "The PostgreSQL hostname").Default("localhost").Envar("GUBLE_PG_HOST").String(),
 			Port:     kingpin.Flag("pg-port", "The PostgreSQL port").Default("5432").Envar("GUBLE_PG_PORT").Int(),
@@ -101,6 +120,15 @@ func logLevels() (levels []string) {
 	}
 	return
 }
+
+const (
+	Dev  string = "dev"
+	Int  string = "int"
+	Pre  string = "pre"
+	Prod string = "prod"
+)
+
+var AllEnvName []string = []string{Dev, Int, Pre, Prod}
 
 // parseConfig parses the flags from command line. Must be used before accessing the config.
 // If there are missing or invalid arguments it will exit the application

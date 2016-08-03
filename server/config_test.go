@@ -21,6 +21,9 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_LOG", "debug")
 	defer os.Unsetenv("GUBLE_LOG")
 
+	os.Setenv("GUBLE_ENV_NAME", "dev")
+	defer os.Unsetenv("GUBLE_ENV_NAME")
+
 	os.Setenv("GUBLE_KVS", "kvs-backend")
 	defer os.Unsetenv("GUBLE_KVS")
 
@@ -83,6 +86,7 @@ func TestParsingArgs(t *testing.T) {
 	// given: a command line
 	os.Args = []string{os.Args[0],
 		"--http", "http_listen",
+		"--env", "dev",
 		"--log", "debug",
 		"--storage-path", os.TempDir(),
 		"--kvs", "kvs-backend",
@@ -131,4 +135,5 @@ func assertArguments(a *assert.Assertions) {
 	a.Equal("pg-dbname", *config.Postgres.DbName)
 
 	a.Equal("debug", *config.Log)
+	a.Equal("dev", *config.EnvName)
 }
