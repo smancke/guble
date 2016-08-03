@@ -10,6 +10,7 @@ import (
 )
 
 func Test_Subscribe_on_random_node(t *testing.T) {
+	testutil.SkipIfShort(t)
 	a := assert.New(t)
 
 	node1 := NewTestClusterNode(t, TestClusterNodeConfig{
