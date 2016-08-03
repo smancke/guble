@@ -198,7 +198,7 @@ func (l *indexList) extract(req *store.FetchRequest) *indexList {
 	potentialEntries := newIndexList(0)
 	found, pos, lastPos, _ := l.search(req.StartID)
 	currentPos := lastPos
-	if found == true {
+	if found {
 		currentPos = pos
 	}
 
