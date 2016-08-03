@@ -174,7 +174,7 @@ func (tgcm *TestGCM) subscribe(addr, topic string) {
 
 	body, err := ioutil.ReadAll(response.Body)
 	a.NoError(err)
-	a.Equal("registered: /topic\n", string(body))
+	a.Equal("subscribed: /topic\n", string(body))
 }
 
 // Wait waits count * tgcm.timeout, wait ensure count number of messages have been waited to pass

@@ -282,11 +282,50 @@ func TestConnector_Subscribe(t *testing.T) {
 		a.Equal("gcm1", route.Get(applicationIDKey))
 	})
 
-	addSubscription(t, gcm, "user2", "gcm2", "baskets")
-	a.Equal(len(gcm.subscriptions), 1)
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
+		a.Equal("/baskets", string(route.Path))
+		a.Equal("user2", route.Get(userIDKey))
+		a.Equal("gcm2", route.Get(applicationIDKey))
+	})
 
 	addSubscription(t, gcm, "user1", "gcm1", "baskets")
+	a.Equal(len(gcm.subscriptions), 1)
+
+	addSubscription(t, gcm, "user2", "gcm2", "baskets")
 	a.Equal(len(gcm.subscriptions), 2)
+}
+
+func TestConnector_Unsubscribe(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
+	a := assert.New(t)
+	gcm, routerMock, _ := testSimpleGCM(t, true)
+
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
+		a.Equal("/baskets", string(route.Path))
+		a.Equal("user1", route.Get(userIDKey))
+		a.Equal("gcm1", route.Get(applicationIDKey))
+	})
+
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
+		a.Equal("/baskets", string(route.Path))
+		a.Equal("user2", route.Get(userIDKey))
+		a.Equal("gcm2", route.Get(applicationIDKey))
+	})
+
+	addSubscription(t, gcm, "user1", "gcm1", "baskets")
+	a.Equal(len(gcm.subscriptions), 1)
+
+	addSubscription(t, gcm, "user2", "gcm2", "baskets")
+	a.Equal(len(gcm.subscriptions), 2)
+
+	deleteSubscription(t, gcm, "user1", "gcm1", "baskets")
+	a.Equal(len(gcm.subscriptions), 1)
+
+	a.Equal("user1", gcm.subscriptions[0].route.Get(userIDKey))
+	a.Equal("gcm1", gcm.subscriptions[0].route.Get(applicationIDKey))
+	a.Equal("/baskets", string(gcm.subscriptions[0].route.Path))
 }
 
 func testGCMResponse(t *testing.T, jsonResponse string) (*Connector, *MockRouter, chan bool) {
@@ -325,13 +364,23 @@ func addSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string) 
 	a := assert.New(t)
 
 	url, _ := url.Parse(fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic))
-	// and a http context
 	req := &http.Request{URL: url, Method: "POST"}
 	w := httptest.NewRecorder()
 
-	// when: I POST a message
 	gcm.ServeHTTP(w, req)
 
-	// then
-	a.Equal(fmt.Sprintf("registered: /%s\n", topic), string(w.Body.Bytes()))
+	a.Equal(fmt.Sprintf("subscribed: /%s\n", topic), string(w.Body.Bytes()))
+}
+
+func deleteSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string) {
+	a := assert.New(t)
+
+	url, _ := url.Parse(fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic))
+
+	req := &http.Request{URL: url, Method: "DELETE"}
+	w := httptest.NewRecorder()
+
+	gcm.ServeHTTP(w, req)
+
+	a.Equal(fmt.Sprintf("unsubscribed: /%s\n", topic), string(w.Body.Bytes()))
 }

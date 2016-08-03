@@ -191,7 +191,7 @@ func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// synchronize subscription after storing if cluster exists
 	conn.synchronizeSubscription(topic, userID, gcmID)
 
-	fmt.Fprintf(w, "registered: %v\n", topic)
+	fmt.Fprintf(w, "subscribed: %v\n", topic)
 }
 
 // parseParams will parse the HTTP URL with format /gcm/:userid/:gcmid/subscribe/*topic
