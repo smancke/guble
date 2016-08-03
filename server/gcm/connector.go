@@ -52,6 +52,7 @@ type Connector struct {
 	nWorkers      int
 	wg            sync.WaitGroup
 	broadcastPath string
+	subscriptions []*subscription
 }
 
 // New creates a new *Connector without starting it
