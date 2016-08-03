@@ -415,13 +415,13 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	// Send messages in the router until error
 	go func() {
 		for {
-			err := router.HandleMessage(&protocol.Message{
+			errHandle := router.HandleMessage(&protocol.Message{
 				Path: protocol.Path("/blah"),
 				Body: aTestByteMessage,
 			})
 
-			if err != nil {
-				mse, ok := err.(*ModuleStoppingError)
+			if errHandle != nil {
+				mse, ok := errHandle.(*ModuleStoppingError)
 				assert.True(ok)
 				assert.Equal("Router", mse.Name)
 				return
