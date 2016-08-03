@@ -90,7 +90,10 @@ func writeLoop(client client.Client) {
 		func() {
 			defer protocol.PanicLogger()
 			reader := bufio.NewReader(os.Stdin)
-			text, _ := reader.ReadString('\n')
+			text, err := reader.ReadString('\n')
+			if err != nil {
+				return
+			}
 			if strings.TrimSpace(text) == "" {
 				return
 			}
@@ -102,10 +105,16 @@ func writeLoop(client client.Client) {
 
 			if strings.HasPrefix(text, ">") {
 				fmt.Print("header: ")
-				header, _ := reader.ReadString('\n')
+				header, err := reader.ReadString('\n')
+				if err != nil {
+					return
+				}
 				text += header
 				fmt.Print("body: ")
-				body, _ := reader.ReadString('\n')
+				body, err := reader.ReadString('\n')
+				if err != nil {
+					return
+				}
 				text += strings.TrimSpace(body)
 			}
 
