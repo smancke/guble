@@ -10,6 +10,7 @@ import (
 
 	"github.com/smancke/guble/server/store"
 
+	"errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -331,15 +332,11 @@ func matchSortedList(t *testing.T, expected, actual indexList) bool {
 			elem.offset != a.offset ||
 			elem.size != a.size ||
 			elem.fileID != a.fileID {
-			return fmt.Errorf("Element not equal!")
+			return errors.New("Element not equal!")
 		}
 		return nil
 	})
-	if !assert.NoError(t, err) {
-		return false
-	}
-
-	return true
+	return assert.NoError(t, err)
 }
 
 func Test_Partition_Fetch(t *testing.T) {
