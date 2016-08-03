@@ -43,9 +43,9 @@ func (kvStore *MemoryKVStore) Delete(schema, key string) error {
 	return nil
 }
 
-// TODO: this can lead to a deadlock,
-// if the consumer modifies the store while receiving and the channel blocks
-func (kvStore *MemoryKVStore) Iterate(schema string, keyPrefix string) (entries chan [2]string) {
+// IterateKeys iterates over the key-value pairs in the schema, with keys matching the keyPrefix.
+// TODO: this can lead to a deadlock, if the consumer modifies the store while receiving and the channel blocks
+func (kvStore *MemoryKVStore) Iterate(schema string, keyPrefix string) chan [2]string {
 	responseChan := make(chan [2]string, 100)
 	kvStore.mutex.Lock()
 	s := kvStore.getSchema(schema)
@@ -63,8 +63,8 @@ func (kvStore *MemoryKVStore) Iterate(schema string, keyPrefix string) (entries 
 	return responseChan
 }
 
-// TODO: this can lead to a deadlock,
-// if the consumer modifies the store while receiving and the channel blocks
+// IterateKeys iterates over the keys in the schema, matching the keyPrefix.
+// TODO: this can lead to a deadlock, if the consumer modifies the store while receiving and the channel blocks
 func (kvStore *MemoryKVStore) IterateKeys(schema string, keyPrefix string) chan string {
 	responseChan := make(chan string, 100)
 	kvStore.mutex.Lock()
