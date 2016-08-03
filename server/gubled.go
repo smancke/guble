@@ -127,25 +127,10 @@ var CreateModules = func(router router.Router) []interface{} {
 	return modules
 }
 
-func parseEnvName(envName string) error {
-
-	if envName == "dev" || envName == "int" || envName == "pre" || envName == "prod" {
-		log.SetFormatter(&logformatter.LogstashFormatter{Env: envName})
-		return nil
-	}
-	log.SetFormatter(&logformatter.LogstashFormatter{Env: defaultEnvName})
-	return fmt.Errorf("not a valid  logging environment.Using dev environament name")
-}
-
 func Main() {
 	parseConfig()
 
-	err := parseEnvName(*config.EnvName)
-
-	if err != nil {
-		logger.WithError(err).Error("Invalid env")
-	}
-
+	log.SetFormatter(&logformatter.LogstashFormatter{Env: *config.EnvName})
 	defer func() {
 		if p := recover(); p != nil {
 			logger.Fatal("Fatal error in gubled after recover")
