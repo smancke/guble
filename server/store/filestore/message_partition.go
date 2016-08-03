@@ -86,7 +86,7 @@ func (p *messagePartition) readIdxFiles() error {
 		return err
 	}
 
-	indexFilenames := make([]string, 0)
+	var indexFilenames []string
 	for _, fileInfo := range allFiles {
 		if strings.HasPrefix(fileInfo.Name(), p.name+"-") && strings.HasSuffix(fileInfo.Name(), ".idx") {
 			fileIDString := filepath.Join(p.basedir, fileInfo.Name())
@@ -287,11 +287,11 @@ func (p *messagePartition) DoInTx(fnToExecute func(maxMessageId uint64) error) e
 	return fnToExecute(p.maxMessageID)
 }
 
-func (p *messagePartition) Store(msgId uint64, msg []byte) error {
+func (p *messagePartition) Store(msgID uint64, msg []byte) error {
 	p.Lock()
 	defer p.Unlock()
 
-	return p.store(msgId, msg)
+	return p.store(msgID, msg)
 }
 
 func (p *messagePartition) store(messageID uint64, data []byte) error {
