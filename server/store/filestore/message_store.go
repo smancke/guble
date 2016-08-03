@@ -110,12 +110,12 @@ func (fms *FileMessageStore) StoreMessage(message *protocol.Message, nodeID int)
 }
 
 // Store stores a message within a partition
-func (fms *FileMessageStore) Store(partition string, msgId uint64, msg []byte) error {
+func (fms *FileMessageStore) Store(partition string, msgID uint64, msg []byte) error {
 	p, err := fms.partitionStore(partition)
 	if err != nil {
 		return err
 	}
-	return p.Store(msgId, msg)
+	return p.Store(msgID, msg)
 }
 
 // Fetch asynchronously fetches a set of messages defined by the fetch request
