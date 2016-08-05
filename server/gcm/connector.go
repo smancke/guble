@@ -201,7 +201,7 @@ func (conn *Connector) addSubscription(w http.ResponseWriter, topic, userID, gcm
 	s, err := initSubscription(conn, topic, userID, gcmID, 0, true)
 	if err == nil {
 		// synchronize subscription after storing if cluster exists
-		conn.synchronizeSubscription(topic, userID, gcmID)
+		conn.synchronizeSubscription(topic, userID, gcmID, false)
 	} else if err == errSubscriptionExists {
 		logger.WithField("subscription", s).Error("Subscription exists")
 	}
@@ -221,6 +221,8 @@ func (conn *Connector) deleteSubscription(w http.ResponseWriter, topic, userID, 
 		http.Error(w, "subscription not found\n", http.StatusNotFound)
 		return
 	}
+
+	conn.synchronizeSubscription(topic, userID, gcmID, true)
 
 	s.remove()
 	fmt.Fprintf(w, "unsubscribed: %v\n", topic)
@@ -329,6 +331,17 @@ func (conn *Connector) syncLoop() error {
 				}
 
 				logger.Debug("Initializing sync subscription without storing it.")
+				if subscriptionSync.Remove {
+					subscriptionKey := composeSubscriptionKey(
+						subscriptionSync.Topic,
+						subscriptionSync.UserID,
+						subscriptionSync.GCMID)
+					if s, ok := conn.subscriptions[subscriptionKey]; ok {
+						s.remove()
+					}
+					continue
+				}
+
 				if _, err := initSubscription(
 					conn,
 					subscriptionSync.Topic,
@@ -347,13 +360,13 @@ func (conn *Connector) syncLoop() error {
 	return nil
 }
 
-func (conn *Connector) synchronizeSubscription(topic, userID, gcmID string) error {
+func (conn *Connector) synchronizeSubscription(topic, userID, gcmID string, remove bool) error {
 	// there is no cluster setup, no need for synchronization of subscription
 	if conn.cluster == nil {
 		return nil
 	}
 
-	data, err := (&subscriptionSync{topic, userID, gcmID}).Encode()
+	data, err := (&subscriptionSync{topic, userID, gcmID, remove}).Encode()
 	if err != nil {
 		return err
 	}
@@ -369,6 +382,7 @@ type subscriptionSync struct {
 	Topic  string
 	UserID string
 	GCMID  string
+	Remove bool
 }
 
 func (s *subscriptionSync) Encode() ([]byte, error) {
