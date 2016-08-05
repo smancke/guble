@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -54,6 +55,17 @@ func NewRoute(config RouteConfig) *Route {
 		logger: logger.WithFields(log.Fields{"path": config.Path, "params": config.RouteParams}),
 	}
 	return route
+}
+
+// Key returns  a string that uniquely identifies the route
+// concatenatest he route Path and they route params
+// Example:
+//  /topic:user_id:user1 application_id:app1
+func (r *Route) Key() string {
+	return strings.Join([]string{
+		string(r.Path),
+		r.RouteParams.Key(),
+	}, " ")
 }
 
 func (r *Route) String() string {

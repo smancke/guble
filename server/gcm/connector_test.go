@@ -31,7 +31,7 @@ func TestConnector_ServeHTTPSuccess(t *testing.T) {
 		a.Equal("gcmId123", route.Get(applicationIDKey))
 	})
 
-	addSubscription(t, gcm, "marvin", "gcmId123", "notifications")
+	postSubscription(t, gcm, "marvin", "gcmId123", "notifications")
 }
 
 func TestConnector_ServeHTTPWithErrorCases(t *testing.T) {
@@ -288,24 +288,28 @@ func TestConnector_Subscribe(t *testing.T) {
 		a.Equal("gcm2", route.Get(applicationIDKey))
 	})
 
-	addSubscription(t, gcm, "user1", "gcm1", "baskets")
+	postSubscription(t, gcm, "user1", "gcm1", "baskets")
 	a.Equal(len(gcm.subscriptions), 1)
 
-	addSubscription(t, gcm, "user2", "gcm2", "baskets")
+	postSubscription(t, gcm, "user2", "gcm2", "baskets")
 	a.Equal(len(gcm.subscriptions), 2)
 }
 
 func TestConnector_Unsubscribe(t *testing.T) {
+	defer testutil.EnableDebugForMethod()()
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
 	a := assert.New(t)
 	gcm, routerMock, _ := testSimpleGCM(t, true)
+	var deletedRoute *router.Route
 
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
+		deletedRoute = route
 		a.Equal("/baskets", string(route.Path))
 		a.Equal("user1", route.Get(userIDKey))
 		a.Equal("gcm1", route.Get(applicationIDKey))
+
 	})
 
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
@@ -314,18 +318,22 @@ func TestConnector_Unsubscribe(t *testing.T) {
 		a.Equal("gcm2", route.Get(applicationIDKey))
 	})
 
-	addSubscription(t, gcm, "user1", "gcm1", "baskets")
+	postSubscription(t, gcm, "user1", "gcm1", "baskets")
 	a.Equal(len(gcm.subscriptions), 1)
 
-	addSubscription(t, gcm, "user2", "gcm2", "baskets")
+	postSubscription(t, gcm, "user2", "gcm2", "baskets")
 	a.Equal(len(gcm.subscriptions), 2)
+
+	routerMock.EXPECT().Unsubscribe(deletedRoute)
 
 	deleteSubscription(t, gcm, "user1", "gcm1", "baskets")
 	a.Equal(len(gcm.subscriptions), 1)
 
-	a.Equal("user1", gcm.subscriptions[0].route.Get(userIDKey))
-	a.Equal("gcm1", gcm.subscriptions[0].route.Get(applicationIDKey))
-	a.Equal("/baskets", string(gcm.subscriptions[0].route.Path))
+	remainingKey := composeSubscriptionKey("/baskets", "user2", "gcm2")
+
+	a.Equal("user2", gcm.subscriptions[remainingKey].route.Get(userIDKey))
+	a.Equal("gcm2", gcm.subscriptions[remainingKey].route.Get(applicationIDKey))
+	a.Equal("/baskets", string(gcm.subscriptions[remainingKey].route.Path))
 }
 
 func testGCMResponse(t *testing.T, jsonResponse string) (*Connector, *MockRouter, chan bool) {
@@ -360,7 +368,7 @@ func testSimpleGCM(t *testing.T, mockStore bool) (*Connector, *MockRouter, *Mock
 	return gcm, routerMock, storeMock
 }
 
-func addSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string) {
+func postSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string) {
 	a := assert.New(t)
 
 	url, _ := url.Parse(fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic))
