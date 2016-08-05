@@ -53,10 +53,6 @@ func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	NewWebSocket(handle, &wsconn{c}, extractUserID(r.RequestURI)).Start()
 }
 
-func (handle *WSHandler) Check() error {
-	return nil
-}
-
 // WSConnection is a wrapper interface for the needed functions of the websocket.Conn
 // It is introduced for testability of the WSHandler
 type WSConnection interface {
@@ -113,29 +109,19 @@ func (ws *WebSocket) Start() error {
 }
 
 func (ws *WebSocket) sendLoop() {
-	for {
-		select {
-		case raw := <-ws.sendChannel:
-
+	for raw := range ws.sendChannel {
+		if !ws.checkAccess(raw) {
+			continue
+		}
+		if err := ws.Send(raw); err != nil {
 			logger.WithFields(log.Fields{
 				"userId":        ws.userID,
 				"applicationID": ws.applicationID,
 				"totalSize":     len(raw),
 				"actualContent": string(raw),
-			}).Debug("Received on websocket")
-
-			if ws.checkAccess(raw) {
-
-				if err := ws.Send(raw); err != nil {
-
-					logger.WithFields(log.Fields{
-						"applicationID": ws.applicationID,
-					}).Debug("Closed connnection with")
-
-					ws.cleanAndClose()
-					break
-				}
-			}
+			}).Error("Could not send")
+			ws.cleanAndClose()
+			break
 		}
 	}
 }

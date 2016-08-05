@@ -4,9 +4,11 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 
+	"fmt"
 	"net"
 	"runtime"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -34,7 +36,7 @@ type (
 	ClusterConfig struct {
 		NodeID   *int
 		NodePort *int
-		Remotes  *[]*net.TCPAddr
+		Remotes  *tcpAddrList
 	}
 	Config struct {
 		Log             *string
@@ -108,8 +110,8 @@ var (
 				Envar("GUBLE_NODE_ID").Int(),
 			NodePort: kingpin.Flag("node-port", "(cluster mode) This guble node's own local port: a strictly positive integer number").
 				Default(defaultNodePort).Envar("GUBLE_NODE_PORT").Int(),
-			Remotes: kingpin.Arg("tcplist", `(cluster mode) The list of TCP addresses of some other guble nodes (format: "IP:port")`).
-				TCPList(),
+			Remotes: stringToTcpAddrList(kingpin.Flag("tcplist", `(cluster mode) The list of TCP addresses of some other guble nodes (format: "IP:port")`).
+				Envar("GUBLE_NODE_REMOTES")),
 		},
 	}
 )
@@ -130,9 +132,9 @@ const (
 
 var AllEnvName []string = []string{Dev, Int, Pre, Prod}
 
-// Parse parses the flags from command line. Must be used before accessing the config.
-// If there are missing or invalid arguments it will exit the application and display a
-// corresponding message
+// parseConfig parses the flags from command line. Must be used before accessing the config.
+// If there are missing or invalid arguments it will exit the application
+// and display a message.
 func parseConfig() {
 	if parsed {
 		return
@@ -140,4 +142,33 @@ func parseConfig() {
 	kingpin.Parse()
 	parsed = true
 	return
+}
+
+type tcpAddrList []*net.TCPAddr
+
+func (h *tcpAddrList) Set(value string) error {
+	addresses := strings.Split(value, " ")
+	for _, addr := range addresses {
+		logger.WithField("addr", addr).Info("value")
+		parts := strings.SplitN(addr, ":", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("expected HEADER:VALUE got '%s'", addr)
+		}
+		addr, err := net.ResolveTCPAddr("tcp", addr)
+		if err != nil {
+			return err
+		}
+		*h = append(*h, addr)
+	}
+	return nil
+}
+
+func stringToTcpAddrList(s kingpin.Settings) (target *tcpAddrList) {
+	slist := make(tcpAddrList, 0)
+	s.SetValue(&slist)
+	return &slist
+}
+
+func (h *tcpAddrList) String() string {
+	return ""
 }

@@ -8,11 +8,6 @@ import (
 	"strings"
 )
 
-func ErrWithoutTrace(pattern string, args ...interface{}) {
-	msg := fmt.Sprintf(pattern, args...)
-	log.Printf("ERROR: %v", msg)
-}
-
 func PanicLogger() {
 	if r := recover(); r != nil {
 		log.Printf("PANIC (%v): %v", identifyLogOrigin(), r)

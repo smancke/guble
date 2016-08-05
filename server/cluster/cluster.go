@@ -78,7 +78,7 @@ func (cluster *Cluster) Start() error {
 		return err
 	}
 	if num == 0 {
-		errorMessage := "No remote hosts were successfuly contacted when this node wanted to join the cluster"
+		errorMessage := "No remote hosts were successfully contacted when this node wanted to join the cluster"
 		logger.WithField("remotes", cluster.remotesAsStrings()).Error(errorMessage)
 		return errors.New(errorMessage)
 	}

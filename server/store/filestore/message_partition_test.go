@@ -10,6 +10,7 @@ import (
 
 	"github.com/smancke/guble/server/store"
 
+	"errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,14 +22,14 @@ func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
 	mStore, err := newMessagePartition(dir, "node1")
 	a.Nil(err)
 
-	generatedIDs := make([]uint64, 0)
-	lastId := uint64(0)
+	var generatedIDs []uint64
+	lastID := uint64(0)
 
 	for i := 0; i < 1000; i++ {
 		id, _, err := mStore.generateNextMsgID(1)
 		generatedIDs = append(generatedIDs, id)
-		a.True(id > lastId, "Ids should be monotonic")
-		lastId = id
+		a.True(id > lastID, "Ids should be monotonic")
+		lastID = id
 		a.Nil(err)
 	}
 }
@@ -46,8 +47,8 @@ func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
 	mStore2, err := newMessagePartition(dir2, "node1")
 	a.Nil(err)
 
-	generatedIDs := make([]uint64, 0)
-	lastId := uint64(0)
+	var generatedIDs []uint64
+	lastID := uint64(0)
 
 	for i := 0; i < 1000; i++ {
 		id, _, err := mStore.generateNextMsgID(1)
@@ -56,9 +57,9 @@ func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
 		generatedIDs = append(generatedIDs, id)
 		generatedIDs = append(generatedIDs, id2)
 		time.Sleep(1 * time.Millisecond)
-		a.True(id > lastId, "Ids should be monotonic")
-		a.True(id2 > lastId, "Ids should be monotonic")
-		lastId = id2
+		a.True(id > lastID, "Ids should be monotonic")
+		a.True(id2 > lastID, "Ids should be monotonic")
+		lastID = id2
 		a.Nil(err)
 	}
 
@@ -72,7 +73,7 @@ func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
 func Test_MessagePartition_loadFiles(t *testing.T) {
 	a := assert.New(t)
 	// allow five messages per file
-	MESSAGES_PER_FILE = uint64(5)
+	messagesPerFile = uint64(5)
 
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
@@ -182,7 +183,7 @@ func Benchmark_Storing_1MB_Messages(b *testing.B) {
 
 func Test_calculateFetchList(t *testing.T) {
 	// allow five messages per file
-	MESSAGES_PER_FILE = uint64(5)
+	messagesPerFile = uint64(5)
 
 	msgData := []byte("aaaaaaaaaa") // 10 bytes message
 
@@ -227,19 +228,19 @@ func Test_calculateFetchList(t *testing.T) {
 		{`direct match`,
 			store.FetchRequest{StartID: 3, Direction: 0, Count: 1},
 			indexList{
-				items: []*Index{{3, uint64(21), 10, 0}}, // messageId, offset, size, fileId
+				items: []*index{{3, uint64(21), 10, 0}}, // messageId, offset, size, fileId
 			},
 		},
 		{`direct match in second file`,
 			store.FetchRequest{StartID: 8, Direction: 0, Count: 1},
 			indexList{
-				items: []*Index{{8, uint64(21), 10, 1}}, // messageId, offset, size, fileId,
+				items: []*index{{8, uint64(21), 10, 1}}, // messageId, offset, size, fileId,
 			},
 		},
 		{`direct match in second file, not first position`,
 			store.FetchRequest{StartID: 13, Direction: 0, Count: 1},
 			indexList{
-				items: []*Index{{13, uint64(65), 10, 1}}, // messageId, offset, size, fileId,
+				items: []*index{{13, uint64(65), 10, 1}}, // messageId, offset, size, fileId,
 			},
 		},
 		// TODO this is caused by hasStartID() functions.This will be done when implementing the EndID logic
@@ -252,7 +253,7 @@ func Test_calculateFetchList(t *testing.T) {
 		{`entry before matches`,
 			store.FetchRequest{StartID: 5, Direction: -1, Count: 2},
 			indexList{
-				items: []*Index{
+				items: []*index{
 					{4, uint64(43), 10, 0},  // messageId, offset, size, fileId
 					{5, uint64(109), 10, 0}, // messageId, offset, size, fileId
 				},
@@ -273,7 +274,7 @@ func Test_calculateFetchList(t *testing.T) {
 		{`forward, overlapping files`,
 			store.FetchRequest{StartID: 9, Direction: 1, Count: 3},
 			indexList{
-				items: []*Index{
+				items: []*index{
 					{9, uint64(87), 10, 0},  // messageId, offset, size, fileId
 					{10, uint64(65), 10, 0}, // messageId, offset, size, fileId
 					{13, uint64(65), 10, 1}, // messageId, offset, size, fileId
@@ -283,7 +284,7 @@ func Test_calculateFetchList(t *testing.T) {
 		{`backward, overlapping files`,
 			store.FetchRequest{StartID: 26, Direction: -1, Count: 4},
 			indexList{
-				items: []*Index{
+				items: []*index{
 					// {15, uint64(43), 10, 1},  // messageId, offset, size, fileId
 					{22, uint64(87), 10, 1},  // messageId, offset, size, fileId
 					{23, uint64(109), 10, 1}, // messageId, offset, size, fileId
@@ -295,7 +296,7 @@ func Test_calculateFetchList(t *testing.T) {
 		{`forward, over more then 2 files`,
 			store.FetchRequest{StartID: 5, Direction: 1, Count: 10},
 			indexList{
-				items: []*Index{
+				items: []*index{
 					{5, uint64(109), 10, 0},  // messageId, offset, size, fileId
 					{8, uint64(21), 10, 1},   // messageId, offset, size, fileId
 					{9, uint64(87), 10, 0},   // messageId, offset, size, fileId
@@ -324,29 +325,25 @@ func matchSortedList(t *testing.T, expected, actual indexList) bool {
 		return false
 	}
 
-	err := expected.mapWithPredicate(func(elem *Index, i int) error {
+	err := expected.mapWithPredicate(func(elem *index, i int) error {
 		a := actual.get(i)
 		assert.Equal(t, *elem, *a)
 		if elem.id != a.id ||
 			elem.offset != a.offset ||
 			elem.size != a.size ||
 			elem.fileID != a.fileID {
-			return fmt.Errorf("Element not equal!")
+			return errors.New("Element not equal!")
 		}
 		return nil
 	})
-	if !assert.NoError(t, err) {
-		return false
-	}
-
-	return true
+	return assert.NoError(t, err)
 }
 
 func Test_Partition_Fetch(t *testing.T) {
 	a := assert.New(t)
 
 	// allow five messages per file
-	MESSAGES_PER_FILE = uint64(5)
+	messagesPerFile = uint64(5)
 
 	msgData := []byte("1111111111")  // 10 bytes message
 	msgData2 := []byte("2222222222") // 10 bytes message
@@ -481,10 +478,10 @@ func TestFilenameGeneration(t *testing.T) {
 		fileCache: newCache(),
 	}
 
-	a.Equal("/foo/bar/myMessages-00000000000000000000.msg", mStore.composeMsgFilenameForPosition(uint64(mStore.fileCache.len())))
+	a.Equal("/foo/bar/myMessages-00000000000000000000.msg", mStore.composeMsgFilenameForPosition(uint64(mStore.fileCache.length())))
 	a.Equal("/foo/bar/myMessages-00000000000000000042.idx", mStore.composeIdxFilenameForPosition(42))
 	a.Equal("/foo/bar/myMessages-00000000000000000000.idx", mStore.composeIdxFilenameForPosition(0))
-	a.Equal(fmt.Sprintf("/foo/bar/myMessages-%020d.idx", MESSAGES_PER_FILE), mStore.composeIdxFilenameForPosition(MESSAGES_PER_FILE))
+	a.Equal(fmt.Sprintf("/foo/bar/myMessages-%020d.idx", messagesPerFile), mStore.composeIdxFilenameForPosition(messagesPerFile))
 }
 
 func fne(args ...interface{}) interface{} {

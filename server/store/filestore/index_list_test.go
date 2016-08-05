@@ -19,7 +19,7 @@ func Test_SortedListSanity(t *testing.T) {
 		msgID := uint64(rand.Intn(50))
 		generatedIds = append(generatedIds, msgID)
 
-		entry := &Index{
+		entry := &index{
 			size:   3,
 			id:     uint64(msgID),
 			offset: 128,

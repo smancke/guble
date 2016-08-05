@@ -60,9 +60,8 @@ func (kvStore *SqliteKVStore) Open() error {
 	if err := gormdb.DB().Ping(); err != nil {
 		kvStore.logger.WithError(err).Error("Error pinging database")
 		return err
-	} else {
-		kvStore.logger.Info("Ping reply from database")
 	}
+	kvStore.logger.Info("Ping reply from database")
 
 	gormdb.LogMode(sqliteGormLogMode)
 	gormdb.SingularTable(true)
@@ -73,7 +72,6 @@ func (kvStore *SqliteKVStore) Open() error {
 		kvStore.logger.WithError(err).Error("Error in schema migration")
 		return err
 	}
-
 	kvStore.logger.Info("Ensured database schema")
 
 	if !kvStore.syncOnWrite {
@@ -88,14 +86,14 @@ func (kvStore *SqliteKVStore) Open() error {
 }
 
 func ensureWriteableDirectory(dir string) error {
-	dirInfo, err := os.Stat(dir)
-	if os.IsNotExist(err) {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return err
+	dirInfo, errStat := os.Stat(dir)
+	if os.IsNotExist(errStat) {
+		if errMkdir := os.MkdirAll(dir, 0755); errMkdir != nil {
+			return errMkdir
 		}
-		dirInfo, err = os.Stat(dir)
+		dirInfo, errStat = os.Stat(dir)
 	}
-	if err != nil || !dirInfo.IsDir() {
+	if errStat != nil || !dirInfo.IsDir() {
 		return fmt.Errorf("kv-sqlite: not a directory %v", dir)
 	}
 	writeTest := path.Join(dir, writeTestFilename)

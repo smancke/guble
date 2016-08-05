@@ -83,10 +83,10 @@ func TestHeadersToJSON(t *testing.T) {
 
 	// simple head
 	jsonString := headersToJSON(http.Header{
-		X_HEADER_PREFIX + "a": []string{"b"},
-		"foo": []string{"b"},
-		X_HEADER_PREFIX + "x": []string{"y"},
-		"bar": []string{"b"},
+		xHeaderPrefix + "a": []string{"b"},
+		"foo":               []string{"b"},
+		xHeaderPrefix + "x": []string{"y"},
+		"bar":               []string{"b"},
 	})
 
 	header := make(map[string]string)

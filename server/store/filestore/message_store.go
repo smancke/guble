@@ -110,12 +110,12 @@ func (fms *FileMessageStore) StoreMessage(message *protocol.Message, nodeID int)
 }
 
 // Store stores a message within a partition
-func (fms *FileMessageStore) Store(partition string, msgId uint64, msg []byte) error {
+func (fms *FileMessageStore) Store(partition string, msgID uint64, msg []byte) error {
 	p, err := fms.partitionStore(partition)
 	if err != nil {
 		return err
 	}
-	return p.Store(msgId, msg)
+	return p.Store(msgID, msg)
 }
 
 // Fetch asynchronously fetches a set of messages defined by the fetch request
@@ -143,15 +143,15 @@ func (fms *FileMessageStore) partitionStore(partition string) (*messagePartition
 	partitionStore, exist := fms.partitions[partition]
 	if !exist {
 		dir := path.Join(fms.basedir, partition)
-		if _, err := os.Stat(dir); err != nil {
-			if os.IsNotExist(err) {
-				if err := os.MkdirAll(dir, 0700); err != nil {
-					logger.WithField("err", err).Error("partitionStore")
-					return nil, err
+		if _, errStat := os.Stat(dir); errStat != nil {
+			if os.IsNotExist(errStat) {
+				if errMkdir := os.MkdirAll(dir, 0700); errMkdir != nil {
+					logger.WithError(errMkdir).Error("partitionStore")
+					return nil, errMkdir
 				}
 			} else {
-				logger.WithField("err", err).Error("partitionStore")
-				return nil, err
+				logger.WithError(errStat).Error("partitionStore")
+				return nil, errStat
 			}
 		}
 		var err error
@@ -179,7 +179,7 @@ func (fms *FileMessageStore) Check() error {
 	usedSpacePercentage := 1 - (float64(freeSpace) / float64(totalSpace))
 
 	if usedSpacePercentage > 0.95 {
-		errorMessage := "Disk is almost full."
+		errorMessage := "Storage is almost full"
 		logger.WithFields(log.Fields{
 			"percentage": usedSpacePercentage,
 		}).Warn(errorMessage)

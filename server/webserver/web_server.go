@@ -16,6 +16,7 @@ type WebServer struct {
 	addr   string
 }
 
+// New returns a new WebServer.
 func New(addr string) *WebServer {
 	return &WebServer{
 		mux:  http.NewServeMux(),
@@ -48,10 +49,6 @@ func (ws *WebServer) Stop() error {
 	if ws.ln != nil {
 		return ws.ln.Close()
 	}
-	return nil
-}
-
-func (ws *WebServer) Check() error {
 	return nil
 }
 
