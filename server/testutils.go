@@ -124,8 +124,12 @@ func (tcn *TestClusterNode) Client(userID string, bufferSize int, autoReconnect 
 	return client.Open(wsURL, httpURL, bufferSize, autoReconnect)
 }
 
-func (tcn *TestClusterNode) Subscribe(topic string) {
-	tcn.GCM.subscribe(tcn.Service.WebServer().GetAddr(), topic)
+func (tcn *TestClusterNode) Subscribe(topic, id string) {
+	tcn.GCM.subscribe(tcn.Service.WebServer().GetAddr(), topic, id)
+}
+
+func (tcn *TestClusterNode) Unsubscribe(topic, id string) {
+	tcn.GCM.subscribe(tcn.Service.WebServer().GetAddr(), topic, id)
 }
 
 func (tcn *TestClusterNode) Cleanup(removeDir bool) {
@@ -160,13 +164,13 @@ func (tgcm *TestGCM) SetupRoundTripper(timeout time.Duration, bufferSize int, re
 	tgcm.Receive()
 }
 
-func (tgcm *TestGCM) subscribe(addr, topic string) {
-	urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/%%s", addr)
+func (tgcm *TestGCM) subscribe(addr, topic, id string) {
+	urlFormat := fmt.Sprintf("http://%s/gcm/%%s/gcmId%%s/subscribe/%%s", addr)
 
 	a := assert.New(tgcm.t)
 
 	response, err := http.Post(
-		fmt.Sprintf(urlFormat, 1, 1, strings.TrimPrefix(topic, "/")), "text/plain", bytes.NewBufferString(""),
+		fmt.Sprintf(urlFormat, id, id, strings.TrimPrefix(topic, "/")), "text/plain", bytes.NewBufferString(""),
 	)
 	if a.NoError(err) {
 		a.Equal(response.StatusCode, 200)
@@ -174,7 +178,30 @@ func (tgcm *TestGCM) subscribe(addr, topic string) {
 
 	body, err := ioutil.ReadAll(response.Body)
 	a.NoError(err)
-	a.Equal("subscribed: /topic\n", string(body))
+	a.Equal(fmt.Sprintf("subscribed: /%s\n", topic), string(body))
+}
+
+func (tgcm *TestGCM) unsubscribe(addr, topic, id string) {
+	urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/%%s", addr)
+
+	a := assert.New(tgcm.t)
+
+	req, err := http.NewRequest(
+		http.MethodDelete,
+		fmt.Sprintf(urlFormat, id, id, strings.TrimPrefix(topic, "/")),
+		bytes.NewBufferString(""))
+	a.NoError(err)
+
+	client := &http.Client{}
+
+	response, err := client.Do(req)
+	if a.NoError(err) {
+		a.Equal(response.StatusCode, 200)
+	}
+
+	body, err := ioutil.ReadAll(response.Body)
+	a.NoError(err)
+	a.Equal(fmt.Sprintf("unsubscribed: /%s\n", topic), string(body))
 }
 
 // Wait waits count * tgcm.timeout, wait ensure count number of messages have been waited to pass

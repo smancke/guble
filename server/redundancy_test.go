@@ -167,7 +167,59 @@ func Test_Independent_Receiving(t *testing.T) {
 	err = client2.Send(gcmTopic, "body", "{jsonHeader:1}")
 	a.NoError(err)
 
+	// only one message should be received but only on the second node.
+	// Every message should be delivered only once.
+	node1.GCM.CheckReceived(0)
+	node2.GCM.CheckReceived(1)
+}
+
+func Test_NoReceiving_After_Unsubscribe(t *testing.T) {
+	testutil.SkipIfShort(t)
+	a := assert.New(t)
+
+	node1 := NewTestClusterNode(t, TestClusterNodeConfig{
+		HttpListen: "0.0.0.0:8084",
+		NodeID:     1,
+		NodePort:   10000,
+		Remotes:    []string{"0.0.0.0:10000"},
+	})
+	a.NotNil(node1)
+	defer node1.Cleanup(true)
+
+	node2 := NewTestClusterNode(t, TestClusterNodeConfig{
+		HttpListen: "0.0.0.0:8085",
+		NodeID:     2,
+		NodePort:   10001,
+		Remotes:    []string{"0.0.0.0:10000"},
+	})
+	a.NotNil(node2)
+	defer node2.Cleanup(true)
+
+	node1.GCM.SetupRoundTripper(20*time.Millisecond, 10, testutil.SuccessGCMResponse)
+	node2.GCM.SetupRoundTripper(20*time.Millisecond, 10, testutil.SuccessGCMResponse)
+
+	// subscribe on first node
+	node1.Subscribe(gcmTopic)
+	// connect a client and send a message
+	client1, err := node1.Client("user1", 1000, true)
+	err = client1.Send(gcmTopic, "body", "{jsonHeader:1}")
+	a.NoError(err)
+
 	// only one message should be received but only on the first node.
+	// Every message should be delivered only once.
+	node1.GCM.CheckReceived(1)
+	node2.GCM.CheckReceived(0)
+
+	// NOW connect to second node
+	client2, err := node2.Client("user2", 1000, true)
+	a.NoError(err)
+	err = client2.Send(gcmTopic, "body", "{jsonHeader:1}")
+	a.NoError(err)
+
+	// reset the counter
+	node1.GCM.Reset()
+
+	// only one message should be received but only on the second node.
 	// Every message should be delivered only once.
 	node1.GCM.CheckReceived(0)
 	node2.GCM.CheckReceived(1)
