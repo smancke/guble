@@ -1,7 +1,7 @@
 package kvstore
 
 import (
-	// needed because of gorm / sql
+	// use this as gorm's sqlite dialect / implementation
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/jinzhu/gorm"
@@ -29,6 +29,7 @@ type SqliteKVStore struct {
 	syncOnWrite bool
 }
 
+// NewSqliteKVStore returns a new configured SqliteKVStore (not opened yet).
 func NewSqliteKVStore(filename string, syncOnWrite bool) *SqliteKVStore {
 	return &SqliteKVStore{
 		kvStore: &kvStore{logger: log.WithFields(log.Fields{
