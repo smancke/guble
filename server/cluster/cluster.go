@@ -22,6 +22,8 @@ type Config struct {
 	HealthScoreThreshold int
 }
 
+// MessageHandler is an interface used for handling messages in cluster.
+// It is logically connected to the router.Router interface, by reusing the same func signature.
 type MessageHandler interface {
 	HandleMessage(message *protocol.Message) error
 }
@@ -53,12 +55,12 @@ func New(config *Config) (*Cluster, error) {
 	//TODO Cosmin temporarily disabling any logging from memberlist, we might want to enable it again using logrus?
 	memberlistConfig.LogOutput = ioutil.Discard
 
-	memberlist, err := memberlist.Create(memberlistConfig)
+	ml, err := memberlist.Create(memberlistConfig)
 	if err != nil {
 		logger.WithField("error", err).Error("Error when creating the internal memberlist of the cluster")
 		return nil, err
 	}
-	c.memberlist = memberlist
+	c.memberlist = ml
 	memberlistConfig.Delegate = c
 	memberlistConfig.Conflict = c
 	return c, nil

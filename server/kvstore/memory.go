@@ -10,6 +10,7 @@ type MemoryKVStore struct {
 	mutex *sync.RWMutex
 }
 
+// NewMemoryKVStore returns a new configured MemoryKVStore.
 func NewMemoryKVStore() *MemoryKVStore {
 	return &MemoryKVStore{
 		data:  make(map[string]map[string][]byte),
@@ -25,7 +26,7 @@ func (kvStore *MemoryKVStore) Put(schema, key string, value []byte) error {
 	return nil
 }
 
-func (kvStore *MemoryKVStore) Get(schema, key string) (value []byte, exist bool, err error) {
+func (kvStore *MemoryKVStore) Get(schema, key string) ([]byte, bool, error) {
 	kvStore.mutex.Lock()
 	defer kvStore.mutex.Unlock()
 	s := kvStore.getSchema(schema)
@@ -43,7 +44,7 @@ func (kvStore *MemoryKVStore) Delete(schema, key string) error {
 	return nil
 }
 
-// IterateKeys iterates over the key-value pairs in the schema, with keys matching the keyPrefix.
+// Iterate iterates over the key-value pairs in the schema, with keys matching the keyPrefix.
 // TODO: this can lead to a deadlock, if the consumer modifies the store while receiving and the channel blocks
 func (kvStore *MemoryKVStore) Iterate(schema string, keyPrefix string) chan [2]string {
 	responseChan := make(chan [2]string, 100)

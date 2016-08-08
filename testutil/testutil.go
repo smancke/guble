@@ -37,15 +37,18 @@ func NewMockCtrl(t *testing.T) (*gomock.Controller, func()) {
 	return MockCtrl, func() { MockCtrl.Finish() }
 }
 
-// EnableDebugForMethod enables debug output through the current test
+// EnableDebugForMethod enables debug-level output through the current test
 // Usage:
-//		test_util.EnableDebugForMethod()()
+//		testutil.EnableDebugForMethod()()
 func EnableDebugForMethod() func() {
 	reset := log.GetLevel()
 	log.SetLevel(log.DebugLevel)
 	return func() { log.SetLevel(reset) }
 }
 
+// EnableDebugForMethod enables info-level output through the current test
+// Usage:
+//		testutil.EnableInfoForMethod()()
 func EnableInfoForMethod() func() {
 	reset := log.GetLevel()
 	log.SetLevel(log.InfoLevel)
@@ -63,6 +66,7 @@ func ExpectDone(a *assert.Assertions, doneChannel chan bool) {
 	}
 }
 
+// ExpectPanic expects a panic (and fails if this does not happen).
 func ExpectPanic(t *testing.T) {
 	if r := recover(); r == nil {
 		assert.Fail(t, "Expecting a panic but unfortunately it did not happen")

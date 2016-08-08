@@ -31,6 +31,7 @@ type LogstashFormatter struct {
 	TimestampFormat string
 }
 
+// Format the logrus entry to a byte slice, or return an error.
 func (f *LogstashFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	fields := make(logrus.Fields)
 	for k, v := range entry.Data {
