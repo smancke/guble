@@ -5,6 +5,7 @@ import (
 	"sync"
 )
 
+// MemoryKVStore is a struct representing an in-memory key-value store.
 type MemoryKVStore struct {
 	data  map[string]map[string][]byte
 	mutex *sync.RWMutex
@@ -18,6 +19,7 @@ func NewMemoryKVStore() *MemoryKVStore {
 	}
 }
 
+// Put implements the `kvstore` Put func.
 func (kvStore *MemoryKVStore) Put(schema, key string, value []byte) error {
 	kvStore.mutex.Lock()
 	defer kvStore.mutex.Unlock()
@@ -26,6 +28,7 @@ func (kvStore *MemoryKVStore) Put(schema, key string, value []byte) error {
 	return nil
 }
 
+// Get implements the `kvstore` Get func.
 func (kvStore *MemoryKVStore) Get(schema, key string) ([]byte, bool, error) {
 	kvStore.mutex.Lock()
 	defer kvStore.mutex.Unlock()
@@ -36,6 +39,7 @@ func (kvStore *MemoryKVStore) Get(schema, key string) ([]byte, bool, error) {
 	return nil, false, nil
 }
 
+// Delete implements the `kvstore` Delete func.
 func (kvStore *MemoryKVStore) Delete(schema, key string) error {
 	kvStore.mutex.Lock()
 	defer kvStore.mutex.Unlock()
