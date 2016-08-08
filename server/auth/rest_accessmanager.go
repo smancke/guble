@@ -10,12 +10,16 @@ import (
 	"net/url"
 )
 
+// RestAccessManager is a url for which the access is allowed or not.
 type RestAccessManager string
 
+// NewRestAccessManager returns a new RestAccessManager.
 func NewRestAccessManager(url string) RestAccessManager {
 	return RestAccessManager(url)
 }
 
+// IsAllowed is an implementation of the AccessManager interface.
+// The boolean result is based on matching between the desired AccessType, the userId and the path.
 func (ram RestAccessManager) IsAllowed(accessType AccessType, userId string, path protocol.Path) bool {
 
 	u, _ := url.Parse(string(ram))

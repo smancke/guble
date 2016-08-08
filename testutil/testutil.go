@@ -46,7 +46,7 @@ func EnableDebugForMethod() func() {
 	return func() { log.SetLevel(reset) }
 }
 
-// EnableDebugForMethod enables info-level output through the current test
+// EnableInfoForMethod enables info-level output through the current test
 // Usage:
 //		testutil.EnableInfoForMethod()()
 func EnableInfoForMethod() func() {
