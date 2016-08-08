@@ -26,22 +26,24 @@ func NewRestMessageAPI(router router.Router, prefix string) *RestMessageAPI {
 	return &RestMessageAPI{router, prefix}
 }
 
+// GetPrefix returns the prefix.
+// It is a part of the service.endpoint implementation.
 func (api *RestMessageAPI) GetPrefix() string {
 	return api.prefix
 }
 
+// ServeHTTP is an http.Handler.
+// It is a part of the service.endpoint implementation.
 func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, `Can not read body`, http.StatusBadRequest)
 		return
 	}
-
 	topic, err := api.extractTopic(r.URL.Path)
 	if err != nil {
 		if err == errNotFound {
@@ -51,7 +53,6 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Server error.", http.StatusInternalServerError)
 		return
 	}
-
 	msg := &protocol.Message{
 		Path:          protocol.Path(topic),
 		Body:          body,
@@ -60,7 +61,6 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		OptionalID:    q(r, `messageId`),
 		HeaderJSON:    headersToJSON(r.Header),
 	}
-
 	api.router.HandleMessage(msg)
 }
 
@@ -69,13 +69,11 @@ func (api *RestMessageAPI) extractTopic(path string) (string, error) {
 	if !strings.HasPrefix(path, p) {
 		return "", errNotFound
 	}
-
 	// Remove "`api.prefix` + /message" and we remain with the topic
 	topic := strings.TrimPrefix(path, p)
 	if topic == "/" || topic == "" {
 		return "", errNotFound
 	}
-
 	return topic, nil
 }
 
@@ -91,7 +89,6 @@ func q(r *http.Request, name string) string {
 func headersToJSON(header http.Header) string {
 	buff := &bytes.Buffer{}
 	buff.WriteString("{")
-
 	count := 0
 	for key, valueList := range header {
 		if strings.HasPrefix(strings.ToLower(key), xHeaderPrefix) && len(valueList) > 0 {
