@@ -19,8 +19,9 @@ var webSocketUpgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
+// WSHandler is a struct used for handling websocket connections on a certain prefix.
 type WSHandler struct {
-	Router        router.Router
+	router        router.Router
 	prefix        string
 	accessManager auth.AccessManager
 }
@@ -31,9 +32,8 @@ func NewWSHandler(router router.Router, prefix string) (*WSHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &WSHandler{
-		Router:        router,
+		router:        router,
 		prefix:        prefix,
 		accessManager: accessManager,
 	}, nil
@@ -41,13 +41,13 @@ func NewWSHandler(router router.Router, prefix string) (*WSHandler, error) {
 
 // GetPrefix returns the prefix.
 // It is a part of the service.endpoint implementation.
-func (handle *WSHandler) GetPrefix() string {
-	return handle.prefix
+func (handler *WSHandler) GetPrefix() string {
+	return handler.prefix
 }
 
 // ServeHTTP is an http.Handler.
 // It is a part of the service.endpoint implementation.
-func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (handler *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := webSocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		logger.WithError(err).Error("Error on upgrading to websocket")
@@ -55,7 +55,7 @@ func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 
-	NewWebSocket(handle, &wsconn{c}, extractUserID(r.RequestURI)).Start()
+	NewWebSocket(handler, &wsconn{c}, extractUserID(r.RequestURI)).Start()
 }
 
 // WSConnection is a wrapper interface for the needed functions of the websocket.Conn
@@ -204,7 +204,7 @@ func (ws *WebSocket) handleReceiveCmd(cmd *protocol.Cmd) {
 		ws.applicationID,
 		cmd,
 		ws.sendChannel,
-		ws.Router,
+		ws.router,
 		ws.userID,
 	)
 	if err != nil {
@@ -251,7 +251,7 @@ func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
 		msg.OptionalID = args[1]
 	}
 
-	ws.Router.HandleMessage(msg)
+	ws.router.HandleMessage(msg)
 
 	ws.sendOK(protocol.SUCCESS_SEND, msg.OptionalID)
 }
