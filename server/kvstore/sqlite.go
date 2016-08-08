@@ -23,6 +23,7 @@ const (
 
 var writeTestFilename = "db_testfile"
 
+// SqliteKVStore is a struct representing a sqlite database which embeds a kvStore.
 type SqliteKVStore struct {
 	*kvStore
 	filename    string
