@@ -39,7 +39,7 @@ func NewMockCtrl(t *testing.T) (*gomock.Controller, func()) {
 
 // EnableDebugForMethod enables debug-level output through the current test
 // Usage:
-//		test_util.EnableDebugForMethod()()
+//		testutil.EnableDebugForMethod()()
 func EnableDebugForMethod() func() {
 	reset := log.GetLevel()
 	log.SetLevel(log.DebugLevel)
@@ -48,7 +48,7 @@ func EnableDebugForMethod() func() {
 
 // EnableDebugForMethod enables info-level output through the current test
 // Usage:
-//		test_util.EnableInfoForMethod()()
+//		testutil.EnableInfoForMethod()()
 func EnableInfoForMethod() func() {
 	reset := log.GetLevel()
 	log.SetLevel(log.InfoLevel)
