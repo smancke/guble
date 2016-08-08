@@ -17,11 +17,13 @@ const xHeaderPrefix = "x-guble-"
 
 var errNotFound = errors.New("Not Found.")
 
+// RestMessageAPI is a struct representing a router's connector for a REST API.
 type RestMessageAPI struct {
 	router router.Router
 	prefix string
 }
 
+// NewRestMessageAPI returns a new RestMessageAPI.
 func NewRestMessageAPI(router router.Router, prefix string) *RestMessageAPI {
 	return &RestMessageAPI{router, prefix}
 }
