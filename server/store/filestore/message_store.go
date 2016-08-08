@@ -31,6 +31,7 @@ func New(basedir string) *FileMessageStore {
 	}
 }
 
+// GenerateNextMsgID is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) MaxMessageID(partition string) (uint64, error) {
 	p, err := fms.partitionStore(partition)
 	if err != nil {
@@ -61,6 +62,7 @@ func (fms *FileMessageStore) Stop() error {
 	return returnError
 }
 
+// GenerateNextMsgID is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) GenerateNextMsgID(partitionName string, nodeID int) (uint64, int64, error) {
 	p, err := fms.partitionStore(partitionName)
 	if err != nil {
@@ -69,6 +71,7 @@ func (fms *FileMessageStore) GenerateNextMsgID(partitionName string, nodeID int)
 	return p.generateNextMsgID(nodeID)
 }
 
+// StoreMessage is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) StoreMessage(message *protocol.Message, nodeID int) (int, error) {
 	partitionName := message.Path.Partition()
 
@@ -112,7 +115,8 @@ func (fms *FileMessageStore) StoreMessage(message *protocol.Message, nodeID int)
 	return len(data), nil
 }
 
-// Store stores a message within a partition
+// Store stores a message within a partition.
+// It is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) Store(partition string, msgID uint64, msg []byte) error {
 	p, err := fms.partitionStore(partition)
 	if err != nil {
@@ -121,7 +125,8 @@ func (fms *FileMessageStore) Store(partition string, msgID uint64, msg []byte) e
 	return p.Store(msgID, msg)
 }
 
-// Fetch asynchronously fetches a set of messages defined by the fetch request
+// Fetch asynchronously fetches a set of messages defined by the fetch request.
+// It is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) Fetch(req store.FetchRequest) {
 	p, err := fms.partitionStore(req.Partition)
 	if err != nil {
@@ -131,6 +136,7 @@ func (fms *FileMessageStore) Fetch(req store.FetchRequest) {
 	p.Fetch(&req)
 }
 
+// DoInTx is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error {
 	p, err := fms.partitionStore(partition)
 	if err != nil {
