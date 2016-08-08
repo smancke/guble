@@ -129,7 +129,7 @@ func (tcn *TestClusterNode) Subscribe(topic, id string) {
 }
 
 func (tcn *TestClusterNode) Unsubscribe(topic, id string) {
-	tcn.GCM.subscribe(tcn.Service.WebServer().GetAddr(), topic, id)
+	tcn.GCM.unsubscribe(tcn.Service.WebServer().GetAddr(), topic, id)
 }
 
 func (tcn *TestClusterNode) Cleanup(removeDir bool) {
@@ -141,6 +141,7 @@ func (tcn *TestClusterNode) Cleanup(removeDir bool) {
 		err = os.RemoveAll(tcn.StoragePath)
 		assert.NoError(tcn.t, err)
 	}
+	time.Sleep(50 * time.Millisecond)
 }
 
 type TestGCM struct {
@@ -165,7 +166,7 @@ func (tgcm *TestGCM) SetupRoundTripper(timeout time.Duration, bufferSize int, re
 }
 
 func (tgcm *TestGCM) subscribe(addr, topic, id string) {
-	urlFormat := fmt.Sprintf("http://%s/gcm/%%s/gcmId%%s/subscribe/%%s", addr)
+	urlFormat := fmt.Sprintf("http://%s/gcm/user_%%s/gcm_%%s/subscribe/%%s", addr)
 
 	a := assert.New(tgcm.t)
 
@@ -178,11 +179,11 @@ func (tgcm *TestGCM) subscribe(addr, topic, id string) {
 
 	body, err := ioutil.ReadAll(response.Body)
 	a.NoError(err)
-	a.Equal(fmt.Sprintf("subscribed: /%s\n", topic), string(body))
+	a.Equal(fmt.Sprintf("subscribed: %s\n", topic), string(body))
 }
 
 func (tgcm *TestGCM) unsubscribe(addr, topic, id string) {
-	urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/%%s", addr)
+	urlFormat := fmt.Sprintf("http://%s/gcm/user_%%s/gcm_%%s/subscribe/%%s", addr)
 
 	a := assert.New(tgcm.t)
 
@@ -201,7 +202,7 @@ func (tgcm *TestGCM) unsubscribe(addr, topic, id string) {
 
 	body, err := ioutil.ReadAll(response.Body)
 	a.NoError(err)
-	a.Equal(fmt.Sprintf("unsubscribed: /%s\n", topic), string(body))
+	a.Equal(fmt.Sprintf("unsubscribed: %s\n", topic), string(body))
 }
 
 // Wait waits count * tgcm.timeout, wait ensure count number of messages have been waited to pass

@@ -81,6 +81,9 @@ func initSubscription(connector *Connector, topic, userID, gcmID string, unusedL
 		return nil, errSubscriptionExists
 	}
 
+	// add subscription to gcm map
+	s.connector.subscriptions[s.Key()] = s
+
 	s.logger.Debug("New subscription")
 	if store {
 		if err := s.store(); err != nil {
@@ -108,6 +111,7 @@ func (s *subscription) subscribe() error {
 
 // unsubscribe from router and remove KVStore
 func (s *subscription) remove() *subscription {
+	s.logger.Info("Removing subscription")
 	s.connector.router.Unsubscribe(s.route)
 	delete(s.connector.subscriptions, s.Key())
 	s.connector.kvStore.Delete(schema, s.Key())
@@ -302,7 +306,6 @@ func (s *subscription) store() error {
 		s.logger.WithError(err).Error("Error storing in KVStore")
 	}
 
-	s.connector.subscriptions[s.Key()] = s
 	return err
 }
 
