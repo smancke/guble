@@ -19,6 +19,7 @@ const (
 )
 
 type (
+	// PostgresConfig is used for configuring the Postgresql connection.
 	PostgresConfig struct {
 		Host     *string
 		Port     *int
@@ -26,16 +27,19 @@ type (
 		Password *string
 		DbName   *string
 	}
+	// GCMConfig is used for configuring the Google Cloud Messaging component.
 	GCMConfig struct {
 		Enabled *bool
 		APIKey  *string
 		Workers *int
 	}
+	// ClusterConfig is used for configuring the cluster component.
 	ClusterConfig struct {
 		NodeID   *int
 		NodePort *int
 		Remotes  *[]*net.TCPAddr
 	}
+	// Config is used for configuring Guble (including its components).
 	Config struct {
 		Log             *string
 		EnvName         *string
@@ -59,9 +63,9 @@ var (
 			Envar("GUBLE_LOG").
 			Enum(logLevels()...),
 		EnvName: kingpin.Flag("env", `Name of the environment on which the application is running`).
-			Default(Dev).
+			Default(development).
 			Envar("GUBLE_ENV_NAME").
-			Enum(AllEnvName...),
+			Enum(environments...),
 		HttpListen: kingpin.Flag("http", `The address to for the HTTP server to listen on (format: "[Host]:Port")`).
 			Default(defaultHttpListen).
 			Envar("GUBLE_HTTP_LISTEN").
@@ -122,13 +126,13 @@ func logLevels() (levels []string) {
 }
 
 const (
-	Dev  string = "dev"
-	Int  string = "int"
-	Pre  string = "pre"
-	Prod string = "prod"
+	development   string = "dev"
+	integration   string = "int"
+	preproduction string = "pre"
+	production    string = "prod"
 )
 
-var AllEnvName []string = []string{Dev, Int, Pre, Prod}
+var environments []string = []string{development, integration, preproduction, production}
 
 // parseConfig parses the flags from command line. Must be used before accessing the config.
 // If there are missing or invalid arguments it will exit the application

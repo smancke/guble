@@ -114,11 +114,11 @@ var CreateModules = func(router router.Router) []interface{} {
 
 		logger.WithField("count", *config.GCM.Workers).Debug("GCM workers")
 
-		if gcm, err := gcm.New(router, "/gcm/", *config.GCM.APIKey, *config.GCM.Workers); err != nil {
+		if g, err := gcm.New(router, "/gcm/", *config.GCM.APIKey, *config.GCM.Workers); err != nil {
 			logger.WithError(err).Error("Error loading GCMConnector:")
 
 		} else {
-			modules = append(modules, gcm)
+			modules = append(modules, g)
 		}
 	} else {
 		logger.Info("Google cloud messaging: disabled")
@@ -148,10 +148,10 @@ func Main() {
 		logger.Fatal("Fatal error in gubled in validation of storage path")
 	}
 
-	service := StartService()
+	srv := StartService()
 
 	waitForTermination(func() {
-		err := service.Stop()
+		err := srv.Stop()
 		if err != nil {
 			logger.WithError(err).Error("Error when stopping service")
 		}
@@ -183,24 +183,24 @@ func StartService() *service.Service {
 		logger.Info("Starting in standalone-mode")
 	}
 
-	router := router.New(accessManager, messageStore, kvStore, cl)
-	webserver := webserver.New(*config.HttpListen)
+	r := router.New(accessManager, messageStore, kvStore, cl)
+	websrv := webserver.New(*config.HttpListen)
 
-	service := service.New(router, webserver).
+	srv := service.New(r, websrv).
 		HealthEndpoint(*config.HealthEndpoint).
 		MetricsEndpoint(*config.MetricsEndpoint)
 
-	service.RegisterModules(0, 6, kvStore, messageStore)
-	service.RegisterModules(4, 3, CreateModules(router)...)
+	srv.RegisterModules(0, 6, kvStore, messageStore)
+	srv.RegisterModules(4, 3, CreateModules(r)...)
 
-	if err = service.Start(); err != nil {
-		if err = service.Stop(); err != nil {
+	if err = srv.Start(); err != nil {
+		if err = srv.Stop(); err != nil {
 			logger.WithError(err).Error("Error when stopping service after Start() failed")
 		}
 		logger.WithError(err).Fatal("Service could not be started")
 	}
 
-	return service
+	return srv
 }
 
 func exitIfInvalidClusterParams(nodeID int, nodePort int, remotes []*net.TCPAddr) {
