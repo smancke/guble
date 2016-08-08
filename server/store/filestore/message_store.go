@@ -1,3 +1,4 @@
+// Package filestore is a filesystem-based implementation of the MessageStore interface.
 package filestore
 
 import (
@@ -12,17 +13,17 @@ import (
 	"github.com/smancke/guble/server/store"
 )
 
-var logger = log.WithFields(log.Fields{
-	"module": "messageStore",
-})
+var logger = log.WithField("module", "filestore")
 
-// FileMessageStore is an implementation of the MessageStore interface based on files
+// FileMessageStore is a struct used by the filesystem-based implementation of the MessageStore interface.
+// It holds the base directory, a map of messagePartitions etc.
 type FileMessageStore struct {
 	partitions map[string]*messagePartition
 	basedir    string
 	mutex      sync.RWMutex
 }
 
+// New returns a new FileMessageStore.
 func New(basedir string) *FileMessageStore {
 	return &FileMessageStore{
 		partitions: make(map[string]*messagePartition),
@@ -38,6 +39,8 @@ func (fms *FileMessageStore) MaxMessageID(partition string) (uint64, error) {
 	return p.MaxMessageID()
 }
 
+// Stop the FileMessageStore.
+// Implements the service.stopable interface.
 func (fms *FileMessageStore) Stop() error {
 	fms.mutex.Lock()
 	defer fms.mutex.Unlock()
@@ -51,7 +54,7 @@ func (fms *FileMessageStore) Stop() error {
 			logger.WithFields(log.Fields{
 				"key": key,
 				"err": err,
-			}).Error("Error on closing message store partition for")
+			}).Error("Error on closing message store partition")
 		}
 		delete(fms.partitions, key)
 	}
@@ -165,7 +168,7 @@ func (fms *FileMessageStore) partitionStore(partition string) (*messagePartition
 	return partitionStore, nil
 }
 
-// Check returns if disk space is occupied more than 95%.
+// Check returns if available storage space is still above a certain threshold.
 func (fms *FileMessageStore) Check() error {
 	var stat syscall.Statfs_t
 
