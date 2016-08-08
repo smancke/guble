@@ -31,7 +31,7 @@ func New(basedir string) *FileMessageStore {
 	}
 }
 
-// GenerateNextMsgID is a part of the `store.MessageStore` implementation.
+// MaxMessageID is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) MaxMessageID(partition string) (uint64, error) {
 	p, err := fms.partitionStore(partition)
 	if err != nil {

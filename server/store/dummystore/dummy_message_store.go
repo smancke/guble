@@ -58,6 +58,7 @@ func (dms *DummyMessageStore) Stop() error {
 	return nil
 }
 
+// StoreMessage is a part of the `store.MessageStore` implementation.
 func (dms *DummyMessageStore) StoreMessage(message *protocol.Message, nodeID int) (int, error) {
 	partitionName := message.Path.Partition()
 	nextID, ts, err := dms.GenerateNextMsgID(partitionName, 0)
@@ -74,6 +75,7 @@ func (dms *DummyMessageStore) StoreMessage(message *protocol.Message, nodeID int
 	return len(data), nil
 }
 
+// Store is a part of the `store.MessageStore` implementation.
 func (dms *DummyMessageStore) Store(partition string, msgID uint64, msg []byte) error {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
@@ -93,16 +95,19 @@ func (dms *DummyMessageStore) store(partition string, msgId uint64, msg []byte) 
 	return nil
 }
 
-// Fetch does nothing in this dummy implementation
+// Fetch does nothing in this dummy implementation.
+// It is a part of the `store.MessageStore` implementation.
 func (dms *DummyMessageStore) Fetch(req store.FetchRequest) {
 }
 
+// MaxMessageID is a part of the `store.MessageStore` implementation.
 func (dms *DummyMessageStore) MaxMessageID(partition string) (uint64, error) {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
 	return dms.maxMessageID(partition)
 }
 
+// DoInTx is a part of the `store.MessageStore` implementation.
 func (dms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
@@ -113,6 +118,7 @@ func (dms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessa
 	return fnToExecute(maxID)
 }
 
+// GenerateNextMsgID is a part of the `store.MessageStore` implementation.
 func (dms *DummyMessageStore) GenerateNextMsgID(partitionName string, timestamp int) (uint64, int64, error) {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()

@@ -137,7 +137,6 @@ func Test_AnIncomingMessageIsNotAllowed(t *testing.T) {
 
 	handler.sendChannel <- aTestMessage.Bytes()
 	time.Sleep(time.Millisecond * 2)
-
 }
 
 func Test_BadCommands(t *testing.T) {
@@ -183,7 +182,7 @@ func testWSHandler(
 	accessManager auth.AccessManager) *WSHandler {
 
 	return &WSHandler{
-		Router:        routerMock,
+		router:        routerMock,
 		prefix:        "/prefix",
 		accessManager: accessManager,
 	}
