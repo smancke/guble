@@ -25,6 +25,7 @@ type WSHandler struct {
 	accessManager auth.AccessManager
 }
 
+// NewWSHandler returns a new WSHandler.
 func NewWSHandler(router router.Router, prefix string) (*WSHandler, error) {
 	accessManager, err := router.AccessManager()
 	if err != nil {
@@ -38,10 +39,14 @@ func NewWSHandler(router router.Router, prefix string) (*WSHandler, error) {
 	}, nil
 }
 
+// GetPrefix returns the prefix.
+// It is a part of the service.endpoint implementation.
 func (handle *WSHandler) GetPrefix() string {
 	return handle.prefix
 }
 
+// ServeHTTP is an http.Handler.
+// It is a part of the service.endpoint implementation.
 func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := webSocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -67,20 +72,23 @@ type wsconn struct {
 	*websocket.Conn
 }
 
+// Close the connection.
 func (conn *wsconn) Close() {
 	conn.Conn.Close()
 }
 
+// Send bytes through the connection and possibly return an error.
 func (conn *wsconn) Send(bytes []byte) error {
 	return conn.WriteMessage(websocket.BinaryMessage, bytes)
 }
 
+// Receive bytes through the connection and possibly return an error.
 func (conn *wsconn) Receive(bytes *[]byte) (err error) {
 	_, *bytes, err = conn.ReadMessage()
 	return err
 }
 
-// WebSocket struct represents a websocket
+// WebSocket struct represents a websocket.
 type WebSocket struct {
 	*WSHandler
 	WSConnection
@@ -90,6 +98,7 @@ type WebSocket struct {
 	receivers     map[protocol.Path]*Receiver
 }
 
+// NewWebSocket returns a new WebSocket.
 func NewWebSocket(handler *WSHandler, wsConn WSConnection, userID string) *WebSocket {
 	return &WebSocket{
 		WSHandler:     handler,
@@ -101,6 +110,8 @@ func NewWebSocket(handler *WSHandler, wsConn WSConnection, userID string) *WebSo
 	}
 }
 
+// Start the WebSocket (the send and receive loops).
+// It is implementing the service.startable interface.
 func (ws *WebSocket) Start() error {
 	ws.sendConnectionMessage()
 	go ws.sendLoop()

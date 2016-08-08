@@ -32,6 +32,8 @@ const (
 	fileOption = "file"
 )
 
+// ValidateStoragePath validates the guble configuration with regard to the storagePath
+// (which can be used by MessageStore and/or KVStore implementations).
 var ValidateStoragePath = func() error {
 	if *config.KVS == fileOption || *config.MS == fileOption {
 		testfile := path.Join(*config.StoragePath, "write-test-file")
@@ -46,10 +48,14 @@ var ValidateStoragePath = func() error {
 	return nil
 }
 
+// CreateAccessManager is a func which returns a auth.AccessManager implementation
+// (currently: AllowAllAccessManager).
 var CreateAccessManager = func() auth.AccessManager {
 	return auth.NewAllowAllAccessManager(true)
 }
 
+// CreateKVStore is a func which returns a kvstore.KVStore implementation
+// (currently, based on guble configuration).
 var CreateKVStore = func() kvstore.KVStore {
 	switch *config.KVS {
 	case "memory":
@@ -82,6 +88,8 @@ var CreateKVStore = func() kvstore.KVStore {
 	}
 }
 
+// CreateMessageStore is a func which returns a store.MessageStore implementation
+// (currently, based on guble configuration).
 var CreateMessageStore = func() store.MessageStore {
 	switch *config.MS {
 	case "none", "":
@@ -94,6 +102,9 @@ var CreateMessageStore = func() store.MessageStore {
 	}
 }
 
+// CreateModules is a func which returns a slice of modules which should be used by the service
+// (currently, based on guble configuration);
+// see package `service` for terminological details.
 var CreateModules = func(router router.Router) []interface{} {
 	var modules []interface{}
 
@@ -127,6 +138,7 @@ var CreateModules = func(router router.Router) []interface{} {
 	return modules
 }
 
+// Main is the entry-point of the guble server.
 func Main() {
 	parseConfig()
 
