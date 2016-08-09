@@ -380,7 +380,7 @@ func (p *messagePartition) store(messageID uint64, data []byte) error {
 
 	p.appendFilePosition += uint64(len(sizeAndID) + len(data))
 
-	if messageID >= messageID {
+	if messageID > p.maxMessageID {
 		p.maxMessageID = messageID
 	}
 
