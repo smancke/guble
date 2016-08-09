@@ -15,9 +15,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var fetchMessage = `/foo/bar,42,user01,phone01,id123,1420110000,1
+var (
+	fetchMessage = `/foo/bar,42,user01,phone01,id123,1420110000,1
 {"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}
 Hello World`
+	dummyGCMResponse = &gcm.Response{
+		Results: []gcm.Result{{Error: ""}},
+	}
+	errorGCMNotRegisteredResponse = &gcm.Response{
+		Results: []gcm.Result{{Error: "NotRegistered"}},
+	}
+)
 
 func TestSub_Fetch(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
@@ -59,12 +67,12 @@ func TestSub_Fetch(t *testing.T) {
 		pm := <-gcm.pipelineC
 		a.Equal(uint64(3), pm.message.ID)
 		// acknowledge the response
-		pm.resultC <- dummyGCMResponse()
+		pm.resultC <- dummyGCMResponse
 
 		// pipe message
 		pm = <-gcm.pipelineC
 		a.Equal(uint64(4), pm.message.ID)
-		pm.resultC <- dummyGCMResponse()
+		pm.resultC <- dummyGCMResponse
 
 		close(done)
 	}()
@@ -83,12 +91,6 @@ func TestSub_Fetch(t *testing.T) {
 	err := sub.fetch()
 	a.NoError(err)
 
-}
-
-func dummyGCMResponse() *gcm.Response {
-	return &gcm.Response{
-		Results: []gcm.Result{{Error: ""}},
-	}
 }
 
 // Test that if a route is closed, but no explicit shutdown the subscription will
@@ -114,7 +116,7 @@ func TestSub_Restart(t *testing.T) {
 		for {
 			select {
 			case pm := <-gcm.pipelineC:
-				pm.resultC <- dummyGCMResponse()
+				pm.resultC <- dummyGCMResponse
 			case <-done:
 				return
 			}
@@ -128,10 +130,6 @@ func TestSub_Restart(t *testing.T) {
 	storeMock.EXPECT().MaxMessageID("foo").Return(uint64(4), nil).AnyTimes()
 
 	sub.start()
-
-	// pipe 2 messages to route and then close.
-	// sub.route.Deliver(&protocol.Message{Path: "/foo/bar", ID: 3, Body: []byte("dummy")})
-	// sub.route.Deliver(&protocol.Message{Path: "/foo/bar", ID: 4, Body: []byte("dummy")})
 
 	time.Sleep(10 * time.Millisecond)
 
@@ -161,5 +159,45 @@ func TestSub_Restart(t *testing.T) {
 	a.Equal(uint64(4), sub.lastID)
 
 	time.Sleep(10 * time.Millisecond)
+	close(done)
+}
+
+func TestSubscription_JSONError(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
+	a := assert.New(t)
+
+	gcm, routerMock, _ := testSimpleGCM(t, true)
+	routerMock.EXPECT().Subscribe(gomock.Any())
+
+	sub, err := initSubscription(gcm, "/foo/bar", "user01", "gcm01", 0, true)
+	a.NoError(err)
+	a.Equal(1, len(gcm.subscriptions))
+
+	// start goroutine that will take the messages from the pipeline
+	done := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case pm := <-gcm.pipelineC:
+				pm.resultC <- errorGCMNotRegisteredResponse
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	routerMock.EXPECT().Unsubscribe(gomock.Eq(sub.route))
+
+	sub.route.Deliver(&protocol.Message{
+		Path: protocol.Path("/foo/bar"),
+		Body: []byte("test message"),
+	})
+
+	// subscriptions should be removed at this point
+	time.Sleep(time.Second)
+	a.Equal(0, len(gcm.subscriptions))
+
 	close(done)
 }

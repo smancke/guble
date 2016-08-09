@@ -336,6 +336,29 @@ func TestConnector_Unsubscribe(t *testing.T) {
 	a.Equal("/baskets", string(gcm.subscriptions[remainingKey].route.Path))
 }
 
+func TestConnector_SubscriptionExists(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	a := assert.New(t)
+
+	gcm, routerMock, _ := testSimpleGCM(t, true)
+
+	routerMock.EXPECT().Subscribe(gomock.Any())
+
+	w := httptest.NewRecorder()
+	url := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", "user01", "gcm01", "/test")
+
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	a.NoError(err)
+
+	gcm.ServeHTTP(w, req)
+	w = httptest.NewRecorder()
+	gcm.ServeHTTP(w, req)
+
+	a.Equal(http.StatusOK, w.Code)
+	a.Equal("subscription exists", w.Body.String())
+}
+
 func testGCMResponse(t *testing.T, jsonResponse string) (*Connector, *MockRouter, chan bool) {
 	gcm, routerMock, _ := testSimpleGCM(t, false)
 
@@ -370,9 +393,9 @@ func testSimpleGCM(t *testing.T, mockStore bool) (*Connector, *MockRouter, *Mock
 
 func postSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string) {
 	a := assert.New(t)
-
-	url, _ := url.Parse(fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic))
-	req := &http.Request{URL: url, Method: "POST"}
+	url := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	a.NoError(err)
 	w := httptest.NewRecorder()
 
 	gcm.ServeHTTP(w, req)
@@ -383,9 +406,9 @@ func postSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string)
 func deleteSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string) {
 	a := assert.New(t)
 
-	url, _ := url.Parse(fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic))
-
-	req := &http.Request{URL: url, Method: "DELETE"}
+	url := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	a.NoError(err)
 	w := httptest.NewRecorder()
 
 	gcm.ServeHTTP(w, req)

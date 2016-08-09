@@ -45,6 +45,7 @@ type subscription struct {
 	connector *Connector
 	route     *router.Route
 	lastID    uint64 // Last sent message id
+	running   bool
 
 	logger *log.Entry
 }
@@ -174,8 +175,10 @@ func (s *subscription) shouldFetch() bool {
 func (s *subscription) subscriptionLoop() {
 	s.logger.Debug("Starting subscription loop")
 
+	s.running = true
 	s.connector.wg.Add(1)
 	defer func() {
+		s.running = false
 		s.logger.Debug("Stopped subscription loop")
 		s.connector.wg.Done()
 	}()
