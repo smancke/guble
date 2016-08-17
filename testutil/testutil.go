@@ -3,8 +3,7 @@ package testutil
 import (
 	_ "net/http/pprof"
 
-	"github.com/alexjlockwood/gcm"
-
+	"github.com/Bogh/gcm"
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/health"
 	"github.com/golang/mock/gomock"

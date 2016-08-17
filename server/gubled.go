@@ -18,7 +18,6 @@ import (
 	"github.com/smancke/guble/server/websocket"
 
 	"fmt"
-	"github.com/smancke/guble/server/router"
 	"net"
 	"os"
 	"os/signal"
@@ -26,6 +25,8 @@ import (
 	"runtime"
 	"strconv"
 	"syscall"
+
+	"github.com/smancke/guble/server/router"
 )
 
 const (
@@ -125,8 +126,13 @@ var CreateModules = func(router router.Router) []interface{} {
 
 		logger.WithField("count", *config.GCM.Workers).Debug("GCM workers")
 
-		if g, err := gcm.New(router, "/gcm/", *config.GCM.APIKey, *config.GCM.Workers); err != nil {
-			logger.WithError(err).Error("Error loading GCMConnector:")
+		if g, err := gcm.New(
+			router,
+			"/gcm/",
+			*config.GCM.APIKey,
+			*config.GCM.Workers,
+			*config.GCM.Endpoint); err != nil {
+			logger.WithError(err).Error("Error creating GCMConnector")
 
 		} else {
 			modules = append(modules, g)

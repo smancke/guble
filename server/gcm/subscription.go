@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Bogh/gcm"
 	log "github.com/Sirupsen/logrus"
-	"github.com/alexjlockwood/gcm"
 
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alexjlockwood/gcm"
+	"github.com/Bogh/gcm"
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"

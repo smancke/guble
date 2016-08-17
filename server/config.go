@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/Bogh/gcm"
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 
@@ -20,6 +21,10 @@ const (
 	defaultNodePort       = "10000"
 )
 
+var (
+	defaultGCMEndpoint = gcm.GcmSendEndpoint
+)
+
 type (
 	// PostgresConfig is used for configuring the Postgresql connection.
 	PostgresConfig struct {
@@ -31,9 +36,10 @@ type (
 	}
 	// GCMConfig is used for configuring the Google Cloud Messaging component.
 	GCMConfig struct {
-		Enabled *bool
-		APIKey  *string
-		Workers *int
+		Enabled  *bool
+		APIKey   *string
+		Workers  *int
+		Endpoint *string
 	}
 	// ClusterConfig is used for configuring the cluster component.
 	ClusterConfig struct {
@@ -108,6 +114,9 @@ var (
 				Envar("GUBLE_GCM_API_KEY").String(),
 			Workers: kingpin.Flag("gcm-workers", "The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)").
 				Default(strconv.Itoa(runtime.GOMAXPROCS(0))).Envar("GUBLE_GCM_WORKERS").Int(),
+			Endpoint: kingpin.Flag("gcm-endpoint", "The Google Cloud Messaging endpoint").
+				Default(defaultGCMEndpoint).
+				Envar("GUBLE_GCM_ENDPOINT").String(),
 		},
 		Cluster: ClusterConfig{
 			NodeID: kingpin.Flag("node-id", "(cluster mode) This guble node's own ID: a strictly positive integer number which must be unique in cluster").

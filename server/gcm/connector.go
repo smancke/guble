@@ -3,8 +3,9 @@ package gcm
 import (
 	"encoding/json"
 
+	"github.com/Bogh/gcm"
+
 	log "github.com/Sirupsen/logrus"
-	"github.com/alexjlockwood/gcm"
 
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/cluster"
@@ -55,10 +56,14 @@ type Connector struct {
 }
 
 // New creates a new *Connector without starting it
-func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int) (*Connector, error) {
+func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int, endpoint string) (*Connector, error) {
 	kvStore, err := router.KVStore()
 	if err != nil {
 		return nil, err
+	}
+
+	if endpoint != "" {
+		gcm.GcmSendEndpoint = endpoint
 	}
 
 	return &Connector{
@@ -112,7 +117,7 @@ func (conn *Connector) Check() error {
 	payload := messageMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
 	_, err := conn.Sender.Send(gcm.NewMessage(payload, ""), sendRetries)
 	if err != nil {
-		logger.WithError(err).Error("Error sending ping message")
+		logger.WithError(err).Error("Error sending pipe message")
 		return err
 	}
 	return nil

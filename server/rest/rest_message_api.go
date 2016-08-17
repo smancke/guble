@@ -2,6 +2,7 @@ package rest
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
@@ -69,6 +70,7 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		HeaderJSON:    headersToJSON(r.Header),
 	}
 	api.router.HandleMessage(msg)
+	fmt.Fprintf(w, "OK")
 }
 
 func (api *RestMessageAPI) extractTopic(path string) (string, error) {
