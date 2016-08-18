@@ -17,5 +17,5 @@ const (
 
 // AccessManager interface allows to provide a custom authentication mechanism
 type AccessManager interface {
-	IsAllowed(accessType AccessType, userId string, path protocol.Path) bool
+	IsAllowed(accessType AccessType, userID string, path protocol.Path) bool
 }

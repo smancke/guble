@@ -3,8 +3,9 @@ package gcm
 import (
 	"encoding/json"
 
+	"github.com/Bogh/gcm"
+
 	log "github.com/Sirupsen/logrus"
-	"github.com/alexjlockwood/gcm"
 
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/cluster"
@@ -56,10 +57,15 @@ type Connector struct {
 }
 
 // New creates a new *Connector without starting it
-func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int) (*Connector, error) {
+func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int, endpoint string) (*Connector, error) {
 	kvStore, err := router.KVStore()
 	if err != nil {
 		return nil, err
+	}
+
+	if endpoint != "" {
+		logger.WithField("gcmEndpoint", endpoint).Info("Using GCM endpoint")
+		gcm.GcmSendEndpoint = endpoint
 	}
 
 	return &Connector{
@@ -114,7 +120,7 @@ func (conn *Connector) Check() error {
 	payload := messageMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
 	_, err := conn.Sender.Send(gcm.NewMessage(payload, ""), sendRetries)
 	if err != nil {
-		logger.WithError(err).Error("Error sending ping message")
+		logger.WithError(err).Error("Error sending pipe message")
 		return err
 	}
 	return nil
@@ -235,7 +241,7 @@ func (conn *Connector) deleteSubscription(w http.ResponseWriter, topic, userID, 
 func (conn *Connector) parseParams(path string) (userID, gcmID, topic string, err error) {
 	currentURLPath := removeTrailingSlash(path)
 
-	if strings.HasPrefix(currentURLPath, conn.prefix) != true {
+	if !strings.HasPrefix(currentURLPath, conn.prefix) {
 		err = errors.New("gcm: GCM request is not starting with gcm prefix")
 		return
 	}
@@ -249,7 +255,7 @@ func (conn *Connector) parseParams(path string) (userID, gcmID, topic string, er
 	userID = splitParams[0]
 	gcmID = splitParams[1]
 
-	if strings.HasPrefix(splitParams[2], subscribePrefixPath+"/") != true {
+	if !strings.HasPrefix(splitParams[2], subscribePrefixPath+"/") {
 		err = errors.New("gcm: GCM request third param is not subscribe")
 		return
 	}
@@ -258,19 +264,12 @@ func (conn *Connector) parseParams(path string) (userID, gcmID, topic string, er
 }
 
 func (conn *Connector) loadSubscriptions() {
-	subscriptions := conn.kvStore.Iterate(schema, "")
 	count := 0
-	for {
-		select {
-		case entry, ok := <-subscriptions:
-			if !ok {
-				logger.WithField("count", count).Info("Loaded GCM subscriptions")
-				return
-			}
-			conn.loadSubscription(entry)
-			count++
-		}
+	for entry := range conn.kvStore.Iterate(schema, "") {
+		conn.loadSubscription(entry)
+		count++
 	}
+	logger.WithField("count", count).Info("Loaded GCM subscriptions")
 }
 
 // loadSubscription loads a kvstore entry and creates a subscription from it

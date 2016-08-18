@@ -85,7 +85,7 @@ func messagePartitionReader(name string, a *assert.Assertions, mStore *messagePa
 	FETCH:
 		for {
 			select {
-			case msgAndId, open := <-msgC:
+			case msgAndID, open := <-msgC:
 				if !open {
 					log.WithFields(log.Fields{
 						"module":      "testing",
@@ -94,8 +94,8 @@ func messagePartitionReader(name string, a *assert.Assertions, mStore *messagePa
 					}).Debug("Stop fetching")
 					break FETCH
 				}
-				a.Equal(lastReadMessage+1, int(msgAndId.ID), "Reader: "+name)
-				lastReadMessage = int(msgAndId.ID)
+				a.Equal(lastReadMessage+1, int(msgAndID.ID), "Reader: "+name)
+				lastReadMessage = int(msgAndID.ID)
 			case err := <-errorC:
 				a.Fail("received error", err.Error())
 				<-done

@@ -1,12 +1,15 @@
 package server
 
 import (
+	"github.com/Bogh/gcm"
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 
+	"fmt"
 	"net"
 	"runtime"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -18,7 +21,12 @@ const (
 	defaultNodePort       = "10000"
 )
 
+var (
+	defaultGCMEndpoint = gcm.GcmSendEndpoint
+)
+
 type (
+	// PostgresConfig is used for configuring the Postgresql connection.
 	PostgresConfig struct {
 		Host     *string
 		Port     *int
@@ -26,16 +34,20 @@ type (
 		Password *string
 		DbName   *string
 	}
+	// GCMConfig is used for configuring the Google Cloud Messaging component.
 	GCMConfig struct {
-		Enabled *bool
-		APIKey  *string
-		Workers *int
+		Enabled  *bool
+		APIKey   *string
+		Workers  *int
+		Endpoint *string
 	}
+	// ClusterConfig is used for configuring the cluster component.
 	ClusterConfig struct {
 		NodeID   *int
 		NodePort *int
-		Remotes  *[]*net.TCPAddr
+		Remotes  *tcpAddrList
 	}
+	// Config is used for configuring Guble (including its components).
 	Config struct {
 		Log             *string
 		EnvName         *string
@@ -59,9 +71,9 @@ var (
 			Envar("GUBLE_LOG").
 			Enum(logLevels()...),
 		EnvName: kingpin.Flag("env", `Name of the environment on which the application is running`).
-			Default(Dev).
+			Default(development).
 			Envar("GUBLE_ENV_NAME").
-			Enum(AllEnvName...),
+			Enum(environments...),
 		HttpListen: kingpin.Flag("http", `The address to for the HTTP server to listen on (format: "[Host]:Port")`).
 			Default(defaultHttpListen).
 			Envar("GUBLE_HTTP_LISTEN").
@@ -102,14 +114,17 @@ var (
 				Envar("GUBLE_GCM_API_KEY").String(),
 			Workers: kingpin.Flag("gcm-workers", "The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)").
 				Default(strconv.Itoa(runtime.GOMAXPROCS(0))).Envar("GUBLE_GCM_WORKERS").Int(),
+			Endpoint: kingpin.Flag("gcm-endpoint", "The Google Cloud Messaging endpoint").
+				Default(defaultGCMEndpoint).
+				Envar("GUBLE_GCM_ENDPOINT").String(),
 		},
 		Cluster: ClusterConfig{
 			NodeID: kingpin.Flag("node-id", "(cluster mode) This guble node's own ID: a strictly positive integer number which must be unique in cluster").
 				Envar("GUBLE_NODE_ID").Int(),
 			NodePort: kingpin.Flag("node-port", "(cluster mode) This guble node's own local port: a strictly positive integer number").
 				Default(defaultNodePort).Envar("GUBLE_NODE_PORT").Int(),
-			Remotes: kingpin.Arg("tcplist", `(cluster mode) The list of TCP addresses of some other guble nodes (format: "IP:port")`).
-				TCPList(),
+			Remotes: stringToTcpAddrList(kingpin.Flag("tcplist", `(cluster mode) The list of TCP addresses of some other guble nodes (format: "IP:port")`).
+				Envar("GUBLE_NODE_REMOTES")),
 		},
 	}
 )
@@ -122,17 +137,17 @@ func logLevels() (levels []string) {
 }
 
 const (
-	Dev  string = "dev"
-	Int  string = "int"
-	Pre  string = "pre"
-	Prod string = "prod"
+	development   string = "dev"
+	integration   string = "int"
+	preproduction string = "pre"
+	production    string = "prod"
 )
 
-var AllEnvName []string = []string{Dev, Int, Pre, Prod}
+var environments []string = []string{development, integration, preproduction, production}
 
-// Parse parses the flags from command line. Must be used before accessing the config.
-// If there are missing or invalid arguments it will exit the application and display a
-// corresponding message
+// parseConfig parses the flags from command line. Must be used before accessing the config.
+// If there are missing or invalid arguments it will exit the application
+// and display a message.
 func parseConfig() {
 	if parsed {
 		return
@@ -140,4 +155,33 @@ func parseConfig() {
 	kingpin.Parse()
 	parsed = true
 	return
+}
+
+type tcpAddrList []*net.TCPAddr
+
+func (h *tcpAddrList) Set(value string) error {
+	addresses := strings.Split(value, " ")
+	for _, addr := range addresses {
+		logger.WithField("addr", addr).Info("value")
+		parts := strings.SplitN(addr, ":", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("expected HEADER:VALUE got '%s'", addr)
+		}
+		addr, err := net.ResolveTCPAddr("tcp", addr)
+		if err != nil {
+			return err
+		}
+		*h = append(*h, addr)
+	}
+	return nil
+}
+
+func stringToTcpAddrList(s kingpin.Settings) (target *tcpAddrList) {
+	slist := make(tcpAddrList, 0)
+	s.SetValue(&slist)
+	return &slist
+}
+
+func (h *tcpAddrList) String() string {
+	return ""
 }

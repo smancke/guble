@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"net"
 )
 
 func TestParsingOfEnviromentVariables(t *testing.T) {
@@ -69,6 +70,9 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_PG_DBNAME", "pg-dbname")
 	defer os.Unsetenv("GUBLE_PG_DBNAME")
 
+	os.Setenv("GUBLE_NODE_REMOTES", "127.0.0.1:8080 127.0.0.1:20002")
+	defer os.Unsetenv("GUBLE_NODE_REMOTES")
+
 	// when we parse the arguments from environment variables
 	parseConfig()
 
@@ -103,6 +107,7 @@ func TestParsingArgs(t *testing.T) {
 		"--pg-user", "pg-user",
 		"--pg-password", "pg-password",
 		"--pg-dbname", "pg-dbname",
+		"--tcplist", "127.0.0.1:8080 127.0.0.1:20002",
 	}
 
 	// when we parse the arguments from command-line flags
@@ -136,4 +141,15 @@ func assertArguments(a *assert.Assertions) {
 
 	a.Equal("debug", *config.Log)
 	a.Equal("dev", *config.EnvName)
+	assertRemotesCluster(a)
+
+}
+
+func assertRemotesCluster(a *assert.Assertions) {
+	ip1, _ := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
+	ip2, _ := net.ResolveTCPAddr("tcp", "127.0.0.1:20002")
+	ipList := make(tcpAddrList, 0)
+	ipList = append(ipList, ip1)
+	ipList = append(ipList, ip2)
+	a.Equal(ipList, *config.Cluster.Remotes)
 }

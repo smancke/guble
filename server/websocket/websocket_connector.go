@@ -19,30 +19,35 @@ var webSocketUpgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
+// WSHandler is a struct used for handling websocket connections on a certain prefix.
 type WSHandler struct {
-	Router        router.Router
+	router        router.Router
 	prefix        string
 	accessManager auth.AccessManager
 }
 
+// NewWSHandler returns a new WSHandler.
 func NewWSHandler(router router.Router, prefix string) (*WSHandler, error) {
 	accessManager, err := router.AccessManager()
 	if err != nil {
 		return nil, err
 	}
-
 	return &WSHandler{
-		Router:        router,
+		router:        router,
 		prefix:        prefix,
 		accessManager: accessManager,
 	}, nil
 }
 
-func (handle *WSHandler) GetPrefix() string {
-	return handle.prefix
+// GetPrefix returns the prefix.
+// It is a part of the service.endpoint implementation.
+func (handler *WSHandler) GetPrefix() string {
+	return handler.prefix
 }
 
-func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// ServeHTTP is an http.Handler.
+// It is a part of the service.endpoint implementation.
+func (handler *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := webSocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		logger.WithError(err).Error("Error on upgrading to websocket")
@@ -50,11 +55,7 @@ func (handle *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 
-	NewWebSocket(handle, &wsconn{c}, extractUserID(r.RequestURI)).Start()
-}
-
-func (handle *WSHandler) Check() error {
-	return nil
+	NewWebSocket(handler, &wsconn{c}, extractUserID(r.RequestURI)).Start()
 }
 
 // WSConnection is a wrapper interface for the needed functions of the websocket.Conn
@@ -71,20 +72,23 @@ type wsconn struct {
 	*websocket.Conn
 }
 
+// Close the connection.
 func (conn *wsconn) Close() {
 	conn.Conn.Close()
 }
 
+// Send bytes through the connection and possibly return an error.
 func (conn *wsconn) Send(bytes []byte) error {
 	return conn.WriteMessage(websocket.BinaryMessage, bytes)
 }
 
+// Receive bytes through the connection and possibly return an error.
 func (conn *wsconn) Receive(bytes *[]byte) (err error) {
 	_, *bytes, err = conn.ReadMessage()
 	return err
 }
 
-// WebSocket struct represents a websocket
+// WebSocket struct represents a websocket.
 type WebSocket struct {
 	*WSHandler
 	WSConnection
@@ -94,6 +98,7 @@ type WebSocket struct {
 	receivers     map[protocol.Path]*Receiver
 }
 
+// NewWebSocket returns a new WebSocket.
 func NewWebSocket(handler *WSHandler, wsConn WSConnection, userID string) *WebSocket {
 	return &WebSocket{
 		WSHandler:     handler,
@@ -105,6 +110,8 @@ func NewWebSocket(handler *WSHandler, wsConn WSConnection, userID string) *WebSo
 	}
 }
 
+// Start the WebSocket (the send and receive loops).
+// It is implementing the service.startable interface.
 func (ws *WebSocket) Start() error {
 	ws.sendConnectionMessage()
 	go ws.sendLoop()
@@ -113,29 +120,19 @@ func (ws *WebSocket) Start() error {
 }
 
 func (ws *WebSocket) sendLoop() {
-	for {
-		select {
-		case raw := <-ws.sendChannel:
-
+	for raw := range ws.sendChannel {
+		if !ws.checkAccess(raw) {
+			continue
+		}
+		if err := ws.Send(raw); err != nil {
 			logger.WithFields(log.Fields{
 				"userId":        ws.userID,
 				"applicationID": ws.applicationID,
 				"totalSize":     len(raw),
 				"actualContent": string(raw),
-			}).Debug("Received on websocket")
-
-			if ws.checkAccess(raw) {
-
-				if err := ws.Send(raw); err != nil {
-
-					logger.WithFields(log.Fields{
-						"applicationID": ws.applicationID,
-					}).Debug("Closed connnection with")
-
-					ws.cleanAndClose()
-					break
-				}
-			}
+			}).Error("Could not send")
+			ws.cleanAndClose()
+			break
 		}
 	}
 }
@@ -207,7 +204,7 @@ func (ws *WebSocket) handleReceiveCmd(cmd *protocol.Cmd) {
 		ws.applicationID,
 		cmd,
 		ws.sendChannel,
-		ws.Router,
+		ws.router,
 		ws.userID,
 	)
 	if err != nil {
@@ -254,7 +251,7 @@ func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
 		msg.OptionalID = args[1]
 	}
 
-	ws.Router.HandleMessage(msg)
+	ws.router.HandleMessage(msg)
 
 	ws.sendOK(protocol.SUCCESS_SEND, msg.OptionalID)
 }

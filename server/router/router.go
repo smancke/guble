@@ -60,7 +60,7 @@ type router struct {
 	sync.RWMutex
 }
 
-// NewRouter returns a pointer to Router
+// New returns a pointer to Router
 func New(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore kvstore.KVStore, cluster *cluster.Cluster) Router {
 	return &router{
 		routes: make(map[protocol.Path][]*Route),
@@ -79,18 +79,16 @@ func New(accessManager auth.AccessManager, messageStore store.MessageStore, kvSt
 
 func (router *router) Start() error {
 	router.panicIfInternalDependenciesAreNil()
-	resetRouterMetrics()
 	logger.Info("Starting router")
-
+	resetRouterMetrics()
+	router.wg.Add(1)
 	go func() {
-		router.wg.Add(1)
 		for {
 			if router.stopping && router.channelsAreEmpty() {
 				router.closeRoutes()
 				router.wg.Done()
 				return
 			}
-
 			func() {
 				defer protocol.PanicLogger()
 
@@ -110,7 +108,6 @@ func (router *router) Start() error {
 			}()
 		}
 	}()
-
 	return nil
 }
 
@@ -162,20 +159,19 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		return &PermissionDeniedError{UserID: message.UserID, AccessType: auth.WRITE, Path: message.Path}
 	}
 
-	// for a new locally-generated message, we need to generate a new message-ID
 	var nodeID int
 	if router.cluster != nil {
 		nodeID = router.cluster.Config.ID
 	}
 
 	mTotalMessagesIncomingBytes.Add(int64(len(message.Bytes())))
-	if size, err := router.messageStore.StoreMessage(message, nodeID); err != nil {
+	size, err := router.messageStore.StoreMessage(message, nodeID)
+	if err != nil {
 		logger.WithError(err).Error("Error storing message")
 		mTotalMessageStoreErrors.Add(1)
 		return err
-	} else {
-		mTotalMessagesStoredBytes.Add(int64(size))
 	}
+	mTotalMessagesStoredBytes.Add(int64(size))
 
 	router.handleOverloadedChannel()
 

@@ -10,13 +10,13 @@ import (
 
 // IndexList a sorted list of fetch entries
 type indexList struct {
-	items []*Index
+	items []*index
 
 	sync.RWMutex
 }
 
 func newIndexList(size int) *indexList {
-	return &indexList{items: make([]*Index, 0, size)}
+	return &indexList{items: make([]*index, 0, size)}
 }
 
 func (l *indexList) len() int {
@@ -31,13 +31,13 @@ func (l *indexList) insertList(other *indexList) {
 }
 
 //Insert  adds in the sorted list a new element
-func (l *indexList) insert(items ...*Index) {
+func (l *indexList) insert(items ...*index) {
 	for _, elem := range items {
 		l.insertElem(elem)
 	}
 }
 
-func (l *indexList) insertElem(elem *Index) {
+func (l *indexList) insertElem(elem *index) {
 	l.Lock()
 	defer l.Unlock()
 
@@ -49,7 +49,7 @@ func (l *indexList) insertElem(elem *Index) {
 
 	// if the first element in list have a bigger id...insert new element on the start of list
 	if l.items[0].id >= elem.id {
-		l.items = append([]*Index{elem}, l.items...)
+		l.items = append([]*index{elem}, l.items...)
 		return
 	}
 
@@ -61,7 +61,7 @@ func (l *indexList) insertElem(elem *Index) {
 	//found the correct position to make an insertion sort
 	for i := 1; i <= len(l.items)-1; i++ {
 		if l.items[i].id > elem.id {
-			l.items = append(l.items[:i], append([]*Index{elem}, l.items[i:]...)...)
+			l.items = append(l.items[:i], append([]*index{elem}, l.items[i:]...)...)
 			return
 		}
 	}
@@ -69,7 +69,7 @@ func (l *indexList) insertElem(elem *Index) {
 
 // Clear empties the current list
 func (l *indexList) clear() {
-	l.items = make([]*Index, 0)
+	l.items = make([]*index, 0)
 }
 
 // GetIndexEntryFromID performs a binarySearch retrieving the
@@ -80,7 +80,7 @@ func (l *indexList) clear() {
 // - `position` position of the item
 // - `bestIndex` the closest index to the searched item if not found.
 // - `index` the index if found
-func (l *indexList) search(searchID uint64) (bool, int, int, *Index) {
+func (l *indexList) search(searchID uint64) (bool, int, int, *index) {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -111,7 +111,7 @@ func (l *indexList) search(searchID uint64) (bool, int, int, *Index) {
 }
 
 //Back retrieves the element with the biggest id or nil if list is empty
-func (l *indexList) back() *Index {
+func (l *indexList) back() *index {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -123,7 +123,7 @@ func (l *indexList) back() *Index {
 }
 
 //Front retrieves the element with the smallest id or nil if list is empty
-func (l *indexList) front() *Index {
+func (l *indexList) front() *index {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -134,7 +134,7 @@ func (l *indexList) front() *Index {
 	return l.items[0]
 }
 
-func (l *indexList) toSliceArray() []*Index {
+func (l *indexList) toSliceArray() []*index {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -142,7 +142,7 @@ func (l *indexList) toSliceArray() []*Index {
 }
 
 //Front retrieves the element at the given index or nil if position is incorrect or list is empty
-func (l *indexList) get(pos int) *Index {
+func (l *indexList) get(pos int) *index {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -157,7 +157,7 @@ func (l *indexList) get(pos int) *Index {
 	return l.items[pos]
 }
 
-func (l *indexList) mapWithPredicate(predicate func(elem *Index, i int) error) error {
+func (l *indexList) mapWithPredicate(predicate func(elem *index, i int) error) error {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -198,7 +198,7 @@ func (l *indexList) extract(req *store.FetchRequest) *indexList {
 	potentialEntries := newIndexList(0)
 	found, pos, lastPos, _ := l.search(req.StartID)
 	currentPos := lastPos
-	if found == true {
+	if found {
 		currentPos = pos
 	}
 

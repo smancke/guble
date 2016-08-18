@@ -22,6 +22,8 @@ type Config struct {
 	HealthScoreThreshold int
 }
 
+// MessageHandler is an interface used for handling messages in cluster.
+// It is logically connected to the router.Router interface, by reusing the same func signature.
 type MessageHandler interface {
 	HandleMessage(message *protocol.Message) error
 }
@@ -53,12 +55,12 @@ func New(config *Config) (*Cluster, error) {
 	//TODO Cosmin temporarily disabling any logging from memberlist, we might want to enable it again using logrus?
 	memberlistConfig.LogOutput = ioutil.Discard
 
-	memberlist, err := memberlist.Create(memberlistConfig)
+	ml, err := memberlist.Create(memberlistConfig)
 	if err != nil {
 		logger.WithField("error", err).Error("Error when creating the internal memberlist of the cluster")
 		return nil, err
 	}
-	c.memberlist = memberlist
+	c.memberlist = ml
 	memberlistConfig.Delegate = c
 	memberlistConfig.Conflict = c
 	return c, nil
@@ -78,7 +80,7 @@ func (cluster *Cluster) Start() error {
 		return err
 	}
 	if num == 0 {
-		errorMessage := "No remote hosts were successfuly contacted when this node wanted to join the cluster"
+		errorMessage := "No remote hosts were successfully contacted when this node wanted to join the cluster"
 		logger.WithField("remotes", cluster.remotesAsStrings()).Error(errorMessage)
 		return errors.New(errorMessage)
 	}
@@ -102,6 +104,7 @@ func (cluster *Cluster) Check() error {
 }
 
 // NotifyMsg is invoked each time a message is received by this node of the cluster; it decodes and dispatches the messages.
+// It is a part of the implementation of `memberlist.Delegate` .
 func (cluster *Cluster) NotifyMsg(msg []byte) {
 	logger.WithField("msgAsBytes", msg).Debug("NotifyMsg")
 
@@ -126,23 +129,23 @@ func (cluster *Cluster) NotifyMsg(msg []byte) {
 	}
 }
 
+// GetBroadcasts is a part of the implementation of `memberlist.Delegate` .
 func (cluster *Cluster) GetBroadcasts(overhead, limit int) [][]byte {
 	b := cluster.broadcasts
 	cluster.broadcasts = nil
 	return b
 }
 
-func (cluster *Cluster) NodeMeta(limit int) []byte {
-	return nil
-}
+// NodeMeta is a part of the implementation of `memberlist.Delegate` .
+func (cluster *Cluster) NodeMeta(limit int) []byte { return nil }
 
-func (cluster *Cluster) LocalState(join bool) []byte {
-	return nil
-}
+// LocalState is a part of the implementation of `memberlist.Delegate` .
+func (cluster *Cluster) LocalState(join bool) []byte { return nil }
 
-func (cluster *Cluster) MergeRemoteState(s []byte, join bool) {
-}
+// MergeRemoteState is a part of the implementation of `memberlist.Delegate` .
+func (cluster *Cluster) MergeRemoteState(s []byte, join bool) {}
 
+// NotifyConflict is an implementation of `memberlist.ConflictDelegate` interface.
 func (cluster *Cluster) NotifyConflict(existing, other *memberlist.Node) {
 	logger.WithFields(log.Fields{
 		"existing": *existing,
@@ -150,7 +153,7 @@ func (cluster *Cluster) NotifyConflict(existing, other *memberlist.Node) {
 	}).Panic("NotifyConflict")
 }
 
-// BroadcastString broadcasts a string to all the other nodes in the guble cluster
+// BroadcastString broadcasts a string to all the other nodes in the guble cluster.
 func (cluster *Cluster) BroadcastString(sMessage *string) error {
 	logger.WithField("string", sMessage).Debug("BroadcastString")
 	cMessage := &message{
@@ -161,7 +164,7 @@ func (cluster *Cluster) BroadcastString(sMessage *string) error {
 	return cluster.broadcastClusterMessage(cMessage)
 }
 
-// BroadcastMessage broadcasts a guble-protocol-message to all the other nodes in the guble cluster
+// BroadcastMessage broadcasts a guble-protocol-message to all the other nodes in the guble cluster.
 func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) error {
 	logger.WithField("message", pMessage).Debug("BroadcastMessage")
 	cMessage := &message{

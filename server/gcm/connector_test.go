@@ -379,7 +379,7 @@ func testSimpleGCM(t *testing.T, mockStore bool) (*Connector, *MockRouter, *Mock
 	kvStore := kvstore.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
 
-	gcm, err := New(routerMock, "/gcm/", "testApi", 1)
+	gcm, err := New(routerMock, "/gcm/", "testApi", 1, "")
 	assert.NoError(t, err)
 
 	var storeMock *MockMessageStore

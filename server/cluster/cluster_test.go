@@ -137,7 +137,7 @@ func TestCluster_StartShouldReturnErrorWhenNoRemotes(t *testing.T) {
 	defer node.Stop()
 	err = node.Start()
 	if a.Error(err, "An error is expected when Starting the Cluster") {
-		a.Equal(err, errors.New("No remote hosts were successfuly contacted when this node wanted to join the cluster"),
+		a.Equal(err, errors.New("No remote hosts were successfully contacted when this node wanted to join the cluster"),
 			"Error should be precisely defined")
 	}
 }

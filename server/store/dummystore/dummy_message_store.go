@@ -30,6 +30,7 @@ type DummyMessageStore struct {
 	idSyncDuration time.Duration
 }
 
+// New returns a new DummyMessageStore.
 func New(kvStore kvstore.KVStore) *DummyMessageStore {
 	return &DummyMessageStore{
 		topicSequences: make(map[string]uint64),
@@ -40,12 +41,14 @@ func New(kvStore kvstore.KVStore) *DummyMessageStore {
 	}
 }
 
+// Start the DummyMessageStore.
 func (dms *DummyMessageStore) Start() error {
 	go dms.startSequenceSync()
 	dms.isSyncStarted = true
 	return nil
 }
 
+// Stop the DummyMessageStore.
 func (dms *DummyMessageStore) Stop() error {
 	if !dms.isSyncStarted {
 		return nil
@@ -55,6 +58,7 @@ func (dms *DummyMessageStore) Stop() error {
 	return nil
 }
 
+// StoreMessage is a part of the `store.MessageStore` implementation.
 func (dms *DummyMessageStore) StoreMessage(message *protocol.Message, nodeID int) (int, error) {
 	partitionName := message.Path.Partition()
 	nextID, ts, err := dms.GenerateNextMsgID(partitionName, 0)
@@ -71,59 +75,64 @@ func (dms *DummyMessageStore) StoreMessage(message *protocol.Message, nodeID int
 	return len(data), nil
 }
 
-func (dms *DummyMessageStore) Store(partition string, msgId uint64, msg []byte) error {
+// Store is a part of the `store.MessageStore` implementation.
+func (dms *DummyMessageStore) Store(partition string, msgID uint64, msg []byte) error {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
-	return dms.store(partition, msgId, msg)
+	return dms.store(partition, msgID, msg)
 }
 
 func (dms *DummyMessageStore) store(partition string, msgId uint64, msg []byte) error {
-	maxId, err := dms.maxMessageId(partition)
+	maxID, err := dms.maxMessageID(partition)
 	if err != nil {
 		return err
 	}
-	if msgId > 1+maxId {
+	if msgId > 1+maxID {
 		return fmt.Errorf("DummyMessageStore: Invalid message id for partition %v. Next id should be %v, but was %q",
-			partition, 1+maxId, msgId)
+			partition, 1+maxID, msgId)
 	}
-	dms.setId(partition, msgId)
+	dms.setID(partition, msgId)
 	return nil
 }
 
-// Fetch does nothing in this dummy implementation
+// Fetch does nothing in this dummy implementation.
+// It is a part of the `store.MessageStore` implementation.
 func (dms *DummyMessageStore) Fetch(req store.FetchRequest) {
 }
 
+// MaxMessageID is a part of the `store.MessageStore` implementation.
 func (dms *DummyMessageStore) MaxMessageID(partition string) (uint64, error) {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
-	return dms.maxMessageId(partition)
+	return dms.maxMessageID(partition)
 }
 
+// DoInTx is a part of the `store.MessageStore` implementation.
 func (dms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
-	maxId, err := dms.maxMessageId(partition)
+	maxID, err := dms.maxMessageID(partition)
 	if err != nil {
 		return err
 	}
-	return fnToExecute(maxId)
+	return fnToExecute(maxID)
 }
 
+// GenerateNextMsgID is a part of the `store.MessageStore` implementation.
 func (dms *DummyMessageStore) GenerateNextMsgID(partitionName string, timestamp int) (uint64, int64, error) {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
 	ts := time.Now().Unix()
-	max, err := dms.maxMessageId(partitionName)
+	max, err := dms.maxMessageID(partitionName)
 	if err != nil {
 		return 0, 0, err
 	}
 	next := max + 1
-	dms.setId(partitionName, next)
+	dms.setID(partitionName, next)
 	return next, ts, nil
 }
 
-func (dms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
+func (dms *DummyMessageStore) maxMessageID(partition string) (uint64, error) {
 	sequenceValue, exist := dms.topicSequences[partition]
 	if !exist {
 		val, existInKVStore, err := dms.kvStore.Get(topicSchema, partition)
@@ -131,7 +140,10 @@ func (dms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
 			return 0, err
 		}
 		if existInKVStore {
-			sequenceValue, _ = strconv.ParseUint(string(val), 10, 0)
+			sequenceValue, err = strconv.ParseUint(string(val), 10, 0)
+			if err != nil {
+				return 0, err
+			}
 		} else {
 			sequenceValue = uint64(0)
 		}
@@ -141,7 +153,7 @@ func (dms *DummyMessageStore) maxMessageId(partition string) (uint64, error) {
 }
 
 // the id to a new value
-func (dms *DummyMessageStore) setId(partition string, id uint64) {
+func (dms *DummyMessageStore) setID(partition string, id uint64) {
 	dms.topicSequences[partition] = id
 }
 

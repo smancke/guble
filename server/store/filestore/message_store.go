@@ -1,3 +1,4 @@
+// Package filestore is a filesystem-based implementation of the MessageStore interface.
 package filestore
 
 import (
@@ -12,17 +13,17 @@ import (
 	"github.com/smancke/guble/server/store"
 )
 
-var logger = log.WithFields(log.Fields{
-	"module": "messageStore",
-})
+var logger = log.WithField("module", "filestore")
 
-// FileMessageStore is an implementation of the MessageStore interface based on files
+// FileMessageStore is a struct used by the filesystem-based implementation of the MessageStore interface.
+// It holds the base directory, a map of messagePartitions etc.
 type FileMessageStore struct {
 	partitions map[string]*messagePartition
 	basedir    string
 	mutex      sync.RWMutex
 }
 
+// New returns a new FileMessageStore.
 func New(basedir string) *FileMessageStore {
 	return &FileMessageStore{
 		partitions: make(map[string]*messagePartition),
@@ -30,6 +31,7 @@ func New(basedir string) *FileMessageStore {
 	}
 }
 
+// MaxMessageID is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) MaxMessageID(partition string) (uint64, error) {
 	p, err := fms.partitionStore(partition)
 	if err != nil {
@@ -38,6 +40,8 @@ func (fms *FileMessageStore) MaxMessageID(partition string) (uint64, error) {
 	return p.MaxMessageID()
 }
 
+// Stop the FileMessageStore.
+// Implements the service.stopable interface.
 func (fms *FileMessageStore) Stop() error {
 	fms.mutex.Lock()
 	defer fms.mutex.Unlock()
@@ -51,13 +55,14 @@ func (fms *FileMessageStore) Stop() error {
 			logger.WithFields(log.Fields{
 				"key": key,
 				"err": err,
-			}).Error("Error on closing message store partition for")
+			}).Error("Error on closing message store partition")
 		}
 		delete(fms.partitions, key)
 	}
 	return returnError
 }
 
+// GenerateNextMsgID is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) GenerateNextMsgID(partitionName string, nodeID int) (uint64, int64, error) {
 	p, err := fms.partitionStore(partitionName)
 	if err != nil {
@@ -66,6 +71,7 @@ func (fms *FileMessageStore) GenerateNextMsgID(partitionName string, nodeID int)
 	return p.generateNextMsgID(nodeID)
 }
 
+// StoreMessage is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) StoreMessage(message *protocol.Message, nodeID int) (int, error) {
 	partitionName := message.Path.Partition()
 
@@ -109,16 +115,18 @@ func (fms *FileMessageStore) StoreMessage(message *protocol.Message, nodeID int)
 	return len(data), nil
 }
 
-// Store stores a message within a partition
-func (fms *FileMessageStore) Store(partition string, msgId uint64, msg []byte) error {
+// Store stores a message within a partition.
+// It is a part of the `store.MessageStore` implementation.
+func (fms *FileMessageStore) Store(partition string, msgID uint64, msg []byte) error {
 	p, err := fms.partitionStore(partition)
 	if err != nil {
 		return err
 	}
-	return p.Store(msgId, msg)
+	return p.Store(msgID, msg)
 }
 
-// Fetch asynchronously fetches a set of messages defined by the fetch request
+// Fetch asynchronously fetches a set of messages defined by the fetch request.
+// It is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) Fetch(req store.FetchRequest) {
 	p, err := fms.partitionStore(req.Partition)
 	if err != nil {
@@ -128,6 +136,7 @@ func (fms *FileMessageStore) Fetch(req store.FetchRequest) {
 	p.Fetch(&req)
 }
 
+// DoInTx is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error {
 	p, err := fms.partitionStore(partition)
 	if err != nil {
@@ -143,15 +152,15 @@ func (fms *FileMessageStore) partitionStore(partition string) (*messagePartition
 	partitionStore, exist := fms.partitions[partition]
 	if !exist {
 		dir := path.Join(fms.basedir, partition)
-		if _, err := os.Stat(dir); err != nil {
-			if os.IsNotExist(err) {
-				if err := os.MkdirAll(dir, 0700); err != nil {
-					logger.WithField("err", err).Error("partitionStore")
-					return nil, err
+		if _, errStat := os.Stat(dir); errStat != nil {
+			if os.IsNotExist(errStat) {
+				if errMkdir := os.MkdirAll(dir, 0700); errMkdir != nil {
+					logger.WithError(errMkdir).Error("partitionStore")
+					return nil, errMkdir
 				}
 			} else {
-				logger.WithField("err", err).Error("partitionStore")
-				return nil, err
+				logger.WithError(errStat).Error("partitionStore")
+				return nil, errStat
 			}
 		}
 		var err error
@@ -165,7 +174,7 @@ func (fms *FileMessageStore) partitionStore(partition string) (*messagePartition
 	return partitionStore, nil
 }
 
-// Check returns if disk space is occupied more than 95%.
+// Check returns if available storage space is still above a certain threshold.
 func (fms *FileMessageStore) Check() error {
 	var stat syscall.Statfs_t
 
@@ -179,7 +188,7 @@ func (fms *FileMessageStore) Check() error {
 	usedSpacePercentage := 1 - (float64(freeSpace) / float64(totalSpace))
 
 	if usedSpacePercentage > 0.95 {
-		errorMessage := "Disk is almost full."
+		errorMessage := "Storage is almost full"
 		logger.WithFields(log.Fields{
 			"percentage": usedSpacePercentage,
 		}).Warn(errorMessage)

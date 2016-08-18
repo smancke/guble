@@ -18,7 +18,6 @@ import (
 	"github.com/smancke/guble/server/websocket"
 
 	"fmt"
-	"github.com/smancke/guble/server/router"
 	"net"
 	"os"
 	"os/signal"
@@ -26,12 +25,16 @@ import (
 	"runtime"
 	"strconv"
 	"syscall"
+
+	"github.com/smancke/guble/server/router"
 )
 
 const (
 	fileOption = "file"
 )
 
+// ValidateStoragePath validates the guble configuration with regard to the storagePath
+// (which can be used by MessageStore and/or KVStore implementations).
 var ValidateStoragePath = func() error {
 	if *config.KVS == fileOption || *config.MS == fileOption {
 		testfile := path.Join(*config.StoragePath, "write-test-file")
@@ -46,10 +49,14 @@ var ValidateStoragePath = func() error {
 	return nil
 }
 
+// CreateAccessManager is a func which returns a auth.AccessManager implementation
+// (currently: AllowAllAccessManager).
 var CreateAccessManager = func() auth.AccessManager {
 	return auth.NewAllowAllAccessManager(true)
 }
 
+// CreateKVStore is a func which returns a kvstore.KVStore implementation
+// (currently, based on guble configuration).
 var CreateKVStore = func() kvstore.KVStore {
 	switch *config.KVS {
 	case "memory":
@@ -82,6 +89,8 @@ var CreateKVStore = func() kvstore.KVStore {
 	}
 }
 
+// CreateMessageStore is a func which returns a store.MessageStore implementation
+// (currently, based on guble configuration).
 var CreateMessageStore = func() store.MessageStore {
 	switch *config.MS {
 	case "none", "":
@@ -94,6 +103,9 @@ var CreateMessageStore = func() store.MessageStore {
 	}
 }
 
+// CreateModules is a func which returns a slice of modules which should be used by the service
+// (currently, based on guble configuration);
+// see package `service` for terminological details.
 var CreateModules = func(router router.Router) []interface{} {
 	var modules []interface{}
 
@@ -114,11 +126,16 @@ var CreateModules = func(router router.Router) []interface{} {
 
 		logger.WithField("count", *config.GCM.Workers).Debug("GCM workers")
 
-		if gcm, err := gcm.New(router, "/gcm/", *config.GCM.APIKey, *config.GCM.Workers); err != nil {
-			logger.WithError(err).Error("Error loading GCMConnector:")
+		if g, err := gcm.New(
+			router,
+			"/gcm/",
+			*config.GCM.APIKey,
+			*config.GCM.Workers,
+			*config.GCM.Endpoint); err != nil {
+			logger.WithError(err).Error("Error creating GCMConnector")
 
 		} else {
-			modules = append(modules, gcm)
+			modules = append(modules, g)
 		}
 	} else {
 		logger.Info("Google cloud messaging: disabled")
@@ -127,6 +144,7 @@ var CreateModules = func(router router.Router) []interface{} {
 	return modules
 }
 
+// Main is the entry-point of the guble server.
 func Main() {
 	parseConfig()
 
@@ -148,10 +166,10 @@ func Main() {
 		logger.Fatal("Fatal error in gubled in validation of storage path")
 	}
 
-	service := StartService()
+	srv := StartService()
 
 	waitForTermination(func() {
-		err := service.Stop()
+		err := srv.Stop()
 		if err != nil {
 			logger.WithError(err).Error("Error when stopping service")
 		}
@@ -183,24 +201,24 @@ func StartService() *service.Service {
 		logger.Info("Starting in standalone-mode")
 	}
 
-	router := router.New(accessManager, messageStore, kvStore, cl)
-	webserver := webserver.New(*config.HttpListen)
+	r := router.New(accessManager, messageStore, kvStore, cl)
+	websrv := webserver.New(*config.HttpListen)
 
-	service := service.New(router, webserver).
+	srv := service.New(r, websrv).
 		HealthEndpoint(*config.HealthEndpoint).
 		MetricsEndpoint(*config.MetricsEndpoint)
 
-	service.RegisterModules(0, 6, kvStore, messageStore)
-	service.RegisterModules(4, 3, CreateModules(router)...)
+	srv.RegisterModules(0, 6, kvStore, messageStore)
+	srv.RegisterModules(4, 3, CreateModules(r)...)
 
-	if err = service.Start(); err != nil {
-		if err = service.Stop(); err != nil {
+	if err = srv.Start(); err != nil {
+		if err = srv.Stop(); err != nil {
 			logger.WithError(err).Error("Error when stopping service after Start() failed")
 		}
 		logger.WithError(err).Fatal("Service could not be started")
 	}
 
-	return service
+	return srv
 }
 
 func exitIfInvalidClusterParams(nodeID int, nodePort int, remotes []*net.TCPAddr) {

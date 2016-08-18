@@ -21,28 +21,28 @@ var errUnreadMsgsAvailable = errors.New("unread messages available")
 type Receiver struct {
 	cancelC             chan bool
 	sendC               chan []byte
-	applicationId       string
+	applicationID       string
 	router              router.Router
 	messageStore        store.MessageStore
 	path                protocol.Path
 	doFetch             bool
 	doSubscription      bool
-	startId             int64
+	startID             int64
 	maxCount            int
 	lastSentID          uint64
 	shouldStop          bool
 	route               *router.Route
 	enableNotifications bool
-	userId              string
+	userID              string
 }
 
 // NewReceiverFromCmd parses the info in the command
 func NewReceiverFromCmd(
-	applicationId string,
+	applicationID string,
 	cmd *protocol.Cmd,
 	sendChannel chan []byte,
 	router router.Router,
-	userId string) (rec *Receiver, err error) {
+	userID string) (rec *Receiver, err error) {
 
 	messageStore, err := router.MessageStore()
 	if err != nil {
@@ -50,13 +50,13 @@ func NewReceiverFromCmd(
 	}
 
 	rec = &Receiver{
-		applicationId:       applicationId,
+		applicationID:       applicationID,
 		sendC:               sendChannel,
 		router:              router,
 		messageStore:        messageStore,
 		cancelC:             make(chan bool, 1),
 		enableNotifications: true,
-		userId:              userId,
+		userID:              userID,
 	}
 	if len(cmd.Arg) == 0 || cmd.Arg[0] != '/' {
 		return nil, fmt.Errorf("command requires at least a path argument, but non given")
@@ -67,7 +67,7 @@ func NewReceiverFromCmd(
 
 	if len(args) > 1 {
 		rec.doFetch = true
-		rec.startId, err = strconv.ParseInt(args[1], 10, 64)
+		rec.startID, err = strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("startid has to be empty or int, but was %q: %v", args[1], err)
 		}
@@ -112,10 +112,10 @@ func (rec *Receiver) subscriptionLoop() {
 						"lastSentId": rec.lastSentID,
 						"receiver":   rec,
 					}).Error("errUnreadMsgsAvailable")
-					rec.startId = int64(rec.lastSentID) + 1
+					rec.startID = int64(rec.lastSentID) + 1
 					continue // fetch again
 				} else {
-					logger.WithError(err).WithField("recStartId", rec.startId).
+					logger.WithError(err).WithField("recStartId", rec.startID).
 						Error("Error while subscribeIfNoUnreadMessagesAvailable")
 					rec.sendError(protocol.ERROR_INTERNAL_SERVER, err.Error())
 					return
@@ -130,14 +130,14 @@ func (rec *Receiver) subscriptionLoop() {
 			//fmt.Printf(" router closed .. on msg: %v\n", rec.lastSendId)
 			// the router kicked us out, because we are too slow for realtime listening,
 			// so we setup parameters for fetching and closing the gap. Than we can subscribe again.
-			rec.startId = int64(rec.lastSentID) + 1
+			rec.startID = int64(rec.lastSentID) + 1
 			rec.doFetch = true
 		}
 	}
 }
 
-func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) error {
-	if maxMessageId > rec.lastSentID {
+func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageID uint64) error {
+	if maxMessageID > rec.lastSentID {
 		return errUnreadMsgsAvailable
 	}
 	rec.subscribe()
@@ -147,7 +147,7 @@ func (rec *Receiver) subscribeIfNoUnreadMessagesAvailable(maxMessageId uint64) e
 func (rec *Receiver) subscribe() {
 	rec.route = router.NewRoute(
 		router.RouteConfig{
-			RouteParams: router.RouteParams{"application_id": rec.applicationId, "user_id": rec.userId},
+			RouteParams: router.RouteParams{"application_id": rec.applicationID, "user_id": rec.userID},
 			Path:        rec.path,
 			ChannelSize: 10,
 		},
@@ -168,13 +168,13 @@ func (rec *Receiver) receiveFromSubscription() {
 			if !ok {
 
 				logger.WithFields(log.Fields{
-					"applicationId": rec.applicationId,
+					"applicationId": rec.applicationID,
 				}).Debug("Router closed the channel returning from subscription for")
 				return
 			}
 
 			logger.WithFields(log.Fields{
-				"applicationId":   rec.applicationId,
+				"applicationId":   rec.applicationID,
 				"messageMetadata": m.Metadata(),
 			}).Debug("Delivering message")
 
@@ -214,22 +214,22 @@ func (rec *Receiver) fetch() error {
 		Count:     rec.maxCount,
 	}
 
-	if rec.startId >= 0 {
+	if rec.startID >= 0 {
 		fetch.Direction = 1
-		fetch.StartID = uint64(rec.startId)
+		fetch.StartID = uint64(rec.startID)
 		if rec.maxCount == 0 {
 			fetch.Count = math.MaxInt32
 		}
 	} else {
 		fetch.Direction = -1
-		maxId, err := rec.messageStore.MaxMessageID(rec.path.Partition())
+		maxID, err := rec.messageStore.MaxMessageID(rec.path.Partition())
 		if err != nil {
 			return err
 		}
 
-		fetch.StartID = maxId
+		fetch.StartID = maxID
 		if rec.maxCount == 0 {
-			fetch.Count = -1 * int(rec.startId)
+			fetch.Count = -1 * int(rec.startID)
 		}
 	}
 

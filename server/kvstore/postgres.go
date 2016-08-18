@@ -4,6 +4,8 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/jinzhu/gorm"
+
+	// use gorm's postgres dialect
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 

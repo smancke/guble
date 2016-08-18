@@ -5,10 +5,9 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	log "github.com/Sirupsen/logrus"
 )
 
+// WebServer is a struct representing a HTTP Server (using a net.Listener and a ServeMux multiplexer).
 type WebServer struct {
 	server *http.Server
 	ln     net.Listener
@@ -16,6 +15,7 @@ type WebServer struct {
 	addr   string
 }
 
+// New returns a new WebServer.
 func New(addr string) *WebServer {
 	return &WebServer{
 		mux:  http.NewServeMux(),
@@ -23,10 +23,9 @@ func New(addr string) *WebServer {
 	}
 }
 
+// Start the WebServer (implementing service.startable interface).
 func (ws *WebServer) Start() (err error) {
-	logger.WithFields(log.Fields{
-		"address": ws.addr,
-	}).Info("Http is starting up on address")
+	logger.WithField("address", ws.addr).Info("Http server is starting up on address")
 
 	ws.server = &http.Server{Addr: ws.addr, Handler: ws.mux}
 	ws.ln, err = net.Listen("tcp", ws.addr)
@@ -44,6 +43,7 @@ func (ws *WebServer) Start() (err error) {
 	return
 }
 
+// Stop the WebServer (implementing service.stopable interface).
 func (ws *WebServer) Stop() error {
 	if ws.ln != nil {
 		return ws.ln.Close()
@@ -51,14 +51,14 @@ func (ws *WebServer) Stop() error {
 	return nil
 }
 
-func (ws *WebServer) Check() error {
-	return nil
-}
-
+// Handle the given prefix using the given handler.
+// It is a part of the service.endpoint interface.
 func (ws *WebServer) Handle(prefix string, handler http.Handler) {
 	ws.mux.Handle(prefix, handler)
 }
 
+// GetAddr returns the address on which the WebServer is listening.
+// It is a part of the service.endpoint interface.
 func (ws *WebServer) GetAddr() string {
 	if ws.ln == nil {
 		return "::unknown::"

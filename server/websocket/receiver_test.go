@@ -55,11 +55,11 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	})
 
 	// there is a gap between fetched and max id
-	messageId1 := messageStore.EXPECT().DoInTx(gomock.Any(), gomock.Any()).
+	messageID1 := messageStore.EXPECT().DoInTx(gomock.Any(), gomock.Any()).
 		Do(func(partition string, callback func(maxMessageId uint64) error) {
 			callback(uint64(3))
 		}).Return(errUnreadMsgsAvailable)
-	messageId1.After(fetchFirst1)
+	messageID1.After(fetchFirst1)
 
 	// fetch again, starting at 3, because, there is still a gap
 	fetchFirst2 := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
@@ -74,14 +74,14 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 			close(r.MessageC)
 		}()
 	})
-	fetchFirst2.After(messageId1)
+	fetchFirst2.After(messageID1)
 
 	// the gap is closed
-	messageId2 := messageStore.EXPECT().DoInTx(gomock.Any(), gomock.Any()).
+	messageID2 := messageStore.EXPECT().DoInTx(gomock.Any(), gomock.Any()).
 		Do(func(partition string, callback func(maxMessageId uint64) error) {
 			callback(uint64(3))
 		})
-	messageId2.After(fetchFirst2)
+	messageID2.After(fetchFirst2)
 
 	// subscribe
 	subscribe := routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *router.Route) {
@@ -90,7 +90,7 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 		r.Deliver(&protocol.Message{ID: uint64(5), Body: []byte("router-b"), Time: 1405544146})
 		r.Close() // emulate router close
 	})
-	subscribe.After(messageId2)
+	subscribe.After(messageID2)
 
 	// router closed, so we fetch again, starting at 6 (after meesages from subscribe)
 	fetchAfter := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
@@ -106,17 +106,17 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	fetchAfter.After(subscribe)
 
 	// no gap
-	messageId3 := messageStore.EXPECT().DoInTx(gomock.Any(), gomock.Any()).
+	messageID3 := messageStore.EXPECT().DoInTx(gomock.Any(), gomock.Any()).
 		Do(func(partition string, callback func(maxMessageId uint64) error) {
 			callback(uint64(6))
 		})
 
-	messageId3.After(fetchAfter)
+	messageID3.After(fetchAfter)
 
 	// subscribe and don't send messages,
 	// so the client has to wait until we stop
 	subscribe2 := routerMock.EXPECT().Subscribe(gomock.Any())
-	subscribe2.After(messageId3)
+	subscribe2.After(messageID3)
 
 	subscriptionLoopDone := make(chan bool)
 	go func() {
@@ -198,27 +198,27 @@ func Test_Receiver_Fetch_Produces_Correct_Fetch_Requests(t *testing.T) {
 	testcases := []struct {
 		desc   string
 		arg    string
-		maxId  int
+		maxID  int
 		expect store.FetchRequest
 	}{
 		{desc: "simple forward fetch",
 			arg:    "/foo 0 20",
-			maxId:  -1,
+			maxID:  -1,
 			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartID: uint64(0), Count: 20},
 		},
 		{desc: "forward fetch without bounds",
 			arg:    "/foo 0",
-			maxId:  -1,
+			maxID:  -1,
 			expect: store.FetchRequest{Partition: "foo", Direction: 1, StartID: uint64(0), Count: math.MaxInt32},
 		},
 		{desc: "backward fetch to top",
 			arg:    "/foo -20",
-			maxId:  42,
+			maxID:  42,
 			expect: store.FetchRequest{Partition: "foo", Direction: -1, StartID: uint64(42), Count: 20},
 		},
 		{desc: "backward fetch with count",
 			arg:    "/foo -1 10",
-			maxId:  42,
+			maxID:  42,
 			expect: store.FetchRequest{Partition: "foo", Direction: -1, StartID: uint64(42), Count: 10},
 		},
 	}
@@ -229,9 +229,9 @@ func Test_Receiver_Fetch_Produces_Correct_Fetch_Requests(t *testing.T) {
 		a.NotNil(rec)
 		a.NoError(err, test.desc)
 
-		if test.maxId != -1 {
+		if test.maxID != -1 {
 			messageStore.EXPECT().MaxMessageID(test.expect.Partition).
-				Return(uint64(test.maxId), nil)
+				Return(uint64(test.maxID), nil)
 		}
 
 		done := make(chan bool)

@@ -415,13 +415,13 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	// Send messages in the router until error
 	go func() {
 		for {
-			err := router.HandleMessage(&protocol.Message{
+			errHandle := router.HandleMessage(&protocol.Message{
 				Path: protocol.Path("/blah"),
 				Body: aTestByteMessage,
 			})
 
-			if err != nil {
-				mse, ok := err.(*ModuleStoppingError)
+			if errHandle != nil {
+				mse, ok := errHandle.(*ModuleStoppingError)
 				assert.True(ok)
 				assert.Equal("Router", mse.Name)
 				return
@@ -494,7 +494,7 @@ func TestRouter_Check(t *testing.T) {
 
 	// Test 3: Given a mocked messageStore which returns error on Check(),
 	// Then router's aggregated Check() should return error
-	msCheckerMock.MockChecker.EXPECT().Check().Return(errors.New("HDD Disk is almost full."))
+	msCheckerMock.MockChecker.EXPECT().Check().Return(errors.New("Storage is almost full"))
 	a.NotNil(router.Check())
 
 	// Test 4: Given a mocked kvStore which returns an error on Check()

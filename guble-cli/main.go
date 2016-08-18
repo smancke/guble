@@ -15,12 +15,13 @@ import (
 )
 
 var (
-	Exit     = kingpin.Flag("exit", "Exit after sending the commands").Short('x').Bool()
-	Commands = kingpin.Arg("commands", "The commands to send after startup").Strings()
-	Verbose  = kingpin.Flag("verbose", "Display verbose server communication").Short('v').Bool()
-	URL      = kingpin.Flag("url", "The websocket url to connect to").Default("ws://localhost:8080/stream/").String()
-	User     = kingpin.Flag("user", "The user name to connect with (guble-cli)").Default("guble-cli").String()
-	Log      = kingpin.Flag("log", "Log level").
+	exit     = kingpin.Flag("exit", "Exit after sending the commands").Short('x').Bool()
+	commands = kingpin.Arg("commands", "The commands to send after startup").Strings()
+	verbose  = kingpin.Flag("verbose", "Display verbose server communication").Short('v').Bool()
+	url      = kingpin.Flag("url", "The websocket url to connect to").Default("ws://localhost:8080/stream/").String()
+	user     = kingpin.Flag("user", "The user name to connect with (guble-cli)").Short('u').Default("guble-cli").String()
+	logLevel = kingpin.Flag("log", "Log level").
+			Short('l').
 			Default(log.ErrorLevel.String()).
 			Envar("GUBLE_LOG").
 			Enum(logLevels()...)
@@ -40,14 +41,14 @@ func main() {
 	kingpin.Parse()
 
 	// set log level
-	level, err := log.ParseLevel(*Log)
+	level, err := log.ParseLevel(*logLevel)
 	if err != nil {
 		logger.WithField("error", err).Fatal("Invalid log level")
 	}
 	log.SetLevel(level)
 
 	origin := "http://localhost/"
-	url := fmt.Sprintf("%v/user/%v", removeTrailingSlash(*URL), *User)
+	url := fmt.Sprintf("%v/user/%v", removeTrailingSlash(*url), *user)
 	client, err := client.Open(url, origin, 100, true)
 	if err != nil {
 		log.Fatal(err)
@@ -56,10 +57,10 @@ func main() {
 	go writeLoop(client)
 	go readLoop(client)
 
-	for _, cmd := range *Commands {
+	for _, cmd := range *commands {
 		client.WriteRawMessage([]byte(cmd))
 	}
-	if *Exit {
+	if *exit {
 		return
 	}
 	waitForTermination(func() {})
@@ -69,7 +70,7 @@ func readLoop(client client.Client) {
 	for {
 		select {
 		case incomingMessage := <-client.Messages():
-			if *Verbose {
+			if *verbose {
 				fmt.Println(string(incomingMessage.Bytes()))
 			} else {
 				fmt.Printf("%v: %v\n", incomingMessage.UserID, incomingMessage.BodyAsString())
@@ -89,7 +90,10 @@ func writeLoop(client client.Client) {
 		func() {
 			defer protocol.PanicLogger()
 			reader := bufio.NewReader(os.Stdin)
-			text, _ := reader.ReadString('\n')
+			text, err := reader.ReadString('\n')
+			if err != nil {
+				return
+			}
 			if strings.TrimSpace(text) == "" {
 				return
 			}
@@ -101,14 +105,20 @@ func writeLoop(client client.Client) {
 
 			if strings.HasPrefix(text, ">") {
 				fmt.Print("header: ")
-				header, _ := reader.ReadString('\n')
+				header, err := reader.ReadString('\n')
+				if err != nil {
+					return
+				}
 				text += header
 				fmt.Print("body: ")
-				body, _ := reader.ReadString('\n')
+				body, err := reader.ReadString('\n')
+				if err != nil {
+					return
+				}
 				text += strings.TrimSpace(body)
 			}
 
-			if *Verbose {
+			if *verbose {
 				log.Printf("Sending: %v\n", text)
 			}
 			if err := client.WriteRawMessage([]byte(text)); err != nil {

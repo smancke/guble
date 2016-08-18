@@ -5,11 +5,13 @@ import (
 	"sync"
 )
 
+// MemoryKVStore is a struct representing an in-memory key-value store.
 type MemoryKVStore struct {
 	data  map[string]map[string][]byte
 	mutex *sync.RWMutex
 }
 
+// NewMemoryKVStore returns a new configured MemoryKVStore.
 func NewMemoryKVStore() *MemoryKVStore {
 	return &MemoryKVStore{
 		data:  make(map[string]map[string][]byte),
@@ -17,6 +19,7 @@ func NewMemoryKVStore() *MemoryKVStore {
 	}
 }
 
+// Put implements the `kvstore` Put func.
 func (kvStore *MemoryKVStore) Put(schema, key string, value []byte) error {
 	kvStore.mutex.Lock()
 	defer kvStore.mutex.Unlock()
@@ -25,7 +28,8 @@ func (kvStore *MemoryKVStore) Put(schema, key string, value []byte) error {
 	return nil
 }
 
-func (kvStore *MemoryKVStore) Get(schema, key string) (value []byte, exist bool, err error) {
+// Get implements the `kvstore` Get func.
+func (kvStore *MemoryKVStore) Get(schema, key string) ([]byte, bool, error) {
 	kvStore.mutex.Lock()
 	defer kvStore.mutex.Unlock()
 	s := kvStore.getSchema(schema)
@@ -35,6 +39,7 @@ func (kvStore *MemoryKVStore) Get(schema, key string) (value []byte, exist bool,
 	return nil, false, nil
 }
 
+// Delete implements the `kvstore` Delete func.
 func (kvStore *MemoryKVStore) Delete(schema, key string) error {
 	kvStore.mutex.Lock()
 	defer kvStore.mutex.Unlock()
@@ -43,9 +48,9 @@ func (kvStore *MemoryKVStore) Delete(schema, key string) error {
 	return nil
 }
 
-// TODO: this can lead to a deadlock,
-// if the consumer modifies the store while receiving and the channel blocks
-func (kvStore *MemoryKVStore) Iterate(schema string, keyPrefix string) (entries chan [2]string) {
+// Iterate iterates over the key-value pairs in the schema, with keys matching the keyPrefix.
+// TODO: this can lead to a deadlock, if the consumer modifies the store while receiving and the channel blocks
+func (kvStore *MemoryKVStore) Iterate(schema string, keyPrefix string) chan [2]string {
 	responseChan := make(chan [2]string, 100)
 	kvStore.mutex.Lock()
 	s := kvStore.getSchema(schema)
@@ -63,8 +68,8 @@ func (kvStore *MemoryKVStore) Iterate(schema string, keyPrefix string) (entries 
 	return responseChan
 }
 
-// TODO: this can lead to a deadlock,
-// if the consumer modifies the store while receiving and the channel blocks
+// IterateKeys iterates over the keys in the schema, matching the keyPrefix.
+// TODO: this can lead to a deadlock, if the consumer modifies the store while receiving and the channel blocks
 func (kvStore *MemoryKVStore) IterateKeys(schema string, keyPrefix string) chan string {
 	responseChan := make(chan string, 100)
 	kvStore.mutex.Lock()
