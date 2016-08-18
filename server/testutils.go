@@ -126,11 +126,11 @@ func (tcn *testClusterNode) client(userID string, bufferSize int, autoReconnect 
 	return client.Open(wsURL, httpURL, bufferSize, autoReconnect)
 }
 
-func (tcn *TestClusterNode) Subscribe(topic, id string) {
+func (tcn *testClusterNode) Subscribe(topic, id string) {
 	tcn.GCM.subscribe(tcn.Service.WebServer().GetAddr(), topic, id)
 }
 
-func (tcn *TestClusterNode) Unsubscribe(topic, id string) {
+func (tcn *testClusterNode) Unsubscribe(topic, id string) {
 	tcn.GCM.unsubscribe(tcn.Service.WebServer().GetAddr(), topic, id)
 }
 
