@@ -63,6 +63,7 @@ func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int, en
 	}
 
 	if endpoint != "" {
+		logger.WithField("gcmEndpoint", endpoint).Info("Using GCM endpoint")
 		gcm.GcmSendEndpoint = endpoint
 	}
 
