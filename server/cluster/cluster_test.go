@@ -1,7 +1,10 @@
 package cluster
 
 import (
+	"io/ioutil"
+
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/store"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
@@ -43,7 +46,7 @@ func TestCluster_StartCheckStop(t *testing.T) {
 	node, err := New(&conf)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
-	node.MessageHandler = DummyMessageHandler{}
+	node.Router = newDummyRouter(t)
 
 	err = node.Start()
 	a.NoError(err, "No error should be raised when Starting the Cluster")
@@ -63,7 +66,7 @@ func TestCluster_BroadcastStringAndMessageAndCheck(t *testing.T) {
 	node1, err := New(&config1)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
-	node1.MessageHandler = DummyMessageHandler{}
+	node1.Router = newDummyRouter(t)
 
 	//start the cluster node 1
 	defer node1.Stop()
@@ -74,7 +77,7 @@ func TestCluster_BroadcastStringAndMessageAndCheck(t *testing.T) {
 	node2, err := New(&config2)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
-	node2.MessageHandler = DummyMessageHandler{}
+	node2.Router = newDummyRouter(t)
 
 	//start the cluster node 2
 	defer node2.Stop()
@@ -132,7 +135,7 @@ func TestCluster_StartShouldReturnErrorWhenNoRemotes(t *testing.T) {
 	node, err := New(&config)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
-	node.MessageHandler = DummyMessageHandler{}
+	node.Router = newDummyRouter(t)
 
 	defer node.Stop()
 	err = node.Start()
@@ -154,7 +157,7 @@ func TestCluster_StartShouldReturnErrorWhenInvalidRemotes(t *testing.T) {
 	node, err := New(&config)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
-	node.MessageHandler = DummyMessageHandler{}
+	node.Router = newDummyRouter(t)
 
 	defer node.Stop()
 	err = node.Start()
@@ -186,7 +189,7 @@ func TestCluster_NotifyMsgShouldSimplyReturnWhenDecodingInvalidMessage(t *testin
 	node, err := New(&config)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
-	node.MessageHandler = DummyMessageHandler{}
+	node.Router = newDummyRouter(t)
 
 	defer node.Stop()
 	err = node.Start()
@@ -204,7 +207,7 @@ func TestCluster_broadcastClusterMessage(t *testing.T) {
 	node, err := New(&config)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
-	node.MessageHandler = DummyMessageHandler{}
+	node.Router = newDummyRouter(t)
 
 	defer node.Stop()
 	err = node.Start()
@@ -217,9 +220,20 @@ func TestCluster_broadcastClusterMessage(t *testing.T) {
 	}
 }
 
-type DummyMessageHandler struct {
+type dummyRouter struct {
+	store store.MessageStore
 }
 
-func (dmh DummyMessageHandler) HandleMessage(pmsg *protocol.Message) error {
+func newDummyRouter(t *testing.T) *dummyRouter {
+	dir, err := ioutil.TempDir("", "guble_cluster_test")
+	assert.NoError(t, err)
+	return &dummyRouter{store: store.NewFileMessageStore(dir)}
+}
+
+func (_ *dummyRouter) HandleMessage(pmsg *protocol.Message) error {
 	return nil
+}
+
+func (d *dummyRouter) MessageStore() (store.MessageStore, error) {
+	return d.store, nil
 }

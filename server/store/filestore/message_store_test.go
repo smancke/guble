@@ -177,3 +177,26 @@ func Test_Check(t *testing.T) {
 	err := mStore.Check()
 	a.Nil(err)
 }
+
+// func Test_Partitions(t *testing.T) {
+// 	// Store multiple partitions then recreate the store and see if they are picked up
+// 	a := assert.New(t)
+// 	msg := []byte("test message data")
+
+// 	dir, err := ioutil.TempDir("", "guble_message_store_test")
+// 	a.NoError(err)
+// 	store := New(dir)
+
+// 	a.NoError(store.Store("p1", uint64(2), msg))
+// 	a.NoError(store.Store("p2", uint64(2), msg))
+// 	a.NoError(store.Store("p3", uint64(2), msg))
+
+// 	store2 := New(dir)
+// 	partitions, err := store2.Partitions()
+// 	a.NoError(err)
+// 	a.Equal(3, len(partitions))
+// 	a.Equal("p1", partitions[0].Name)
+// 	a.Equal("p2", partitions[1].Name)
+// 	a.Equal("p3", partitions[2].Name)
+
+// }

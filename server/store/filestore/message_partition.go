@@ -12,8 +12,9 @@ import (
 
 	"github.com/smancke/guble/server/store"
 
-	log "github.com/Sirupsen/logrus"
 	"io"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 var (
@@ -243,7 +244,7 @@ func (p *messagePartition) createNextAppendFiles() error {
 	return nil
 }
 
-func (p *messagePartition) generateNextMsgID(nodeID int) (uint64, int64, error) {
+func (p *messagePartition) generateNextMsgID(nodeID uint8) (uint64, int64, error) {
 	p.Lock()
 	defer p.Unlock()
 

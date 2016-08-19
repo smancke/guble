@@ -59,7 +59,7 @@ func (dms *DummyMessageStore) Stop() error {
 }
 
 // StoreMessage is a part of the `store.MessageStore` implementation.
-func (dms *DummyMessageStore) StoreMessage(message *protocol.Message, nodeID int) (int, error) {
+func (dms *DummyMessageStore) StoreMessage(message *protocol.Message, nodeID uint8) (int, error) {
 	partitionName := message.Path.Partition()
 	nextID, ts, err := dms.GenerateNextMsgID(partitionName, 0)
 	if err != nil {
@@ -189,3 +189,11 @@ func (dms *DummyMessageStore) startSequenceSync() {
 	}
 	dms.stoppedC <- true
 }
+
+func (dms *DummyMessageStore) Check() error {
+	return nil
+}
+
+// func (dms *DummyMessageStore) Partitions() ([]*messagePartition, error) {
+// 	return nil, nil
+// }

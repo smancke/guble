@@ -14,7 +14,7 @@ type MessageStore interface {
 	// Generates a new ID for the message if it's new and stores it
 	// Returns the size of the new message or error
 	// Takes the message and cluster node ID as parameters.
-	StoreMessage(*protocol.Message, int) (int, error)
+	StoreMessage(*protocol.Message, uint8) (int, error)
 
 	// Fetch fetches a set of messages.
 	// The results, as well as errors are communicated asynchronously using
@@ -31,6 +31,16 @@ type MessageStore interface {
 
 	// GenerateNextMsgId generates a new message ID based on a timestamp in a strictly monotonically order
 	GenerateNextMsgID(partition string, nodeID int) (uint64, int64, error)
+
+	// Partitions() ([]*MessagePartition, error)
+
+	//Check if the current messageStore is having enough space to save on Disk
+	Check() error
+}
+
+type MessageAndID struct {
+	ID      uint64
+	Message []byte
 }
 
 // FetchRequest is used for fetching messages in a MessageStore.

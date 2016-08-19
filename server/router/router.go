@@ -29,6 +29,7 @@ type Router interface {
 	MessageStore() (store.MessageStore, error)
 	KVStore() (kvstore.KVStore, error)
 	Cluster() *cluster.Cluster
+	SetCluster(*cluster.Cluster)
 
 	Fetch(store.FetchRequest) error
 
@@ -61,7 +62,7 @@ type router struct {
 }
 
 // New returns a pointer to Router
-func New(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore kvstore.KVStore, cluster *cluster.Cluster) Router {
+func New(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore kvstore.KVStore) Router {
 	return &router{
 		routes: make(map[protocol.Path][]*Route),
 
@@ -73,7 +74,6 @@ func New(accessManager auth.AccessManager, messageStore store.MessageStore, kvSt
 		accessManager: accessManager,
 		messageStore:  messageStore,
 		kvStore:       kvStore,
-		cluster:       cluster,
 	}
 }
 
@@ -142,8 +142,8 @@ func (router *router) Check() error {
 	return nil
 }
 
-// HandleMessage stores the message in the MessageStore(and gets a new ID for it iff the message was created locally)
-// and then passes it to: the internal channel, and asynchronously to the cluster (if available).
+// HandleMessage stores the message in the MessageStore(and gets a new ID for it if the message was created locally)
+// and then passes it to the internal channel, and asynchronously to the cluster (if available).
 func (router *router) HandleMessage(message *protocol.Message) error {
 	logger.WithFields(log.Fields{
 		"userID": message.UserID,
@@ -159,7 +159,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		return &PermissionDeniedError{UserID: message.UserID, AccessType: auth.WRITE, Path: message.Path}
 	}
 
-	var nodeID int
+	var nodeID uint8
 	if router.cluster != nil {
 		nodeID = router.cluster.Config.ID
 	}
@@ -407,4 +407,8 @@ func (router *router) Fetch(req store.FetchRequest) error {
 // Cluster returns the `cluster` provided for the router, or nil if no cluster was set-up
 func (router *router) Cluster() *cluster.Cluster {
 	return router.cluster
+}
+
+func (router *router) SetCluster(c *cluster.Cluster) {
+	router.cluster = c
 }

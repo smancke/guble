@@ -1,0 +1,15 @@
+version: '2'
+services:
+  cluster_1:
+    build:
+      context: ..
+      dockerfile: scripts/Dockerfile-cluster.test.yml
+    entrypoint:
+      - /go/bin/app
+      - localhost:10000
+    environment:
+      - GUBLE_NODE_ID=1
+      - GUBLE_LOG=debug
+    ports:
+      - "8080:8080"
+      - "10000:10000"

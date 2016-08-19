@@ -9,7 +9,7 @@ import (
 	auth "github.com/smancke/guble/server/auth"
 	cluster "github.com/smancke/guble/server/cluster"
 	kvstore "github.com/smancke/guble/server/kvstore"
-
+	
 	store "github.com/smancke/guble/server/store"
 )
 
@@ -95,6 +95,14 @@ func (_m *MockRouter) MessageStore() (store.MessageStore, error) {
 
 func (_mr *_MockRouterRecorder) MessageStore() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MessageStore")
+}
+
+func (_m *MockRouter) SetCluster(_param0 *cluster.Cluster) {
+	_m.ctrl.Call(_m, "SetCluster", _param0)
+}
+
+func (_mr *_MockRouterRecorder) SetCluster(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetCluster", arg0)
 }
 
 func (_m *MockRouter) Subscribe(_param0 *Route) (*Route, error) {

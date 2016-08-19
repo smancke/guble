@@ -1,59 +1,60 @@
 package cluster
 
-import (
-	"github.com/hashicorp/go-msgpack/codec"
-	"unsafe"
-)
+import "github.com/ugorji/go/codec"
 
 type messageType int
 
-var (
-	mh codec.MsgpackHandle
-	h  = &mh // or mh to use msgpack
-)
+var h = &codec.MsgpackHandle{}
 
 const (
-	nextIdResponse messageType = iota
-
-	nextIdRequest
-
 	// Guble protocol.Message
-	gubleMessage
+	mtGubleMessage messageType = iota
 
-	stringMessage
+	// A node will send this message type when the body contains the partitions
+	// in it's store with the max message id for each ([]partitions)
+	mtSyncPartitions
+
+	// Sent this to request a node to give us the next message so we can save it
+	mtSyncNextMessageRequest
+
+	// Sent to synchronize a message, contains the message to synchonrize along with
+	// updated partition info
+	mtSyncMessage
+
+	mtStringMessage
 )
 
 type message struct {
-	NodeID int
+	NodeID uint8
 	Type   messageType
 	Body   []byte
 }
 
 func (cmsg *message) encode() ([]byte, error) {
-	logger.WithField("clusterMessage", cmsg).Debug("encode")
-	encodedBytes := make([]byte, cmsg.length())
-	encoder := codec.NewEncoderBytes(&encodedBytes, h)
+	logger.WithField("message", cmsg).Debug("Encoding cluster message")
+
+	var bytes []byte
+	encoder := codec.NewEncoderBytes(&bytes, h)
+
 	err := encoder.Encode(cmsg)
 	if err != nil {
 		logger.WithField("err", err).Error("Encoding failed")
 		return nil, err
 	}
-	return encodedBytes, nil
+
+	return bytes, nil
 }
 
-func (cmsg *message) length() int {
-	return int(unsafe.Sizeof(cmsg.Type)) + int(unsafe.Sizeof(cmsg.NodeID)) + len(cmsg.Body)
-}
-
-func decode(cmsgBytes []byte) (*message, error) {
-	var cmsg message
+func (cmsg *message) decode(cmsgBytes []byte) error {
 	logger.WithField("clusterMessageBytes", string(cmsgBytes)).Debug("decode")
 
 	decoder := codec.NewDecoderBytes(cmsgBytes, h)
-	err := decoder.Decode(&cmsg)
+
+	err := decoder.Decode(cmsg)
 	if err != nil {
 		logger.WithField("err", err).Error("Decoding failed")
-		return nil, err
+		return err
 	}
-	return &cmsg, nil
+
+	return nil
 }

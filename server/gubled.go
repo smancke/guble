@@ -184,19 +184,25 @@ func StartService() *service.Service {
 	messageStore := CreateMessageStore()
 	kvStore := CreateKVStore()
 
-	var cl *cluster.Cluster
-	var err error
+	var (
+		c   *cluster.Cluster
+		err error
+	)
+
 	if *config.Cluster.NodeID > 0 {
 		exitIfInvalidClusterParams(*config.Cluster.NodeID, *config.Cluster.NodePort, *config.Cluster.Remotes)
 		logger.Info("Starting in cluster-mode")
-		cl, err = cluster.New(&cluster.Config{
+		c, err = cluster.New(&cluster.Config{
 			ID:      *config.Cluster.NodeID,
 			Port:    *config.Cluster.NodePort,
 			Remotes: *config.Cluster.Remotes,
 		})
 		if err != nil {
-			logger.WithError(err).Fatal("Service could not be started (cluster)")
+			logger.WithField("err", err).Fatal("Module could not be started (cluster)")
 		}
+
+		// set cluster instance on the router
+		router.SetCluster(c)
 	} else {
 		logger.Info("Starting in standalone-mode")
 	}
