@@ -159,28 +159,36 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 
 	beforeSend := time.Now()
 	result, err := conn.Sender.Send(gcmMessage, sendRetries)
-
-	// TODO Cosmin move next two lines after the error-handling
 	latencyDuration := time.Now().Sub(beforeSend)
-	updateMetrics(int64(latencyDuration))
 
 	if err != nil {
 		pm.errC <- err
 		mTotalSentMessageErrors.Add(1)
+		updateErrorMetrics(int64(latencyDuration))
 		return
 	}
+	mTotalSentMessages.Add(1)
+	updateMessageMetrics(int64(latencyDuration))
 
 	pm.resultC <- result
-	mTotalSentMessages.Add(1)
 }
 
-func updateMetrics(latency int64) {
-	mapMinute.Add(currentTotalLatenciesKey, latency)
+func updateMessageMetrics(latency int64) {
+	mapMinute.Add(currentTotalMessagesLatenciesKey, latency)
 	mapMinute.Add(currentTotalMessagesKey, 1)
-	mapHour.Add(currentTotalLatenciesKey, latency)
+	mapHour.Add(currentTotalMessagesLatenciesKey, latency)
 	mapHour.Add(currentTotalMessagesKey, 1)
-	mapDay.Add(currentTotalLatenciesKey, latency)
+	mapDay.Add(currentTotalMessagesLatenciesKey, latency)
 	mapDay.Add(currentTotalMessagesKey, 1)
+}
+
+func updateErrorMetrics(latency int64) {
+	mapMinute.Add(currentTotalErrorsLatenciesKey, latency)
+	mapMinute.Add(currentTotalErrorsKey, 1)
+	mapHour.Add(currentTotalErrorsLatenciesKey, latency)
+	mapHour.Add(currentTotalErrorsKey, 1)
+	mapDay.Add(currentTotalErrorsLatenciesKey, latency)
+	mapDay.Add(currentTotalErrorsKey, 1)
 }
 
 // GetPrefix is used to satisfy the HTTP handler interface
