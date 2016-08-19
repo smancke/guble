@@ -174,21 +174,21 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 }
 
 func updateMessageMetrics(latency int64) {
-	mapMinute.Add(currentTotalMessagesLatenciesKey, latency)
-	mapMinute.Add(currentTotalMessagesKey, 1)
-	mapHour.Add(currentTotalMessagesLatenciesKey, latency)
-	mapHour.Add(currentTotalMessagesKey, 1)
-	mapDay.Add(currentTotalMessagesLatenciesKey, latency)
-	mapDay.Add(currentTotalMessagesKey, 1)
+	mMinute.Add(currentTotalMessagesLatenciesKey, latency)
+	mMinute.Add(currentTotalMessagesKey, 1)
+	mHour.Add(currentTotalMessagesLatenciesKey, latency)
+	mHour.Add(currentTotalMessagesKey, 1)
+	mDay.Add(currentTotalMessagesLatenciesKey, latency)
+	mDay.Add(currentTotalMessagesKey, 1)
 }
 
 func updateErrorMetrics(latency int64) {
-	mapMinute.Add(currentTotalErrorsLatenciesKey, latency)
-	mapMinute.Add(currentTotalErrorsKey, 1)
-	mapHour.Add(currentTotalErrorsLatenciesKey, latency)
-	mapHour.Add(currentTotalErrorsKey, 1)
-	mapDay.Add(currentTotalErrorsLatenciesKey, latency)
-	mapDay.Add(currentTotalErrorsKey, 1)
+	mMinute.Add(currentTotalErrorsLatenciesKey, latency)
+	mMinute.Add(currentTotalErrorsKey, 1)
+	mHour.Add(currentTotalErrorsLatenciesKey, latency)
+	mHour.Add(currentTotalErrorsKey, 1)
+	mDay.Add(currentTotalErrorsLatenciesKey, latency)
+	mDay.Add(currentTotalErrorsKey, 1)
 }
 
 // GetPrefix is used to satisfy the HTTP handler interface

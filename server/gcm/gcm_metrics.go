@@ -11,9 +11,9 @@ var (
 	mTotalSentMessages      = metrics.NewInt("guble.gcm.total_sent_messages")
 	mTotalSentMessageErrors = metrics.NewInt("guble.gcm.total_sent_message_errors")
 
-	mapMinute = expvar.NewMap("guble.gcm.minute")
-	mapHour   = expvar.NewMap("guble.gcm.hour")
-	mapDay    = expvar.NewMap("guble.gcm.day")
+	mMinute = expvar.NewMap("guble.gcm.minute")
+	mHour   = expvar.NewMap("guble.gcm.hour")
+	mDay    = expvar.NewMap("guble.gcm.day")
 )
 
 const (
@@ -28,9 +28,9 @@ const (
 func startGcmMetrics() {
 	mTotalSentMessages.Set(0)
 	mTotalSentMessageErrors.Set(0)
-	go every(time.Minute, processAndResetMap, mapMinute)
-	go every(time.Hour, processAndResetMap, mapHour)
-	go every(24*time.Hour, processAndResetMap, mapDay)
+	go every(time.Minute, processAndResetMap, mMinute)
+	go every(time.Hour, processAndResetMap, mHour)
+	go every(24*time.Hour, processAndResetMap, mDay)
 }
 
 func every(d time.Duration, f func(time.Time, *expvar.Map), m *expvar.Map) {
@@ -41,12 +41,10 @@ func every(d time.Duration, f func(time.Time, *expvar.Map), m *expvar.Map) {
 
 func processAndResetMap(t time.Time, m *expvar.Map) {
 	logger.Debug("process and reset metrics map")
-
 	msgLatenciesValue := m.Get(currentTotalMessagesLatenciesKey)
 	msgNumberValue := m.Get(currentTotalMessagesKey)
 	errLatenciesValue := m.Get(currentTotalErrorsLatenciesKey)
 	errNumberValue := m.Get(currentTotalErrorsKey)
-
 	m.Init()
 	setAverageLatency(m, averageMessageLatencyKey, msgLatenciesValue, msgNumberValue)
 	setAverageLatency(m, averageErrorLatencyKey, errLatenciesValue, errNumberValue)
