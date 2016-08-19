@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -36,7 +37,6 @@ const (
 
 var logger = log.WithFields(log.Fields{
 	"app":    "guble",
-	"env":    "TBD",
 	"module": "gcm",
 })
 
@@ -76,7 +76,7 @@ func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int) (*
 
 // Start opens the connector, creates more goroutines / workers to handle messages coming from the router
 func (conn *Connector) Start() error {
-	resetGcmMetrics()
+	startGcmMetrics()
 
 	// start subscription sync loop if we are in cluster mode
 	if conn.cluster != nil {
@@ -157,14 +157,30 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 		"pipeLength": len(conn.pipelineC),
 	}).Debug("Sending message")
 
+	beforeSend := time.Now()
 	result, err := conn.Sender.Send(gcmMessage, sendRetries)
+
+	// TODO Cosmin move next two lines after the error-handling
+	latencyDuration := time.Now().Sub(beforeSend)
+	updateMetrics(int64(latencyDuration))
+
 	if err != nil {
 		pm.errC <- err
 		mTotalSentMessageErrors.Add(1)
 		return
 	}
+
 	pm.resultC <- result
 	mTotalSentMessages.Add(1)
+}
+
+func updateMetrics(latency int64) {
+	mapMinute.Add(currentTotalLatenciesKey, latency)
+	mapMinute.Add(currentTotalMessagesKey, 1)
+	mapHour.Add(currentTotalLatenciesKey, latency)
+	mapHour.Add(currentTotalMessagesKey, 1)
+	mapDay.Add(currentTotalLatenciesKey, latency)
+	mapDay.Add(currentTotalMessagesKey, 1)
 }
 
 // GetPrefix is used to satisfy the HTTP handler interface
