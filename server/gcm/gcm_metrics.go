@@ -11,9 +11,9 @@ import (
 var (
 	mTotalSentMessages      = metrics.NewInt("guble.gcm.total_sent_messages")
 	mTotalSentMessageErrors = metrics.NewInt("guble.gcm.total_sent_message_errors")
-	mMinute                 = expvar.NewMap("guble.gcm.minute")
-	mHour                   = expvar.NewMap("guble.gcm.hour")
-	mDay                    = expvar.NewMap("guble.gcm.day")
+	mMinute                 = metrics.NewMap("guble.gcm.minute")
+	mHour                   = metrics.NewMap("guble.gcm.hour")
+	mDay                    = metrics.NewMap("guble.gcm.day")
 )
 
 const (
@@ -35,14 +35,13 @@ func startGcmMetrics() {
 	go metrics.Every(24*time.Hour, processAndReset, mDay)
 }
 
-func processAndReset(m *expvar.Map, t time.Time) {
+func processAndReset(m metrics.Map, t time.Time) {
 	logger.Debug("process and reset metrics map")
 	msgLatenciesValue := m.Get(currentTotalMessagesLatenciesKey)
 	msgNumberValue := m.Get(currentTotalMessagesKey)
 	errLatenciesValue := m.Get(currentTotalErrorsLatenciesKey)
 	errNumberValue := m.Get(currentTotalErrorsKey)
 
-	m.Init()
 	resetCurrentMetrics(m)
 	m.Set("current_interval_start", metrics.NewTimeVar(t))
 	setCounter(m, "last_messages_count", msgNumberValue)
@@ -51,7 +50,7 @@ func processAndReset(m *expvar.Map, t time.Time) {
 	setAverage(m, "last_errors_average_latency", errLatenciesValue, errNumberValue)
 }
 
-func setCounter(m *expvar.Map, key string, value expvar.Var) {
+func setCounter(m metrics.Map, key string, value expvar.Var) {
 	if value != nil {
 		m.Set(key, value)
 	} else {
@@ -59,24 +58,24 @@ func setCounter(m *expvar.Map, key string, value expvar.Var) {
 	}
 }
 
-func setAverage(m *expvar.Map, key string, totalValue, casesValue expvar.Var) {
-	if totalValue != nil && casesValue != nil {
-		total, _ := strconv.ParseInt(totalValue.String(), 10, 64)
-		cases, _ := strconv.ParseInt(casesValue.String(), 10, 64)
+func setAverage(m metrics.Map, key string, totalVar, casesVar expvar.Var) {
+	if totalVar != nil && casesVar != nil {
+		total, _ := strconv.ParseInt(totalVar.String(), 10, 64)
+		cases, _ := strconv.ParseInt(casesVar.String(), 10, 64)
 		m.Set(key, metrics.NewAverage(total, cases, defaultAverageLatencyJSONValue))
 	} else {
 		m.Set(key, metrics.ZeroValue)
 	}
 }
 
-func resetCurrentMetrics(m *expvar.Map) {
+func resetCurrentMetrics(m metrics.Map) {
 	addToMetrics(currentTotalMessagesLatenciesKey, 0, m)
 	addToMetrics(currentTotalMessagesKey, 0, m)
 	addToMetrics(currentTotalErrorsLatenciesKey, 0, m)
 	addToMetrics(currentTotalErrorsKey, 0, m)
 }
 
-func addToMetrics(key string, value int64, maps ...*expvar.Map) {
+func addToMetrics(key string, value int64, maps ...metrics.Map) {
 	for _, m := range maps {
 		m.Add(key, value)
 	}

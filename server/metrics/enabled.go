@@ -8,11 +8,15 @@ import (
 )
 
 // NewInt returns an expvar Int, depending on the absence of build tag declared at the beginning of this file
-func NewInt(name string) IntVar {
+func NewInt(name string) Int {
 	return expvar.NewInt(name)
 }
 
-func Every(d time.Duration, f func(*expvar.Map, time.Time), m *expvar.Map) {
+func NewMap(name string) Map {
+	return expvar.NewMap(name)
+}
+
+func Every(d time.Duration, f func(Map, time.Time), m Map) {
 	for x := range time.Tick(d) {
 		f(m, x)
 	}

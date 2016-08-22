@@ -15,9 +15,16 @@ import (
 var logger = log.WithField("module", "metrics")
 
 // IntVar is an interface for some of the operations defined on expvar.Int
-type IntVar interface {
+type Int interface {
 	Add(int64)
 	Set(int64)
+}
+
+// MapVar is an interface for some of the operations defined on expvar.Map
+type Map interface {
+	Get(key string) expvar.Var
+	Set(key string, av expvar.Var)
+	Add(key string, delta int64)
 }
 
 // HttpHandler is a HTTP handler writing the current metrics to the http.ResponseWriter
