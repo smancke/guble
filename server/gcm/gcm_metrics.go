@@ -27,7 +27,9 @@ const (
 func startGcmMetrics() {
 	mTotalSentMessages.Set(0)
 	mTotalSentMessageErrors.Set(0)
-	resetCurrentMetrics()
+	resetCurrentMetrics(mMinute)
+	resetCurrentMetrics(mHour)
+	resetCurrentMetrics(mDay)
 	go metrics.Every(time.Minute, processAndReset, mMinute)
 	go metrics.Every(time.Hour, processAndReset, mHour)
 	go metrics.Every(24*time.Hour, processAndReset, mDay)
@@ -41,7 +43,7 @@ func processAndReset(m *expvar.Map, t time.Time) {
 	errNumberValue := m.Get(currentTotalErrorsKey)
 
 	m.Init()
-	resetCurrentMetrics()
+	resetCurrentMetrics(m)
 	m.Set("current_interval_start", metrics.NewTimeVar(t))
 	setCounter(m, "last_messages_count", msgNumberValue)
 	setCounter(m, "last_errors_count", errNumberValue)
@@ -67,15 +69,15 @@ func setAverage(m *expvar.Map, key string, totalValue, casesValue expvar.Var) {
 	}
 }
 
-func resetCurrentMetrics() {
-	addToMetrics(currentTotalMessagesLatenciesKey, 0)
-	addToMetrics(currentTotalMessagesKey, 0)
-	addToMetrics(currentTotalErrorsLatenciesKey, 0)
-	addToMetrics(currentTotalErrorsKey, 0)
+func resetCurrentMetrics(m *expvar.Map) {
+	addToMetrics(currentTotalMessagesLatenciesKey, 0, m)
+	addToMetrics(currentTotalMessagesKey, 0, m)
+	addToMetrics(currentTotalErrorsLatenciesKey, 0, m)
+	addToMetrics(currentTotalErrorsKey, 0, m)
 }
 
-func addToMetrics(key string, value int64) {
-	mMinute.Add(key, value)
-	mHour.Add(key, value)
-	mDay.Add(key, value)
+func addToMetrics(key string, value int64, maps ...*expvar.Map) {
+	for _, m := range maps {
+		m.Add(key, value)
+	}
 }
