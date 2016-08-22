@@ -30,7 +30,7 @@ type MessageStore interface {
 	DoInTx(partition string, fnToExecute func(uint64) error) error
 
 	// GenerateNextMsgId generates a new message ID based on a timestamp in a strictly monotonically order
-	GenerateNextMsgID(partition string, nodeID int) (uint64, int64, error)
+	GenerateNextMsgID(partition string, nodeID uint8) (uint64, int64, error)
 
 	// Partitions() ([]*MessagePartition, error)
 

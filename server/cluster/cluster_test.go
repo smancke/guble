@@ -3,6 +3,8 @@ package cluster
 import (
 	"io/ioutil"
 
+	"github.com/smancke/guble/server/store/filestore"
+
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/store"
 
@@ -25,7 +27,7 @@ func testConfig() (config Config) {
 	remoteAddr := net.TCPAddr{IP: []byte{127, 0, 0, 1}, Port: basePort + index}
 	var remotes []*net.TCPAddr
 	remotes = append(remotes, &remoteAddr)
-	config = Config{ID: index, Host: "127.0.0.1", Port: basePort + index, Remotes: remotes}
+	config = Config{ID: uint8(index), Host: "127.0.0.1", Port: basePort + index, Remotes: remotes}
 	index++
 	return
 }
@@ -34,7 +36,7 @@ func testConfigAnother() (config Config) {
 	remoteAddr := net.TCPAddr{IP: []byte{127, 0, 0, 1}, Port: basePort + index - 1}
 	var remotes []*net.TCPAddr
 	remotes = append(remotes, &remoteAddr)
-	config = Config{ID: index, Host: "127.0.0.1", Port: basePort + index, Remotes: remotes}
+	config = Config{ID: uint8(index), Host: "127.0.0.1", Port: basePort + index, Remotes: remotes}
 	index++
 	return
 }
@@ -177,7 +179,7 @@ func TestCluster_StartShouldReturnErrorWhenNoMessageHandler(t *testing.T) {
 	defer node.Stop()
 	err = node.Start()
 	if a.Error(err, "An error is expected when Starting the Cluster") {
-		expected := errors.New("There should be a valid MessageHandler already set-up")
+		expected := errors.New("There should be a valid Router already set-up")
 		a.Equal(err, expected, "Error should be precisely defined")
 	}
 }
@@ -227,7 +229,7 @@ type dummyRouter struct {
 func newDummyRouter(t *testing.T) *dummyRouter {
 	dir, err := ioutil.TempDir("", "guble_cluster_test")
 	assert.NoError(t, err)
-	return &dummyRouter{store: store.NewFileMessageStore(dir)}
+	return &dummyRouter{store: filestore.New(dir)}
 }
 
 func (_ *dummyRouter) HandleMessage(pmsg *protocol.Message) error {

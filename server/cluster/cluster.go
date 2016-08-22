@@ -77,24 +77,26 @@ func New(config *Config) (*Cluster, error) {
 	memberlistConfig.Conflict = c
 	memberlistConfig.Events = c
 
-	synchronizer, err := newSynchronizer(c)
-	if err != nil {
-		logger.WithError(err).Error("Error creating cluster synchronizer")
-		return nil, err
-	}
-	c.synchronizer = synchronizer
-
 	return c, nil
 }
 
 // Start the cluster module.
 func (cluster *Cluster) Start() error {
 	logger.WithField("remotes", cluster.Config.Remotes).Debug("Starting Cluster")
+
 	if cluster.Router == nil {
-		errorMessage := "There should be a valid MessageHandler already set-up"
+		errorMessage := "There should be a valid Router already set-up"
 		logger.Error(errorMessage)
 		return errors.New(errorMessage)
 	}
+
+	synchronizer, err := newSynchronizer(cluster)
+	if err != nil {
+		logger.WithError(err).Error("Error creating cluster synchronizer")
+		return err
+	}
+	cluster.synchronizer = synchronizer
+
 	num, err := cluster.memberlist.Join(cluster.remotesAsStrings())
 	if err != nil {
 		logger.WithField("error", err).Error("Error when this node wanted to join the cluster")
@@ -105,6 +107,7 @@ func (cluster *Cluster) Start() error {
 		logger.WithField("remotes", cluster.remotesAsStrings()).Error(errorMessage)
 		return errors.New(errorMessage)
 	}
+
 	logger.Debug("Started Cluster")
 	// go cluster.
 	return nil
