@@ -2,6 +2,9 @@ package server
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -9,6 +12,7 @@ import (
 
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/testutil"
 )
 
 type testgroup struct {
@@ -31,77 +35,77 @@ func newTestgroup(t *testing.T, groupID int, addr string, messagesToSend int) *t
 	}
 }
 
-// func TestThroughput(t *testing.T) {
-// 	// TODO: We disabled this test because the receiver implementation of fetching messages
-// 	// should be reimplemented according to the new message store
-// 	testutil.SkipIfShort(t)
-// 	defer testutil.ResetDefaultRegistryHealthCheck()
+func TestThroughput(t *testing.T) {
+	// TODO: We disabled this test because the receiver implementation of fetching messages
+	// should be reimplemented according to the new message store
+	testutil.SkipIfShort(t)
+	defer testutil.ResetDefaultRegistryHealthCheck()
 
-// 	dir, _ := ioutil.TempDir("", "guble_benchmarking_test")
+	dir, _ := ioutil.TempDir("", "guble_benchmarking_test")
 
-// 	*config.HttpListen = "localhost:0"
-// 	*config.KVS = "memory"
-// 	*config.MS = "file"
-// 	*config.StoragePath = dir
+	*config.HttpListen = "localhost:0"
+	*config.KVS = "memory"
+	*config.MS = "file"
+	*config.StoragePath = dir
 
-// 	service := StartService()
+	service := StartService()
 
-// 	testgroupCount := 4
-// 	messagesPerGroup := 100
-// 	log.Printf("init the %v testgroups", testgroupCount)
-// 	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
-// 	for i := range testgroups {
-// 		testgroups[i] = newTestgroup(t, i, service.WebServer().GetAddr(), messagesPerGroup)
-// 	}
+	testgroupCount := 4
+	messagesPerGroup := 100
+	log.Printf("init the %v testgroups", testgroupCount)
+	testgroups := make([]*testgroup, testgroupCount, testgroupCount)
+	for i := range testgroups {
+		testgroups[i] = newTestgroup(t, i, service.WebServer().GetAddr(), messagesPerGroup)
+	}
 
-// 	// init test
-// 	log.Print("init the testgroups")
-// 	for i := range testgroups {
-// 		testgroups[i].Init()
-// 	}
+	// init test
+	log.Print("init the testgroups")
+	for i := range testgroups {
+		testgroups[i].Init()
+	}
 
-// 	defer func() {
-// 		// cleanup tests
-// 		log.Print("cleanup the testgroups")
-// 		for i := range testgroups {
-// 			testgroups[i].Clean()
-// 		}
+	defer func() {
+		// cleanup tests
+		log.Print("cleanup the testgroups")
+		for i := range testgroups {
+			testgroups[i].Clean()
+		}
 
-// 		service.Stop()
+		service.Stop()
 
-// 		os.RemoveAll(dir)
-// 	}()
+		os.RemoveAll(dir)
+	}()
 
-// 	// start test
-// 	log.Print("start the testgroups")
-// 	start := time.Now()
-// 	for i := range testgroups {
-// 		go testgroups[i].Start()
-// 	}
+	// start test
+	log.Print("start the testgroups")
+	start := time.Now()
+	for i := range testgroups {
+		go testgroups[i].Start()
+	}
 
-// 	log.Print("wait for finishing")
-// 	for i, test := range testgroups {
-// 		select {
-// 		case successFlag := <-test.done:
-// 			if !successFlag {
-// 				t.Logf("testgroup %v returned with error", i)
-// 				t.FailNow()
-// 				return
-// 			}
-// 		case <-time.After(time.Second * 20):
-// 			t.Log("timeout. testgroups not ready before timeout")
-// 			t.Fail()
-// 			return
-// 		}
-// 	}
+	log.Print("wait for finishing")
+	for i, test := range testgroups {
+		select {
+		case successFlag := <-test.done:
+			if !successFlag {
+				t.Logf("testgroup %v returned with error", i)
+				t.FailNow()
+				return
+			}
+		case <-time.After(time.Second * 20):
+			t.Log("timeout. testgroups not ready before timeout")
+			t.Fail()
+			return
+		}
+	}
 
-// 	end := time.Now()
-// 	totalMessages := testgroupCount * messagesPerGroup
-// 	throughput := float64(totalMessages) / end.Sub(start).Seconds()
-// 	log.Printf("finished! Throughput: %v/sec (%v message in %v)", int(throughput), totalMessages, end.Sub(start))
+	end := time.Now()
+	totalMessages := testgroupCount * messagesPerGroup
+	throughput := float64(totalMessages) / end.Sub(start).Seconds()
+	log.Printf("finished! Throughput: %v/sec (%v message in %v)", int(throughput), totalMessages, end.Sub(start))
 
-// 	time.Sleep(time.Second * 1)
-// }
+	time.Sleep(time.Second * 1)
+}
 
 func (tg *testgroup) Init() {
 	tg.topic = fmt.Sprintf("/%v-foo", tg.groupID)

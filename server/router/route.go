@@ -57,10 +57,10 @@ func NewRoute(config RouteConfig) *Route {
 	return route
 }
 
-// Key returns  a string that uniquely identifies the route
-// concatenatest he route Path and they route params
+// Key returns a string that uniquely identifies the route
+// by concatenating the route Path and the route params
 // Example:
-//  /topic:user_id:user1 application_id:app1
+//  /topic user_id:user1 application_id:app1
 func (r *Route) Key() string {
 	return strings.Join([]string{
 		string(r.Path),
