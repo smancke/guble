@@ -164,31 +164,13 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 	if err != nil {
 		pm.errC <- err
 		mTotalSentMessageErrors.Add(1)
-		updateErrorMetrics(int64(latencyDuration))
+		updateMetricsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, int64(latencyDuration))
 		return
 	}
 	mTotalSentMessages.Add(1)
-	updateMessageMetrics(int64(latencyDuration))
+	updateMetricsMaps(currentTotalMessagesLatenciesKey, currentTotalMessagesKey, int64(latencyDuration))
 
 	pm.resultC <- result
-}
-
-func updateMessageMetrics(latency int64) {
-	mMinute.Add(currentTotalMessagesLatenciesKey, latency)
-	mMinute.Add(currentTotalMessagesKey, 1)
-	mHour.Add(currentTotalMessagesLatenciesKey, latency)
-	mHour.Add(currentTotalMessagesKey, 1)
-	mDay.Add(currentTotalMessagesLatenciesKey, latency)
-	mDay.Add(currentTotalMessagesKey, 1)
-}
-
-func updateErrorMetrics(latency int64) {
-	mMinute.Add(currentTotalErrorsLatenciesKey, latency)
-	mMinute.Add(currentTotalErrorsKey, 1)
-	mHour.Add(currentTotalErrorsLatenciesKey, latency)
-	mHour.Add(currentTotalErrorsKey, 1)
-	mDay.Add(currentTotalErrorsLatenciesKey, latency)
-	mDay.Add(currentTotalErrorsKey, 1)
 }
 
 // GetPrefix is used to satisfy the HTTP handler interface
