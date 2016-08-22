@@ -119,7 +119,7 @@ func (dms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessa
 }
 
 // GenerateNextMsgID is a part of the `store.MessageStore` implementation.
-func (dms *DummyMessageStore) GenerateNextMsgID(partitionName string, timestamp int) (uint64, int64, error) {
+func (dms *DummyMessageStore) GenerateNextMsgID(partitionName string, nodeID uint8) (uint64, int64, error) {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
 	ts := time.Now().Unix()

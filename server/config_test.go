@@ -4,8 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"net"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParsingOfEnviromentVariables(t *testing.T) {
@@ -107,7 +108,7 @@ func TestParsingArgs(t *testing.T) {
 		"--pg-user", "pg-user",
 		"--pg-password", "pg-password",
 		"--pg-dbname", "pg-dbname",
-		"--tcplist", "127.0.0.1:8080 127.0.0.1:20002",
+		"--remotes", "127.0.0.1:8080 127.0.0.1:20002",
 	}
 
 	// when we parse the arguments from command-line flags

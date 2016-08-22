@@ -43,7 +43,7 @@ type (
 	}
 	// ClusterConfig is used for configuring the cluster component.
 	ClusterConfig struct {
-		NodeID   *int
+		NodeID   *uint8
 		NodePort *int
 		Remotes  *tcpAddrList
 	}
@@ -120,10 +120,10 @@ var (
 		},
 		Cluster: ClusterConfig{
 			NodeID: kingpin.Flag("node-id", "(cluster mode) This guble node's own ID: a strictly positive integer number which must be unique in cluster").
-				Envar("GUBLE_NODE_ID").Int(),
+				Envar("GUBLE_NODE_ID").Uint8(),
 			NodePort: kingpin.Flag("node-port", "(cluster mode) This guble node's own local port: a strictly positive integer number").
 				Default(defaultNodePort).Envar("GUBLE_NODE_PORT").Int(),
-			Remotes: stringToTcpAddrList(kingpin.Flag("tcplist", `(cluster mode) The list of TCP addresses of some other guble nodes (format: "IP:port")`).
+			Remotes: tcpAddrListParser(kingpin.Flag("remotes", `(cluster mode) The list of TCP addresses of some other guble nodes (format: "IP:port")`).
 				Envar("GUBLE_NODE_REMOTES")),
 		},
 	}
@@ -176,7 +176,7 @@ func (h *tcpAddrList) Set(value string) error {
 	return nil
 }
 
-func stringToTcpAddrList(s kingpin.Settings) (target *tcpAddrList) {
+func tcpAddrListParser(s kingpin.Settings) (target *tcpAddrList) {
 	slist := make(tcpAddrList, 0)
 	s.SetValue(&slist)
 	return &slist

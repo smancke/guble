@@ -168,7 +168,7 @@ func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 	amMock.EXPECT().IsAllowed(auth.WRITE, r.Get("user_id"), r.Path).Return(true)
 	msMock.EXPECT().
 		StoreMessage(gomock.Any(), gomock.Any()).
-		Do(func(m *protocol.Message, nodeID int) (int, error) {
+		Do(func(m *protocol.Message, nodeID uint8) (int, error) {
 			m.ID = id
 			m.Time = ts
 			m.NodeID = nodeID
@@ -226,7 +226,7 @@ func TestRouter_SimpleMessageSending(t *testing.T) {
 	id, ts := uint64(2), time.Now().Unix()
 	msMock.EXPECT().
 		StoreMessage(gomock.Any(), gomock.Any()).
-		Do(func(m *protocol.Message, nodeID int) (int, error) {
+		Do(func(m *protocol.Message, nodeID uint8) (int, error) {
 			m.ID = id
 			m.Time = ts
 			m.NodeID = nodeID

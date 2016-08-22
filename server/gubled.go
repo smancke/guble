@@ -185,14 +185,14 @@ func StartService() *service.Service {
 	kvStore := CreateKVStore()
 
 	var (
-		c   *cluster.Cluster
+		cl  *cluster.Cluster
 		err error
 	)
 
 	if *config.Cluster.NodeID > 0 {
 		exitIfInvalidClusterParams(*config.Cluster.NodeID, *config.Cluster.NodePort, *config.Cluster.Remotes)
 		logger.Info("Starting in cluster-mode")
-		c, err = cluster.New(&cluster.Config{
+		cl, err = cluster.New(&cluster.Config{
 			ID:      *config.Cluster.NodeID,
 			Port:    *config.Cluster.NodePort,
 			Remotes: *config.Cluster.Remotes,
@@ -200,9 +200,6 @@ func StartService() *service.Service {
 		if err != nil {
 			logger.WithField("err", err).Fatal("Module could not be started (cluster)")
 		}
-
-		// set cluster instance on the router
-		router.SetCluster(c)
 	} else {
 		logger.Info("Starting in standalone-mode")
 	}
@@ -227,7 +224,7 @@ func StartService() *service.Service {
 	return srv
 }
 
-func exitIfInvalidClusterParams(nodeID int, nodePort int, remotes []*net.TCPAddr) {
+func exitIfInvalidClusterParams(nodeID uint8, nodePort int, remotes []*net.TCPAddr) {
 	if (nodeID <= 0 && len(remotes) > 0) || (nodePort <= 0) {
 		errorMessage := "Could not start in cluster-mode: invalid/incomplete parameters"
 		logger.WithFields(log.Fields{

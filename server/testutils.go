@@ -16,6 +16,7 @@ import (
 	"github.com/smancke/guble/testutil"
 
 	"errors"
+
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/server/service"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +30,7 @@ type testClusterNodeConfig struct {
 	StoragePath string // if empty it will create a temporary directory
 	MemoryStore string
 	KVStore     string
-	Remotes     []string
+	Remotes     string
 }
 
 func (tnc *testClusterNodeConfig) parseConfig() error {
@@ -64,12 +65,16 @@ func (tnc *testClusterNodeConfig) parseConfig() error {
 	}
 
 	if tnc.NodeID > 0 {
+		if tnc.Remotes == "" {
+			return fmt.Errorf("Missing Remotes value when running in cluster mode.")
+		}
+
 		args = append(
 			args,
 			"--node-id", strconv.Itoa(tnc.NodeID),
 			"--node-port", strconv.Itoa(tnc.NodePort),
+			"--remotes", tnc.Remotes,
 		)
-		args = append(args, tnc.Remotes...)
 	}
 
 	_, err = kingpin.CommandLine.Parse(args)

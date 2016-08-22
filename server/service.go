@@ -56,7 +56,7 @@ type Service struct {
 // NewService creates a new Service, using the given Router and WebServer.
 // If the router has already a configured Cluster, it is registered as a service module.
 // The Router and Webserver are then registered as modules.
-func NewService(router Router, webserver *webserver.WebServer) *Service {
+func NewService(router router.Router, webserver *webserver.WebServer) *Service {
 	s := &Service{
 		webserver:       webserver,
 		router:          router,

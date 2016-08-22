@@ -62,7 +62,7 @@ type router struct {
 }
 
 // New returns a pointer to Router
-func New(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore kvstore.KVStore) Router {
+func New(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore kvstore.KVStore, cluster *cluster.Cluster) Router {
 	return &router{
 		routes: make(map[protocol.Path][]*Route),
 
@@ -74,6 +74,7 @@ func New(accessManager auth.AccessManager, messageStore store.MessageStore, kvSt
 		accessManager: accessManager,
 		messageStore:  messageStore,
 		kvStore:       kvStore,
+		cluster:       cluster,
 	}
 }
 

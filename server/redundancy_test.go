@@ -17,7 +17,7 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 		HttpListen: "0.0.0.0:8080",
 		NodeID:     1,
 		NodePort:   10000,
-		Remotes:    []string{"0.0.0.0:10000"},
+		Remotes:    "0.0.0.0:10000",
 	})
 	a.NotNil(node1)
 	defer node1.cleanup(true)
@@ -26,7 +26,7 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 		HttpListen: "0.0.0.0:8081",
 		NodeID:     2,
 		NodePort:   10001,
-		Remotes:    []string{"0.0.0.0:10000"},
+		Remotes:    "0.0.0.0:10000",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
@@ -59,7 +59,7 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 		HttpListen: "0.0.0.0:8082",
 		NodeID:     1,
 		NodePort:   10000,
-		Remotes:    []string{"0.0.0.0:10000"},
+		Remotes:    "0.0.0.0:10000",
 	})
 	a.NotNil(node1)
 
@@ -67,7 +67,7 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 		HttpListen: "0.0.0.0:8083",
 		NodeID:     2,
 		NodePort:   10001,
-		Remotes:    []string{"0.0.0.0:10000"},
+		Remotes:    "0.0.0.0:10000",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
@@ -99,7 +99,7 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 		StoragePath: node1.StoragePath,
 		NodeID:      1,
 		NodePort:    10000,
-		Remotes:     []string{"0.0.0.0:10000"},
+		Remotes:     "0.0.0.0:10000",
 	})
 	a.NotNil(restartedNode1)
 	defer restartedNode1.cleanup(true)
@@ -128,7 +128,7 @@ func Test_Independent_Receiving(t *testing.T) {
 		HttpListen: "0.0.0.0:8084",
 		NodeID:     1,
 		NodePort:   10000,
-		Remotes:    []string{"0.0.0.0:10000"},
+		Remotes:    "0.0.0.0:10000",
 	})
 	a.NotNil(node1)
 	defer node1.cleanup(true)
@@ -137,7 +137,7 @@ func Test_Independent_Receiving(t *testing.T) {
 		HttpListen: "0.0.0.0:8085",
 		NodeID:     2,
 		NodePort:   10001,
-		Remotes:    []string{"0.0.0.0:10000"},
+		Remotes:    "0.0.0.0:10000",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
