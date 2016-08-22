@@ -30,7 +30,7 @@ func startGCMMetrics() {
 	resetCurrentMetrics(mDay, t)
 	go metrics.Every(time.Minute, processAndReset, mMinute)
 	go metrics.Every(time.Hour, processAndReset, mHour)
-	go metrics.Every(24*time.Hour, processAndReset, mDay)
+	go metrics.Every(time.Hour*24, processAndReset, mDay)
 }
 
 func processAndReset(m metrics.Map, t time.Time) {
@@ -39,6 +39,7 @@ func processAndReset(m metrics.Map, t time.Time) {
 	errLatenciesValue := m.Get(currentTotalErrorsLatenciesKey)
 	errNumberValue := m.Get(currentTotalErrorsKey)
 
+	m.Init()
 	resetCurrentMetrics(m, t)
 	metrics.SetCounter(m, "last_messages_count", msgNumberValue)
 	metrics.SetCounter(m, "last_errors_count", errNumberValue)
