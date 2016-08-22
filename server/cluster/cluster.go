@@ -218,6 +218,7 @@ func (cluster *Cluster) sendMessageToNode(node *memberlist.Node, cmsg *message) 
 }
 
 func (cluster *Cluster) remotesAsStrings() (strings []string) {
+	log.WithField("Remotes", cluster.Config.Remotes).Debug("Cluster remotes")
 	for _, remote := range cluster.Config.Remotes {
 		strings = append(strings, remote.IP.String()+":"+strconv.Itoa(remote.Port))
 	}

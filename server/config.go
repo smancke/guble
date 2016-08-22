@@ -163,7 +163,7 @@ func (h *tcpAddrList) Set(value string) error {
 	addresses := strings.Split(value, " ")
 
 	// Reset the list also, when running tests we add to the same list and is incorrect
-	*h = make(tcpAddrList, len(addresses))
+	*h = make(tcpAddrList, 0)
 	for _, addr := range addresses {
 		logger.WithField("addr", addr).Info("value")
 		parts := strings.SplitN(addr, ":", 2)

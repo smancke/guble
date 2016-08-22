@@ -221,7 +221,7 @@ func (params *benchParams) setUp() {
 
 		body, errReadAll := ioutil.ReadAll(response.Body)
 		a.NoError(errReadAll)
-		a.Equal("registered: /topic\n", string(body))
+		a.Equal("subscribed: /topic\n", string(body))
 	}
 }
 

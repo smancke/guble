@@ -9,47 +9,51 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-type GubleSender struct {
-	Endpoint string
+type gubleSender struct {
+	Endpoint   string
+	httpClient *http.Client
 }
 
-// Check returns `true` if the guble endpoint is reachable through a HEAD request, or `false` otherwise
-func (gs GubleSender) Check() bool {
-	req, err := http.NewRequest(http.MethodHead, gs.Endpoint, nil)
+// New returns a new Sender.
+func New(endpoint string) Sender {
+	return &gubleSender{
+		Endpoint:   endpoint,
+		httpClient: &http.Client{},
+	}
+}
+
+func (gs gubleSender) Check() bool {
+	request, err := http.NewRequest(http.MethodHead, gs.Endpoint, nil)
 	if err != nil {
 		logger.WithError(err).Error("error creating request url")
 		return false
 	}
-	c := &http.Client{}
-	res, err := c.Do(req)
+	response, err := gs.httpClient.Do(request)
 	if err != nil {
-		logger.WithError(err).Error("error reaching guble endpoint")
+		logger.WithError(err).Error("error reaching guble server endpoint")
 		return false
 	}
-	return res.StatusCode == http.StatusOK
+	return response.StatusCode == http.StatusOK
 }
 
-func (gs GubleSender) Send(topic string, body []byte) error {
+func (gs gubleSender) Send(topic string, body []byte, userID string) error {
 	url := fmt.Sprintf("%s%s?userId=%s",
-		strings.TrimPrefix(gs.Endpoint, "/"),
-		topic,
-		"samsa")
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+		strings.TrimPrefix(gs.Endpoint, "/"), topic, userID)
+	request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
-	c := &http.Client{}
-	resp, err := c.Do(req)
+	response, err := gs.httpClient.Do(request)
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != http.StatusOK {
+	if response.StatusCode != http.StatusOK {
 		logger.WithFields(log.Fields{
-			"header": resp.Header,
-			"code":   resp.StatusCode,
-			"status": resp.Status,
+			"header": response.Header,
+			"code":   response.StatusCode,
+			"status": response.Status,
 		}).Error("Guble response error")
-		return fmt.Errorf("Error code returned from guble: %d", resp.StatusCode)
+		return fmt.Errorf("Error code returned from guble: %d", response.StatusCode)
 	}
 	return nil
 }
