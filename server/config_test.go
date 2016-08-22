@@ -131,7 +131,7 @@ func assertArguments(a *assert.Assertions) {
 	a.Equal("gcm-api-key", *config.GCM.APIKey)
 	a.Equal(3, *config.GCM.Workers)
 
-	a.Equal(1, *config.Cluster.NodeID)
+	a.Equal(uint8(1), *config.Cluster.NodeID)
 	a.Equal(10000, *config.Cluster.NodePort)
 
 	a.Equal("pg-host", *config.Postgres.Host)

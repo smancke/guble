@@ -29,8 +29,6 @@ type Router interface {
 	MessageStore() (store.MessageStore, error)
 	KVStore() (kvstore.KVStore, error)
 	Cluster() *cluster.Cluster
-	SetCluster(*cluster.Cluster)
-
 	Fetch(store.FetchRequest) error
 
 	Subscribe(r *Route) (*Route, error)
@@ -408,8 +406,4 @@ func (router *router) Fetch(req store.FetchRequest) error {
 // Cluster returns the `cluster` provided for the router, or nil if no cluster was set-up
 func (router *router) Cluster() *cluster.Cluster {
 	return router.cluster
-}
-
-func (router *router) SetCluster(c *cluster.Cluster) {
-	router.cluster = c
 }

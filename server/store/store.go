@@ -34,8 +34,6 @@ type MessageStore interface {
 
 	// Partitions() ([]*MessagePartition, error)
 
-	//Check if the current messageStore is having enough space to save on Disk
-	Check() error
 }
 
 type MessageAndID struct {

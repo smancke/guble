@@ -30,16 +30,6 @@ func (_m *MockMessageStore) EXPECT() *_MockMessageStoreRecorder {
 	return _m.recorder
 }
 
-func (_m *MockMessageStore) Check() error {
-	ret := _m.ctrl.Call(_m, "Check")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockMessageStoreRecorder) Check() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Check")
-}
-
 func (_m *MockMessageStore) DoInTx(_param0 string, _param1 func(uint64) error) error {
 	ret := _m.ctrl.Call(_m, "DoInTx", _param0, _param1)
 	ret0, _ := ret[0].(error)
