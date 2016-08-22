@@ -2,9 +2,6 @@ package gcm
 
 import (
 	"github.com/smancke/guble/server/metrics"
-
-	"expvar"
-	"strconv"
 	"time"
 )
 
@@ -43,40 +40,16 @@ func processAndReset(m metrics.Map, t time.Time) {
 	errNumberValue := m.Get(currentTotalErrorsKey)
 
 	resetCurrentMetrics(m, t)
-	setCounter(m, "last_messages_count", msgNumberValue)
-	setCounter(m, "last_errors_count", errNumberValue)
-	setAverage(m, "last_messages_average_latency", msgLatenciesValue, msgNumberValue)
-	setAverage(m, "last_errors_average_latency", errLatenciesValue, errNumberValue)
-}
-
-func setCounter(m metrics.Map, key string, value expvar.Var) {
-	if value != nil {
-		m.Set(key, value)
-	} else {
-		m.Set(key, metrics.ZeroValue)
-	}
-}
-
-func setAverage(m metrics.Map, key string, totalVar, casesVar expvar.Var) {
-	if totalVar != nil && casesVar != nil {
-		total, _ := strconv.ParseInt(totalVar.String(), 10, 64)
-		cases, _ := strconv.ParseInt(casesVar.String(), 10, 64)
-		m.Set(key, metrics.NewAverage(total, cases, defaultAverageLatencyJSONValue))
-	} else {
-		m.Set(key, metrics.ZeroValue)
-	}
+	metrics.SetCounter(m, "last_messages_count", msgNumberValue)
+	metrics.SetCounter(m, "last_errors_count", errNumberValue)
+	metrics.SetAverage(m, "last_messages_average_latency", msgLatenciesValue, msgNumberValue, defaultAverageLatencyJSONValue)
+	metrics.SetAverage(m, "last_errors_average_latency", errLatenciesValue, errNumberValue, defaultAverageLatencyJSONValue)
 }
 
 func resetCurrentMetrics(m metrics.Map, t time.Time) {
 	m.Set("current_interval_start", metrics.NewTimeVar(t))
-	addToMetrics(currentTotalMessagesLatenciesKey, 0, m)
-	addToMetrics(currentTotalMessagesKey, 0, m)
-	addToMetrics(currentTotalErrorsLatenciesKey, 0, m)
-	addToMetrics(currentTotalErrorsKey, 0, m)
-}
-
-func addToMetrics(key string, value int64, maps ...metrics.Map) {
-	for _, m := range maps {
-		m.Add(key, value)
-	}
+	metrics.AddToMaps(currentTotalMessagesLatenciesKey, 0, m)
+	metrics.AddToMaps(currentTotalMessagesKey, 0, m)
+	metrics.AddToMaps(currentTotalErrorsLatenciesKey, 0, m)
+	metrics.AddToMaps(currentTotalErrorsKey, 0, m)
 }

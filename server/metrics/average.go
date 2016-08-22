@@ -2,21 +2,21 @@ package metrics
 
 import "fmt"
 
-type Average struct {
+type average struct {
 	total            int64
 	cases            int64
 	defaultJSONValue string
 }
 
-func NewAverage(total int64, cases int64, defaultAverageJSONValue string) Average {
-	return Average{
+func newAverage(total int64, cases int64, defaultAverageJSONValue string) average {
+	return average{
 		total:            total,
 		cases:            cases,
 		defaultJSONValue: defaultAverageJSONValue,
 	}
 }
 
-func (a Average) String() string {
+func (a average) String() string {
 	if a.cases <= 0 {
 		return a.defaultJSONValue
 	}

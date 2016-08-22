@@ -7,4 +7,4 @@ func (z zeroVar) String() string {
 	return "0"
 }
 
-var ZeroValue zeroVar
+var zeroValue zeroVar

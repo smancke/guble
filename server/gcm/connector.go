@@ -14,6 +14,7 @@ import (
 
 	"errors"
 	"fmt"
+	"github.com/smancke/guble/server/metrics"
 	"net/http"
 	"strconv"
 	"strings"
@@ -172,13 +173,13 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 	if err != nil {
 		pm.errC <- err
 		mTotalSentMessageErrors.Add(1)
-		addToMetrics(currentTotalErrorsLatenciesKey, int64(latencyDuration), mMinute, mHour, mDay)
-		addToMetrics(currentTotalErrorsKey, 1, mMinute, mHour, mDay)
+		metrics.AddToMaps(currentTotalErrorsLatenciesKey, int64(latencyDuration), mMinute, mHour, mDay)
+		metrics.AddToMaps(currentTotalErrorsKey, 1, mMinute, mHour, mDay)
 		return
 	}
 	mTotalSentMessages.Add(1)
-	addToMetrics(currentTotalMessagesLatenciesKey, int64(latencyDuration), mMinute, mHour, mDay)
-	addToMetrics(currentTotalMessagesKey, 1, mMinute, mHour, mDay)
+	metrics.AddToMaps(currentTotalMessagesLatenciesKey, int64(latencyDuration), mMinute, mHour, mDay)
+	metrics.AddToMaps(currentTotalMessagesKey, 1, mMinute, mHour, mDay)
 
 	pm.resultC <- result
 }
