@@ -1,10 +1,10 @@
 package metrics
 
-type ZeroVar struct {
+type zeroVar struct {
 }
 
-func (z ZeroVar) String() string {
+func (z zeroVar) String() string {
 	return "0"
 }
 
-var ZeroValue ZeroVar
+var ZeroValue zeroVar
