@@ -48,7 +48,7 @@ func processAndReset(m metrics.Map, t time.Time) {
 }
 
 func resetCurrentMetrics(m metrics.Map, t time.Time) {
-	m.Set("current_interval_start", metrics.NewTimeVar(t))
+	m.Set("current_interval_start", metrics.NewTime(t))
 	metrics.AddToMaps(currentTotalMessagesLatenciesKey, 0, m)
 	metrics.AddToMaps(currentTotalMessagesKey, 0, m)
 	metrics.AddToMaps(currentTotalErrorsLatenciesKey, 0, m)

@@ -5,14 +5,14 @@ import (
 	"time"
 )
 
-type TimeVar struct {
+type Time struct {
 	timeValue time.Time
 }
 
-func NewTimeVar(timeValue time.Time) TimeVar {
-	return TimeVar{timeValue: timeValue}
+func NewTime(timeValue time.Time) Time {
+	return Time{timeValue: timeValue}
 }
 
-func (t TimeVar) String() string {
+func (t Time) String() string {
 	return fmt.Sprintf("\"%v\"", t.timeValue)
 }
