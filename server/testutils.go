@@ -143,7 +143,6 @@ func (tcn *testClusterNode) cleanup(removeDir bool) {
 		err = os.RemoveAll(tcn.StoragePath)
 		assert.NoError(tcn.t, err)
 	}
-	time.Sleep(50 * time.Millisecond)
 }
 
 type TestGCM struct {
