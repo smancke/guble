@@ -53,6 +53,7 @@ type Connector struct {
 	nWorkers      int
 	wg            sync.WaitGroup
 	broadcastPath string
+	subscriptions map[string]*subscription
 }
 
 // New creates a new *Connector without starting it
@@ -77,12 +78,13 @@ func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int, en
 		stopC:         make(chan bool),
 		nWorkers:      nWorkers,
 		broadcastPath: removeTrailingSlash(prefix) + "/broadcast",
+		subscriptions: make(map[string]*subscription),
 	}, nil
 }
 
 // Start opens the connector, creates more goroutines / workers to handle messages coming from the router
 func (conn *Connector) Start() error {
-	resetGcmMetrics()
+	resetGCMMetrics()
 
 	// start subscription sync loop if we are in cluster mode
 	if conn.cluster != nil {
@@ -180,8 +182,8 @@ func (conn *Connector) GetPrefix() string {
 
 // ServeHTTP handles the subscription in GCM
 func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		logger.WithField("method", r.Method).Error("Only HTTP post method supported.")
+	if r.Method != http.MethodPost && r.Method != http.MethodDelete {
+		logger.WithField("method", r.Method).Error("Only HTTP POST and DELETE methods supported.")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -191,12 +193,47 @@ func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid Parameters in request", http.StatusBadRequest)
 		return
 	}
-	initSubscription(conn, topic, userID, gcmID, 0, true)
 
-	// synchronize subscription after storing if cluster exists
-	conn.synchronizeSubscription(topic, userID, gcmID)
+	switch r.Method {
+	case http.MethodPost:
+		conn.addSubscription(w, topic, userID, gcmID)
+	case http.MethodDelete:
+		conn.deleteSubscription(w, topic, userID, gcmID)
+	}
 
-	fmt.Fprintf(w, "registered: %v\n", topic)
+}
+
+func (conn *Connector) addSubscription(w http.ResponseWriter, topic, userID, gcmID string) {
+	s, err := initSubscription(conn, topic, userID, gcmID, 0, true)
+	if err == nil {
+		// synchronize subscription after storing if cluster exists
+		conn.synchronizeSubscription(topic, userID, gcmID, false)
+	} else if err == errSubscriptionExists {
+		logger.WithField("subscription", s).Error("Subscription exists")
+		fmt.Fprintf(w, "subscription exists")
+		return
+	}
+
+	fmt.Fprintf(w, "subscribed: %v\n", topic)
+}
+
+func (conn *Connector) deleteSubscription(w http.ResponseWriter, topic, userID, gcmID string) {
+	subscriptionKey := composeSubscriptionKey(topic, userID, gcmID)
+
+	s, ok := conn.subscriptions[subscriptionKey]
+	if !ok {
+		logger.
+			WithField("subscriptionKey", subscriptionKey).
+			WithField("subscriptions", conn.subscriptions).
+			Info("Subscription not found")
+		http.Error(w, "subscription not found\n", http.StatusNotFound)
+		return
+	}
+
+	conn.synchronizeSubscription(topic, userID, gcmID, true)
+
+	s.remove()
+	fmt.Fprintf(w, "unsubscribed: %v\n", topic)
 }
 
 // parseParams will parse the HTTP URL with format /gcm/:userid/:gcmid/subscribe/*topic
@@ -295,6 +332,17 @@ func (conn *Connector) syncLoop() error {
 				}
 
 				logger.Debug("Initializing sync subscription without storing it.")
+				if subscriptionSync.Remove {
+					subscriptionKey := composeSubscriptionKey(
+						subscriptionSync.Topic,
+						subscriptionSync.UserID,
+						subscriptionSync.GCMID)
+					if s, ok := conn.subscriptions[subscriptionKey]; ok {
+						s.remove()
+					}
+					continue
+				}
+
 				if _, err := initSubscription(
 					conn,
 					subscriptionSync.Topic,
@@ -313,13 +361,13 @@ func (conn *Connector) syncLoop() error {
 	return nil
 }
 
-func (conn *Connector) synchronizeSubscription(topic, userID, gcmID string) error {
+func (conn *Connector) synchronizeSubscription(topic, userID, gcmID string, remove bool) error {
 	// there is no cluster setup, no need for synchronization of subscription
 	if conn.cluster == nil {
 		return nil
 	}
 
-	data, err := (&subscriptionSync{topic, userID, gcmID}).Encode()
+	data, err := (&subscriptionSync{topic, userID, gcmID, remove}).Encode()
 	if err != nil {
 		return err
 	}
@@ -335,6 +383,7 @@ type subscriptionSync struct {
 	Topic  string
 	UserID string
 	GCMID  string
+	Remove bool
 }
 
 func (s *subscriptionSync) Encode() ([]byte, error) {
@@ -353,4 +402,13 @@ func removeTrailingSlash(path string) string {
 		return path[:len(path)-1]
 	}
 	return path
+}
+
+func composeSubscriptionKey(topic, userID, gcmID string) string {
+	return fmt.Sprintf("%s %s:%s %s:%s",
+		topic,
+		applicationIDKey,
+		gcmID,
+		userIDKey,
+		userID)
 }

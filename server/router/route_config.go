@@ -2,6 +2,7 @@ package router
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -31,9 +32,30 @@ type RouteConfig struct {
 func (rp *RouteParams) String() string {
 	s := make([]string, 0, len(*rp))
 	for k, v := range *rp {
-		s = append(s, fmt.Sprintf("%s: %s", k, v))
+		s = append(s, fmt.Sprintf("%s:%s", k, v))
 	}
 	return strings.Join(s, " ")
+}
+
+func (rp *RouteParams) Key() string {
+	// The generated key must be the same always
+	s := make([]string, 0, len(*rp))
+	for _, k := range rp.orderedKeys() {
+		s = append(s, fmt.Sprintf("%s:%s", k, (*rp)[k]))
+	}
+	return strings.Join(s, " ")
+}
+
+// orderedKeys returns a slice of ordered
+func (rp *RouteParams) orderedKeys() []string {
+	keys := make([]string, len(*rp))
+	i := 0
+	for k := range *rp {
+		keys[i] = k
+		i++
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // Equal verifies if the `receiver` params are the same as `other` params.

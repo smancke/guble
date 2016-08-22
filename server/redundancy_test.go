@@ -34,11 +34,10 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 	node1.GCM.setupRoundTripper(20*time.Millisecond, 10, testutil.SuccessGCMResponse)
 	node2.GCM.setupRoundTripper(20*time.Millisecond, 10, testutil.SuccessGCMResponse)
 
-	//subscribe on first node
-	node1.subscribe(gcmTopic)
-	node2.subscribe(gcmTopic)
+	// subscribe on first node
+	node1.Subscribe(gcmTopic, "1")
 
-	//connect a clinet and send a message
+	// connect a client and send a message
 	client1, err := node1.client("user1", 1000, true)
 	a.NoError(err)
 
@@ -76,7 +75,7 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	node2.GCM.setupRoundTripper(20*time.Millisecond, 10, testutil.SuccessGCMResponse)
 
 	// subscribe on first node
-	node1.subscribe(gcmTopic)
+	node1.Subscribe(gcmTopic, "1")
 
 	// connect a clinet and send a message
 	client1, err := node1.client("user1", 1000, true)
@@ -146,7 +145,7 @@ func Test_Independent_Receiving(t *testing.T) {
 	node2.GCM.setupRoundTripper(20*time.Millisecond, 10, testutil.SuccessGCMResponse)
 
 	// subscribe on first node
-	node1.subscribe(gcmTopic)
+	node1.Subscribe(gcmTopic, "1")
 
 	// connect a clinet and send a message
 	client1, err := node1.client("user1", 1000, true)
@@ -167,8 +166,64 @@ func Test_Independent_Receiving(t *testing.T) {
 	err = client2.Send(gcmTopic, "body", "{jsonHeader:1}")
 	a.NoError(err)
 
-	// only one message should be received but only on the first node.
+	// only one message should be received but only on the second node.
 	// Every message should be delivered only once.
 	node1.GCM.checkReceived(0)
 	node2.GCM.checkReceived(1)
+}
+
+func Test_NoReceiving_After_Unsubscribe(t *testing.T) {
+	testutil.SkipIfShort(t)
+	a := assert.New(t)
+
+	node1 := newTestClusterNode(t, testClusterNodeConfig{
+		HttpListen: "0.0.0.0:8086",
+		NodeID:     1,
+		NodePort:   10000,
+		Remotes:    []string{"0.0.0.0:10000"},
+	})
+	a.NotNil(node1)
+	defer node1.cleanup(true)
+
+	node2 := newTestClusterNode(t, testClusterNodeConfig{
+		HttpListen: "0.0.0.0:8087",
+		NodeID:     2,
+		NodePort:   10001,
+		Remotes:    []string{"0.0.0.0:10000"},
+	})
+	a.NotNil(node2)
+	defer node2.cleanup(true)
+
+	node1.GCM.setupRoundTripper(20*time.Millisecond, 10, testutil.SuccessGCMResponse)
+	node2.GCM.setupRoundTripper(20*time.Millisecond, 10, testutil.SuccessGCMResponse)
+
+	// subscribe on first node
+	node1.Subscribe(gcmTopic, "1")
+	time.Sleep(50 * time.Millisecond)
+
+	// connect a client and send a message
+	client1, err := node1.client("user1", 1000, true)
+	err = client1.Send(gcmTopic, "body", "{jsonHeader:1}")
+	a.NoError(err)
+
+	// only one message should be received but only on the first node.
+	// Every message should be delivered only once.
+	node1.GCM.checkReceived(1)
+	node2.GCM.checkReceived(0)
+
+	// Unsubscribe
+	node2.Unsubscribe(gcmTopic, "1")
+	time.Sleep(50 * time.Millisecond)
+
+	// reset the counter
+	node1.GCM.reset()
+
+	// and send a message again. No one should receive it
+	err = client1.Send(gcmTopic, "body", "{jsonHeader:1}")
+	a.NoError(err)
+
+	// only one message should be received but only on the second node.
+	// Every message should be delivered only once.
+	node1.GCM.checkReceived(0)
+	node2.GCM.checkReceived(0)
 }

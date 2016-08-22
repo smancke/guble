@@ -9,7 +9,7 @@ var (
 	mTotalSentMessageErrors = metrics.NewInt("guble.gcm.total_sent_message_errors")
 )
 
-func resetGcmMetrics() {
+func resetGCMMetrics() {
 	mTotalSentMessages.Set(0)
 	mTotalSentMessageErrors.Set(0)
 }

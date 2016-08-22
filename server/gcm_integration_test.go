@@ -143,6 +143,5 @@ func subscriptionSetUp(t *testing.T, service *service.Service) {
 
 	body, errReadAll := ioutil.ReadAll(response.Body)
 	a.NoError(errReadAll)
-	a.Equal(fmt.Sprintf("registered: %s\n", testTopic), string(body))
-
+	a.Equal(fmt.Sprintf("subscribed: %s\n", testTopic), string(body))
 }
