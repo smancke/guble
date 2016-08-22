@@ -72,13 +72,17 @@ func TestConnector_Check(t *testing.T) {
 	gcm, _, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
 
 	done := make(chan bool)
-	mockSender := testutil.CreateGcmSender(testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.SuccessGCMResponse, done))
+	mockSender := testutil.CreateGcmSender(
+		testutil.CreateRoundTripperWithJsonResponse(
+			http.StatusOK, testutil.SuccessGCMResponse, done))
 	gcm.Sender = mockSender
 	err := gcm.Check()
 	a.NoError(err)
 
 	done2 := make(chan bool)
-	mockSender2 := testutil.CreateGcmSender(testutil.CreateRoundTripperWithJsonResponse(http.StatusUnauthorized, "", done2))
+	mockSender2 := testutil.CreateGcmSender(
+		testutil.CreateRoundTripperWithJsonResponse(
+			http.StatusUnauthorized, "", done2))
 	gcm.Sender = mockSender2
 	err = gcm.Check()
 	a.NotNil(err)

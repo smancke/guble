@@ -19,7 +19,7 @@ func Test_Cluster_Subscribe_To_Random_Node(t *testing.T) {
 		HttpListen: ":8080",
 		NodeID:     1,
 		NodePort:   10000,
-		Remotes:    []string{"127.0.0.1:10000"},
+		Remotes:    "127.0.0.1:10000",
 	})
 	a.NotNil(node1)
 	defer node1.cleanup(true)
@@ -28,7 +28,7 @@ func Test_Cluster_Subscribe_To_Random_Node(t *testing.T) {
 		HttpListen: ":8081",
 		NodeID:     2,
 		NodePort:   10001,
-		Remotes:    []string{"127.0.0.1:10000"},
+		Remotes:    "127.0.0.1:10000",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
@@ -61,7 +61,7 @@ func Test_Cluster_Integration(t *testing.T) {
 		HttpListen: ":8080",
 		NodeID:     1,
 		NodePort:   10000,
-		Remotes:    []string{"127.0.0.1:10000"},
+		Remotes:    "127.0.0.1:10000",
 	})
 	a.NotNil(node1)
 	defer node1.cleanup(true)
@@ -70,7 +70,7 @@ func Test_Cluster_Integration(t *testing.T) {
 		HttpListen: ":8081",
 		NodeID:     2,
 		NodePort:   10001,
-		Remotes:    []string{"127.0.0.1:10000"},
+		Remotes:    "127.0.0.1:10000",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
