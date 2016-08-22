@@ -13,3 +13,6 @@ func (v *dummyInt) Set(value int64) {}
 func NewInt(name string) IntVar {
 	return &dummyInt{}
 }
+
+func Every(d time.Duration, f func(*expvar.Map, time.Time), m *expvar.Map) {
+}

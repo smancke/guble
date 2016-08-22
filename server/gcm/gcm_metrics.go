@@ -17,54 +17,65 @@ var (
 )
 
 const (
-	currentTotalMessagesLatenciesKey = "current_total_message_latencies"
-	currentTotalMessagesKey          = "current_total_messages"
-	currentTotalErrorsLatenciesKey   = "current_total_errors_latencies"
-	currentTotalErrorsKey            = "current_total_errors"
+	currentTotalMessagesLatenciesKey = "current_messages_total_latencies"
+	currentTotalMessagesKey          = "current_messages_count"
+	currentTotalErrorsLatenciesKey   = "current_errors_total_latencies"
+	currentTotalErrorsKey            = "current_errors_count"
 	defaultAverageLatencyJSONValue   = "0"
 )
 
 func startGcmMetrics() {
 	mTotalSentMessages.Set(0)
 	mTotalSentMessageErrors.Set(0)
-	go every(time.Minute, processAndResetMap, mMinute)
-	go every(time.Hour, processAndResetMap, mHour)
-	go every(24*time.Hour, processAndResetMap, mDay)
+	resetCurrentMetrics()
+	go metrics.Every(time.Minute, processAndReset, mMinute)
+	go metrics.Every(time.Hour, processAndReset, mHour)
+	go metrics.Every(24*time.Hour, processAndReset, mDay)
 }
 
-func every(d time.Duration, f func(time.Time, *expvar.Map), m *expvar.Map) {
-	for x := range time.Tick(d) {
-		f(x, m)
-	}
-}
-
-func processAndResetMap(t time.Time, m *expvar.Map) {
+func processAndReset(m *expvar.Map, t time.Time) {
 	logger.Debug("process and reset metrics map")
 	msgLatenciesValue := m.Get(currentTotalMessagesLatenciesKey)
 	msgNumberValue := m.Get(currentTotalMessagesKey)
 	errLatenciesValue := m.Get(currentTotalErrorsLatenciesKey)
 	errNumberValue := m.Get(currentTotalErrorsKey)
+
 	m.Init()
+	resetCurrentMetrics()
 	m.Set("current_interval_start", metrics.NewTimeVar(t))
-	setAverageLatency(m, "average_message_latency", msgLatenciesValue, msgNumberValue)
-	setAverageLatency(m, "average_error_latency", errLatenciesValue, errNumberValue)
+	setCounter(m, "last_messages_count", msgNumberValue)
+	setCounter(m, "last_errors_count", errNumberValue)
+	setAverage(m, "last_messages_average_latency", msgLatenciesValue, msgNumberValue)
+	setAverage(m, "last_errors_average_latency", errLatenciesValue, errNumberValue)
 }
 
-func setAverageLatency(m *expvar.Map, key string, totalValue, casesValue expvar.Var) {
+func setCounter(m *expvar.Map, key string, value expvar.Var) {
+	if value != nil {
+		m.Set(key, value)
+	} else {
+		m.Set(key, metrics.ZeroValue)
+	}
+}
+
+func setAverage(m *expvar.Map, key string, totalValue, casesValue expvar.Var) {
 	if totalValue != nil && casesValue != nil {
 		total, _ := strconv.ParseInt(totalValue.String(), 10, 64)
 		cases, _ := strconv.ParseInt(casesValue.String(), 10, 64)
 		m.Set(key, metrics.NewAverage(total, cases, defaultAverageLatencyJSONValue))
 	} else {
-		m.Set(key, metrics.NewAverage(0, 0, defaultAverageLatencyJSONValue))
+		m.Set(key, metrics.ZeroValue)
 	}
 }
 
-func updateMetricsMaps(valueKey string, counterKey string, value int64) {
-	mMinute.Add(valueKey, value)
-	mMinute.Add(counterKey, 1)
-	mHour.Add(valueKey, value)
-	mHour.Add(counterKey, 1)
-	mDay.Add(valueKey, value)
-	mDay.Add(counterKey, 1)
+func resetCurrentMetrics() {
+	addToMetrics(currentTotalMessagesLatenciesKey, 0)
+	addToMetrics(currentTotalMessagesKey, 0)
+	addToMetrics(currentTotalErrorsLatenciesKey, 0)
+	addToMetrics(currentTotalErrorsKey, 0)
+}
+
+func addToMetrics(key string, value int64) {
+	mMinute.Add(key, value)
+	mHour.Add(key, value)
+	mDay.Add(key, value)
 }

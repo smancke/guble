@@ -164,11 +164,13 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 	if err != nil {
 		pm.errC <- err
 		mTotalSentMessageErrors.Add(1)
-		updateMetricsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, int64(latencyDuration))
+		addToMetrics(currentTotalErrorsLatenciesKey, int64(latencyDuration))
+		addToMetrics(currentTotalErrorsKey, 1)
 		return
 	}
 	mTotalSentMessages.Add(1)
-	updateMetricsMaps(currentTotalMessagesLatenciesKey, currentTotalMessagesKey, int64(latencyDuration))
+	addToMetrics(currentTotalMessagesLatenciesKey, int64(latencyDuration))
+	addToMetrics(currentTotalMessagesKey, 1)
 
 	pm.resultC <- result
 }
