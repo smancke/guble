@@ -27,23 +27,22 @@ const (
 func startGcmMetrics() {
 	mTotalSentMessages.Set(0)
 	mTotalSentMessageErrors.Set(0)
-	resetCurrentMetrics(mMinute)
-	resetCurrentMetrics(mHour)
-	resetCurrentMetrics(mDay)
+	t := time.Now()
+	resetCurrentMetrics(mMinute, t)
+	resetCurrentMetrics(mHour, t)
+	resetCurrentMetrics(mDay, t)
 	go metrics.Every(time.Minute, processAndReset, mMinute)
 	go metrics.Every(time.Hour, processAndReset, mHour)
 	go metrics.Every(24*time.Hour, processAndReset, mDay)
 }
 
 func processAndReset(m metrics.Map, t time.Time) {
-	logger.Debug("process and reset metrics map")
 	msgLatenciesValue := m.Get(currentTotalMessagesLatenciesKey)
 	msgNumberValue := m.Get(currentTotalMessagesKey)
 	errLatenciesValue := m.Get(currentTotalErrorsLatenciesKey)
 	errNumberValue := m.Get(currentTotalErrorsKey)
 
-	resetCurrentMetrics(m)
-	m.Set("current_interval_start", metrics.NewTimeVar(t))
+	resetCurrentMetrics(m, t)
 	setCounter(m, "last_messages_count", msgNumberValue)
 	setCounter(m, "last_errors_count", errNumberValue)
 	setAverage(m, "last_messages_average_latency", msgLatenciesValue, msgNumberValue)
@@ -68,7 +67,8 @@ func setAverage(m metrics.Map, key string, totalVar, casesVar expvar.Var) {
 	}
 }
 
-func resetCurrentMetrics(m metrics.Map) {
+func resetCurrentMetrics(m metrics.Map, t time.Time) {
+	m.Set("current_interval_start", metrics.NewTimeVar(t))
 	addToMetrics(currentTotalMessagesLatenciesKey, 0, m)
 	addToMetrics(currentTotalMessagesKey, 0, m)
 	addToMetrics(currentTotalErrorsLatenciesKey, 0, m)
