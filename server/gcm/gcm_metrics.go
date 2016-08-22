@@ -24,7 +24,7 @@ const (
 	defaultAverageLatencyJSONValue   = "0"
 )
 
-func startGcmMetrics() {
+func startGCMMetrics() {
 	mTotalSentMessages.Set(0)
 	mTotalSentMessageErrors.Set(0)
 	t := time.Now()

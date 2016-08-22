@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Bogh/gcm"
 	log "github.com/Sirupsen/logrus"
-	"github.com/alexjlockwood/gcm"
 
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
@@ -27,8 +27,9 @@ const (
 )
 
 var (
-	errSubReplaced   = errors.New("Subscription replaced")
-	errIgnoreMessage = errors.New("Message ignored")
+	errSubReplaced        = errors.New("Subscription replaced")
+	errIgnoreMessage      = errors.New("Message ignored")
+	errSubscriptionExists = errors.New("Subscription exists")
 )
 
 type jsonError struct {
@@ -41,41 +42,47 @@ func (e *jsonError) Error() string {
 
 // subscription represent a GCM subscription
 type subscription struct {
-	gcm    *Connector
-	route  *router.Route
-	lastID uint64 // Last sent message id
+	connector *Connector
+	route     *router.Route
+	lastID    uint64 // Last sent message id
 
 	logger *log.Entry
 }
 
 // Creates a subscription and returns the pointer
-func newSubscription(gcm *Connector, route *router.Route, lastID uint64) *subscription {
+func newSubscription(connector *Connector, route *router.Route, lastID uint64) *subscription {
 	subLogger := logger.WithFields(log.Fields{
 		"gcmID":  route.Get(applicationIDKey),
 		"userID": route.Get(userIDKey),
 		"topic":  string(route.Path),
 	})
-	if gcm.cluster != nil {
-		subLogger = subLogger.WithField("nodeID", gcm.cluster.Config.ID)
+	if connector.cluster != nil {
+		subLogger = subLogger.WithField("nodeID", connector.cluster.Config.ID)
 	}
 
 	return &subscription{
-		gcm:    gcm,
-		route:  route,
-		lastID: lastID,
-		logger: subLogger,
+		connector: connector,
+		route:     route,
+		lastID:    lastID,
+		logger:    subLogger,
 	}
 }
 
 // initSubscription creates a subscription and adds it in router/kvstore then starts listening for messages
-func initSubscription(gcm *Connector, topic, userID, gcmID string, unusedLastID uint64, store bool) (*subscription, error) {
+func initSubscription(connector *Connector, topic, userID, gcmID string, unusedLastID uint64, store bool) (*subscription, error) {
 	route := router.NewRoute(router.RouteConfig{
 		RouteParams: router.RouteParams{userIDKey: userID, applicationIDKey: gcmID},
 		Path:        protocol.Path(topic),
 		ChannelSize: subBufferSize,
 	})
 
-	s := newSubscription(gcm, route, 0)
+	s := newSubscription(connector, route, 0)
+	if s.exists() {
+		return nil, errSubscriptionExists
+	}
+
+	// add subscription to gcm map
+	s.connector.subscriptions[s.Key()] = s
 
 	s.logger.Debug("New subscription")
 	if store {
@@ -87,8 +94,14 @@ func initSubscription(gcm *Connector, topic, userID, gcmID string, unusedLastID 
 	return s, s.restart()
 }
 
+// exists returns true if the subscription is present with the same key in gcm.subscriptions
+func (s *subscription) exists() bool {
+	_, ok := s.connector.subscriptions[s.Key()]
+	return ok
+}
+
 func (s *subscription) subscribe() error {
-	if _, err := s.gcm.router.Subscribe(s.route); err != nil {
+	if _, err := s.connector.router.Subscribe(s.route); err != nil {
 		s.logger.WithError(err).Error("Error subscribing")
 		return err
 	}
@@ -98,8 +111,10 @@ func (s *subscription) subscribe() error {
 
 // unsubscribe from router and remove KVStore
 func (s *subscription) remove() *subscription {
-	s.gcm.router.Unsubscribe(s.route)
-	s.gcm.kvStore.Delete(schema, s.route.Get(applicationIDKey))
+	s.logger.Info("Removing subscription")
+	s.connector.router.Unsubscribe(s.route)
+	delete(s.connector.subscriptions, s.Key())
+	s.connector.kvStore.Delete(schema, s.Key())
 	return s
 }
 
@@ -139,7 +154,7 @@ func (s *subscription) shouldFetch() bool {
 		return false
 	}
 
-	messageStore, err := s.gcm.router.MessageStore()
+	messageStore, err := s.connector.router.MessageStore()
 	if err != nil {
 		s.logger.WithField("error", err).Error("Error retrieving message store instance from router")
 		return false
@@ -159,10 +174,10 @@ func (s *subscription) shouldFetch() bool {
 func (s *subscription) subscriptionLoop() {
 	s.logger.Debug("Starting subscription loop")
 
-	s.gcm.wg.Add(1)
+	s.connector.wg.Add(1)
 	defer func() {
 		s.logger.Debug("Stopped subscription loop")
-		s.gcm.wg.Done()
+		s.connector.wg.Done()
 	}()
 
 	var (
@@ -189,7 +204,7 @@ func (s *subscription) subscriptionLoop() {
 
 				s.logger.WithError(err).Error("Error pipelining message")
 			}
-		case <-s.gcm.stopC:
+		case <-s.connector.stopC:
 			return
 		}
 	}
@@ -215,15 +230,15 @@ func (s *subscription) fetch() error {
 	// 	return nil
 	// }
 
-	s.gcm.wg.Add(1)
+	s.connector.wg.Add(1)
 	defer func() {
 		s.logger.WithField("lastID", s.lastID).Debug("Stop fetching")
-		s.gcm.wg.Done()
+		s.connector.wg.Done()
 	}()
 
 	s.logger.Debug("Fetching from store")
 	req := s.createFetchRequest()
-	if err := s.gcm.router.Fetch(req); err != nil {
+	if err := s.connector.router.Fetch(req); err != nil {
 		return err
 	}
 
@@ -245,7 +260,7 @@ func (s *subscription) fetch() error {
 			s.pipe(message)
 		case err := <-req.ErrorC:
 			return err
-		case <-s.gcm.stopC:
+		case <-s.connector.stopC:
 			s.logger.Debug("Stopping fetch because service is shutting down")
 			return nil
 		}
@@ -267,7 +282,7 @@ func (s *subscription) createFetchRequest() store.FetchRequest {
 // isStopping returns true if we are actually stopping the service
 func (s *subscription) isStopping() bool {
 	select {
-	case <-s.gcm.stopC:
+	case <-s.connector.stopC:
 		return true
 	default:
 	}
@@ -285,18 +300,18 @@ func (s *subscription) bytes() []byte {
 
 // store data in kvstore
 func (s *subscription) store() error {
-	// TODO Bogdan remove this
-	// defer func() {
-	// 	if err := recover(); err != nil {
-	// 		s.logger.WithField("err", err).Error("Error saving in KV")
-	// 	}
-	// }()
 	s.logger.WithField("lastID", s.lastID).Debug("Storing subscription")
-	err := s.gcm.kvStore.Put(schema, s.route.Get(applicationIDKey), s.bytes())
+	err := s.connector.kvStore.Put(schema, s.Key(), s.bytes())
 	if err != nil {
 		s.logger.WithError(err).Error("Error storing in KVStore")
 	}
+
 	return err
+}
+
+// Key returns a string that uniquely identifies this subscription
+func (s *subscription) Key() string {
+	return s.route.Key()
 }
 
 func (s *subscription) setLastID(ID uint64) error {
@@ -310,7 +325,7 @@ func (s *subscription) pipe(m *protocol.Message) error {
 	pipeMessage := newPipeMessage(s, m)
 	defer pipeMessage.closeChannels()
 
-	s.gcm.pipelineC <- pipeMessage
+	s.connector.pipelineC <- pipeMessage
 
 	// wait for response
 	select {
@@ -369,7 +384,7 @@ func (s *subscription) replaceCanonical(newGCMID string) error {
 	// reuse the route but change the ApplicationID
 	route := s.route
 	route.Set(applicationIDKey, newGCMID)
-	newS := newSubscription(s.gcm, route, s.lastID)
+	newS := newSubscription(s.connector, route, s.lastID)
 
 	if err := newS.store(); err != nil {
 		return err

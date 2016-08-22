@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-func TestServeHTTPSuccess(t *testing.T) {
+func TestConnector_ServeHTTPSuccess(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
@@ -31,39 +31,10 @@ func TestServeHTTPSuccess(t *testing.T) {
 		a.Equal("gcmId123", route.Get(applicationIDKey))
 	})
 
-	url, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe/notifications")
-	// and a http context
-	req := &http.Request{URL: url, Method: "POST"}
-	w := httptest.NewRecorder()
-
-	// when: I POST a message
-	gcm.ServeHTTP(w, req)
-
-	// then
-	a.Equal("registered: /notifications\n", string(w.Body.Bytes()))
+	postSubscription(t, gcm, "marvin", "gcmId123", "notifications")
 }
 
-func TestGCMConnector_Check(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
-
-	a := assert.New(t)
-	gcm, _, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
-
-	done := make(chan bool)
-	mockSender := testutil.CreateGcmSender(testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.SuccessGCMResponse, done))
-	gcm.Sender = mockSender
-	err := gcm.Check()
-	a.NoError(err)
-
-	done2 := make(chan bool)
-	mockSender2 := testutil.CreateGcmSender(testutil.CreateRoundTripperWithJsonResponse(http.StatusUnauthorized, "", done2))
-	gcm.Sender = mockSender2
-	err = gcm.Check()
-	a.NotNil(err)
-}
-
-func TestServeHTTPWithErrorCases(t *testing.T) {
+func TestConnector_ServeHTTPWithErrorCases(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
@@ -93,6 +64,25 @@ func TestServeHTTPWithErrorCases(t *testing.T) {
 	a.Equal(w2.Code, http.StatusBadRequest)
 }
 
+func TestConnector_Check(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
+	a := assert.New(t)
+	gcm, _, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
+
+	done := make(chan bool)
+	mockSender := testutil.CreateGcmSender(testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, testutil.SuccessGCMResponse, done))
+	gcm.Sender = mockSender
+	err := gcm.Check()
+	a.NoError(err)
+
+	done2 := make(chan bool)
+	mockSender2 := testutil.CreateGcmSender(testutil.CreateRoundTripperWithJsonResponse(http.StatusUnauthorized, "", done2))
+	gcm.Sender = mockSender2
+	err = gcm.Check()
+	a.NotNil(err)
+}
 func TestGCM_SaveAndLoadSubs(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
@@ -135,7 +125,7 @@ func TestRemoveTrailingSlash(t *testing.T) {
 	assert.Equal(t, "/foo", removeTrailingSlash("/foo"))
 }
 
-func TestGCMConnector_parseParams(t *testing.T) {
+func TestConnector_parseParams(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
@@ -170,7 +160,7 @@ func TestGCMConnector_parseParams(t *testing.T) {
 	a.Nil(err)
 }
 
-func TestGCMConnector_GetPrefix(t *testing.T) {
+func TestConnector_GetPrefix(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
@@ -180,7 +170,7 @@ func TestGCMConnector_GetPrefix(t *testing.T) {
 	a.Equal(gcm.GetPrefix(), "/gcm/")
 }
 
-func TestGCMConnector_Stop(t *testing.T) {
+func TestConnector_Stop(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
@@ -198,7 +188,7 @@ func TestGCMConnector_Stop(t *testing.T) {
 	}
 }
 
-func TestGcmConnector_StartWithMessageSending(t *testing.T) {
+func TestConnector_StartWithMessageSending(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
@@ -229,7 +219,7 @@ func TestGcmConnector_StartWithMessageSending(t *testing.T) {
 	a.NoError(err)
 }
 
-func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
+func TestConnector_GetErrorMessageFromGCM(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
@@ -279,6 +269,96 @@ func TestGCMConnector_GetErrorMessageFromGcm(t *testing.T) {
 	a.NoError(err)
 }
 
+func TestConnector_Subscribe(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
+	a := assert.New(t)
+	gcm, routerMock, _ := testSimpleGCM(t, true)
+
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
+		a.Equal("/baskets", string(route.Path))
+		a.Equal("user1", route.Get(userIDKey))
+		a.Equal("gcm1", route.Get(applicationIDKey))
+	})
+
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
+		a.Equal("/baskets", string(route.Path))
+		a.Equal("user2", route.Get(userIDKey))
+		a.Equal("gcm2", route.Get(applicationIDKey))
+	})
+
+	postSubscription(t, gcm, "user1", "gcm1", "baskets")
+	a.Equal(len(gcm.subscriptions), 1)
+
+	postSubscription(t, gcm, "user2", "gcm2", "baskets")
+	a.Equal(len(gcm.subscriptions), 2)
+}
+
+func TestConnector_Unsubscribe(t *testing.T) {
+	defer testutil.EnableDebugForMethod()()
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
+	a := assert.New(t)
+	gcm, routerMock, _ := testSimpleGCM(t, true)
+	var deletedRoute *router.Route
+
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
+		deletedRoute = route
+		a.Equal("/baskets", string(route.Path))
+		a.Equal("user1", route.Get(userIDKey))
+		a.Equal("gcm1", route.Get(applicationIDKey))
+
+	})
+
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
+		a.Equal("/baskets", string(route.Path))
+		a.Equal("user2", route.Get(userIDKey))
+		a.Equal("gcm2", route.Get(applicationIDKey))
+	})
+
+	postSubscription(t, gcm, "user1", "gcm1", "baskets")
+	a.Equal(len(gcm.subscriptions), 1)
+
+	postSubscription(t, gcm, "user2", "gcm2", "baskets")
+	a.Equal(len(gcm.subscriptions), 2)
+
+	routerMock.EXPECT().Unsubscribe(deletedRoute)
+
+	deleteSubscription(t, gcm, "user1", "gcm1", "baskets")
+	a.Equal(len(gcm.subscriptions), 1)
+
+	remainingKey := composeSubscriptionKey("/baskets", "user2", "gcm2")
+
+	a.Equal("user2", gcm.subscriptions[remainingKey].route.Get(userIDKey))
+	a.Equal("gcm2", gcm.subscriptions[remainingKey].route.Get(applicationIDKey))
+	a.Equal("/baskets", string(gcm.subscriptions[remainingKey].route.Path))
+}
+
+func TestConnector_SubscriptionExists(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	a := assert.New(t)
+
+	gcm, routerMock, _ := testSimpleGCM(t, true)
+
+	routerMock.EXPECT().Subscribe(gomock.Any())
+
+	w := httptest.NewRecorder()
+	url := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", "user01", "gcm01", "/test")
+
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	a.NoError(err)
+
+	gcm.ServeHTTP(w, req)
+	w = httptest.NewRecorder()
+	gcm.ServeHTTP(w, req)
+
+	a.Equal(http.StatusOK, w.Code)
+	a.Equal("subscription exists", w.Body.String())
+}
+
 func testGCMResponse(t *testing.T, jsonResponse string) (*Connector, *MockRouter, chan bool) {
 	gcm, routerMock, _ := testSimpleGCM(t, false)
 
@@ -299,7 +379,7 @@ func testSimpleGCM(t *testing.T, mockStore bool) (*Connector, *MockRouter, *Mock
 	kvStore := kvstore.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
 
-	gcm, err := New(routerMock, "/gcm/", "testApi", 1)
+	gcm, err := New(routerMock, "/gcm/", "testApi", 1, "")
 	assert.NoError(t, err)
 
 	var storeMock *MockMessageStore
@@ -309,4 +389,29 @@ func testSimpleGCM(t *testing.T, mockStore bool) (*Connector, *MockRouter, *Mock
 	}
 
 	return gcm, routerMock, storeMock
+}
+
+func postSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string) {
+	a := assert.New(t)
+	url := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	a.NoError(err)
+	w := httptest.NewRecorder()
+
+	gcm.ServeHTTP(w, req)
+
+	a.Equal(fmt.Sprintf("subscribed: /%s\n", topic), string(w.Body.Bytes()))
+}
+
+func deleteSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string) {
+	a := assert.New(t)
+
+	url := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	a.NoError(err)
+	w := httptest.NewRecorder()
+
+	gcm.ServeHTTP(w, req)
+
+	a.Equal(fmt.Sprintf("unsubscribed: /%s\n", topic), string(w.Body.Bytes()))
 }
