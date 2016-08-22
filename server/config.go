@@ -123,7 +123,7 @@ var (
 				Envar("GUBLE_NODE_ID").Int(),
 			NodePort: kingpin.Flag("node-port", "(cluster mode) This guble node's own local port: a strictly positive integer number").
 				Default(defaultNodePort).Envar("GUBLE_NODE_PORT").Int(),
-			Remotes: stringToTcpAddrList(kingpin.Flag("tcplist", `(cluster mode) The list of TCP addresses of some other guble nodes (format: "IP:port")`).
+			Remotes: stringToTcpAddrList(kingpin.Flag("remotes", `(cluster mode) The list of TCP addresses of some other guble nodes (format: "IP:port")`).
 				Envar("GUBLE_NODE_REMOTES")),
 		},
 	}
@@ -161,6 +161,9 @@ type tcpAddrList []*net.TCPAddr
 
 func (h *tcpAddrList) Set(value string) error {
 	addresses := strings.Split(value, " ")
+
+	// Recreate the list on `Set`
+	*h = make(tcpAddrList, 0)
 	for _, addr := range addresses {
 		logger.WithField("addr", addr).Info("value")
 		parts := strings.SplitN(addr, ":", 2)
