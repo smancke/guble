@@ -300,7 +300,6 @@ func TestConnector_Subscribe(t *testing.T) {
 }
 
 func TestConnector_Unsubscribe(t *testing.T) {
-	defer testutil.EnableDebugForMethod()()
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 

@@ -61,7 +61,6 @@ func TestCluster_StartCheckStop(t *testing.T) {
 }
 
 func TestCluster_BroadcastStringAndMessageAndCheck(t *testing.T) {
-	// defer testutil.EnableDebugForMethod()
 	a := assert.New(t)
 
 	config1 := testConfig()
