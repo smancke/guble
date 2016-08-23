@@ -47,6 +47,8 @@ func (gs gubleSender) Send(topic string, body []byte, userID string) error {
 	if err != nil {
 		return err
 	}
+	defer response.Body.Close()
+
 	if response.StatusCode != http.StatusOK {
 		logger.WithFields(log.Fields{
 			"header": response.Header,
