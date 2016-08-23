@@ -33,6 +33,7 @@ func (gs gubleSender) Check() bool {
 		logger.WithError(err).Error("error reaching guble server endpoint")
 		return false
 	}
+	defer response.Body.Close()
 	return response.StatusCode == http.StatusOK
 }
 
