@@ -32,13 +32,17 @@ type MessageStore interface {
 	// GenerateNextMsgId generates a new message ID based on a timestamp in a strictly monotonically order
 	GenerateNextMsgID(partition string, nodeID uint8) (uint64, int64, error)
 
-	// Partitions() ([]*MessagePartition, error)
-
+	// Partitions returns a slice of `MessagePartition` available in the store
+	Partitions() ([]MessagePartition, error)
 }
 
-type MessageAndID struct {
-	ID      uint64
-	Message []byte
+type MessagePartition interface {
+
+	// Name returns the name of the partition
+	Name() string
+
+	// MaxMessageID return the last message ID stored in this partition
+	MaxMessageID() (uint64, error)
 }
 
 // FetchRequest is used for fetching messages in a MessageStore.

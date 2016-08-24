@@ -3,13 +3,13 @@ package logformatter
 import (
 	"bytes"
 	"encoding/json"
+	"testing"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestLogstashFormatter_Format(t *testing.T) {
-
 	assert := assert.New(t)
 
 	lf := LogstashFormatter{Type: "abc", ServiceName: "guble", Env: "prod"}

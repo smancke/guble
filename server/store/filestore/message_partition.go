@@ -65,6 +65,17 @@ func newMessagePartition(basedir string, storeName string) (*messagePartition, e
 	return p, p.initialize()
 }
 
+func (p *messagePartition) Name() string {
+	return p.name
+}
+
+func (p *messagePartition) MaxMessageID() (uint64, error) {
+	p.RLock()
+	defer p.RUnlock()
+
+	return p.maxMessageID, nil
+}
+
 func (p *messagePartition) initialize() error {
 	p.Lock()
 	defer p.Unlock()
@@ -148,13 +159,6 @@ func (p *messagePartition) readIdxFiles() error {
 	}
 
 	return nil
-}
-
-func (p *messagePartition) MaxMessageID() (uint64, error) {
-	p.RLock()
-	defer p.RUnlock()
-
-	return p.maxMessageID, nil
 }
 
 func (p *messagePartition) closeAppendFiles() error {

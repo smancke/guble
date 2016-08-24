@@ -150,7 +150,7 @@ func (fms *FileMessageStore) DoInTx(partition string, fnToExecute func(maxMessag
 // Partitions will walk the filesystem and return all message partitions
 // TODO Bogdan This is not required anymore as the store already read the partitions
 // and saved them in the cacheEntry for the store. Retrieve from there if possible
-func (fms *FileMessageStore) Partitions() (partitions []*messagePartition, err error) {
+func (fms *FileMessageStore) Partitions() (partitions []store.MessagePartition, err error) {
 	entries, err := ioutil.ReadDir(fms.basedir)
 	if err != nil {
 		logger.WithError(err).Error("Error reading partitions")
