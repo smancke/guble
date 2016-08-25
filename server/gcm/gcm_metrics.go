@@ -18,7 +18,8 @@ const (
 	currentTotalMessagesKey          = "current_messages_count"
 	currentTotalErrorsLatenciesKey   = "current_errors_total_latencies"
 	currentTotalErrorsKey            = "current_errors_count"
-	defaultAverageLatencyJSONValue   = "0"
+	defaultAverageLatencyJSONValue   = "\"\""
+	scaleMillisecond                 = 1000000
 )
 
 func startGCMMetrics() {
@@ -33,7 +34,7 @@ func startGCMMetrics() {
 	go metrics.Every(time.Hour*24, processAndReset, mDay)
 }
 
-func processAndReset(m metrics.Map, t time.Time) {
+func processAndReset(m metrics.Map, timeframe time.Duration, t time.Time) {
 	msgLatenciesValue := m.Get(currentTotalMessagesLatenciesKey)
 	msgNumberValue := m.Get(currentTotalMessagesKey)
 	errLatenciesValue := m.Get(currentTotalErrorsLatenciesKey)
@@ -41,10 +42,12 @@ func processAndReset(m metrics.Map, t time.Time) {
 
 	m.Init()
 	resetCurrentMetrics(m, t)
-	metrics.SetCounter(m, "last_messages_count", msgNumberValue)
-	metrics.SetCounter(m, "last_errors_count", errNumberValue)
-	metrics.SetAverage(m, "last_messages_average_latency", msgLatenciesValue, msgNumberValue, defaultAverageLatencyJSONValue)
-	metrics.SetAverage(m, "last_errors_average_latency", errLatenciesValue, errNumberValue, defaultAverageLatencyJSONValue)
+	metrics.SetRate(m, "last_messages_rate_s", msgNumberValue, timeframe, time.Second)
+	metrics.SetRate(m, "last_errors_rate_s", errNumberValue, timeframe, time.Second)
+	metrics.SetAverage(m, "last_messages_average_latency_ms",
+		msgLatenciesValue, msgNumberValue, scaleMillisecond, defaultAverageLatencyJSONValue)
+	metrics.SetAverage(m, "last_errors_average_latency_ms",
+		errLatenciesValue, errNumberValue, scaleMillisecond, defaultAverageLatencyJSONValue)
 }
 
 func resetCurrentMetrics(m metrics.Map, t time.Time) {
