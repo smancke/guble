@@ -212,10 +212,10 @@ func StartService() *service.Service {
 	srv.RegisterModules(4, 3, CreateModules(r)...)
 
 	if err = srv.Start(); err != nil {
+		logger.WithError(err).Fatal("Service could not be started")
 		if err = srv.Stop(); err != nil {
 			logger.WithError(err).Error("Error when stopping service after Start() failed")
 		}
-		logger.WithError(err).Fatal("Service could not be started")
 	}
 
 	return srv
