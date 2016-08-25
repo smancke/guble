@@ -171,7 +171,7 @@ func Main() {
 	waitForTermination(func() {
 		err := srv.Stop()
 		if err != nil {
-			logger.WithError(err).Error("Error when stopping service")
+			logger.WithField("error", err.Error()).Error("errors occurred while stopping service")
 		}
 	})
 }
@@ -212,9 +212,9 @@ func StartService() *service.Service {
 	srv.RegisterModules(4, 3, CreateModules(r)...)
 
 	if err = srv.Start(); err != nil {
-		logger.WithError(err).Fatal("Service could not be started")
+		logger.WithField("error", err.Error()).Fatal("errors occurred while starting service")
 		if err = srv.Stop(); err != nil {
-			logger.WithError(err).Error("Error when stopping service after Start() failed")
+			logger.WithField("error", err.Error()).Error("errors occured when stopping service after it failed to start")
 		}
 	}
 

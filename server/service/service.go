@@ -4,12 +4,11 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/health"
 
-	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/webserver"
 
-	"fmt"
+	"github.com/hashicorp/go-multierror"
 	"net/http"
 	"reflect"
 	"time"
@@ -86,7 +85,7 @@ func (s *Service) MetricsEndpoint(endpointPrefix string) *Service {
 //   health.Checker:
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
 func (s *Service) Start() error {
-	el := protocol.NewErrorList("errors occurred while starting service: ")
+	var multierr *multierror.Error
 	if s.healthEndpoint != "" {
 		logger.WithField("healthEndpoint", s.healthEndpoint).Info("Health endpoint")
 		s.webserver.Handle(s.healthEndpoint, http.HandlerFunc(health.StatusHandler))
@@ -105,7 +104,7 @@ func (s *Service) Start() error {
 			logger.WithFields(log.Fields{"name": name, "order": order}).Info("Starting module")
 			if err := s.Start(); err != nil {
 				logger.WithError(err).WithField("name", name).Error("Error while starting module")
-				el.Add(err)
+				multierr = multierror.Append(multierr, err)
 			}
 		} else {
 			logger.WithFields(log.Fields{"name": name, "order": order}).Debug("Module is not startable")
@@ -120,27 +119,24 @@ func (s *Service) Start() error {
 			s.webserver.Handle(prefix, e)
 		}
 	}
-	return el.ErrorOrNil()
+	return multierr.ErrorOrNil()
 }
 
 // Stop stops the registered modules in their given order
 func (s *Service) Stop() error {
-	errors := protocol.NewErrorList("service stopping errors: ")
+	var multierr *multierror.Error
 	for order, iface := range s.modulesSortedBy(ascendingStopOrder) {
 		name := reflect.TypeOf(iface).String()
 		if s, ok := iface.(stopable); ok {
 			logger.WithFields(log.Fields{"name": name, "order": order}).Info("Stopping module")
 			if err := s.Stop(); err != nil {
-				errors.Add(err)
+				multierr = multierror.Append(multierr, err)
 			}
 		} else {
 			logger.WithFields(log.Fields{"name": name, "order": order}).Debug("Module is not stoppable")
 		}
 	}
-	if err := errors.ErrorOrNil(); err != nil {
-		return fmt.Errorf("service: errors while stopping modules: %s", err)
-	}
-	return nil
+	return multierr.ErrorOrNil()
 }
 
 // WebServer returns the service *webserver.WebServer instance
