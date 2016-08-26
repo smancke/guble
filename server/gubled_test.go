@@ -6,6 +6,7 @@ import (
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 
+	"fmt"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -111,6 +112,12 @@ func TestStartServiceModules(t *testing.T) {
 	*config.KVS = "memory"
 	*config.MS = "file"
 	*config.GCM.Enabled = false
+
+	// using an available port for http
+	testHttpPort++
+	logger.WithField("port", testHttpPort).Debug("trying to use HTTP Port")
+	*config.HttpListen = fmt.Sprintf(":%d", testHttpPort)
+
 	s := StartService()
 
 	// then the number and ordering of modules should be correct

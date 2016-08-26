@@ -19,8 +19,8 @@ import (
 )
 
 var (
-	testTopic   = "/path"
-	initialPort = 11000
+	testTopic    = "/path"
+	testHttpPort = 11000
 )
 
 type fcmMetricsMap struct {
@@ -58,7 +58,7 @@ func TestGCM_Restart(t *testing.T) {
 	a := assert.New(t)
 
 	receiveC := make(chan bool)
-	s, port := serviceSetUp(t)
+	s := serviceSetUp(t)
 
 	var gcmConnector *gcm.Connector
 	var ok bool
@@ -94,7 +94,7 @@ func TestGCM_Restart(t *testing.T) {
 	}
 
 	httpClient := &http.Client{}
-	u := fmt.Sprintf("http://127.0.0.1:%d/admin/metrics", port)
+	u := fmt.Sprintf("http://%s/admin/metrics", s.WebServer().GetAddr())
 	request, err := http.NewRequest(http.MethodGet, u, nil)
 	a.NoError(err)
 	response, err := httpClient.Do(request)
@@ -149,7 +149,7 @@ func TestGCM_Restart(t *testing.T) {
 
 }
 
-func serviceSetUp(t *testing.T) (*service.Service, int) {
+func serviceSetUp(t *testing.T) *service.Service {
 	dir, errTempDir := ioutil.TempDir("", "guble_gcm_test")
 	defer func() {
 		errRemove := os.RemoveAll(dir)
@@ -169,14 +169,13 @@ func serviceSetUp(t *testing.T) (*service.Service, int) {
 	*config.GCM.Workers = 1 // use only one worker so we can control the number of messages that go to GCM
 
 	var s *service.Service
-	port := initialPort
 	for s == nil {
-		port++
-		logger.WithField("port", port).Debug("trying to use HTTP Port")
-		*config.HttpListen = fmt.Sprintf("127.0.0.1:%d", port)
+		testHttpPort++
+		logger.WithField("port", testHttpPort).Debug("trying to use HTTP Port")
+		*config.HttpListen = fmt.Sprintf(":%d", testHttpPort)
 		s = StartService()
 	}
-	return s, port
+	return s
 }
 
 func clientSetUp(t *testing.T, service *service.Service) client.Client {
