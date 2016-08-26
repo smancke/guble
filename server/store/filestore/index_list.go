@@ -190,10 +190,14 @@ func (l *indexList) contains(id uint64) bool {
 		return false
 	}
 
+	if id == 0 {
+		return true
+	}
+
 	return l.items[0].id <= id && id <= l.items[len(l.items)-1].id
 }
 
-// Extract will return a new list containing items requested by the FetchRequest
+// Extract will return a new list containing items requested by the FetchRequest from this list
 func (l *indexList) extract(req *store.FetchRequest) *indexList {
 	potentialEntries := newIndexList(0)
 	found, pos, lastPos, _ := l.search(req.StartID)
@@ -223,6 +227,11 @@ func (l *indexList) extract(req *store.FetchRequest) *indexList {
 
 		potentialEntries.insert(elem)
 		currentPos += req.Direction
+
+		// // if we reach req.EndID than we break
+		// if req.EndID > 0 && req.EndID >= elem.id {
+		// 	break
+		// }
 	}
 	return potentialEntries
 }

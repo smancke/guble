@@ -194,6 +194,10 @@ func (dms *DummyMessageStore) Check() error {
 	return nil
 }
 
+func (dms *DummyMessageStore) Partition(name string) (store.MessagePartition, error) {
+	return nil, nil
+}
+
 func (dms *DummyMessageStore) Partitions() ([]store.MessagePartition, error) {
 	return nil, nil
 }

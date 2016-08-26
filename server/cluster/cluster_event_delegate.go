@@ -37,7 +37,7 @@ func (cluster *Cluster) eventLog(node *memberlist.Node, message string) {
 }
 
 func (cluster *Cluster) sendPartitions(node *memberlist.Node) {
-	if cluster.synchronizer.inSync(node.Name) {
+	if _, inSync := cluster.synchronizer.inSync(node.Name); inSync {
 		logger.WithField("node", node.Name).Debug("Already in sync with node")
 		return
 	}

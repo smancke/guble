@@ -35,11 +35,11 @@ func New(basedir string) *FileMessageStore {
 
 // MaxMessageID is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) MaxMessageID(partition string) (uint64, error) {
-	p, err := fms.partitionStore(partition)
+	p, err := fms.Partition(partition)
 	if err != nil {
 		return 0, err
 	}
-	return p.MaxMessageID()
+	return p.MaxMessageID(), nil
 }
 
 // Stop the FileMessageStore.
@@ -66,11 +66,11 @@ func (fms *FileMessageStore) Stop() error {
 
 // GenerateNextMsgID is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) GenerateNextMsgID(partitionName string, nodeID uint8) (uint64, int64, error) {
-	p, err := fms.partitionStore(partitionName)
+	p, err := fms.Partition(partitionName)
 	if err != nil {
 		return 0, 0, err
 	}
-	return p.generateNextMsgID(nodeID)
+	return p.(*messagePartition).generateNextMsgID(nodeID)
 }
 
 // StoreMessage is a part of the `store.MessageStore` implementation.
@@ -120,7 +120,7 @@ func (fms *FileMessageStore) StoreMessage(message *protocol.Message, nodeID uint
 // Store stores a message within a partition.
 // It is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) Store(partition string, msgID uint64, msg []byte) error {
-	p, err := fms.partitionStore(partition)
+	p, err := fms.Partition(partition)
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (fms *FileMessageStore) Store(partition string, msgID uint64, msg []byte) e
 // Fetch asynchronously fetches a set of messages defined by the fetch request.
 // It is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) Fetch(req store.FetchRequest) {
-	p, err := fms.partitionStore(req.Partition)
+	p, err := fms.Partition(req.Partition)
 	if err != nil {
 		req.ErrorC <- err
 		return
@@ -140,7 +140,7 @@ func (fms *FileMessageStore) Fetch(req store.FetchRequest) {
 
 // DoInTx is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error {
-	p, err := fms.partitionStore(partition)
+	p, err := fms.Partition(partition)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func (fms *FileMessageStore) Partitions() (partitions []store.MessagePartition, 
 
 	for _, entry := range entries {
 		if entry.IsDir() {
-			partition, err := fms.partitionStore(entry.Name())
+			partition, err := fms.Partition(entry.Name())
 			if err != nil {
 				continue
 			}
@@ -170,7 +170,7 @@ func (fms *FileMessageStore) Partitions() (partitions []store.MessagePartition, 
 	return
 }
 
-func (fms *FileMessageStore) partitionStore(partition string) (*messagePartition, error) {
+func (fms *FileMessageStore) Partition(partition string) (store.MessagePartition, error) {
 	fms.mutex.Lock()
 	defer fms.mutex.Unlock()
 

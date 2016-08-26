@@ -69,11 +69,11 @@ func (p *messagePartition) Name() string {
 	return p.name
 }
 
-func (p *messagePartition) MaxMessageID() (uint64, error) {
+func (p *messagePartition) MaxMessageID() uint64 {
 	p.RLock()
 	defer p.RUnlock()
 
-	return p.maxMessageID, nil
+	return p.maxMessageID
 }
 
 func (p *messagePartition) initialize() error {
@@ -480,7 +480,8 @@ func (p *messagePartition) calculateFetchList(req *store.FetchRequest) (*indexLi
 		potentialEntries.insert(p.list.extract(req).toSliceArray()...)
 	}
 
-	// Currently potentialEntries contains a potentials msgIDs from any files and from inMemory.From this will select only Count Id.
+	// Currently potentialEntries contains a potentials IDs from any files and
+	// from in memory. From this will select only Count.
 	fetchList := potentialEntries.extract(req)
 
 	p.fileCache.RUnlock()

@@ -3,7 +3,7 @@ services:
   cluster_1:
     build:
       context: ..
-      dockerfile: scripts/Dockerfile-cluster.test.yml
+      dockerfile: scripts/Dockerfile-cluster
     entrypoint:
       - /go/bin/app
     environment:
@@ -17,7 +17,7 @@ services:
   cluster_2:
     build:
       context: ..
-      dockerfile: scripts/Dockerfile-cluster.test.yml
+      dockerfile: scripts/Dockerfile-cluster
     entrypoint:
       - /go/bin/app
     environment:

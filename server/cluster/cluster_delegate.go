@@ -32,6 +32,11 @@ func (cluster *Cluster) NotifyMsg(data []byte) {
 		cluster.handleGubleMessage(cmsg)
 	case mtSyncPartitions:
 		cluster.handleSyncPartitions(cmsg)
+	case mtSyncMessage:
+		cluster.handleSyncMessage(cmsg)
+	case mtSyncMessageRequest:
+		// cluster node is requesting to receive messages for sync
+		cluster.handleSyncMessageRequest(cmsg)
 	}
 }
 
@@ -80,4 +85,20 @@ func (cluster *Cluster) handleSyncPartitions(cmsg *message) {
 
 	// add to synchronizer
 	cluster.synchronizer.sync(cmsg.NodeID, partitionsSlice)
+}
+
+func (cluster *Cluster) handleSyncMessage(cmsg *message) {
+	logger.WithField("cmsg", cmsg).Debug("Handling sync message")
+	err := cluster.synchronizer.syncMessage(cmsg.NodeID, cmsg.Body)
+	if err != nil {
+		logger.WithError(err).Error("Error synchronizing messages")
+	}
+}
+
+func (cluster *Cluster) handleSyncMessageRequest(cmsg *message) {
+	logger.WithField("cmsg", cmsg).Debug("Handling sync message request")
+	err := cluster.synchronizer.messageRequest(cmsg.NodeID, cmsg.Body)
+	if err != nil {
+		logger.WithError(err).Error("Error send synchronization messages")
+	}
 }

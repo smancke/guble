@@ -15,6 +15,10 @@ import (
 	"strconv"
 )
 
+var (
+	ErrNodeNotFound = errors.New("Node not found.")
+)
+
 // Config is a struct used by the local node when creating and running the guble cluster
 type Config struct {
 	ID                   uint8
@@ -137,6 +141,14 @@ func (cluster *Cluster) newMessage(t messageType, body []byte) *message {
 	}
 }
 
+func (cluster *Cluster) newEncoderMessage(t messageType, entity encoder) (*message, error) {
+	body, err := entity.encode()
+	if err != nil {
+		return nil, err
+	}
+	return cluster.newMessage(t, body), nil
+}
+
 // BroadcastString broadcasts a string to all the other nodes in the guble cluster
 func (cluster *Cluster) BroadcastString(sMessage *string) error {
 	logger.WithField("string", sMessage).Debug("BroadcastString")
@@ -214,6 +226,25 @@ func (cluster *Cluster) sendMessageToNode(node *memberlist.Node, cmsg *message) 
 		return err
 	}
 
+	return nil
+}
+
+func (cluster *Cluster) sendMessageToNodeID(nodeID uint8, cmsg *message) error {
+	node := cluster.GetNodeByID(nodeID)
+	if node == nil {
+		return ErrNodeNotFound
+	}
+
+	return cluster.sendMessageToNode(node, cmsg)
+}
+
+func (cluster *Cluster) GetNodeByID(id uint8) *memberlist.Node {
+	name := strconv.FormatUint(uint64(id), 10)
+	for _, node := range cluster.memberlist.Members() {
+		if node.Name == name {
+			return node
+		}
+	}
 	return nil
 }
 

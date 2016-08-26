@@ -120,12 +120,12 @@ func Test_MessagePartitionReturningError(t *testing.T) {
 	a := assert.New(t)
 
 	store := New("/TestDir")
-	_, err := store.partitionStore("p1")
+	_, err := store.Partition("p1")
 	a.NotNil(err)
 	fmt.Println(err)
 
 	store2 := New("/")
-	_, err2 := store2.partitionStore("p1")
+	_, err2 := store2.Partition("p1")
 	fmt.Println(err2)
 }
 
