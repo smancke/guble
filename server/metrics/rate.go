@@ -6,20 +6,16 @@ import (
 )
 
 type rate struct {
-	value      int64
-	multiplier float64
+	value string
 }
 
 func newRate(value int64, timeframe, scale time.Duration) rate {
-	return rate{
-		value:      value,
-		multiplier: float64(scale.Nanoseconds()) / float64(timeframe.Nanoseconds()),
+	if value <= 0 || timeframe <= 0 || scale <= 0 {
+		return rate{"0"}
 	}
+	return rate{fmt.Sprintf("%v", float64(value*scale.Nanoseconds())/float64(timeframe.Nanoseconds()))}
 }
 
 func (r rate) String() string {
-	if r.value <= 0 {
-		return "0.0"
-	}
-	return fmt.Sprintf("%v", float64(r.value)*r.multiplier)
+	return r.value
 }

@@ -219,7 +219,7 @@ func (conn *Connector) addSubscription(w http.ResponseWriter, topic, userID, gcm
 		conn.synchronizeSubscription(topic, userID, gcmID, false)
 	} else if err == errSubscriptionExists {
 		logger.WithField("subscription", s).Error("Subscription exists")
-		fmt.Fprintf(w, "subscription exists")
+		fmt.Fprint(w, "subscription exists")
 		return
 	}
 

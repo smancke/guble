@@ -42,11 +42,11 @@ func processAndReset(m metrics.Map, timeframe time.Duration, t time.Time) {
 
 	m.Init()
 	resetCurrentMetrics(m, t)
-	metrics.SetRate(m, "last_messages_rate_s", msgNumberValue, timeframe, time.Second)
-	metrics.SetRate(m, "last_errors_rate_s", errNumberValue, timeframe, time.Second)
-	metrics.SetAverage(m, "last_messages_average_latency_ms",
+	metrics.SetRate(m, "last_messages_rate_sec", msgNumberValue, timeframe, time.Second)
+	metrics.SetRate(m, "last_errors_rate_sec", errNumberValue, timeframe, time.Second)
+	metrics.SetAverage(m, "last_messages_average_latency_msec",
 		msgLatenciesValue, msgNumberValue, scaleMillisecond, defaultAverageLatencyJSONValue)
-	metrics.SetAverage(m, "last_errors_average_latency_ms",
+	metrics.SetAverage(m, "last_errors_average_latency_msec",
 		errLatenciesValue, errNumberValue, scaleMillisecond, defaultAverageLatencyJSONValue)
 }
 
