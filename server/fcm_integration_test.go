@@ -93,7 +93,7 @@ func TestGCM_Restart(t *testing.T) {
 	}
 
 	httpClient := &http.Client{}
-	u := fmt.Sprintf("http://localhost:%d/admin/metrics", port)
+	u := fmt.Sprintf("http://127.0.0.1:%d/admin/metrics", port)
 	request, err := http.NewRequest(http.MethodGet, u, nil)
 	a.NoError(err)
 	response, err := httpClient.Do(request)
@@ -172,7 +172,7 @@ func serviceSetUp(t *testing.T) (*service.Service, int) {
 	for s == nil {
 		port++
 		logger.WithField("port", port).Debug("trying to use HTTP Port")
-		*config.HttpListen = fmt.Sprintf(":%d", port)
+		*config.HttpListen = fmt.Sprintf("127.0.0.1:%d", port)
 		s = StartService()
 	}
 	return s, port
