@@ -57,7 +57,7 @@ func TestGCM_Restart(t *testing.T) {
 	a := assert.New(t)
 
 	receiveC := make(chan bool)
-	s := serviceSetUp(t)
+	s, port := serviceSetUp(t)
 
 	var gcmConnector *gcm.Connector
 	var ok bool
@@ -93,7 +93,8 @@ func TestGCM_Restart(t *testing.T) {
 	}
 
 	httpClient := &http.Client{}
-	request, err := http.NewRequest(http.MethodGet, "http://localhost:8082/admin/metrics", nil)
+	u := fmt.Sprintf("http://localhost:%d/admin/metrics", port)
+	request, err := http.NewRequest(http.MethodGet, u, nil)
 	a.NoError(err)
 	response, err := httpClient.Do(request)
 	a.NoError(err)
@@ -147,7 +148,7 @@ func TestGCM_Restart(t *testing.T) {
 
 }
 
-func serviceSetUp(t *testing.T) *service.Service {
+func serviceSetUp(t *testing.T) (*service.Service, int) {
 	dir, errTempDir := ioutil.TempDir("", "guble_gcm_test")
 	defer func() {
 		errRemove := os.RemoveAll(dir)
@@ -157,7 +158,6 @@ func serviceSetUp(t *testing.T) *service.Service {
 	}()
 	assert.NoError(t, errTempDir)
 
-	*config.HttpListen = "localhost:8082"
 	*config.KVS = "memory"
 	*config.MS = "file"
 	*config.Cluster.NodeID = 0
@@ -167,7 +167,14 @@ func serviceSetUp(t *testing.T) *service.Service {
 	*config.GCM.APIKey = "WILL BE OVERWRITTEN"
 	*config.GCM.Workers = 1 // use only one worker so we can control the number of messages that go to GCM
 
-	return StartService()
+	var s *service.Service
+	port := 10000
+	for s == nil {
+		port++
+		*config.HttpListen = fmt.Sprintf("localhost:%d", port)
+		s = StartService()
+	}
+	return s, port
 }
 
 func clientSetUp(t *testing.T, service *service.Service) client.Client {
