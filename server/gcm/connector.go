@@ -120,7 +120,7 @@ func (conn *Connector) Check() error {
 	payload := messageMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
 	_, err := conn.Sender.Send(gcm.NewMessage(payload, ""), sendRetries)
 	if err != nil {
-		logger.WithError(err).Error("Error sending pipe message")
+		logger.WithError(err).Error("Error checking GCM connection")
 		return err
 	}
 	return nil

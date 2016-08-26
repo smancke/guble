@@ -46,6 +46,8 @@ type MessagePartition interface {
 	// MaxMessageID return the last message ID stored in this partition
 	MaxMessageID() uint64
 
+	Count() uint64
+
 	Store(uint64, []byte) error
 
 	Fetch(req *FetchRequest)
