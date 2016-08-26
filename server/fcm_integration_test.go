@@ -171,7 +171,8 @@ func serviceSetUp(t *testing.T) (*service.Service, int) {
 	port := 10000
 	for s == nil {
 		port++
-		*config.HttpListen = fmt.Sprintf("localhost:%d", port)
+		logger.WithField("port", port).Debug("trying to use HTTP Port")
+		*config.HttpListen = fmt.Sprintf(":%d", port)
 		s = StartService()
 	}
 	return s, port
