@@ -19,7 +19,8 @@ import (
 )
 
 var (
-	testTopic = "/path"
+	testTopic   = "/path"
+	initialPort = 11000
 )
 
 type fcmMetricsMap struct {
@@ -168,7 +169,7 @@ func serviceSetUp(t *testing.T) (*service.Service, int) {
 	*config.GCM.Workers = 1 // use only one worker so we can control the number of messages that go to GCM
 
 	var s *service.Service
-	port := 10000
+	port := initialPort
 	for s == nil {
 		port++
 		logger.WithField("port", port).Debug("trying to use HTTP Port")
