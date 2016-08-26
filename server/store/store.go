@@ -42,7 +42,9 @@ type MessagePartition interface {
 	Name() string
 
 	// MaxMessageID return the last message ID stored in this partition
-	MaxMessageID() (uint64, error)
+	MaxMessageID() uint64
+
+	Count() uint64
 }
 
 // FetchRequest is used for fetching messages in a MessageStore.

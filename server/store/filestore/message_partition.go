@@ -40,17 +40,17 @@ type index struct {
 }
 
 type messagePartition struct {
-	basedir            string
-	name               string
-	appendFile         *os.File
-	indexFile          *os.File
-	appendFilePosition uint64
-	maxMessageID       uint64
-	sequenceNumber     uint64
-
-	entriesCount uint64
-	list         *indexList
-	fileCache    *cache
+	basedir               string
+	name                  string
+	appendFile            *os.File
+	indexFile             *os.File
+	appendFilePosition    uint64
+	maxMessageID          uint64
+	sequenceNumber        uint64
+	totalNumberOfMessages uint64
+	entriesCount          uint64
+	list                  *indexList
+	fileCache             *cache
 
 	sync.RWMutex
 }
@@ -69,11 +69,18 @@ func (p *messagePartition) Name() string {
 	return p.name
 }
 
-func (p *messagePartition) MaxMessageID() (uint64, error) {
+func (p *messagePartition) MaxMessageID() uint64 {
 	p.RLock()
 	defer p.RUnlock()
 
-	return p.maxMessageID, nil
+	return p.maxMessageID
+}
+
+func (p *messagePartition) Count() uint64 {
+	p.RLock()
+	defer p.RUnlock()
+
+	return p.totalNumberOfMessages
 }
 
 func (p *messagePartition) initialize() error {
@@ -129,6 +136,8 @@ func (p *messagePartition) readIdxFiles() error {
 			}).Error("Error loading existing .idxFile")
 			return err
 		}
+		//add to total number of messages per partition
+		p.totalNumberOfMessages += messagesPerFile
 
 		// put entry in file cache
 		p.fileCache.add(cEntry)
@@ -151,7 +160,8 @@ func (p *messagePartition) readIdxFiles() error {
 		}).Error("Error loading last .idx file")
 		return err
 	}
-
+	//add the last part
+	p.totalNumberOfMessages += uint64(p.list.len())
 	back := p.list.back()
 
 	if back != nil && back.id >= p.maxMessageID {
@@ -365,6 +375,7 @@ func (p *messagePartition) store(messageID uint64, data []byte) error {
 		return err
 	}
 	p.entriesCount++
+	p.totalNumberOfMessages++
 
 	log.WithFields(log.Fields{
 		"p.noOfEntriesInIndexFile": p.entriesCount,

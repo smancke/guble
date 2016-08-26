@@ -39,7 +39,7 @@ func (fms *FileMessageStore) MaxMessageID(partition string) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return p.MaxMessageID()
+	return p.MaxMessageID(), nil
 }
 
 // Stop the FileMessageStore.
