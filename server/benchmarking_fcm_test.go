@@ -241,9 +241,9 @@ func (params *benchParams) createClients() []client.Client {
 	clients := make([]client.Client, 0, params.clients)
 	for clientID := 0; clientID < params.clients; clientID++ {
 		location := wsURL + strconv.Itoa(clientID)
-		client, err := client.Open(location, "http://localhost/", 1000, true)
+		c, err := client.Open(location, "http://localhost/", 1000, true)
 		assert.NoError(params, err)
-		clients = append(clients, client)
+		clients = append(clients, c)
 	}
 	return clients
 }

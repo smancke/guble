@@ -6,23 +6,23 @@ import (
 )
 
 var (
-	mTotalSentMessages      = metrics.NewInt("guble.gcm.total_sent_messages")
-	mTotalSentMessageErrors = metrics.NewInt("guble.gcm.total_sent_message_errors")
-	mMinute                 = metrics.NewMap("guble.gcm.minute")
-	mHour                   = metrics.NewMap("guble.gcm.hour")
-	mDay                    = metrics.NewMap("guble.gcm.day")
+	mTotalSentMessages      = metrics.NewInt("guble.fcm.total_sent_messages")
+	mTotalSentMessageErrors = metrics.NewInt("guble.fcm.total_sent_message_errors")
+	mMinute                 = metrics.NewMap("guble.fcm.minute")
+	mHour                   = metrics.NewMap("guble.fcm.hour")
+	mDay                    = metrics.NewMap("guble.fcm.day")
 )
 
 const (
-	currentTotalMessagesLatenciesKey = "current_messages_total_latencies"
+	currentTotalMessagesLatenciesKey = "current_messages_total_latencies_nanos"
 	currentTotalMessagesKey          = "current_messages_count"
-	currentTotalErrorsLatenciesKey   = "current_errors_total_latencies"
+	currentTotalErrorsLatenciesKey   = "current_errors_total_latencies_nanos"
 	currentTotalErrorsKey            = "current_errors_count"
 	defaultAverageLatencyJSONValue   = "\"\""
-	scaleMillisecond                 = 1000000
+	milliPerNano                     = 1000000
 )
 
-func startGCMMetrics() {
+func startMetrics() {
 	mTotalSentMessages.Set(0)
 	mTotalSentMessageErrors.Set(0)
 	t := time.Now()
@@ -45,9 +45,9 @@ func processAndReset(m metrics.Map, timeframe time.Duration, t time.Time) {
 	metrics.SetRate(m, "last_messages_rate_sec", msgNumberValue, timeframe, time.Second)
 	metrics.SetRate(m, "last_errors_rate_sec", errNumberValue, timeframe, time.Second)
 	metrics.SetAverage(m, "last_messages_average_latency_msec",
-		msgLatenciesValue, msgNumberValue, scaleMillisecond, defaultAverageLatencyJSONValue)
+		msgLatenciesValue, msgNumberValue, milliPerNano, defaultAverageLatencyJSONValue)
 	metrics.SetAverage(m, "last_errors_average_latency_msec",
-		errLatenciesValue, errNumberValue, scaleMillisecond, defaultAverageLatencyJSONValue)
+		errLatenciesValue, errNumberValue, milliPerNano, defaultAverageLatencyJSONValue)
 }
 
 func resetCurrentMetrics(m metrics.Map, t time.Time) {

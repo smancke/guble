@@ -13,12 +13,13 @@ import (
 )
 
 const (
-	defaultHttpListen     = ":8080"
-	defaultHealthEndpoint = "/_health"
-	defaultKVSBackend     = "file"
-	defaultMSBackend      = "file"
-	defaultStoragePath    = "/var/lib/guble"
-	defaultNodePort       = "10000"
+	defaultHttpListen      = ":8080"
+	defaultHealthEndpoint  = "/admin/healthcheck"
+	defaultMetricsEndpoint = "/admin/metrics"
+	defaultKVSBackend      = "file"
+	defaultMSBackend       = "file"
+	defaultStoragePath     = "/var/lib/guble"
+	defaultNodePort        = "10000"
 )
 
 var (
@@ -72,7 +73,7 @@ var (
 			Enum(logLevels()...),
 		EnvName: kingpin.Flag("env", `Name of the environment on which the application is running`).
 			Default(development).
-			Envar("GUBLE_ENV_NAME").
+			Envar("GUBLE_ENV").
 			Enum(environments...),
 		HttpListen: kingpin.Flag("http", `The address to for the HTTP server to listen on (format: "[Host]:Port")`).
 			Default(defaultHttpListen).
@@ -96,8 +97,8 @@ var (
 			Default(defaultHealthEndpoint).
 			Envar("GUBLE_HEALTH_ENDPOINT").
 			String(),
-		MetricsEndpoint: kingpin.Flag("metrics-endpoint", `The metrics endpoint to be used by the HTTP server (disabled by default; a possible value for enabling it: "/_metrics" )`).
-			Default("").
+		MetricsEndpoint: kingpin.Flag("metrics-endpoint", `The metrics endpoint to be used by the HTTP server (value for disabling it: "")`).
+			Default(defaultMetricsEndpoint).
 			Envar("GUBLE_METRICS_ENDPOINT").
 			String(),
 		Postgres: PostgresConfig{

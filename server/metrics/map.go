@@ -14,10 +14,10 @@ type Map interface {
 	Add(key string, delta int64)
 }
 
-func SetRate(m Map, key string, value expvar.Var, timeframe, scale time.Duration) {
+func SetRate(m Map, key string, value expvar.Var, timeframe, unit time.Duration) {
 	if value != nil {
 		v, _ := strconv.ParseInt(value.String(), 10, 64)
-		m.Set(key, newRate(v, timeframe, scale))
+		m.Set(key, newRate(v, timeframe, unit))
 	} else {
 		m.Set(key, zeroValue)
 	}

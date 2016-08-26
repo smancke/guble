@@ -8,7 +8,7 @@ import (
 	"net"
 )
 
-func TestParsingOfEnviromentVariables(t *testing.T) {
+func TestParsingOfEnvironmentVariables(t *testing.T) {
 	a := assert.New(t)
 
 	originalArgs := os.Args
@@ -22,8 +22,8 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_LOG", "debug")
 	defer os.Unsetenv("GUBLE_LOG")
 
-	os.Setenv("GUBLE_ENV_NAME", "dev")
-	defer os.Unsetenv("GUBLE_ENV_NAME")
+	os.Setenv("GUBLE_ENV", "dev")
+	defer os.Unsetenv("GUBLE_ENV")
 
 	os.Setenv("GUBLE_KVS", "kvs-backend")
 	defer os.Unsetenv("GUBLE_KVS")
