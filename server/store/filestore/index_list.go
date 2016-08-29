@@ -229,9 +229,9 @@ func (l *indexList) extract(req *store.FetchRequest) *indexList {
 		currentPos += req.Direction
 
 		// // if we reach req.EndID than we break
-		// if req.EndID > 0 && req.EndID >= elem.id {
-		// 	break
-		// }
+		if req.EndID > 0 && elem.id >= req.EndID {
+			break
+		}
 	}
 	return potentialEntries
 }

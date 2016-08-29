@@ -158,7 +158,7 @@ func TestSynchronizerIntegration(t *testing.T) {
 	client1.Send(syncTopic, "nobody", "")
 	client1.Send(syncTopic, "nobody", "")
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
 		HttpListen: ":8081",
@@ -168,14 +168,4 @@ func TestSynchronizerIntegration(t *testing.T) {
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
-
-	// client2, err := node2.client("client2", 10, true)
-	// a.NoError(err)
-
-	time.Sleep(8 * time.Second)
-
-	// client2.Subscribe(syncTopic)
-
-	// m := <-client2.Messages()
-	// log.WithField("message", m).Error("Message")
 }

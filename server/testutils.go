@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
+
 	"github.com/smancke/guble/server/gcm"
 	"github.com/smancke/guble/testutil"
 
@@ -139,6 +141,7 @@ func (tcn *testClusterNode) Unsubscribe(topic, id string) {
 }
 
 func (tcn *testClusterNode) cleanup(removeDir bool) {
+	log.Error("DAFUQ Cleaning up")
 	tcn.GCM.cleanup()
 	err := tcn.Service.Stop()
 	assert.NoError(tcn.t, err)

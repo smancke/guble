@@ -119,6 +119,8 @@ func (cluster *Cluster) Start() error {
 
 // Stop the cluster module.
 func (cluster *Cluster) Stop() error {
+	logger.Error("Stopping cluster")
+	close(cluster.synchronizer.stopC)
 	return cluster.memberlist.Shutdown()
 }
 

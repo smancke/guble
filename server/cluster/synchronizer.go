@@ -50,6 +50,7 @@ func newSynchronizer(cluster *Cluster) (*synchronizer, error) {
 		nodes:          make(map[uint8]partitions),
 
 		logger: logger.WithField("module", "synchronizer"),
+		stopC:  make(chan struct{}),
 	}, nil
 }
 
@@ -131,36 +132,6 @@ func (s *synchronizer) messageRequest(nodeID uint8, data []byte) error {
 	return nil
 }
 
-// syncMessage received data from another node after we made a request for a set
-// of messages  it will decode the data into a *syncMessage and send it into the
-// appropiate syncPartition processC channel
-func (s *synchronizer) syncMessage(nodeID uint8, data []byte) error {
-	if !s.inSyncID(nodeID) {
-		return ErrNodeNotInSync
-	}
-
-	sm := &syncMessage{}
-	err := sm.decode(data)
-	if err != nil {
-		logger.WithError(err).WithFields(log.Fields{
-			"nodeID": nodeID,
-			"data":   string(data),
-		}).Error("Error decoding sync message received")
-		return err
-	}
-
-	s.RLock()
-	defer s.RUnlock()
-
-	syncPartition, exists := s.syncPartitions[sm.Partition]
-	if !exists {
-		return ErrMissingSyncPartition
-	}
-
-	syncPartition.processC <- sm
-	return nil
-}
-
 // requestLoop handles sending messages fetched from the store to the node
 // that made the request a message sent from here will be received by the syncMessage
 // method on the other node
@@ -173,7 +144,7 @@ func (s *synchronizer) requestLoop(nodeID uint8, smr *syncMessageRequest) {
 	req := store.FetchRequest{
 		Partition: smr.Partition,
 		StartID:   smr.StartID,
-		// EndID:     smr.EndID,
+		EndID:     smr.EndID,
 		Direction: 1,
 		MessageC:  make(chan store.FetchedMessage, 10),
 		ErrorC:    make(chan error),
@@ -225,6 +196,41 @@ func (s *synchronizer) requestLoop(nodeID uint8, smr *syncMessageRequest) {
 	}
 }
 
+// syncMessage received data from another node after we made a request for a set
+// of messages  it will decode the data into a *syncMessage and send it into the
+// appropiate syncPartition processC channel
+func (s *synchronizer) syncMessage(nodeID uint8, data []byte) error {
+	if !s.inSyncID(nodeID) {
+		return ErrNodeNotInSync
+	}
+
+	sm := &syncMessage{}
+	err := sm.decode(data)
+	if err != nil {
+		logger.WithError(err).WithFields(log.Fields{
+			"nodeID": nodeID,
+			"data":   string(data),
+		}).Error("Error decoding sync message received")
+		return err
+	}
+
+	s.RLock()
+	defer s.RUnlock()
+
+	syncPartition, exists := s.syncPartitions[sm.Partition]
+	if !exists {
+		return ErrMissingSyncPartition
+	}
+
+	s.logger.WithFields(log.Fields{
+		"sm":           sm,
+		"syncPartiton": syncPartition,
+	}).Debug("Processing received message")
+
+	syncPartition.processC <- sm
+	return nil
+}
+
 // keep state of fetching for a partition
 type syncPartition struct {
 	sync.RWMutex
@@ -260,8 +266,9 @@ func (sp *syncPartition) loop() {
 	// get node with the highest message
 	maxID, nodeID := sp.maxIDNode()
 
+	partitionName := sp.localPartition.Name()
 	cmsg, err := sp.synchronizer.cluster.newEncoderMessage(mtSyncMessageRequest, &syncMessageRequest{
-		Partition: sp.localPartition.Name(),
+		Partition: partitionName,
 		StartID:   sp.lastID,
 		EndID:     maxID,
 	})
@@ -283,6 +290,23 @@ func (sp *syncPartition) loop() {
 	for {
 		// wait to receive the message
 		// end the loop in case we are stopping the process or we finished synchronizing
+		select {
+		case sm, opened := <-sp.processC:
+			err := sp.synchronizer.store.Store(partitionName, sm.ID, sm.Message)
+			if err != nil {
+				sp.synchronizer.logger.WithError(err).
+					WithField("messageID", sm.ID).
+					Error("Error storing synchronize message")
+			}
+
+			// end loop if we reached the end
+			sp.lastID = sm.ID
+			if sm.ID >= maxID {
+				return
+			}
+		case <-sp.synchronizer.stopC:
+			return
+		}
 	}
 }
 
