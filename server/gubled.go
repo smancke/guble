@@ -167,11 +167,14 @@ func Main() {
 	}
 
 	srv := StartService()
+	if srv == nil {
+		logger.Fatal("exiting because of unrecoverable error(s) when starting the service")
+	}
 
 	waitForTermination(func() {
 		err := srv.Stop()
 		if err != nil {
-			logger.WithError(err).Error("Error when stopping service")
+			logger.WithField("error", err.Error()).Error("errors occurred while stopping service")
 		}
 	})
 }
@@ -212,10 +215,11 @@ func StartService() *service.Service {
 	srv.RegisterModules(4, 3, CreateModules(r)...)
 
 	if err = srv.Start(); err != nil {
+		logger.WithField("error", err.Error()).Error("errors occurred while starting service")
 		if err = srv.Stop(); err != nil {
-			logger.WithError(err).Error("Error when stopping service after Start() failed")
+			logger.WithField("error", err.Error()).Error("errors occured when stopping service after it failed to start")
 		}
-		logger.WithError(err).Fatal("Service could not be started")
+		return nil
 	}
 
 	return srv

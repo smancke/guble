@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"encoding/json"
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/server/gcm"
 	"github.com/smancke/guble/server/service"
@@ -18,23 +19,50 @@ import (
 )
 
 var (
-	testTopic = "/path"
+	testTopic    = "/path"
+	testHttpPort = 11000
 )
+
+type fcmMetricsMap struct {
+	CurrentErrorsCount            int `json:"current_errors_count"`
+	CurrentMessagesCount          int `json:"current_messages_count"`
+	CurrentMessagesTotalLatencies int `json:"current_messages_total_latencies_nanos"`
+	CurrentErrorsTotalLatencies   int `json:"current_errors_total_latencies_nanos"`
+}
+
+type fcmMetrics struct {
+	TotalSentMessages      int           `json:"guble.fcm.total_sent_messages"`
+	TotalSentMessageErrors int           `json:"guble.fcm.total_sent_message_errors"`
+	Minute                 fcmMetricsMap `json:"guble.fcm.minute"`
+	Hour                   fcmMetricsMap `json:"guble.fcm.hour"`
+	Day                    fcmMetricsMap `json:"guble.fcm.day"`
+}
+
+type routerMetrics struct {
+	CurrentRoutes        int `json:"guble.router.current_routes"`
+	CurrentSubscriptions int `json:"guble.router.current_subscriptions"`
+}
+
+type expectedValues struct {
+	MessageCount         int
+	CurrentRoutes        int
+	CurrentSubscriptions int
+}
 
 // Test that restarting the service continues to fetch messages from store
 // for a subscription from lastID
 func TestGCM_Restart(t *testing.T) {
-	//	defer testutil.EnableDebugForMethod()()
+	//defer testutil.EnableDebugForMethod()()
 	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	a := assert.New(t)
 
 	receiveC := make(chan bool)
-	service := serviceSetUp(t)
+	s := serviceSetUp(t)
 
 	var gcmConnector *gcm.Connector
 	var ok bool
-	for _, iface := range service.ModulesSortedByStartOrder() {
+	for _, iface := range s.ModulesSortedByStartOrder() {
 		gcmConnector, ok = iface.(*gcm.Connector)
 		if ok {
 			break
@@ -48,33 +76,51 @@ func TestGCM_Restart(t *testing.T) {
 			http.StatusOK, testutil.SuccessGCMResponse, receiveC, 10*time.Millisecond))
 
 	// create subscription on topic
-	subscriptionSetUp(t, service)
+	subscriptionSetUp(t, s)
 
-	client := clientSetUp(t, service)
+	c := clientSetUp(t, s)
 
 	// send 3 messages in the router but read only one and close the service
 	for i := 0; i < 3; i++ {
-		client.Send(testTopic, "dummy body", "{dummy: value}")
+		c.Send(testTopic, "dummy body", "{dummy: value}")
 	}
 
 	// receive one message only from GCM
 	select {
 	case <-receiveC:
-		return
+		break
 	case <-time.After(50 * time.Millisecond):
 		a.Fail("GCM message not received")
 	}
 
+	httpClient := &http.Client{}
+	u := fmt.Sprintf("http://%s/admin/metrics", s.WebServer().GetAddr())
+	request, err := http.NewRequest(http.MethodGet, u, nil)
+	a.NoError(err)
+	response, err := httpClient.Do(request)
+	a.NoError(err)
+	defer response.Body.Close()
+
+	a.Equal(http.StatusOK, response.StatusCode)
+	bodyBytes, err := ioutil.ReadAll(response.Body)
+	a.NoError(err)
+	logger.WithField("body", string(bodyBytes)).Debug("metrics response")
+
+	assertMetrics(a, bodyBytes, expectedValues{1, 1, 1})
+
+	//TODO Bogdan please check / fix the rest of the test
+	return
+
 	// restart the service
-	a.NoError(service.Stop())
+	a.NoError(s.Stop())
 
 	time.Sleep(100 * time.Millisecond)
 
-	a.NoError(service.Start())
+	a.NoError(s.Start())
 
 	newReceiveC := make(chan bool)
 
-	for _, iface := range service.ModulesSortedByStartOrder() {
+	for _, iface := range s.ModulesSortedByStartOrder() {
 		gcmConnector, ok = iface.(*gcm.Connector)
 		if ok {
 			break
@@ -91,11 +137,16 @@ func TestGCM_Restart(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		select {
 		case <-newReceiveC:
+			//TODO Bogdan probably remove "return", because we should receive more messages
 			return
 		case <-time.After(50 * time.Millisecond):
 			a.Fail("GCM message not received")
 		}
 	}
+
+	//TODO Cosmin after test code actually reaches here:
+	// invoke metrics endpoint and assertMetrics once again
+
 }
 
 func serviceSetUp(t *testing.T) *service.Service {
@@ -108,24 +159,30 @@ func serviceSetUp(t *testing.T) *service.Service {
 	}()
 	assert.NoError(t, errTempDir)
 
-	*config.HttpListen = "localhost:0"
 	*config.KVS = "memory"
 	*config.MS = "file"
 	*config.Cluster.NodeID = 0
 	*config.StoragePath = dir
+	*config.MetricsEndpoint = "/admin/metrics"
 	*config.GCM.Enabled = true
 	*config.GCM.APIKey = "WILL BE OVERWRITTEN"
 	*config.GCM.Workers = 1 // use only one worker so we can control the number of messages that go to GCM
 
-	service := StartService()
-	return service
+	var s *service.Service
+	for s == nil {
+		testHttpPort++
+		logger.WithField("port", testHttpPort).Debug("trying to use HTTP Port")
+		*config.HttpListen = fmt.Sprintf("127.0.0.1:%d", testHttpPort)
+		s = StartService()
+	}
+	return s
 }
 
 func clientSetUp(t *testing.T, service *service.Service) client.Client {
 	wsURL := "ws://" + service.WebServer().GetAddr() + "/stream/user/user01"
-	client, err := client.Open(wsURL, "http://localhost/", 1000, false)
+	c, err := client.Open(wsURL, "http://localhost/", 1000, false)
 	assert.NoError(t, err)
-	return client
+	return c
 }
 
 func subscriptionSetUp(t *testing.T, service *service.Service) {
@@ -144,4 +201,35 @@ func subscriptionSetUp(t *testing.T, service *service.Service) {
 	body, errReadAll := ioutil.ReadAll(response.Body)
 	a.NoError(errReadAll)
 	a.Equal(fmt.Sprintf("subscribed: %s\n", testTopic), string(body))
+}
+
+func assertMetrics(a *assert.Assertions, bodyBytes []byte, expected expectedValues) {
+	mFCM := &fcmMetrics{}
+	err := json.Unmarshal(bodyBytes, mFCM)
+	a.NoError(err)
+
+	a.Equal(0, mFCM.TotalSentMessageErrors)
+	a.Equal(expected.MessageCount, mFCM.TotalSentMessages)
+
+	a.Equal(0, mFCM.Minute.CurrentErrorsCount)
+	a.Equal(expected.MessageCount, mFCM.Minute.CurrentMessagesCount)
+	a.Equal(0, mFCM.Minute.CurrentErrorsTotalLatencies)
+	a.True(mFCM.Minute.CurrentMessagesTotalLatencies > 0)
+
+	a.Equal(0, mFCM.Hour.CurrentErrorsCount)
+	a.Equal(expected.MessageCount, mFCM.Hour.CurrentMessagesCount)
+	a.Equal(0, mFCM.Hour.CurrentErrorsTotalLatencies)
+	a.True(mFCM.Hour.CurrentMessagesTotalLatencies > 0)
+
+	a.Equal(0, mFCM.Day.CurrentErrorsCount)
+	a.Equal(expected.MessageCount, mFCM.Day.CurrentMessagesCount)
+	a.Equal(0, mFCM.Day.CurrentErrorsTotalLatencies)
+	a.True(mFCM.Day.CurrentMessagesTotalLatencies > 0)
+
+	mRouter := &routerMetrics{}
+	err = json.Unmarshal(bodyBytes, mRouter)
+	a.NoError(err)
+
+	a.Equal(expected.CurrentRoutes, mRouter.CurrentRoutes)
+	a.Equal(expected.CurrentSubscriptions, mRouter.CurrentSubscriptions)
 }

@@ -85,7 +85,7 @@ func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int, en
 
 // Start opens the connector, creates more goroutines / workers to handle messages coming from the router
 func (conn *Connector) Start() error {
-	startGCMMetrics()
+	startMetrics()
 
 	// start subscription sync loop if we are in cluster mode
 	if conn.cluster != nil {
@@ -121,7 +121,7 @@ func (conn *Connector) Check() error {
 	payload := messageMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
 	_, err := conn.Sender.Send(gcm.NewMessage(payload, ""), sendRetries)
 	if err != nil {
-		logger.WithError(err).Error("Error sending pipe message")
+		logger.WithError(err).Error("Error checking GCM connection")
 		return err
 	}
 	return nil
@@ -219,7 +219,7 @@ func (conn *Connector) addSubscription(w http.ResponseWriter, topic, userID, gcm
 		conn.synchronizeSubscription(topic, userID, gcmID, false)
 	} else if err == errSubscriptionExists {
 		logger.WithField("subscription", s).Error("Subscription exists")
-		fmt.Fprintf(w, "subscription exists")
+		fmt.Fprint(w, "subscription exists")
 		return
 	}
 

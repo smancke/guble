@@ -16,8 +16,8 @@ func NewMap(name string) Map {
 	return expvar.NewMap(name)
 }
 
-func Every(d time.Duration, f func(Map, time.Time), m Map) {
-	for x := range time.Tick(d) {
-		f(m, x)
+func Every(d time.Duration, f func(Map, time.Duration, time.Time), m Map) {
+	for t := range time.Tick(d) {
+		f(m, d, t)
 	}
 }

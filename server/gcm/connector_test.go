@@ -41,9 +41,9 @@ func TestConnector_ServeHTTPWithErrorCases(t *testing.T) {
 	a := assert.New(t)
 	gcm, _, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
 
-	url, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe/notifications")
+	u, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe/notifications")
 	// and a http context
-	req := &http.Request{URL: url, Method: "GET"}
+	req := &http.Request{URL: u, Method: "GET"}
 	w := httptest.NewRecorder()
 
 	// do a GET instead of POST
@@ -55,7 +55,7 @@ func TestConnector_ServeHTTPWithErrorCases(t *testing.T) {
 
 	// send a new request with wrong parameters encoding
 	req.Method = "POST"
-	req.URL, _ = url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe3/notifications")
+	req.URL, _ = u.Parse("http://localhost/gcm/marvin/gcmId123/subscribe3/notifications")
 
 	w2 := httptest.NewRecorder()
 	gcm.ServeHTTP(w2, req)
@@ -350,9 +350,9 @@ func TestConnector_SubscriptionExists(t *testing.T) {
 	routerMock.EXPECT().Subscribe(gomock.Any())
 
 	w := httptest.NewRecorder()
-	url := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", "user01", "gcm01", "/test")
+	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", "user01", "gcm01", "/test")
 
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequest(http.MethodPost, u, nil)
 	a.NoError(err)
 
 	gcm.ServeHTTP(w, req)
@@ -397,8 +397,8 @@ func testSimpleGCM(t *testing.T, mockStore bool) (*Connector, *MockRouter, *Mock
 
 func postSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string) {
 	a := assert.New(t)
-	url := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
+	req, err := http.NewRequest(http.MethodPost, u, nil)
 	a.NoError(err)
 	w := httptest.NewRecorder()
 
@@ -409,9 +409,8 @@ func postSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string)
 
 func deleteSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string) {
 	a := assert.New(t)
-
-	url := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
-	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
+	req, err := http.NewRequest(http.MethodDelete, u, nil)
 	a.NoError(err)
 	w := httptest.NewRecorder()
 
