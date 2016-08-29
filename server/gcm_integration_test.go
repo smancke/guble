@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"encoding/json"
+
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/server/gcm"
 	"github.com/smancke/guble/server/service"
@@ -52,13 +53,14 @@ type expectedValues struct {
 // Test that restarting the service continues to fetch messages from store
 // for a subscription from lastID
 func TestGCM_Restart(t *testing.T) {
-	//defer testutil.EnableDebugForMethod()()
+	defer testutil.EnableDebugForMethod()()
 	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	a := assert.New(t)
 
 	receiveC := make(chan bool)
-	s := serviceSetUp(t)
+	s, cleanup := serviceSetUp(t)
+	defer cleanup()
 
 	var gcmConnector *gcm.Connector
 	var ok bool
@@ -90,7 +92,7 @@ func TestGCM_Restart(t *testing.T) {
 	case <-receiveC:
 		break
 	case <-time.After(50 * time.Millisecond):
-		a.Fail("GCM message not received")
+		a.Fail("Initial GCM message not received")
 	}
 
 	httpClient := &http.Client{}
@@ -108,55 +110,49 @@ func TestGCM_Restart(t *testing.T) {
 
 	assertMetrics(a, bodyBytes, expectedValues{1, 1, 1})
 
-	//TODO Bogdan please check / fix the rest of the test
-	return
-
 	// restart the service
 	a.NoError(s.Stop())
 
-	time.Sleep(100 * time.Millisecond)
+	// TODO Bogdan finish fixing this test
+	// time.Sleep(2 * time.Second)
 
-	a.NoError(s.Start())
+	// s, cleanup = serviceSetUp(t)
+	// defer cleanup()
 
-	newReceiveC := make(chan bool)
+	// a.NoError(s.Start())
+	// time.Sleep(2 * time.Second)
 
-	for _, iface := range s.ModulesSortedByStartOrder() {
-		gcmConnector, ok = iface.(*gcm.Connector)
-		if ok {
-			break
-		}
-	}
-	a.True(ok, "There should be a module of type GCMConnector")
+	// // newReceiveC := make(chan bool)
+	// for _, iface := range s.ModulesSortedByStartOrder() {
+	// 	gcmConnector, ok = iface.(*gcm.Connector)
+	// 	if ok {
+	// 		break
+	// 	}
+	// }
+	// a.True(ok, "There should be a module of type GCMConnector")
 
 	// add a high timeout so the messages are processed slow
-	gcmConnector.Sender = testutil.CreateGcmSender(
-		testutil.CreateRoundTripperWithCountAndTimeout(
-			http.StatusOK, testutil.SuccessGCMResponse, newReceiveC, 10*time.Millisecond))
+	// gcmConnector.Sender = testutil.CreateGcmSender(
+	// 	testutil.CreateRoundTripperWithCountAndTimeout(
+	// 		http.StatusOK, testutil.SuccessGCMResponse, newReceiveC, 10*time.Millisecond))
 
 	// read the other 2 messages
-	for i := 0; i < 2; i++ {
-		select {
-		case <-newReceiveC:
-			//TODO Bogdan probably remove "return", because we should receive more messages
-			return
-		case <-time.After(50 * time.Millisecond):
-			a.Fail("GCM message not received")
-		}
-	}
+	// for i := 0; i < 2; i++ {
+	// 	select {
+	// 	case <-receiveC:
+	// 		continue
+	// 	case <-time.After(150 * time.Millisecond):
+	// 		a.Fail("GCM message not received")
+	// 	}
+	// }
 
 	//TODO Cosmin after test code actually reaches here:
 	// invoke metrics endpoint and assertMetrics once again
 
 }
 
-func serviceSetUp(t *testing.T) *service.Service {
+func serviceSetUp(t *testing.T) (*service.Service, func()) {
 	dir, errTempDir := ioutil.TempDir("", "guble_gcm_test")
-	defer func() {
-		errRemove := os.RemoveAll(dir)
-		if errRemove != nil {
-			logger.WithError(errRemove).WithField("module", "testing").Error("Could not remove directory")
-		}
-	}()
 	assert.NoError(t, errTempDir)
 
 	*config.KVS = "memory"
@@ -175,7 +171,12 @@ func serviceSetUp(t *testing.T) *service.Service {
 		*config.HttpListen = fmt.Sprintf("127.0.0.1:%d", testHttpPort)
 		s = StartService()
 	}
-	return s
+	return s, func() {
+		errRemove := os.RemoveAll(dir)
+		if errRemove != nil {
+			logger.WithError(errRemove).WithField("module", "testing").Error("Could not remove directory")
+		}
+	}
 }
 
 func clientSetUp(t *testing.T, service *service.Service) client.Client {

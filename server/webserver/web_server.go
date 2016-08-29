@@ -44,11 +44,14 @@ func (ws *WebServer) Start() (err error) {
 }
 
 // Stop the WebServer (implementing service.stopable interface).
-func (ws *WebServer) Stop() error {
+func (ws *WebServer) Stop() (err error) {
 	if ws.ln != nil {
-		return ws.ln.Close()
+		err = ws.ln.Close()
 	}
-	return nil
+
+	// reset the mux
+	ws.mux = http.NewServeMux()
+	return
 }
 
 // Handle the given prefix using the given handler.

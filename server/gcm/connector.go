@@ -14,12 +14,13 @@ import (
 
 	"errors"
 	"fmt"
-	"github.com/smancke/guble/server/metrics"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/smancke/guble/server/metrics"
 )
 
 const (
@@ -298,6 +299,7 @@ func (conn *Connector) loadSubscription(entry [2]string) {
 		"gcmID":  gcmID,
 		"userID": userID,
 		"topic":  topic,
+		"lastID": lastID,
 	}).Debug("Loaded GCM subscription")
 }
 

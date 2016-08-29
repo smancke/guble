@@ -102,7 +102,7 @@ func (s *subscription) exists() bool {
 
 func (s *subscription) subscribe() error {
 	if _, err := s.connector.router.Subscribe(s.route); err != nil {
-		s.logger.WithError(err).Error("Error subscribing")
+		s.logger.WithError(err).Error("Error subscribing in router")
 		return err
 	}
 	s.logger.Debug("Subscribed")
@@ -236,7 +236,7 @@ func (s *subscription) fetch() error {
 		s.connector.wg.Done()
 	}()
 
-	s.logger.Debug("Fetching from store")
+	s.logger.WithField("lastID", s.lastID).Debug("Fetching from store")
 	req := s.createFetchRequest()
 	if err := s.connector.router.Fetch(req); err != nil {
 		return err
