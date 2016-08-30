@@ -10,6 +10,7 @@ import (
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/rest"
+	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/server/store"
 	"github.com/smancke/guble/server/store/dummystore"
@@ -26,7 +27,7 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/smancke/guble/server/router"
+	"github.com/pkg/profile"
 )
 
 const (
@@ -244,4 +245,18 @@ func waitForTermination(callback func()) {
 	metrics.LogOnDebugLevel()
 	logger.Info("Exit gracefully now")
 	os.Exit(0)
+}
+
+func startProfile(mode string) {
+	switch mode {
+	case cpuProfile:
+		defer profile.Start(profile.CPUProfile).Stop()
+	case memProfile:
+		defer profile.Start(profile.MemProfile).Stop()
+	case blockProfile:
+		defer profile.Start(profile.BlockProfile).Stop()
+	default:
+		return
+	}
+	logger.WithField("mode", mode).Info("started profiling")
 }
