@@ -208,7 +208,7 @@ func (h *tcpAddrList) Set(value string) error {
 	return nil
 }
 
-func stringToTcpAddrList(s kingpin.Settings) (target *tcpAddrList) {
+func stringToTcpAddrList(s kingpin.Settings) *tcpAddrList {
 	slist := make(tcpAddrList, 0)
 	s.SetValue(&slist)
 	return &slist
