@@ -95,7 +95,7 @@ func TestGCM_Restart(t *testing.T) {
 	}
 
 	httpClient := &http.Client{}
-	u := fmt.Sprintf("http://%s/admin/metrics", s.WebServer().GetAddr())
+	u := fmt.Sprintf("http://%s%s", s.WebServer().GetAddr(), defaultMetricsEndpoint)
 	request, err := http.NewRequest(http.MethodGet, u, nil)
 	a.NoError(err)
 	response, err := httpClient.Do(request)
