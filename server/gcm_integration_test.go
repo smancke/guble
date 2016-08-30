@@ -46,6 +46,7 @@ type routerMetrics struct {
 }
 
 type expectedValues struct {
+	ZeroLatencies        bool
 	MessageCount         int
 	CurrentRoutes        int
 	CurrentSubscriptions int
@@ -62,6 +63,8 @@ func TestGCM_Restart(t *testing.T) {
 	receiveC := make(chan bool)
 	s, cleanup := serviceSetUp(t)
 	defer cleanup()
+
+	assertMetrics(a, s, expectedValues{true, 0, 0, 0})
 
 	var gcmConnector *gcm.Connector
 	var ok bool
@@ -81,6 +84,8 @@ func TestGCM_Restart(t *testing.T) {
 	// create subscription on topic
 	subscriptionSetUp(t, s)
 
+	assertMetrics(a, s, expectedValues{true, 0, 1, 1})
+
 	c := clientSetUp(t, s)
 
 	// send 3 messages in the router but read only one and close the service
@@ -95,7 +100,7 @@ func TestGCM_Restart(t *testing.T) {
 		a.Fail("Initial GCM message not received")
 	}
 
-	assertMetrics(a, s, expectedValues{1, 1, 1})
+	assertMetrics(a, s, expectedValues{false, 1, 1, 1})
 
 	// restart the service
 	a.NoError(s.Stop())
@@ -103,6 +108,8 @@ func TestGCM_Restart(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	testutil.ResetDefaultRegistryHealthCheck()
 	a.NoError(s.Start())
+
+	//TODO Cosmin Bogdan add 2 calls to assertMetrics before and after the next block
 
 	// read the other 2 messages
 	for i := 0; i < 2; i++ {
@@ -112,8 +119,6 @@ func TestGCM_Restart(t *testing.T) {
 			a.Fail("GCM message not received")
 		}
 	}
-
-	assertMetrics(a, s, expectedValues{2, 1, 1})
 }
 
 func serviceSetUp(t *testing.T) (*service.Service, func()) {
@@ -194,17 +199,17 @@ func assertMetrics(a *assert.Assertions, s *service.Service, expected expectedVa
 	a.Equal(0, mFCM.Minute.CurrentErrorsCount)
 	a.Equal(expected.MessageCount, mFCM.Minute.CurrentMessagesCount)
 	a.Equal(0, mFCM.Minute.CurrentErrorsTotalLatencies)
-	a.True(mFCM.Minute.CurrentMessagesTotalLatencies > 0)
+	a.Equal(expected.ZeroLatencies, mFCM.Minute.CurrentMessagesTotalLatencies == 0)
 
 	a.Equal(0, mFCM.Hour.CurrentErrorsCount)
 	a.Equal(expected.MessageCount, mFCM.Hour.CurrentMessagesCount)
 	a.Equal(0, mFCM.Hour.CurrentErrorsTotalLatencies)
-	a.True(mFCM.Hour.CurrentMessagesTotalLatencies > 0)
+	a.Equal(expected.ZeroLatencies, mFCM.Hour.CurrentMessagesTotalLatencies == 0)
 
 	a.Equal(0, mFCM.Day.CurrentErrorsCount)
 	a.Equal(expected.MessageCount, mFCM.Day.CurrentMessagesCount)
 	a.Equal(0, mFCM.Day.CurrentErrorsTotalLatencies)
-	a.True(mFCM.Day.CurrentMessagesTotalLatencies > 0)
+	a.Equal(expected.ZeroLatencies, mFCM.Day.CurrentMessagesTotalLatencies == 0)
 
 	mRouter := &routerMetrics{}
 	err = json.Unmarshal(bodyBytes, mRouter)
