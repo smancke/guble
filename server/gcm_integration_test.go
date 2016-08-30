@@ -20,8 +20,9 @@ import (
 )
 
 var (
-	testTopic    = "/path"
-	testHttpPort = 11000
+	testTopic            = "/path"
+	testHttpPort         = 11000
+	timeoutForOneMessage = 50 * time.Millisecond
 )
 
 type fcmMetricsMap struct {
@@ -90,38 +91,29 @@ func TestGCM_Restart(t *testing.T) {
 	// receive one message only from GCM
 	select {
 	case <-receiveC:
-	case <-time.After(50 * time.Millisecond):
+	case <-time.After(timeoutForOneMessage):
 		a.Fail("Initial GCM message not received")
 	}
 
-	httpClient := &http.Client{}
-	u := fmt.Sprintf("http://%s%s", s.WebServer().GetAddr(), defaultMetricsEndpoint)
-	request, err := http.NewRequest(http.MethodGet, u, nil)
-	a.NoError(err)
-	response, err := httpClient.Do(request)
-	a.NoError(err)
-	defer response.Body.Close()
-
-	a.Equal(http.StatusOK, response.StatusCode)
-	bodyBytes, err := ioutil.ReadAll(response.Body)
-	a.NoError(err)
-	logger.WithField("body", string(bodyBytes)).Debug("metrics response")
-
-	assertMetrics(a, bodyBytes, expectedValues{1, 1, 1})
+	assertMetrics(a, s, expectedValues{1, 1, 1})
 
 	// restart the service
 	a.NoError(s.Stop())
 
+	time.Sleep(50 * time.Millisecond)
+	testutil.ResetDefaultRegistryHealthCheck()
 	a.NoError(s.Start())
 
 	// read the other 2 messages
 	for i := 0; i < 2; i++ {
 		select {
 		case <-receiveC:
-		case <-time.After(150 * time.Millisecond):
+		case <-time.After(2 * timeoutForOneMessage):
 			a.Fail("GCM message not received")
 		}
 	}
+
+	assertMetrics(a, s, expectedValues{1, 1, 1})
 
 	//TODO Cosmin after test code actually reaches here:
 	// invoke metrics endpoint and assertMetrics once again
@@ -180,9 +172,23 @@ func subscriptionSetUp(t *testing.T, service *service.Service) {
 	a.Equal(fmt.Sprintf("subscribed: %s\n", testTopic), string(body))
 }
 
-func assertMetrics(a *assert.Assertions, bodyBytes []byte, expected expectedValues) {
+func assertMetrics(a *assert.Assertions, s *service.Service, expected expectedValues) {
+	httpClient := &http.Client{}
+	u := fmt.Sprintf("http://%s%s", s.WebServer().GetAddr(), defaultMetricsEndpoint)
+	request, err := http.NewRequest(http.MethodGet, u, nil)
+	a.NoError(err)
+
+	response, err := httpClient.Do(request)
+	a.NoError(err)
+	defer response.Body.Close()
+
+	a.Equal(http.StatusOK, response.StatusCode)
+	bodyBytes, err := ioutil.ReadAll(response.Body)
+	a.NoError(err)
+	logger.WithField("body", string(bodyBytes)).Debug("metrics response")
+
 	mFCM := &fcmMetrics{}
-	err := json.Unmarshal(bodyBytes, mFCM)
+	err = json.Unmarshal(bodyBytes, mFCM)
 	a.NoError(err)
 
 	a.Equal(0, mFCM.TotalSentMessageErrors)
