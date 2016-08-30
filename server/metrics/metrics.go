@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime"
 )
 
 var logger = log.WithField("module", "metrics")
@@ -30,6 +31,7 @@ func writeMetrics(w io.Writer) {
 		first = false
 		fmt.Fprintf(w, "%q: %s", kv.Key, kv.Value)
 	})
+	fmt.Fprintf(w, ",\n%q: %d", "num_goroutines", runtime.NumGoroutine())
 	fmt.Fprint(w, "\n}\n")
 }
 
