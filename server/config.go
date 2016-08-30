@@ -90,7 +90,6 @@ var (
 			String(),
 		KVS: kingpin.Flag("kvs", "The storage backend for the key-value store to use : file | memory").
 			Default(defaultKVSBackend).
-			HintOptions("file", "memory").
 			Envar("GUBLE_KVS").
 			String(),
 		MS: kingpin.Flag("ms", "The message storage backend : file | memory").
@@ -110,9 +109,8 @@ var (
 			Default(defaultMetricsEndpoint).
 			Envar("GUBLE_METRICS_ENDPOINT").
 			String(),
-		Profile: kingpin.Flag("profile", `The profiler to be used (default: none)`).
+		Profile: kingpin.Flag("profile", `The profiler to be used (default: none): mem | cpu | block`).
 			Default("").
-			HintOptions("mem", "cpu", "block").
 			Envar("GUBLE_PROFILE").
 			Enum("mem", "cpu", "block", ""),
 		Postgres: PostgresConfig{
