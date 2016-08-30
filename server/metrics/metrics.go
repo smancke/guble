@@ -13,7 +13,10 @@ import (
 	"runtime"
 )
 
-var logger = log.WithField("module", "metrics")
+var (
+	logger        = log.WithField("module", "metrics")
+	numGoroutines = expvar.NewInt("num_goroutines")
+)
 
 // HttpHandler is a HTTP handler writing the current metrics to the http.ResponseWriter
 func HttpHandler(rw http.ResponseWriter, r *http.Request) {
@@ -22,6 +25,7 @@ func HttpHandler(rw http.ResponseWriter, r *http.Request) {
 }
 
 func writeMetrics(w io.Writer) {
+	numGoroutines.Set(int64(runtime.NumGoroutine()))
 	fmt.Fprint(w, "{\n")
 	first := true
 	expvar.Do(func(kv expvar.KeyValue) {
@@ -31,7 +35,6 @@ func writeMetrics(w io.Writer) {
 		first = false
 		fmt.Fprintf(w, "%q: %s", kv.Key, kv.Value)
 	})
-	fmt.Fprintf(w, ",\n%q: %d", "num_goroutines", runtime.NumGoroutine())
 	fmt.Fprint(w, "\n}\n")
 }
 
