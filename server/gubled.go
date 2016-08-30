@@ -167,6 +167,8 @@ func Main() {
 		logger.Fatal("Fatal error in gubled in validation of storage path")
 	}
 
+	startProfile(*config.Profile)
+
 	srv := StartService()
 	if srv == nil {
 		logger.Fatal("exiting because of unrecoverable error(s) when starting the service")
