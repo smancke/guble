@@ -174,10 +174,10 @@ func (s *subscription) shouldFetch() bool {
 func (s *subscription) subscriptionLoop() {
 	s.logger.Debug("Starting subscription loop")
 
-	s.connector.wg.Add(1)
+	// s.connector.wg.Add(1)
 	defer func() {
 		s.logger.Debug("Stopped subscription loop")
-		s.connector.wg.Done()
+		// s.connector.wg.Done()
 	}()
 
 	var (
@@ -187,7 +187,9 @@ func (s *subscription) subscriptionLoop() {
 	for opened {
 		select {
 		case m, opened = <-s.route.MessagesChannel():
+			s.logger.WithField("m", m).Error("Received message")
 			if !opened {
+				s.logger.Error("Route channel is closed")
 				continue
 			}
 

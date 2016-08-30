@@ -86,6 +86,7 @@ func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int, en
 
 // Start opens the connector, creates more goroutines / workers to handle messages coming from the router
 func (conn *Connector) Start() error {
+	conn.stopC = make(chan bool)
 	startMetrics()
 
 	// start subscription sync loop if we are in cluster mode
