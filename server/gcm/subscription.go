@@ -6,6 +6,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Bogh/gcm"
 	log "github.com/Sirupsen/logrus"
@@ -188,6 +189,14 @@ func (s *subscription) subscriptionLoop() {
 	for opened {
 		select {
 		case m, opened = <-s.route.MessagesChannel():
+			// TODO Bogdan This needs to be remade and we should gracefully shutdown
+			// and wait for this channel to empty before stopping the loop
+			select {
+			case <-s.connector.stopC:
+				return
+			case <-time.After(10 * time.Millisecond):
+			}
+
 			if !opened {
 				s.logger.Error("Route channel is closed")
 				continue
