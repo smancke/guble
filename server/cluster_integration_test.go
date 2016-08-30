@@ -174,12 +174,25 @@ func TestSynchronizerIntegration(t *testing.T) {
 
 	cmd := &protocol.Cmd{
 		Name: protocol.CmdReceive,
-		Arg:  "/sync -3",
+		Arg:  syncTopic + " -3",
 	}
+	doneC := make(chan struct{})
 	go func() {
-		m := <-client2.Messages()
-		log.WithField("m", m).Error("Message received from first cluster")
+		for {
+			select {
+			case m := <-client2.Messages():
+				log.WithField("m", m).Error("Message received from first cluster")
+			case e := <-client2.Errors():
+				log.WithField("clientError", e).Error("Client error")
+			case status := <-client2.StatusMessages():
+				log.WithField("status", status).Error("Client status messasge")
+			case <-doneC:
+				return
+			}
+		}
 	}()
+	log.Error(string(cmd.Bytes()))
 	client2.WriteRawMessage(cmd.Bytes())
-	time.Sleep(5 * time.Second)
+	time.Sleep(10 * time.Second)
+	close(doneC)
 }
