@@ -20,10 +20,18 @@ const (
 	defaultMSBackend       = "file"
 	defaultStoragePath     = "/var/lib/guble"
 	defaultNodePort        = "10000"
+	development            = "dev"
+	integration            = "int"
+	preproduction          = "pre"
+	production             = "prod"
+	memProfile             = "mem"
+	cpuProfile             = "cpu"
+	blockProfile           = "block"
 )
 
 var (
 	defaultGCMEndpoint = gcm.GcmSendEndpoint
+	environments       = []string{development, integration, preproduction, production}
 )
 
 type (
@@ -58,6 +66,7 @@ type (
 		StoragePath     *string
 		HealthEndpoint  *string
 		MetricsEndpoint *string
+		Profile         *string
 		Postgres        PostgresConfig
 		GCM             GCMConfig
 		Cluster         ClusterConfig
@@ -101,29 +110,57 @@ var (
 			Default(defaultMetricsEndpoint).
 			Envar("GUBLE_METRICS_ENDPOINT").
 			String(),
+		Profile: kingpin.Flag("profile", `The profiler to be used (default: none)`).
+			Default("").
+			HintOptions("mem", "cpu", "block").
+			Envar("GUBLE_PROFILE").
+			Enum("mem", "cpu", "block", ""),
 		Postgres: PostgresConfig{
-			Host:     kingpin.Flag("pg-host", "The PostgreSQL hostname").Default("localhost").Envar("GUBLE_PG_HOST").String(),
-			Port:     kingpin.Flag("pg-port", "The PostgreSQL port").Default("5432").Envar("GUBLE_PG_PORT").Int(),
-			User:     kingpin.Flag("pg-user", "The PostgreSQL user").Default("guble").Envar("GUBLE_PG_USER").String(),
-			Password: kingpin.Flag("pg-password", "The PostgreSQL password").Default("guble").Envar("GUBLE_PG_PASSWORD").String(),
-			DbName:   kingpin.Flag("pg-dbname", "The PostgreSQL database name").Default("guble").Envar("GUBLE_PG_DBNAME").String(),
+			Host: kingpin.Flag("pg-host", "The PostgreSQL hostname").
+				Default("localhost").
+				Envar("GUBLE_PG_HOST").
+				String(),
+			Port: kingpin.Flag("pg-port", "The PostgreSQL port").
+				Default("5432").
+				Envar("GUBLE_PG_PORT").
+				Int(),
+			User: kingpin.Flag("pg-user", "The PostgreSQL user").
+				Default("guble").
+				Envar("GUBLE_PG_USER").
+				String(),
+			Password: kingpin.Flag("pg-password", "The PostgreSQL password").
+				Default("guble").
+				Envar("GUBLE_PG_PASSWORD").
+				String(),
+			DbName: kingpin.Flag("pg-dbname", "The PostgreSQL database name").
+				Default("guble").
+				Envar("GUBLE_PG_DBNAME").
+				String(),
 		},
 		GCM: GCMConfig{
 			Enabled: kingpin.Flag("gcm", "Enable the Google Cloud Messaging Connector").
-				Envar("GUBLE_GCM").Bool(),
+				Envar("GUBLE_GCM").
+				Bool(),
 			APIKey: kingpin.Flag("gcm-api-key", "The Google API Key for Google Cloud Messaging").
-				Envar("GUBLE_GCM_API_KEY").String(),
+				Envar("GUBLE_GCM_API_KEY").
+				String(),
 			Workers: kingpin.Flag("gcm-workers", "The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)").
-				Default(strconv.Itoa(runtime.GOMAXPROCS(0))).Envar("GUBLE_GCM_WORKERS").Int(),
+				Default(strconv.Itoa(runtime.GOMAXPROCS(0))).
+				Envar("GUBLE_GCM_WORKERS").
+				Int(),
 			Endpoint: kingpin.Flag("gcm-endpoint", "The Google Cloud Messaging endpoint").
 				Default(defaultGCMEndpoint).
-				Envar("GUBLE_GCM_ENDPOINT").String(),
+				Envar("GUBLE_GCM_ENDPOINT").
+				String(),
 		},
 		Cluster: ClusterConfig{
 			NodeID: kingpin.Flag("node-id", "(cluster mode) This guble node's own ID: a strictly positive integer number which must be unique in cluster").
-				Envar("GUBLE_NODE_ID").Int(),
+				Envar("GUBLE_NODE_ID").
+				Int(),
 			NodePort: kingpin.Flag("node-port", "(cluster mode) This guble node's own local port: a strictly positive integer number").
-				Default(defaultNodePort).Envar("GUBLE_NODE_PORT").Int(),
+				Default(defaultNodePort).
+				Envar("GUBLE_NODE_PORT").
+				Int(),
 			Remotes: stringToTcpAddrList(kingpin.Flag("remotes", `(cluster mode) The list of TCP addresses of some other guble nodes (format: "IP:port")`).
 				Envar("GUBLE_NODE_REMOTES")),
 		},
@@ -136,15 +173,6 @@ func logLevels() (levels []string) {
 	}
 	return
 }
-
-const (
-	development   string = "dev"
-	integration   string = "int"
-	preproduction string = "pre"
-	production    string = "prod"
-)
-
-var environments []string = []string{development, integration, preproduction, production}
 
 // parseConfig parses the flags from command line. Must be used before accessing the config.
 // If there are missing or invalid arguments it will exit the application
