@@ -291,7 +291,7 @@ func (sp *syncPartition) loop() {
 		// wait to receive the message
 		// end the loop in case we are stopping the process or we finished synchronizing
 		select {
-		case sm, opened := <-sp.processC:
+		case sm := <-sp.processC:
 			err := sp.synchronizer.store.Store(partitionName, sm.ID, sm.Message)
 			if err != nil {
 				sp.synchronizer.logger.WithError(err).

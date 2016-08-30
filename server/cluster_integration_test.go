@@ -168,4 +168,18 @@ func TestSynchronizerIntegration(t *testing.T) {
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
+
+	client2, err := node2.client("client2", 10, true)
+	a.NoError(err)
+
+	cmd := &protocol.Cmd{
+		Name: protocol.CmdReceive,
+		Arg:  "/sync -3",
+	}
+	go func() {
+		m := <-client2.Messages()
+		log.WithField("m", m).Error("Message received from first cluster")
+	}()
+	client2.WriteRawMessage(cmd.Bytes())
+	time.Sleep(5 * time.Second)
 }
