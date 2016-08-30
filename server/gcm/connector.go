@@ -86,7 +86,8 @@ func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int, en
 
 // Start opens the connector, creates more goroutines / workers to handle messages coming from the router
 func (conn *Connector) Start() error {
-	conn.stopC = make(chan bool)
+	conn.reset()
+
 	startMetrics()
 
 	// start subscription sync loop if we are in cluster mode
@@ -97,7 +98,7 @@ func (conn *Connector) Start() error {
 	}
 
 	// blocking until current subs are loaded
-	conn.loadSubscriptions()
+	go conn.loadSubscriptions()
 
 	go func() {
 		for id := 1; id <= conn.nWorkers; id++ {
@@ -105,6 +106,11 @@ func (conn *Connector) Start() error {
 		}
 	}()
 	return nil
+}
+
+func (conn *Connector) reset() {
+	conn.stopC = make(chan bool)
+	conn.subscriptions = make(map[string]*subscription)
 }
 
 // Stop signals the closing of GCMConnector

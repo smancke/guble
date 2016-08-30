@@ -163,7 +163,7 @@ func CreateRoundTripperWithCountAndTimeout(statusCode int, body string, countC c
 func responseBuilder(statusCode int, body string) *http.Response {
 	headers := make(http.Header)
 	headers.Add("Content-Type", "application/json")
-	log.WithFields(log.Fields{"status": statusCode}).Debug("Building response")
+	log.WithFields(log.Fields{"status": statusCode}).Debug("Building GCM response")
 	return &http.Response{
 		Proto:      "HTTP/1.1",
 		ProtoMajor: 1,

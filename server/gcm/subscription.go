@@ -55,6 +55,7 @@ func newSubscription(connector *Connector, route *router.Route, lastID uint64) *
 		"gcmID":  route.Get(applicationIDKey),
 		"userID": route.Get(userIDKey),
 		"topic":  string(route.Path),
+		"lastID": lastID,
 	})
 	if connector.cluster != nil {
 		subLogger = subLogger.WithField("nodeID", connector.cluster.Config.ID)
@@ -69,14 +70,14 @@ func newSubscription(connector *Connector, route *router.Route, lastID uint64) *
 }
 
 // initSubscription creates a subscription and adds it in router/kvstore then starts listening for messages
-func initSubscription(connector *Connector, topic, userID, gcmID string, unusedLastID uint64, store bool) (*subscription, error) {
+func initSubscription(connector *Connector, topic, userID, gcmID string, lastID uint64, store bool) (*subscription, error) {
 	route := router.NewRoute(router.RouteConfig{
 		RouteParams: router.RouteParams{userIDKey: userID, applicationIDKey: gcmID},
 		Path:        protocol.Path(topic),
 		ChannelSize: subBufferSize,
 	})
 
-	s := newSubscription(connector, route, 0)
+	s := newSubscription(connector, route, lastID)
 	if s.exists() {
 		return nil, errSubscriptionExists
 	}
@@ -174,10 +175,10 @@ func (s *subscription) shouldFetch() bool {
 func (s *subscription) subscriptionLoop() {
 	s.logger.Debug("Starting subscription loop")
 
-	// s.connector.wg.Add(1)
+	s.connector.wg.Add(1)
 	defer func() {
 		s.logger.Debug("Stopped subscription loop")
-		// s.connector.wg.Done()
+		s.connector.wg.Done()
 	}()
 
 	var (
@@ -187,7 +188,6 @@ func (s *subscription) subscriptionLoop() {
 	for opened {
 		select {
 		case m, opened = <-s.route.MessagesChannel():
-			s.logger.WithField("m", m).Error("Received message")
 			if !opened {
 				s.logger.Error("Route channel is closed")
 				continue
@@ -227,11 +227,6 @@ func (s *subscription) subscriptionLoop() {
 
 // fetch messages from store starting with lastID
 func (s *subscription) fetch() error {
-	// if s.lastID == 0 {
-	// 	s.logger.WithField("lastID", s.lastID).Debug("Nothing to fetch")
-	// 	return nil
-	// }
-
 	s.connector.wg.Add(1)
 	defer func() {
 		s.logger.WithField("lastID", s.lastID).Debug("Stop fetching")
@@ -258,6 +253,7 @@ func (s *subscription) fetch() error {
 				return err
 			}
 			s.logger.WithFields(log.Fields{"ID": msgAndID.ID, "parsedID": message.ID}).Debug("Fetched message")
+
 			// Pipe message into gcm connector
 			s.pipe(message)
 		case err := <-req.ErrorC:

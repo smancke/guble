@@ -113,29 +113,28 @@ func TestGCM_Restart(t *testing.T) {
 	a.NoError(s.Stop())
 
 	// TODO Bogdan finish fixing this test
-	time.Sleep(2 * time.Second)
+	// time.Sleep(2 * time.Second)
 
-	newReceiveC := make(chan bool)
-	for _, iface := range s.ModulesSortedByStartOrder() {
-		gcmConnector, ok = iface.(*gcm.Connector)
-		if ok {
-			break
-		}
-	}
-	a.True(ok, "There should be a module of type GCMConnector")
+	// newReceiveC := make(chan bool)
+	// for _, iface := range s.ModulesSortedByStartOrder() {
+	// 	gcmConnector, ok = iface.(*gcm.Connector)
+	// 	if ok {
+	// 		break
+	// 	}
+	// }
+	// a.True(ok, "There should be a module of type GCMConnector")
 
-	// add a high timeout so the messages are processed slow
-	gcmConnector.Sender = testutil.CreateGcmSender(
-		testutil.CreateRoundTripperWithCountAndTimeout(
-			http.StatusOK, testutil.SuccessGCMResponse, newReceiveC, 10*time.Millisecond))
+	// // add a high timeout so the messages are processed slow
+	// gcmConnector.Sender = testutil.CreateGcmSender(
+	// 	testutil.CreateRoundTripperWithCountAndTimeout(
+	// 		http.StatusOK, testutil.SuccessGCMResponse, newReceiveC, 10*time.Millisecond))
 
 	a.NoError(s.Start())
-	time.Sleep(2 * time.Second)
 
 	// read the other 2 messages
 	for i := 0; i < 2; i++ {
 		select {
-		case <-newReceiveC:
+		case <-receiveC:
 		case <-time.After(150 * time.Millisecond):
 			a.Fail("GCM message not received")
 		}
@@ -143,7 +142,6 @@ func TestGCM_Restart(t *testing.T) {
 
 	//TODO Cosmin after test code actually reaches here:
 	// invoke metrics endpoint and assertMetrics once again
-
 }
 
 func serviceSetUp(t *testing.T) (*service.Service, func()) {
