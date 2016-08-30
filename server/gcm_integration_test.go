@@ -112,23 +112,6 @@ func TestGCM_Restart(t *testing.T) {
 	// restart the service
 	a.NoError(s.Stop())
 
-	// TODO Bogdan finish fixing this test
-	// time.Sleep(2 * time.Second)
-
-	// newReceiveC := make(chan bool)
-	// for _, iface := range s.ModulesSortedByStartOrder() {
-	// 	gcmConnector, ok = iface.(*gcm.Connector)
-	// 	if ok {
-	// 		break
-	// 	}
-	// }
-	// a.True(ok, "There should be a module of type GCMConnector")
-
-	// // add a high timeout so the messages are processed slow
-	// gcmConnector.Sender = testutil.CreateGcmSender(
-	// 	testutil.CreateRoundTripperWithCountAndTimeout(
-	// 		http.StatusOK, testutil.SuccessGCMResponse, newReceiveC, 10*time.Millisecond))
-
 	a.NoError(s.Start())
 
 	// read the other 2 messages
