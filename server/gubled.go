@@ -147,27 +147,38 @@ var CreateModules = func(router router.Router) []interface{} {
 
 // Main is the entry-point of the guble server.
 func Main() {
-	parseConfig()
-
-	log.SetFormatter(&logformatter.LogstashFormatter{Env: *config.EnvName})
 	defer func() {
 		if p := recover(); p != nil {
 			logger.Fatal("Fatal error in gubled after recover")
 		}
 	}()
 
-	// set log level
+	parseConfig()
+
+	log.SetFormatter(&logformatter.LogstashFormatter{Env: *config.EnvName})
 	level, err := log.ParseLevel(*config.Log)
 	if err != nil {
 		logger.WithError(err).Fatal("Invalid log level")
 	}
 	log.SetLevel(level)
 
+	switch *config.Profile {
+	case cpuProfile:
+		logger.Info("starting to profile cpu")
+		defer profile.Start(profile.CPUProfile).Stop()
+	case memProfile:
+		logger.Info("starting to profile memory")
+		defer profile.Start(profile.MemProfile).Stop()
+	case blockProfile:
+		logger.Info("starting to profile blocking/contention")
+		defer profile.Start(profile.BlockProfile).Stop()
+	default:
+		logger.Debug("no profiling was started")
+	}
+
 	if err := ValidateStoragePath(); err != nil {
 		logger.Fatal("Fatal error in gubled in validation of storage path")
 	}
-
-	startProfile(*config.Profile)
 
 	srv := StartService()
 	if srv == nil {
@@ -242,23 +253,10 @@ func exitIfInvalidClusterParams(nodeID int, nodePort int, remotes []*net.TCPAddr
 func waitForTermination(callback func()) {
 	signalC := make(chan os.Signal)
 	signal.Notify(signalC, syscall.SIGINT, syscall.SIGTERM)
-	logger.Infof("Got signal '%v' .. exiting gracefully now", <-signalC)
+	sig := <-signalC
+	logger.Infof("Got signal '%v' .. exiting gracefully now", sig)
 	callback()
 	metrics.LogOnDebugLevel()
 	logger.Info("Exit gracefully now")
 	os.Exit(0)
-}
-
-func startProfile(mode string) {
-	switch mode {
-	case cpuProfile:
-		defer profile.Start(profile.CPUProfile).Stop()
-	case memProfile:
-		defer profile.Start(profile.MemProfile).Stop()
-	case blockProfile:
-		defer profile.Start(profile.BlockProfile).Stop()
-	default:
-		return
-	}
-	logger.WithField("mode", mode).Info("started profiling")
 }
