@@ -114,9 +114,6 @@ func TestGCM_Restart(t *testing.T) {
 	}
 
 	assertMetrics(a, s, expectedValues{2, 1, 1})
-
-	//TODO Cosmin after test code actually reaches here:
-	// invoke metrics endpoint and assertMetrics once again
 }
 
 func serviceSetUp(t *testing.T) (*service.Service, func()) {
