@@ -113,13 +113,15 @@ func (cluster *Cluster) Start() error {
 	}
 
 	logger.Debug("Started Cluster")
-	// go cluster.
+
 	return nil
 }
 
 // Stop the cluster module.
 func (cluster *Cluster) Stop() error {
-	close(cluster.synchronizer.stopC)
+	if cluster.synchronizer != nil {
+		close(cluster.synchronizer.stopC)
+	}
 	return cluster.memberlist.Shutdown()
 }
 

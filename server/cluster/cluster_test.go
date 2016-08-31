@@ -179,7 +179,7 @@ func TestCluster_StartShouldReturnErrorWhenNoMessageHandler(t *testing.T) {
 	err = node.Start()
 	if a.Error(err, "An error is expected when Starting the Cluster") {
 		expected := errors.New("There should be a valid Router already set-up")
-		a.Equal(err, expected, "Error should be precisely defined")
+		a.Equal(expected, err, "Error should be precisely defined")
 	}
 }
 

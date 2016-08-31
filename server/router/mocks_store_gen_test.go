@@ -71,6 +71,28 @@ func (_mr *_MockMessageStoreRecorder) MaxMessageID(arg0 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaxMessageID", arg0)
 }
 
+func (_m *MockMessageStore) Partition(_param0 string) (store.MessagePartition, error) {
+	ret := _m.ctrl.Call(_m, "Partition", _param0)
+	ret0, _ := ret[0].(store.MessagePartition)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockMessageStoreRecorder) Partition(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Partition", arg0)
+}
+
+func (_m *MockMessageStore) Partitions() ([]store.MessagePartition, error) {
+	ret := _m.ctrl.Call(_m, "Partitions")
+	ret0, _ := ret[0].([]store.MessagePartition)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockMessageStoreRecorder) Partitions() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Partitions")
+}
+
 func (_m *MockMessageStore) Store(_param0 string, _param1 uint64, _param2 []byte) error {
 	ret := _m.ctrl.Call(_m, "Store", _param0, _param1, _param2)
 	ret0, _ := ret[0].(error)
