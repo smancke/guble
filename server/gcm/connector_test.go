@@ -84,9 +84,9 @@ func TestConnector_Check(t *testing.T) {
 		testutil.CreateRoundTripperWithJsonResponse(
 			http.StatusUnauthorized, "", done2))
 	gcm.Sender = mockSender2
-	err = gcm.Check()
-	a.NotNil(err)
+	a.Error(gcm.Check())
 }
+
 func TestGCM_SaveAndLoadSubs(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()

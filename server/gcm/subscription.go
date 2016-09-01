@@ -352,9 +352,14 @@ func (s *subscription) pipe(m *protocol.Message) error {
 }
 
 func (s *subscription) handleGCMResponse(response *gcm.Response) error {
+	if response.Ok() {
+		return nil
+	}
+
 	if err := s.handleJSONError(response); err != nil {
 		return err
 	}
+
 	s.logger.WithField("count", response.Success).Debug("Delivered messages to GCM")
 	if response.CanonicalIDs != 0 {
 		// we only send to one receiver,
@@ -365,7 +370,9 @@ func (s *subscription) handleGCMResponse(response *gcm.Response) error {
 }
 
 func (s *subscription) handleJSONError(response *gcm.Response) error {
-	errText := response.Results[0].Error
+	err := response.Error
+	errText := err.Error()
+
 	if errText != "" {
 		if errText == "NotRegistered" {
 			s.logger.Debug("Removing not registered GCM subscription")
@@ -378,6 +385,13 @@ func (s *subscription) handleJSONError(response *gcm.Response) error {
 		}
 	}
 	return nil
+}
+
+// isValidResponseError returns True if the error is accepted as a valid response
+// cases are InvalidRegistration and NotRegistered
+func (s *subscription) isValidResponseError(err error) bool {
+	return err.Error() == "InvalidRegistration" ||
+		err.Error() == "NotRegistered"
 }
 
 // replaceCanonical replaces subscription with canonical id,
