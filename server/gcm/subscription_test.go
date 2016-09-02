@@ -133,8 +133,6 @@ func TestSub_Restart(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 
-	route.Close()
-
 	// simulate the fetch
 	routerMock.EXPECT().Fetch(gomock.Any()).Do(func(req store.FetchRequest) {
 		go func() {
@@ -151,8 +149,9 @@ func TestSub_Restart(t *testing.T) {
 			close(req.MessageC)
 		}()
 	})
+	route.Close()
 
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 
 	// subscription route shouldn't be equal anymore
 	a.NotEqual(route, sub.route)
