@@ -23,6 +23,7 @@ Hello World`
 		Results: []gcm.Result{{Error: ""}},
 	}
 	errorGCMNotRegisteredResponse = &gcm.Response{
+		Error:   "NotRegistered",
 		Results: []gcm.Result{{Error: "NotRegistered"}},
 	}
 )
