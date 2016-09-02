@@ -10,6 +10,7 @@ import (
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/rest"
+	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/server/store"
 	"github.com/smancke/guble/server/store/dummystore"
@@ -26,7 +27,7 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/smancke/guble/server/router"
+	"github.com/pkg/profile"
 )
 
 const (
@@ -146,32 +147,48 @@ var CreateModules = func(router router.Router) []interface{} {
 
 // Main is the entry-point of the guble server.
 func Main() {
-	parseConfig()
-
-	log.SetFormatter(&logformatter.LogstashFormatter{Env: *config.EnvName})
 	defer func() {
 		if p := recover(); p != nil {
 			logger.Fatal("Fatal error in gubled after recover")
 		}
 	}()
 
-	// set log level
+	parseConfig()
+
+	log.SetFormatter(&logformatter.LogstashFormatter{Env: *config.EnvName})
 	level, err := log.ParseLevel(*config.Log)
 	if err != nil {
 		logger.WithError(err).Fatal("Invalid log level")
 	}
 	log.SetLevel(level)
 
+	switch *config.Profile {
+	case cpuProfile:
+		logger.Info("starting to profile cpu")
+		defer profile.Start(profile.CPUProfile).Stop()
+	case memProfile:
+		logger.Info("starting to profile memory")
+		defer profile.Start(profile.MemProfile).Stop()
+	case blockProfile:
+		logger.Info("starting to profile blocking/contention")
+		defer profile.Start(profile.BlockProfile).Stop()
+	default:
+		logger.Debug("no profiling was started")
+	}
+
 	if err := ValidateStoragePath(); err != nil {
 		logger.Fatal("Fatal error in gubled in validation of storage path")
 	}
 
 	srv := StartService()
+	if srv == nil {
+		logger.Fatal("exiting because of unrecoverable error(s) when starting the service")
+	}
 
 	waitForTermination(func() {
 		err := srv.Stop()
 		if err != nil {
-			logger.WithError(err).Error("Error when stopping service")
+			logger.WithField("error", err.Error()).Error("errors occurred while stopping service")
 		}
 	})
 }
@@ -215,10 +232,11 @@ func StartService() *service.Service {
 	srv.RegisterModules(4, 3, CreateModules(r)...)
 
 	if err = srv.Start(); err != nil {
+		logger.WithField("error", err.Error()).Error("errors occurred while starting service")
 		if err = srv.Stop(); err != nil {
-			logger.WithError(err).Error("Error when stopping service after Start() failed")
+			logger.WithField("error", err.Error()).Error("errors occured when stopping service after it failed to start")
 		}
-		logger.WithError(err).Fatal("Service could not be started")
+		return nil
 	}
 
 	return srv
@@ -238,7 +256,8 @@ func exitIfInvalidClusterParams(nodeID uint8, nodePort int, remotes []*net.TCPAd
 func waitForTermination(callback func()) {
 	signalC := make(chan os.Signal)
 	signal.Notify(signalC, syscall.SIGINT, syscall.SIGTERM)
-	logger.Infof("Got signal '%v' .. exiting gracefully now", <-signalC)
+	sig := <-signalC
+	logger.Infof("Got signal '%v' .. exiting gracefully now", sig)
 	callback()
 	metrics.LogOnDebugLevel()
 	logger.Info("Exit gracefully now")

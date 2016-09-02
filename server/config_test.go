@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParsingOfEnviromentVariables(t *testing.T) {
+func TestParsingOfEnvironmentVariables(t *testing.T) {
 	a := assert.New(t)
 
 	originalArgs := os.Args
@@ -23,8 +23,11 @@ func TestParsingOfEnviromentVariables(t *testing.T) {
 	os.Setenv("GUBLE_LOG", "debug")
 	defer os.Unsetenv("GUBLE_LOG")
 
-	os.Setenv("GUBLE_ENV_NAME", "dev")
-	defer os.Unsetenv("GUBLE_ENV_NAME")
+	os.Setenv("GUBLE_ENV", "dev")
+	defer os.Unsetenv("GUBLE_ENV")
+
+	os.Setenv("GUBLE_PROFILE", "mem")
+	defer os.Unsetenv("GUBLE_PROFILE")
 
 	os.Setenv("GUBLE_KVS", "kvs-backend")
 	defer os.Unsetenv("GUBLE_KVS")
@@ -93,6 +96,7 @@ func TestParsingArgs(t *testing.T) {
 		"--http", "http_listen",
 		"--env", "dev",
 		"--log", "debug",
+		"--profile", "mem",
 		"--storage-path", os.TempDir(),
 		"--kvs", "kvs-backend",
 		"--ms", "ms-backend",
@@ -142,11 +146,12 @@ func assertArguments(a *assert.Assertions) {
 
 	a.Equal("debug", *config.Log)
 	a.Equal("dev", *config.EnvName)
-	assertRemotesCluster(a)
+	a.Equal("mem", *config.Profile)
 
+	assertClusterRemotes(a)
 }
 
-func assertRemotesCluster(a *assert.Assertions) {
+func assertClusterRemotes(a *assert.Assertions) {
 	ip1, _ := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	ip2, _ := net.ResolveTCPAddr("tcp", "127.0.0.1:20002")
 	ipList := make(tcpAddrList, 0)

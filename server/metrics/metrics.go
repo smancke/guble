@@ -10,15 +10,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime"
 )
 
-var logger = log.WithField("module", "metrics")
-
-// IntVar is an interface for some of the operations defined on expvar.Int
-type IntVar interface {
-	Add(int64)
-	Set(int64)
-}
+var (
+	logger        = log.WithField("module", "metrics")
+	numGoroutines = expvar.NewInt("num_goroutines")
+)
 
 // HttpHandler is a HTTP handler writing the current metrics to the http.ResponseWriter
 func HttpHandler(rw http.ResponseWriter, r *http.Request) {
@@ -27,6 +25,7 @@ func HttpHandler(rw http.ResponseWriter, r *http.Request) {
 }
 
 func writeMetrics(w io.Writer) {
+	numGoroutines.Set(int64(runtime.NumGoroutine()))
 	fmt.Fprint(w, "{\n")
 	first := true
 	expvar.Do(func(kv expvar.KeyValue) {

@@ -51,6 +51,7 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 }
 
 func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
+	// defer testutil.EnableDebugForMethod()()
 	testutil.SkipIfShort(t)
 	a := assert.New(t)
 
@@ -108,10 +109,10 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	// send a message to the former subscription.
 	client1, err = restartedNode1.client("user1", 1000, true)
 	a.NoError(err)
+	time.Sleep(time.Second)
 
 	err = client1.Send(gcmTopic, "body", "{jsonHeader:1}")
 	a.NoError(err, "Subscription should work even after node restart")
-	time.Sleep(time.Second)
 
 	// only one message should be received but only on the first node.
 	// Every message should be delivered only once.

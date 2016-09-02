@@ -31,7 +31,10 @@ func TestConnector_ServeHTTPSuccess(t *testing.T) {
 		a.Equal("gcmId123", route.Get(applicationIDKey))
 	})
 
+	time.Sleep(100 * time.Millisecond)
+
 	postSubscription(t, gcm, "marvin", "gcmId123", "notifications")
+
 }
 
 func TestConnector_ServeHTTPWithErrorCases(t *testing.T) {
@@ -41,9 +44,9 @@ func TestConnector_ServeHTTPWithErrorCases(t *testing.T) {
 	a := assert.New(t)
 	gcm, _, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
 
-	url, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe/notifications")
+	u, _ := url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe/notifications")
 	// and a http context
-	req := &http.Request{URL: url, Method: "GET"}
+	req := &http.Request{URL: u, Method: "GET"}
 	w := httptest.NewRecorder()
 
 	// do a GET instead of POST
@@ -55,7 +58,7 @@ func TestConnector_ServeHTTPWithErrorCases(t *testing.T) {
 
 	// send a new request with wrong parameters encoding
 	req.Method = "POST"
-	req.URL, _ = url.Parse("http://localhost/gcm/marvin/gcmId123/subscribe3/notifications")
+	req.URL, _ = u.Parse("http://localhost/gcm/marvin/gcmId123/subscribe3/notifications")
 
 	w2 := httptest.NewRecorder()
 	gcm.ServeHTTP(w2, req)
@@ -84,9 +87,9 @@ func TestConnector_Check(t *testing.T) {
 		testutil.CreateRoundTripperWithJsonResponse(
 			http.StatusUnauthorized, "", done2))
 	gcm.Sender = mockSender2
-	err = gcm.Check()
-	a.NotNil(err)
+	a.Error(gcm.Check())
 }
+
 func TestGCM_SaveAndLoadSubs(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
@@ -245,12 +248,18 @@ func TestConnector_GetErrorMessageFromGCM(t *testing.T) {
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
 		a.Equal("/path", string(route.Path))
 		a.Equal("marvin", route.Get(userIDKey))
-		a.Equal("gcmCanonicalID", route.Get(applicationIDKey))
+		appid := route.Get(applicationIDKey)
+		a.Equal("gcmCanonicalID", appid)
 	})
+
+	// Wait for subscriptions to finish loading
+	time.Sleep(100 * time.Millisecond)
 
 	// put a dummy gcm message with minimum information
 	s, err := initSubscription(gcm, "/path", "marvin", "id", 0, true)
 	a.NoError(err)
+	time.Sleep(100 * time.Millisecond)
+
 	message := &protocol.Message{
 		ID:   uint64(4),
 		Body: []byte("{id:id}"),
@@ -264,10 +273,10 @@ func TestConnector_GetErrorMessageFromGCM(t *testing.T) {
 	<-done
 
 	//wait before closing the gcm connector
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	// stop the channel of the subscription
-	s.route.Close()
+	// s.route.Close()
 
 	err = gcm.Stop()
 	a.NoError(err)
@@ -349,9 +358,9 @@ func TestConnector_SubscriptionExists(t *testing.T) {
 	routerMock.EXPECT().Subscribe(gomock.Any())
 
 	w := httptest.NewRecorder()
-	url := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", "user01", "gcm01", "/test")
+	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", "user01", "gcm01", "/test")
 
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequest(http.MethodPost, u, nil)
 	a.NoError(err)
 
 	gcm.ServeHTTP(w, req)
@@ -396,8 +405,8 @@ func testSimpleGCM(t *testing.T, mockStore bool) (*Connector, *MockRouter, *Mock
 
 func postSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string) {
 	a := assert.New(t)
-	url := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
+	req, err := http.NewRequest(http.MethodPost, u, nil)
 	a.NoError(err)
 	w := httptest.NewRecorder()
 
@@ -408,9 +417,8 @@ func postSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string)
 
 func deleteSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string) {
 	a := assert.New(t)
-
-	url := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
-	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
+	req, err := http.NewRequest(http.MethodDelete, u, nil)
 	a.NoError(err)
 	w := httptest.NewRecorder()
 

@@ -4,7 +4,7 @@ Guble is a simple user-facing messaging and data replication server written in G
 
 [![Release](https://img.shields.io/github/release/smancke/guble.svg)](https://github.com/smancke/guble/releases/latest)
 [![Docker](https://img.shields.io/docker/pulls/smancke/guble.svg)](https://hub.docker.com/r/smancke/guble/)
-[![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble)
+[![Build Status](https://api.travis-ci.org/smancke/guble.svg?branch=master)](https://travis-ci.org/smancke/guble)
 [![Go Report Card](https://goreportcard.com/badge/github.com/smancke/guble)](https://goreportcard.com/report/github.com/smancke/guble)
 [![codebeat badge](https://codebeat.co/badges/7f317892-0a7b-4e31-97f4-a530cf779889)](https://codebeat.co/projects/github-com-smancke-guble)
 [![Coverage Status](https://coveralls.io/repos/smancke/guble/badge.svg?branch=master&service=github)](https://coveralls.io/github/smancke/guble?branch=master)

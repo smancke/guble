@@ -10,7 +10,7 @@ import (
 )
 
 func TestLogstashFormatter_Format(t *testing.T) {
-	assert := assert.New(t)
+	a := assert.New(t)
 
 	lf := LogstashFormatter{Type: "abc", ServiceName: "guble", Env: "prod"}
 
@@ -35,22 +35,22 @@ func TestLogstashFormatter_Format(t *testing.T) {
 	dec.Decode(&data)
 
 	// base fields
-	assert.Equal("application", data["log_type"])
-	assert.Equal("service", data["application_type"])
-	assert.Equal("guble", data["service"])
-	assert.Equal("prod", data["environment"])
+	a.Equal("application", data["log_type"])
+	a.Equal("service", data["application_type"])
+	a.Equal("guble", data["service"])
+	a.Equal("prod", data["environment"])
 
-	assert.NotEmpty(data["@timestamp"])
-	assert.Equal("abc", data["type"])
-	assert.Equal("msg", data["message"])
-	assert.Equal("info", data["loglevel"])
+	a.NotEmpty(data["@timestamp"])
+	a.Equal("abc", data["type"])
+	a.Equal("msg", data["message"])
+	a.Equal("info", data["loglevel"])
 
 	// substituted fields
-	assert.Equal("def", data["fields.message"])
-	assert.Equal("lmn", data["fields.type"])
+	a.Equal("def", data["fields.message"])
+	a.Equal("lmn", data["fields.type"])
 
 	// formats
-	assert.Equal(json.Number("1"), data["one"])
-	assert.Equal(json.Number("3.14"), data["pi"])
-	assert.Equal(true, data["bool"])
+	a.Equal(json.Number("1"), data["one"])
+	a.Equal(json.Number("3.14"), data["pi"])
+	a.Equal(true, data["bool"])
 }

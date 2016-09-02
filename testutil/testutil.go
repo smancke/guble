@@ -16,6 +16,10 @@ import (
 	"time"
 )
 
+const (
+	gcmMockedAPIKey = "1234"
+)
+
 // MockCtrl is a gomock.Controller to use globally
 var MockCtrl *gomock.Controller
 
@@ -80,9 +84,9 @@ func ResetDefaultRegistryHealthCheck() {
 const (
 	SuccessGCMResponse = `{
 	   "multicast_id":3,
-	   "succes":1,
+	   "success":1,
 	   "failure":0,
-	   "canonicals_ids":5,
+	   "canonical_ids":0,
 	   "results":[
 	      {
 	         "message_id":"da",
@@ -94,9 +98,10 @@ const (
 
 	ErrorGCMResponse = `{
 	   "multicast_id":3,
-	   "succes":0,
+	   "success":0,
 	   "failure":1,
-	   "canonicals_ids":5,
+       "error":"InvalidRegistration",
+	   "canonical_ids":5,
 	   "results":[
 	      {
 	         "message_id":"err",
@@ -115,12 +120,16 @@ func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) 
 	return rt(req), nil
 }
 
-func CreateGcmSender(rt RoundTripperFunc) *gcm.Sender {
+func CreateGcmSender(rt RoundTripperFunc) gcm.Sender {
 	log.WithFields(log.Fields{
 		"module": "testing",
 	}).Debug("Create GCM sender")
 	httpClient := &http.Client{Transport: rt}
-	return &gcm.Sender{ApiKey: "124", Http: httpClient}
+
+	client := gcm.NewSender("1234", 0, 3*time.Second)
+	client.HTTPClient = httpClient
+
+	return client
 }
 
 func CreateRoundTripperWithJsonResponse(statusCode int, body string, doneC chan bool) RoundTripperFunc {
@@ -163,7 +172,7 @@ func CreateRoundTripperWithCountAndTimeout(statusCode int, body string, countC c
 func responseBuilder(statusCode int, body string) *http.Response {
 	headers := make(http.Header)
 	headers.Add("Content-Type", "application/json")
-	log.WithFields(log.Fields{"status": statusCode}).Debug("Building response")
+	log.WithFields(log.Fields{"status": statusCode}).Debug("Building GCM response")
 	return &http.Response{
 		Proto:      "HTTP/1.1",
 		ProtoMajor: 1,

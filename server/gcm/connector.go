@@ -18,6 +18,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/smancke/guble/server/metrics"
 )
 
 const (
@@ -26,6 +29,8 @@ const (
 
 	// sendRetries is the number of retries when sending a message
 	sendRetries = 5
+
+	sendTimeout = time.Second
 
 	subscribePrefixPath = "subscribe"
 
@@ -37,13 +42,12 @@ const (
 
 var logger = log.WithFields(log.Fields{
 	"app":    "guble",
-	"env":    "TBD",
 	"module": "gcm",
 })
 
 // Connector is the structure for handling the communication with Google Cloud Messaging
 type Connector struct {
-	Sender        *gcm.Sender
+	Sender        gcm.Sender
 	router        router.Router
 	cluster       *cluster.Cluster
 	kvStore       kvstore.KVStore
@@ -69,7 +73,7 @@ func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int, en
 	}
 
 	return &Connector{
-		Sender:        &gcm.Sender{ApiKey: gcmAPIKey},
+		Sender:        gcm.NewSender(gcmAPIKey, sendRetries, sendTimeout),
 		router:        router,
 		cluster:       router.Cluster(),
 		kvStore:       kvStore,
@@ -84,7 +88,9 @@ func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int, en
 
 // Start opens the connector, creates more goroutines / workers to handle messages coming from the router
 func (conn *Connector) Start() error {
-	resetGCMMetrics()
+	conn.reset()
+
+	startMetrics()
 
 	// start subscription sync loop if we are in cluster mode
 	if conn.cluster != nil {
@@ -94,7 +100,7 @@ func (conn *Connector) Start() error {
 	}
 
 	// blocking until current subs are loaded
-	conn.loadSubscriptions()
+	go conn.loadSubscriptions()
 
 	go func() {
 		for id := 1; id <= conn.nWorkers; id++ {
@@ -102,6 +108,11 @@ func (conn *Connector) Start() error {
 		}
 	}()
 	return nil
+}
+
+func (conn *Connector) reset() {
+	conn.stopC = make(chan bool)
+	conn.subscriptions = make(map[string]*subscription)
 }
 
 // Stop signals the closing of GCMConnector
@@ -117,8 +128,10 @@ func (conn *Connector) Stop() error {
 // by sending a request with only apikey. If the response is processed by the GCM endpoint
 // the gcmStatus will be UP, otherwise the error from sending the message will be returned.
 func (conn *Connector) Check() error {
-	payload := messageMap(&protocol.Message{Body: []byte(`{"registration_ids":["ABC"]}`)})
-	_, err := conn.Sender.Send(gcm.NewMessage(payload, ""), sendRetries)
+	message := &gcm.Message{
+		To: "ABC",
+	}
+	_, err := conn.Sender.Send(message)
 	if err != nil {
 		logger.WithError(err).Error("Error checking GCM connection")
 		return err
@@ -157,22 +170,33 @@ func (conn *Connector) loopPipeline(id int) {
 
 func (conn *Connector) sendMessage(pm *pipeMessage) {
 	gcmID := pm.subscription.route.Get(applicationIDKey)
-	payload := pm.payload()
 
-	gcmMessage := gcm.NewMessage(payload, gcmID)
+	gcmMessage := &gcm.Message{
+		To:   gcmID,
+		Data: pm.payload(),
+	}
 	logger.WithFields(log.Fields{
 		"gcmID":      gcmID,
 		"pipeLength": len(conn.pipelineC),
 	}).Debug("Sending message")
 
-	result, err := conn.Sender.Send(gcmMessage, sendRetries)
-	if err != nil {
+	beforeSend := time.Now()
+	response, err := conn.Sender.Send(gcmMessage)
+	latencyDuration := time.Now().Sub(beforeSend)
+
+	if err != nil && !pm.subscription.isValidResponseError(err) {
+		// Even if we receive an error we could still have a valid response
 		pm.errC <- err
 		mTotalSentMessageErrors.Add(1)
+		metrics.AddToMaps(currentTotalErrorsLatenciesKey, int64(latencyDuration), mMinute, mHour, mDay)
+		metrics.AddToMaps(currentTotalErrorsKey, 1, mMinute, mHour, mDay)
 		return
 	}
-	pm.resultC <- result
 	mTotalSentMessages.Add(1)
+	metrics.AddToMaps(currentTotalMessagesLatenciesKey, int64(latencyDuration), mMinute, mHour, mDay)
+	metrics.AddToMaps(currentTotalMessagesKey, 1, mMinute, mHour, mDay)
+
+	pm.resultC <- response
 }
 
 // GetPrefix is used to satisfy the HTTP handler interface
@@ -210,7 +234,7 @@ func (conn *Connector) addSubscription(w http.ResponseWriter, topic, userID, gcm
 		conn.synchronizeSubscription(topic, userID, gcmID, false)
 	} else if err == errSubscriptionExists {
 		logger.WithField("subscription", s).Error("Subscription exists")
-		fmt.Fprintf(w, "subscription exists")
+		fmt.Fprint(w, "subscription exists")
 		return
 	}
 
@@ -289,6 +313,7 @@ func (conn *Connector) loadSubscription(entry [2]string) {
 		"gcmID":  gcmID,
 		"userID": userID,
 		"topic":  topic,
+		"lastID": lastID,
 	}).Debug("Loaded GCM subscription")
 }
 

@@ -6,6 +6,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Bogh/gcm"
 	log "github.com/Sirupsen/logrus"
@@ -55,6 +56,7 @@ func newSubscription(connector *Connector, route *router.Route, lastID uint64) *
 		"gcmID":  route.Get(applicationIDKey),
 		"userID": route.Get(userIDKey),
 		"topic":  string(route.Path),
+		"lastID": lastID,
 	})
 	if connector.cluster != nil {
 		subLogger = subLogger.WithField("nodeID", connector.cluster.Config.ID)
@@ -69,14 +71,14 @@ func newSubscription(connector *Connector, route *router.Route, lastID uint64) *
 }
 
 // initSubscription creates a subscription and adds it in router/kvstore then starts listening for messages
-func initSubscription(connector *Connector, topic, userID, gcmID string, unusedLastID uint64, store bool) (*subscription, error) {
+func initSubscription(connector *Connector, topic, userID, gcmID string, lastID uint64, store bool) (*subscription, error) {
 	route := router.NewRoute(router.RouteConfig{
 		RouteParams: router.RouteParams{userIDKey: userID, applicationIDKey: gcmID},
 		Path:        protocol.Path(topic),
 		ChannelSize: subBufferSize,
 	})
 
-	s := newSubscription(connector, route, 0)
+	s := newSubscription(connector, route, lastID)
 	if s.exists() {
 		return nil, errSubscriptionExists
 	}
@@ -102,9 +104,10 @@ func (s *subscription) exists() bool {
 
 func (s *subscription) subscribe() error {
 	if _, err := s.connector.router.Subscribe(s.route); err != nil {
-		s.logger.WithError(err).Error("Error subscribing")
+		s.logger.WithError(err).Error("Error subscribing in router")
 		return err
 	}
+
 	s.logger.Debug("Subscribed")
 	return nil
 }
@@ -187,7 +190,16 @@ func (s *subscription) subscriptionLoop() {
 	for opened {
 		select {
 		case m, opened = <-s.route.MessagesChannel():
+			// TODO Bogdan This needs to be remade and we should gracefully shutdown
+			// and wait for this channel to empty before stopping the loop
+			select {
+			case <-s.connector.stopC:
+				return
+			case <-time.After(10 * time.Millisecond):
+			}
+
 			if !opened {
+				s.logger.Error("Route channel is closed")
 				continue
 			}
 
@@ -225,18 +237,13 @@ func (s *subscription) subscriptionLoop() {
 
 // fetch messages from store starting with lastID
 func (s *subscription) fetch() error {
-	// if s.lastID == 0 {
-	// 	s.logger.WithField("lastID", s.lastID).Debug("Nothing to fetch")
-	// 	return nil
-	// }
-
 	s.connector.wg.Add(1)
 	defer func() {
 		s.logger.WithField("lastID", s.lastID).Debug("Stop fetching")
 		s.connector.wg.Done()
 	}()
 
-	s.logger.Debug("Fetching from store")
+	s.logger.WithField("lastID", s.lastID).Debug("Fetching from store")
 	req := s.createFetchRequest()
 	if err := s.connector.router.Fetch(req); err != nil {
 		return err
@@ -256,6 +263,7 @@ func (s *subscription) fetch() error {
 				return err
 			}
 			s.logger.WithFields(log.Fields{"ID": msgAndID.ID, "parsedID": message.ID}).Debug("Fetched message")
+
 			// Pipe message into gcm connector
 			s.pipe(message)
 		case err := <-req.ErrorC:
@@ -345,9 +353,14 @@ func (s *subscription) pipe(m *protocol.Message) error {
 }
 
 func (s *subscription) handleGCMResponse(response *gcm.Response) error {
+	if response.Ok() {
+		return nil
+	}
+
 	if err := s.handleJSONError(response); err != nil {
 		return err
 	}
+
 	s.logger.WithField("count", response.Success).Debug("Delivered messages to GCM")
 	if response.CanonicalIDs != 0 {
 		// we only send to one receiver,
@@ -358,7 +371,9 @@ func (s *subscription) handleGCMResponse(response *gcm.Response) error {
 }
 
 func (s *subscription) handleJSONError(response *gcm.Response) error {
-	errText := response.Results[0].Error
+	err := response.Error
+	errText := err.Error()
+
 	if errText != "" {
 		if errText == "NotRegistered" {
 			s.logger.Debug("Removing not registered GCM subscription")
@@ -373,11 +388,17 @@ func (s *subscription) handleJSONError(response *gcm.Response) error {
 	return nil
 }
 
+// isValidResponseError returns True if the error is accepted as a valid response
+// cases are InvalidRegistration and NotRegistered
+func (s *subscription) isValidResponseError(err error) bool {
+	return err.Error() == "InvalidRegistration" ||
+		err.Error() == "NotRegistered"
+}
+
 // replaceCanonical replaces subscription with canonical id,
 // creates a new subscription but alters the route to have the new ApplicationID
 func (s *subscription) replaceCanonical(newGCMID string) error {
 	s.logger.WithField("newGCMID", newGCMID).Info("Replacing with canonicalID")
-
 	// delete current route from kvstore
 	s.remove()
 

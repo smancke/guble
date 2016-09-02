@@ -80,7 +80,10 @@ func (router *router) Start() error {
 	router.panicIfInternalDependenciesAreNil()
 	logger.Info("Starting router")
 	resetRouterMetrics()
+
 	router.wg.Add(1)
+	router.setStopping(false)
+
 	go func() {
 		for {
 			if router.stopping && router.channelsAreEmpty() {
@@ -88,6 +91,7 @@ func (router *router) Start() error {
 				router.wg.Done()
 				return
 			}
+
 			func() {
 				defer protocol.PanicLogger()
 
@@ -107,6 +111,7 @@ func (router *router) Start() error {
 			}()
 		}
 	}()
+
 	return nil
 }
 

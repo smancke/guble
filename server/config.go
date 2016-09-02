@@ -13,16 +13,25 @@ import (
 )
 
 const (
-	defaultHttpListen     = ":8080"
-	defaultHealthEndpoint = "/_health"
-	defaultKVSBackend     = "file"
-	defaultMSBackend      = "file"
-	defaultStoragePath    = "/var/lib/guble"
-	defaultNodePort       = "10000"
+	defaultHttpListen      = ":8080"
+	defaultHealthEndpoint  = "/admin/healthcheck"
+	defaultMetricsEndpoint = "/admin/metrics"
+	defaultKVSBackend      = "file"
+	defaultMSBackend       = "file"
+	defaultStoragePath     = "/var/lib/guble"
+	defaultNodePort        = "10000"
+	development            = "dev"
+	integration            = "int"
+	preproduction          = "pre"
+	production             = "prod"
+	memProfile             = "mem"
+	cpuProfile             = "cpu"
+	blockProfile           = "block"
 )
 
 var (
 	defaultGCMEndpoint = gcm.GcmSendEndpoint
+	environments       = []string{development, integration, preproduction, production}
 )
 
 type (
@@ -57,6 +66,7 @@ type (
 		StoragePath     *string
 		HealthEndpoint  *string
 		MetricsEndpoint *string
+		Profile         *string
 		Postgres        PostgresConfig
 		GCM             GCMConfig
 		Cluster         ClusterConfig
@@ -72,7 +82,7 @@ var (
 			Enum(logLevels()...),
 		EnvName: kingpin.Flag("env", `Name of the environment on which the application is running`).
 			Default(development).
-			Envar("GUBLE_ENV_NAME").
+			Envar("GUBLE_ENV").
 			Enum(environments...),
 		HttpListen: kingpin.Flag("http", `The address to for the HTTP server to listen on (format: "[Host]:Port")`).
 			Default(defaultHttpListen).
@@ -80,7 +90,6 @@ var (
 			String(),
 		KVS: kingpin.Flag("kvs", "The storage backend for the key-value store to use : file | memory").
 			Default(defaultKVSBackend).
-			HintOptions("file", "memory").
 			Envar("GUBLE_KVS").
 			String(),
 		MS: kingpin.Flag("ms", "The message storage backend : file | memory").
@@ -96,27 +105,51 @@ var (
 			Default(defaultHealthEndpoint).
 			Envar("GUBLE_HEALTH_ENDPOINT").
 			String(),
-		MetricsEndpoint: kingpin.Flag("metrics-endpoint", `The metrics endpoint to be used by the HTTP server (disabled by default; a possible value for enabling it: "/_metrics" )`).
-			Default("").
+		MetricsEndpoint: kingpin.Flag("metrics-endpoint", `The metrics endpoint to be used by the HTTP server (value for disabling it: "")`).
+			Default(defaultMetricsEndpoint).
 			Envar("GUBLE_METRICS_ENDPOINT").
 			String(),
+		Profile: kingpin.Flag("profile", `The profiler to be used (default: none): mem | cpu | block`).
+			Default("").
+			Envar("GUBLE_PROFILE").
+			Enum("mem", "cpu", "block", ""),
 		Postgres: PostgresConfig{
-			Host:     kingpin.Flag("pg-host", "The PostgreSQL hostname").Default("localhost").Envar("GUBLE_PG_HOST").String(),
-			Port:     kingpin.Flag("pg-port", "The PostgreSQL port").Default("5432").Envar("GUBLE_PG_PORT").Int(),
-			User:     kingpin.Flag("pg-user", "The PostgreSQL user").Default("guble").Envar("GUBLE_PG_USER").String(),
-			Password: kingpin.Flag("pg-password", "The PostgreSQL password").Default("guble").Envar("GUBLE_PG_PASSWORD").String(),
-			DbName:   kingpin.Flag("pg-dbname", "The PostgreSQL database name").Default("guble").Envar("GUBLE_PG_DBNAME").String(),
+			Host: kingpin.Flag("pg-host", "The PostgreSQL hostname").
+				Default("localhost").
+				Envar("GUBLE_PG_HOST").
+				String(),
+			Port: kingpin.Flag("pg-port", "The PostgreSQL port").
+				Default("5432").
+				Envar("GUBLE_PG_PORT").
+				Int(),
+			User: kingpin.Flag("pg-user", "The PostgreSQL user").
+				Default("guble").
+				Envar("GUBLE_PG_USER").
+				String(),
+			Password: kingpin.Flag("pg-password", "The PostgreSQL password").
+				Default("guble").
+				Envar("GUBLE_PG_PASSWORD").
+				String(),
+			DbName: kingpin.Flag("pg-dbname", "The PostgreSQL database name").
+				Default("guble").
+				Envar("GUBLE_PG_DBNAME").
+				String(),
 		},
 		GCM: GCMConfig{
 			Enabled: kingpin.Flag("gcm", "Enable the Google Cloud Messaging Connector").
-				Envar("GUBLE_GCM").Bool(),
+				Envar("GUBLE_GCM").
+				Bool(),
 			APIKey: kingpin.Flag("gcm-api-key", "The Google API Key for Google Cloud Messaging").
-				Envar("GUBLE_GCM_API_KEY").String(),
+				Envar("GUBLE_GCM_API_KEY").
+				String(),
 			Workers: kingpin.Flag("gcm-workers", "The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)").
-				Default(strconv.Itoa(runtime.GOMAXPROCS(0))).Envar("GUBLE_GCM_WORKERS").Int(),
+				Default(strconv.Itoa(runtime.GOMAXPROCS(0))).
+				Envar("GUBLE_GCM_WORKERS").
+				Int(),
 			Endpoint: kingpin.Flag("gcm-endpoint", "The Google Cloud Messaging endpoint").
 				Default(defaultGCMEndpoint).
-				Envar("GUBLE_GCM_ENDPOINT").String(),
+				Envar("GUBLE_GCM_ENDPOINT").
+				String(),
 		},
 		Cluster: ClusterConfig{
 			NodeID: kingpin.Flag("node-id", "(cluster mode) This guble node's own ID: a strictly positive integer number which must be unique in cluster").
@@ -135,15 +168,6 @@ func logLevels() (levels []string) {
 	}
 	return
 }
-
-const (
-	development   string = "dev"
-	integration   string = "int"
-	preproduction string = "pre"
-	production    string = "prod"
-)
-
-var environments []string = []string{development, integration, preproduction, production}
 
 // parseConfig parses the flags from command line. Must be used before accessing the config.
 // If there are missing or invalid arguments it will exit the application
