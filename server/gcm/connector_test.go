@@ -31,7 +31,10 @@ func TestConnector_ServeHTTPSuccess(t *testing.T) {
 		a.Equal("gcmId123", route.Get(applicationIDKey))
 	})
 
+	time.Sleep(100 * time.Millisecond)
+
 	postSubscription(t, gcm, "marvin", "gcmId123", "notifications")
+
 }
 
 func TestConnector_ServeHTTPWithErrorCases(t *testing.T) {
