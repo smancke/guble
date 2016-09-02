@@ -59,7 +59,7 @@ func (dms *DummyMessageStore) Stop() error {
 }
 
 // StoreMessage is a part of the `store.MessageStore` implementation.
-func (dms *DummyMessageStore) StoreMessage(message *protocol.Message, nodeID int) (int, error) {
+func (dms *DummyMessageStore) StoreMessage(message *protocol.Message, nodeID uint8) (int, error) {
 	partitionName := message.Path.Partition()
 	nextID, ts, err := dms.GenerateNextMsgID(partitionName, 0)
 	if err != nil {
@@ -119,7 +119,7 @@ func (dms *DummyMessageStore) DoInTx(partition string, fnToExecute func(maxMessa
 }
 
 // GenerateNextMsgID is a part of the `store.MessageStore` implementation.
-func (dms *DummyMessageStore) GenerateNextMsgID(partitionName string, timestamp int) (uint64, int64, error) {
+func (dms *DummyMessageStore) GenerateNextMsgID(partitionName string, nodeID uint8) (uint64, int64, error) {
 	dms.topicSequencesLock.Lock()
 	defer dms.topicSequencesLock.Unlock()
 	ts := time.Now().Unix()
@@ -188,4 +188,16 @@ func (dms *DummyMessageStore) startSequenceSync() {
 		}
 	}
 	dms.stoppedC <- true
+}
+
+func (dms *DummyMessageStore) Check() error {
+	return nil
+}
+
+func (dms *DummyMessageStore) Partition(name string) (store.MessagePartition, error) {
+	return nil, nil
+}
+
+func (dms *DummyMessageStore) Partitions() ([]store.MessagePartition, error) {
+	return nil, nil
 }

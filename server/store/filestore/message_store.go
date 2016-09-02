@@ -3,8 +3,10 @@ package filestore
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -33,11 +35,11 @@ func New(basedir string) *FileMessageStore {
 
 // MaxMessageID is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) MaxMessageID(partition string) (uint64, error) {
-	p, err := fms.partitionStore(partition)
+	p, err := fms.Partition(partition)
 	if err != nil {
 		return 0, err
 	}
-	return p.MaxMessageID()
+	return p.MaxMessageID(), nil
 }
 
 // Stop the FileMessageStore.
@@ -63,16 +65,16 @@ func (fms *FileMessageStore) Stop() error {
 }
 
 // GenerateNextMsgID is a part of the `store.MessageStore` implementation.
-func (fms *FileMessageStore) GenerateNextMsgID(partitionName string, nodeID int) (uint64, int64, error) {
-	p, err := fms.partitionStore(partitionName)
+func (fms *FileMessageStore) GenerateNextMsgID(partitionName string, nodeID uint8) (uint64, int64, error) {
+	p, err := fms.Partition(partitionName)
 	if err != nil {
 		return 0, 0, err
 	}
-	return p.generateNextMsgID(nodeID)
+	return p.(*messagePartition).generateNextMsgID(nodeID)
 }
 
 // StoreMessage is a part of the `store.MessageStore` implementation.
-func (fms *FileMessageStore) StoreMessage(message *protocol.Message, nodeID int) (int, error) {
+func (fms *FileMessageStore) StoreMessage(message *protocol.Message, nodeID uint8) (int, error) {
 	partitionName := message.Path.Partition()
 
 	// If nodeID is zero means we are running in standalone more, otherwise
@@ -118,7 +120,7 @@ func (fms *FileMessageStore) StoreMessage(message *protocol.Message, nodeID int)
 // Store stores a message within a partition.
 // It is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) Store(partition string, msgID uint64, msg []byte) error {
-	p, err := fms.partitionStore(partition)
+	p, err := fms.Partition(partition)
 	if err != nil {
 		return err
 	}
@@ -128,7 +130,7 @@ func (fms *FileMessageStore) Store(partition string, msgID uint64, msg []byte) e
 // Fetch asynchronously fetches a set of messages defined by the fetch request.
 // It is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) Fetch(req store.FetchRequest) {
-	p, err := fms.partitionStore(req.Partition)
+	p, err := fms.Partition(req.Partition)
 	if err != nil {
 		req.ErrorC <- err
 		return
@@ -138,14 +140,37 @@ func (fms *FileMessageStore) Fetch(req store.FetchRequest) {
 
 // DoInTx is a part of the `store.MessageStore` implementation.
 func (fms *FileMessageStore) DoInTx(partition string, fnToExecute func(maxMessageId uint64) error) error {
-	p, err := fms.partitionStore(partition)
+	p, err := fms.Partition(partition)
 	if err != nil {
 		return err
 	}
 	return p.DoInTx(fnToExecute)
 }
 
-func (fms *FileMessageStore) partitionStore(partition string) (*messagePartition, error) {
+// Partitions will walk the filesystem and return all message partitions
+// TODO Bogdan This is not required anymore as the store already read the partitions
+// and saved them in the cacheEntry for the store. Retrieve from there if possible
+func (fms *FileMessageStore) Partitions() (partitions []store.MessagePartition, err error) {
+	entries, err := ioutil.ReadDir(fms.basedir)
+	if err != nil {
+		logger.WithError(err).Error("Error reading partitions")
+		return nil, err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			partition, err := fms.Partition(entry.Name())
+			if err != nil {
+				continue
+			}
+
+			partitions = append(partitions, partition)
+		}
+	}
+	return
+}
+
+func (fms *FileMessageStore) Partition(partition string) (store.MessagePartition, error) {
 	fms.mutex.Lock()
 	defer fms.mutex.Unlock()
 
@@ -196,4 +221,15 @@ func (fms *FileMessageStore) Check() error {
 	}
 
 	return nil
+}
+
+// extractPartitionName returns the partition name from a filepath
+// The files would have this format /basepath/partition-number.extenstion
+// if filepath is not in the right format empty string is returned
+func extractPartitionName(p string) string {
+	s := strings.SplitN(path.Base(p), "-", 2)
+	if len(s) <= 2 {
+		return ""
+	}
+	return s[0]
 }

@@ -48,7 +48,7 @@ func (_mr *_MockMessageStoreRecorder) Fetch(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Fetch", arg0)
 }
 
-func (_m *MockMessageStore) GenerateNextMsgID(_param0 string, _param1 int) (uint64, int64, error) {
+func (_m *MockMessageStore) GenerateNextMsgID(_param0 string, _param1 byte) (uint64, int64, error) {
 	ret := _m.ctrl.Call(_m, "GenerateNextMsgID", _param0, _param1)
 	ret0, _ := ret[0].(uint64)
 	ret1, _ := ret[1].(int64)
@@ -71,6 +71,28 @@ func (_mr *_MockMessageStoreRecorder) MaxMessageID(arg0 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaxMessageID", arg0)
 }
 
+func (_m *MockMessageStore) Partition(_param0 string) (store.MessagePartition, error) {
+	ret := _m.ctrl.Call(_m, "Partition", _param0)
+	ret0, _ := ret[0].(store.MessagePartition)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockMessageStoreRecorder) Partition(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Partition", arg0)
+}
+
+func (_m *MockMessageStore) Partitions() ([]store.MessagePartition, error) {
+	ret := _m.ctrl.Call(_m, "Partitions")
+	ret0, _ := ret[0].([]store.MessagePartition)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockMessageStoreRecorder) Partitions() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Partitions")
+}
+
 func (_m *MockMessageStore) Store(_param0 string, _param1 uint64, _param2 []byte) error {
 	ret := _m.ctrl.Call(_m, "Store", _param0, _param1, _param2)
 	ret0, _ := ret[0].(error)
@@ -81,7 +103,7 @@ func (_mr *_MockMessageStoreRecorder) Store(arg0, arg1, arg2 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Store", arg0, arg1, arg2)
 }
 
-func (_m *MockMessageStore) StoreMessage(_param0 *protocol.Message, _param1 int) (int, error) {
+func (_m *MockMessageStore) StoreMessage(_param0 *protocol.Message, _param1 byte) (int, error) {
 	ret := _m.ctrl.Call(_m, "StoreMessage", _param0, _param1)
 	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(error)

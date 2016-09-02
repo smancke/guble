@@ -101,6 +101,8 @@ func Test_MessagePartition_loadFiles(t *testing.T) {
 	a.NoError(mStore.Store(uint64(26), msgData)) // stored offset 43
 
 	a.NoError(mStore.Store(uint64(30), msgData)) // stored offset 65
+	a.Equal(uint64(13), mStore.Count())
+
 	a.NoError(mStore.Close())
 
 	err := mStore.initialize()
@@ -110,6 +112,8 @@ func Test_MessagePartition_loadFiles(t *testing.T) {
 	a.Equal(uint64(3), cEntry.min)
 	a.Equal(uint64(10), cEntry.max)
 	a.NoError(err)
+
+	a.Equal(uint64(26), mStore.Count())
 
 }
 
@@ -121,12 +125,14 @@ func Test_MessagePartition_correctIdAfterRestart(t *testing.T) {
 
 	a.NoError(mStore.Store(uint64(1), []byte("aaaaaaaaaa")))
 	a.NoError(mStore.Store(uint64(2), []byte("aaaaaaaaaa")))
-	a.Equal(uint64(2), fne(mStore.MaxMessageID()))
+	a.Equal(uint64(2), mStore.MaxMessageID())
 	a.NoError(mStore.Close())
+	a.Equal(uint64(2), mStore.Count())
 
 	newMStore, err := newMessagePartition(dir, "myMessages")
 	a.NoError(err)
-	a.Equal(uint64(2), fne(newMStore.MaxMessageID()))
+	a.Equal(uint64(2), newMStore.MaxMessageID())
+	a.Equal(uint64(2), newMStore.Count())
 }
 
 func Benchmark_Storing_HelloWorld_Messages(b *testing.B) {
@@ -482,11 +488,4 @@ func TestFilenameGeneration(t *testing.T) {
 	a.Equal("/foo/bar/myMessages-00000000000000000042.idx", mStore.composeIdxFilenameForPosition(42))
 	a.Equal("/foo/bar/myMessages-00000000000000000000.idx", mStore.composeIdxFilenameForPosition(0))
 	a.Equal(fmt.Sprintf("/foo/bar/myMessages-%020d.idx", messagesPerFile), mStore.composeIdxFilenameForPosition(messagesPerFile))
-}
-
-func fne(args ...interface{}) interface{} {
-	if args[1] != nil {
-		panic(args[1])
-	}
-	return args[0]
 }

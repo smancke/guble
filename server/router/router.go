@@ -29,7 +29,6 @@ type Router interface {
 	MessageStore() (store.MessageStore, error)
 	KVStore() (kvstore.KVStore, error)
 	Cluster() *cluster.Cluster
-
 	Fetch(store.FetchRequest) error
 
 	Subscribe(r *Route) (*Route, error)
@@ -142,8 +141,8 @@ func (router *router) Check() error {
 	return nil
 }
 
-// HandleMessage stores the message in the MessageStore(and gets a new ID for it iff the message was created locally)
-// and then passes it to: the internal channel, and asynchronously to the cluster (if available).
+// HandleMessage stores the message in the MessageStore(and gets a new ID for it if the message was created locally)
+// and then passes it to the internal channel, and asynchronously to the cluster (if available).
 func (router *router) HandleMessage(message *protocol.Message) error {
 	logger.WithFields(log.Fields{
 		"userID": message.UserID,
@@ -159,7 +158,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		return &PermissionDeniedError{UserID: message.UserID, AccessType: auth.WRITE, Path: message.Path}
 	}
 
-	var nodeID int
+	var nodeID uint8
 	if router.cluster != nil {
 		nodeID = router.cluster.Config.ID
 	}

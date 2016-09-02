@@ -14,7 +14,7 @@ type MessageStore interface {
 	// Generates a new ID for the message if it's new and stores it
 	// Returns the size of the new message or error
 	// Takes the message and cluster node ID as parameters.
-	StoreMessage(*protocol.Message, int) (int, error)
+	StoreMessage(*protocol.Message, uint8) (int, error)
 
 	// Fetch fetches a set of messages.
 	// The results, as well as errors are communicated asynchronously using
@@ -30,7 +30,29 @@ type MessageStore interface {
 	DoInTx(partition string, fnToExecute func(uint64) error) error
 
 	// GenerateNextMsgId generates a new message ID based on a timestamp in a strictly monotonically order
-	GenerateNextMsgID(partition string, nodeID int) (uint64, int64, error)
+	GenerateNextMsgID(partition string, nodeID uint8) (uint64, int64, error)
+
+	Partition(string) (MessagePartition, error)
+
+	// Partitions returns a slice of `MessagePartition` available in the store
+	Partitions() ([]MessagePartition, error)
+}
+
+type MessagePartition interface {
+
+	// Name returns the name of the partition
+	Name() string
+
+	// MaxMessageID return the last message ID stored in this partition
+	MaxMessageID() uint64
+
+	Count() uint64
+
+	Store(uint64, []byte) error
+
+	Fetch(req *FetchRequest)
+
+	DoInTx(func(uint64) error) error
 }
 
 // FetchRequest is used for fetching messages in a MessageStore.
@@ -39,10 +61,10 @@ type FetchRequest struct {
 	// Partition is the Store name to search for messages
 	Partition string
 
-	// StartId is the message sequence id to start
+	// StartID is the message sequence id to start
 	StartID uint64
 
-	//EndId is the message sequence id to finish. If  will not be used.
+	// EndID is the message sequence id to finish. If  will not be used.
 	EndID uint64
 
 	// Direction has 3 possible values:

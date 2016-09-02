@@ -1,0 +1,29 @@
+version: '2'
+services:
+  cluster_1:
+    build:
+      context: ..
+      dockerfile: scripts/Dockerfile-cluster
+    entrypoint:
+      - /go/bin/app
+    environment:
+      - GUBLE_NODE_ID=1
+      - GUBLE_LOG=debug
+      - GUBLE_REMOTES=localhost:10000 localhost:10001
+    ports:
+      - "8080:8080"
+      - "10000:10000"
+
+  cluster_2:
+    build:
+      context: ..
+      dockerfile: scripts/Dockerfile-cluster
+    entrypoint:
+      - /go/bin/app
+    environment:
+      - GUBLE_NODE_ID=2
+      - GUBLE_LOG=debug
+      - GUBLE_REMOTES=localhost:10000 localhost:10001
+    ports:
+      - "8080:8080"
+      - "10001:10000"
