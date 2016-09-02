@@ -248,12 +248,18 @@ func TestConnector_GetErrorMessageFromGCM(t *testing.T) {
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
 		a.Equal("/path", string(route.Path))
 		a.Equal("marvin", route.Get(userIDKey))
-		a.Equal("gcmCanonicalID", route.Get(applicationIDKey))
+		appid := route.Get(applicationIDKey)
+		a.Equal("gcmCanonicalID", appid)
 	})
+
+	// Wait for subscriptions to finish loading
+	time.Sleep(100 * time.Millisecond)
 
 	// put a dummy gcm message with minimum information
 	s, err := initSubscription(gcm, "/path", "marvin", "id", 0, true)
 	a.NoError(err)
+	time.Sleep(100 * time.Millisecond)
+
 	message := &protocol.Message{
 		ID:   uint64(4),
 		Body: []byte("{id:id}"),
@@ -267,10 +273,10 @@ func TestConnector_GetErrorMessageFromGCM(t *testing.T) {
 	<-done
 
 	//wait before closing the gcm connector
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	// stop the channel of the subscription
-	s.route.Close()
+	// s.route.Close()
 
 	err = gcm.Stop()
 	a.NoError(err)

@@ -107,6 +107,7 @@ func (s *subscription) subscribe() error {
 		s.logger.WithError(err).Error("Error subscribing in router")
 		return err
 	}
+
 	s.logger.Debug("Subscribed")
 	return nil
 }
@@ -398,7 +399,6 @@ func (s *subscription) isValidResponseError(err error) bool {
 // creates a new subscription but alters the route to have the new ApplicationID
 func (s *subscription) replaceCanonical(newGCMID string) error {
 	s.logger.WithField("newGCMID", newGCMID).Info("Replacing with canonicalID")
-
 	// delete current route from kvstore
 	s.remove()
 
