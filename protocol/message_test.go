@@ -4,8 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var aNormalMessage = `/foo/bar,42,user01,phone01,id123,1420110000,1
@@ -34,7 +35,7 @@ func TestParsingANormalMessage(t *testing.T) {
 	assert.Equal("phone01", msg.ApplicationID)
 	assert.Equal("id123", msg.OptionalID)
 	assert.Equal(unixTime.Unix(), msg.Time)
-	assert.Equal(1, msg.NodeID)
+	assert.Equal(uint8(1), msg.NodeID)
 	assert.Equal(`{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`, msg.HeaderJSON)
 	assert.Equal("Hello World", string(msg.Body))
 }

@@ -167,7 +167,7 @@ func (c *client) readLoop() error {
 			return err
 		}
 
-		logger.WithField("msg", msg).Debug("Raw >")
+		logger.WithField("msg", string(msg)).Debug("Raw >")
 		c.handleIncomingMessage(msg)
 	}
 }

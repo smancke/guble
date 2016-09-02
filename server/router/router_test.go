@@ -135,7 +135,6 @@ func TestRouter_SubscribeNotAllowed(t *testing.T) {
 }
 
 func TestRouter_HandleMessageNotAllowed(t *testing.T) {
-	// defer testutil.EnableDebugForMethod()()
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 	a := assert.New(t)
@@ -168,7 +167,7 @@ func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 	amMock.EXPECT().IsAllowed(auth.WRITE, r.Get("user_id"), r.Path).Return(true)
 	msMock.EXPECT().
 		StoreMessage(gomock.Any(), gomock.Any()).
-		Do(func(m *protocol.Message, nodeID int) (int, error) {
+		Do(func(m *protocol.Message, nodeID uint8) (int, error) {
 			m.ID = id
 			m.Time = ts
 			m.NodeID = nodeID
@@ -226,7 +225,7 @@ func TestRouter_SimpleMessageSending(t *testing.T) {
 	id, ts := uint64(2), time.Now().Unix()
 	msMock.EXPECT().
 		StoreMessage(gomock.Any(), gomock.Any()).
-		Do(func(m *protocol.Message, nodeID int) (int, error) {
+		Do(func(m *protocol.Message, nodeID uint8) (int, error) {
 			m.ID = id
 			m.Time = ts
 			m.NodeID = nodeID
@@ -251,16 +250,16 @@ func TestRouter_RoutingWithSubTopics(t *testing.T) {
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
 	// expect a message to `blah` partition first and `blahblub` second
-	msMock.EXPECT().
+	firstStore := msMock.EXPECT().
 		StoreMessage(gomock.Any(), gomock.Any()).
-		Do(func(m *protocol.Message, nodeID int) (int, error) {
+		Do(func(m *protocol.Message, nodeID uint8) (int, error) {
 			a.Equal("/blah/blub", string(m.Path))
 			return 0, nil
 		})
 
 	msMock.EXPECT().
-		StoreMessage(gomock.Any(), gomock.Any()).
-		Do(func(m *protocol.Message, nodeID int) (int, error) {
+		StoreMessage(gomock.Any(), gomock.Any()).After(firstStore).
+		Do(func(m *protocol.Message, nodeID uint8) (int, error) {
 			a.Equal("/blahblub", string(m.Path))
 			return 0, nil
 		})
@@ -319,7 +318,7 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 
 	msMock.EXPECT().
 		StoreMessage(gomock.Any(), gomock.Any()).
-		Do(func(m *protocol.Message, nodeID int) (int, error) {
+		Do(func(m *protocol.Message, nodeID uint8) (int, error) {
 			a.Equal(r.Path, m.Path)
 			return 0, nil
 		}).MaxTimes(chanSize + 1)
@@ -367,7 +366,6 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 
 // Router should handle the buffered messages also after the closing of the route
 func TestRouter_CleanShutdown(t *testing.T) {
-	//testutil.EnableDebugForMethod()
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 

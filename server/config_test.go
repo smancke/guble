@@ -4,8 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"net"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParsingOfEnvironmentVariables(t *testing.T) {
@@ -111,7 +112,7 @@ func TestParsingArgs(t *testing.T) {
 		"--pg-user", "pg-user",
 		"--pg-password", "pg-password",
 		"--pg-dbname", "pg-dbname",
-		"--tcplist", "127.0.0.1:8080 127.0.0.1:20002",
+		"--remotes", "127.0.0.1:8080 127.0.0.1:20002",
 	}
 
 	// when we parse the arguments from command-line flags
@@ -134,7 +135,7 @@ func assertArguments(a *assert.Assertions) {
 	a.Equal("gcm-api-key", *config.GCM.APIKey)
 	a.Equal(3, *config.GCM.Workers)
 
-	a.Equal(1, *config.Cluster.NodeID)
+	a.Equal(uint8(1), *config.Cluster.NodeID)
 	a.Equal(10000, *config.Cluster.NodePort)
 
 	a.Equal("pg-host", *config.Postgres.Host)

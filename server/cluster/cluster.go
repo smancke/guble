@@ -1,31 +1,39 @@
 package cluster
 
 import (
+	"io/ioutil"
+
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/store"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/hashicorp/memberlist"
 
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"strconv"
 )
 
+var (
+	ErrNodeNotFound = errors.New("Node not found.")
+)
+
 // Config is a struct used by the local node when creating and running the guble cluster
 type Config struct {
-	ID                   int
+	ID                   uint8
 	Host                 string
 	Port                 int
 	Remotes              []*net.TCPAddr
 	HealthScoreThreshold int
 }
 
-// MessageHandler is an interface used for handling messages in cluster.
+// router interface specify only the methods we require in cluster from the Router
+// router is an interface used for handling messages in cluster.
 // It is logically connected to the router.Router interface, by reusing the same func signature.
-type MessageHandler interface {
+type router interface {
 	HandleMessage(message *protocol.Message) error
+	MessageStore() (store.MessageStore, error)
 }
 
 // Cluster is a struct for managing the `local view` of the guble cluster, as seen by a node.
@@ -33,24 +41,32 @@ type Cluster struct {
 	// Pointer to a Config struct, based on which the Cluster node is created and runs.
 	Config *Config
 
-	// MessageHandler is used for dispatching messages received by this node.
+	// Router is used for dispatching messages received by this node.
 	// Should be set after the node is created with New(), and before Start().
-	MessageHandler MessageHandler
+	Router router
 
 	name       string
 	memberlist *memberlist.Memberlist
 	broadcasts [][]byte
+
+	numJoins   int
+	numLeaves  int
+	numUpdates int
+
+	synchronizer *synchronizer
 }
 
 //New returns a new instance of the cluster, created using the given Config.
 func New(config *Config) (*Cluster, error) {
-	c := &Cluster{Config: config, name: fmt.Sprintf("%d", config.ID)}
+	c := &Cluster{
+		Config: config,
+		name:   fmt.Sprintf("%d", config.ID),
+	}
 
 	memberlistConfig := memberlist.DefaultLANConfig()
 	memberlistConfig.Name = c.name
 	memberlistConfig.BindAddr = config.Host
 	memberlistConfig.BindPort = config.Port
-	memberlistConfig.Events = &eventDelegate{}
 
 	//TODO Cosmin temporarily disabling any logging from memberlist, we might want to enable it again using logrus?
 	memberlistConfig.LogOutput = ioutil.Discard
@@ -63,17 +79,28 @@ func New(config *Config) (*Cluster, error) {
 	c.memberlist = ml
 	memberlistConfig.Delegate = c
 	memberlistConfig.Conflict = c
+	memberlistConfig.Events = c
+
 	return c, nil
 }
 
 // Start the cluster module.
 func (cluster *Cluster) Start() error {
 	logger.WithField("remotes", cluster.Config.Remotes).Debug("Starting Cluster")
-	if cluster.MessageHandler == nil {
-		errorMessage := "There should be a valid MessageHandler already set-up"
+
+	if cluster.Router == nil {
+		errorMessage := "There should be a valid Router already set-up"
 		logger.Error(errorMessage)
 		return errors.New(errorMessage)
 	}
+
+	synchronizer, err := newSynchronizer(cluster)
+	if err != nil {
+		logger.WithError(err).Error("Error creating cluster synchronizer")
+		return err
+	}
+	cluster.synchronizer = synchronizer
+
 	num, err := cluster.memberlist.Join(cluster.remotesAsStrings())
 	if err != nil {
 		logger.WithField("error", err).Error("Error when this node wanted to join the cluster")
@@ -84,12 +111,17 @@ func (cluster *Cluster) Start() error {
 		logger.WithField("remotes", cluster.remotesAsStrings()).Error(errorMessage)
 		return errors.New(errorMessage)
 	}
+
 	logger.Debug("Started Cluster")
+
 	return nil
 }
 
 // Stop the cluster module.
 func (cluster *Cluster) Stop() error {
+	if cluster.synchronizer != nil {
+		close(cluster.synchronizer.stopC)
+	}
 	return cluster.memberlist.Shutdown()
 }
 
@@ -103,62 +135,29 @@ func (cluster *Cluster) Check() error {
 	return nil
 }
 
-// NotifyMsg is invoked each time a message is received by this node of the cluster; it decodes and dispatches the messages.
-// It is a part of the implementation of `memberlist.Delegate` .
-func (cluster *Cluster) NotifyMsg(msg []byte) {
-	logger.WithField("msgAsBytes", msg).Debug("NotifyMsg")
+// newMessage returns a *message to be used in broadcasting or sending to a node
+func (cluster *Cluster) newMessage(t messageType, body []byte) *message {
+	return &message{
+		NodeID: cluster.Config.ID,
+		Type:   t,
+		Body:   body,
+	}
+}
 
-	cmsg, err := decode(msg)
+func (cluster *Cluster) newEncoderMessage(t messageType, entity encoder) (*message, error) {
+	body, err := entity.encode()
 	if err != nil {
-		logger.WithField("err", err).Error("Decoding of cluster message failed")
-		return
+		return nil, err
 	}
-	logger.WithFields(log.Fields{
-		"senderNodeID": cmsg.NodeID,
-		"type":         cmsg.Type,
-		"body":         string(cmsg.Body),
-	}).Debug("NotifyMsg: Received cluster message")
-
-	if cluster.MessageHandler != nil && cmsg.Type == gubleMessage {
-		pMessage, err := protocol.ParseMessage(cmsg.Body)
-		if err != nil {
-			logger.WithField("err", err).Error("Parsing of guble-message contained in cluster-message failed")
-			return
-		}
-		cluster.MessageHandler.HandleMessage(pMessage)
-	}
+	return cluster.newMessage(t, body), nil
 }
 
-// GetBroadcasts is a part of the implementation of `memberlist.Delegate` .
-func (cluster *Cluster) GetBroadcasts(overhead, limit int) [][]byte {
-	b := cluster.broadcasts
-	cluster.broadcasts = nil
-	return b
-}
-
-// NodeMeta is a part of the implementation of `memberlist.Delegate` .
-func (cluster *Cluster) NodeMeta(limit int) []byte { return nil }
-
-// LocalState is a part of the implementation of `memberlist.Delegate` .
-func (cluster *Cluster) LocalState(join bool) []byte { return nil }
-
-// MergeRemoteState is a part of the implementation of `memberlist.Delegate` .
-func (cluster *Cluster) MergeRemoteState(s []byte, join bool) {}
-
-// NotifyConflict is an implementation of `memberlist.ConflictDelegate` interface.
-func (cluster *Cluster) NotifyConflict(existing, other *memberlist.Node) {
-	logger.WithFields(log.Fields{
-		"existing": *existing,
-		"other":    *other,
-	}).Panic("NotifyConflict")
-}
-
-// BroadcastString broadcasts a string to all the other nodes in the guble cluster.
+// BroadcastString broadcasts a string to all the other nodes in the guble cluster
 func (cluster *Cluster) BroadcastString(sMessage *string) error {
 	logger.WithField("string", sMessage).Debug("BroadcastString")
 	cMessage := &message{
 		NodeID: cluster.Config.ID,
-		Type:   stringMessage,
+		Type:   mtStringMessage,
 		Body:   []byte(*sMessage),
 	}
 	return cluster.broadcastClusterMessage(cMessage)
@@ -169,7 +168,7 @@ func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) error {
 	logger.WithField("message", pMessage).Debug("BroadcastMessage")
 	cMessage := &message{
 		NodeID: cluster.Config.ID,
-		Type:   gubleMessage,
+		Type:   mtGubleMessage,
 		Body:   pMessage.Bytes(),
 	}
 	return cluster.broadcastClusterMessage(cMessage)
@@ -181,11 +180,13 @@ func (cluster *Cluster) broadcastClusterMessage(cMessage *message) error {
 		logger.Error(errorMessage)
 		return errors.New(errorMessage)
 	}
+
 	cMessageBytes, err := cMessage.encode()
 	if err != nil {
-		logger.WithField("err", err).Error("Could not encode and broadcast cluster-message")
+		logger.WithError(err).Error("Could not encode and broadcast cluster-message")
 		return err
 	}
+
 	for _, node := range cluster.memberlist.Members() {
 		if cluster.name == node.Name {
 			continue
@@ -228,6 +229,25 @@ func (cluster *Cluster) sendMessageToNode(node *memberlist.Node, cmsg *message) 
 		return err
 	}
 
+	return nil
+}
+
+func (cluster *Cluster) sendMessageToNodeID(nodeID uint8, cmsg *message) error {
+	node := cluster.GetNodeByID(nodeID)
+	if node == nil {
+		return ErrNodeNotFound
+	}
+
+	return cluster.sendMessageToNode(node, cmsg)
+}
+
+func (cluster *Cluster) GetNodeByID(id uint8) *memberlist.Node {
+	name := strconv.FormatUint(uint64(id), 10)
+	for _, node := range cluster.memberlist.Members() {
+		if node.Name == name {
+			return node
+		}
+	}
 	return nil
 }
 
