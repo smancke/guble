@@ -368,6 +368,7 @@ func removeIfMatching(slice []*Route, route *Route) ([]*Route, bool) {
 	for p, r := range slice {
 		if r.Equal(route, "application_id") {
 			position = p
+			break
 		}
 	}
 	if position == -1 {

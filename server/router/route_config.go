@@ -9,12 +9,14 @@ import (
 	"github.com/smancke/guble/protocol"
 )
 
-type RouteParams map[string]string
+// Matcher is a func type that receives two route configurations pointers as parameteres and
+// returns true if the routes are equal (or matching)
+type Matcher func(RouteConfig, RouteConfig, ...string) bool
 
 type RouteConfig struct {
-	RouteParams
-
 	Path protocol.Path
+
+	RouteParams
 
 	ChannelSize int
 
@@ -27,7 +29,19 @@ type RouteConfig struct {
 	// timeout defines how long to wait for the message to be read on the channel.
 	// If timeout is reached the route is closed.
 	timeout time.Duration
+
+	// If Matcher is set will be used to check equality of the routes
+	Matcher Matcher
 }
+
+func (rc *RouteConfig) Equal(other RouteConfig, keys ...string) bool {
+	if rc.Matcher != nil {
+		return rc.Matcher(*rc, other, keys...)
+	}
+	return rc.Path == other.Path && rc.RouteParams.Equal(other.RouteParams, keys...)
+}
+
+type RouteParams map[string]string
 
 func (rp *RouteParams) String() string {
 	s := make([]string, 0, len(*rp))

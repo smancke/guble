@@ -128,7 +128,7 @@ func (r *Route) Close() error {
 // Equal will check if the route path is matched and all the parameters or just a
 // subset of specific parameters between the routes
 func (r *Route) Equal(other *Route, keys ...string) bool {
-	return r.Path == other.Path && r.RouteParams.Equal(other.RouteParams, keys...)
+	return r.RouteConfig.Equal(other.RouteConfig, keys...)
 }
 
 // IsInvalid returns true if the route is invalid, has been closed previously

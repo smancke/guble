@@ -133,7 +133,7 @@ func (conn *Connector) Check() error {
 	}
 	_, err := conn.Sender.Send(message)
 	if err != nil {
-		logger.WithError(err).Error("Error checking GCM connection")
+		logger.WithField("error", err.Error()).Error("Error checking GCM connection")
 		return err
 	}
 	return nil
