@@ -109,11 +109,11 @@ func (msg *Message) encodeFilters() []byte {
 }
 
 func (msg *Message) decodeFilters(data []byte) {
-	msg.Filters = make(map[string]string)
 	if len(data) == 0 {
 		return
 	}
 
+	msg.Filters = make(map[string]string)
 	err := json.Unmarshal(data, &msg.Filters)
 	if err != nil {
 		log.WithError(err).WithField("data", string(data)).Error("Error decoding filters")

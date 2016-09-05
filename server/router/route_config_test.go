@@ -141,6 +141,6 @@ func TestRouteConfig_Equal(t *testing.T) {
 			Matcher:     c.Matcher,
 		}
 		a.Equal(c.result, first.Equal(second, c.keys...), "Failed forward check for case: "+name)
-		a.Equal(c.result, second.Equal(first, c.keys...), "Failed reverse check for case: "+name)
+		a.Equal(c.result, second.Equal(first, c.keys...), "Failed backwards check for case: "+name)
 	}
 }
