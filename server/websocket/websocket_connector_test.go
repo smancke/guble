@@ -61,24 +61,6 @@ func Test_WebSocket_SubscribeAndUnsubscribe(t *testing.T) {
 	a.Equal(protocol.Path("/bar"), websocket.receivers[protocol.Path("/bar")].path)
 }
 
-func Test_SendMessageWithPublisherMessageId(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
-
-	// given: a send command with PublisherMessageId
-	commands := []string{"> /path 42"}
-	wsconn, routerMock, messageStore := createDefaultMocks(commands)
-
-	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *protocol.Message) {
-		assert.Equal(t, protocol.Path("/path"), msg.Path)
-		assert.Equal(t, "42", msg.OptionalID)
-	})
-
-	wsconn.EXPECT().Send([]byte("#send 42"))
-
-	runNewWebSocket(wsconn, routerMock, messageStore, nil)
-}
-
 func Test_SendMessage(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()

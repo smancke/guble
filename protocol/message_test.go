@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var aNormalMessage = `/foo/bar,42,user01,phone01,id123,1420110000,1
+var aNormalMessage = `/foo/bar,42,user01,phone01,{"user":"user01"},1420110000,1
 {"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}
 Hello World`
 
@@ -33,7 +33,7 @@ func TestParsingANormalMessage(t *testing.T) {
 	assert.Equal(Path("/foo/bar"), msg.Path)
 	assert.Equal("user01", msg.UserID)
 	assert.Equal("phone01", msg.ApplicationID)
-	assert.Equal("id123", msg.OptionalID)
+	assert.Equal(map[string]string{"user": "user01"}, msg.Filters)
 	assert.Equal(unixTime.Unix(), msg.Time)
 	assert.Equal(uint8(1), msg.NodeID)
 	assert.Equal(`{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`, msg.HeaderJSON)
@@ -47,7 +47,7 @@ func TestSerializeANormalMessage(t *testing.T) {
 		Path:          Path("/foo/bar"),
 		UserID:        "user01",
 		ApplicationID: "phone01",
-		OptionalID:    "id123",
+		Filters:       map[string]string{"user": "user01"},
 		Time:          unixTime.Unix(),
 		NodeID:        1,
 		HeaderJSON:    `{"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}`,
@@ -95,7 +95,7 @@ func TestParsingAMinimalMessage(t *testing.T) {
 	assert.Equal(Path("/"), msg.Path)
 	assert.Equal("", msg.UserID)
 	assert.Equal("", msg.ApplicationID)
-	assert.Equal("", msg.OptionalID)
+	assert.Equal(map[string]string{}, msg.Filters)
 	assert.Equal(unixTime.Unix(), msg.Time)
 	assert.Equal("", msg.HeaderJSON)
 

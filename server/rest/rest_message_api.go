@@ -66,7 +66,6 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Body:          body,
 		UserID:        q(r, `userId`),
 		ApplicationID: xid.New().String(),
-		OptionalID:    q(r, `messageId`),
 		HeaderJSON:    headersToJSON(r.Header),
 	}
 	api.router.HandleMessage(msg)
