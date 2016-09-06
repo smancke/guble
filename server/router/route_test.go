@@ -161,3 +161,8 @@ func testRoute() *Route {
 	}
 	return NewRoute(options)
 }
+
+// TODO Bogdan
+func TestRoute_messageFilter(t *testing.T) {
+
+}

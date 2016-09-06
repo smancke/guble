@@ -82,6 +82,11 @@ func (r *Route) Deliver(msg *protocol.Message) error {
 		return ErrInvalidRoute
 	}
 
+	if !r.messageFilter(msg) {
+		loggerMessage.Debug("Message filter didn't match route")
+		return nil
+	}
+
 	// not an infinite queue
 	if r.queueSize >= 0 {
 		// if size is zero the sending is direct

@@ -21,7 +21,7 @@ const (
 	subBufferSize = 50
 
 	// applicationIDKey is the key name set on the route params to identify the application
-	applicationIDKey = "application_id"
+	applicationIDKey = "device_id"
 
 	// userIDKey is the key name set on the route params to identify the user
 	userIDKey = "user_id"

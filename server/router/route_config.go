@@ -41,10 +41,20 @@ func (rc *RouteConfig) Equal(other RouteConfig, keys ...string) bool {
 	return rc.Path == other.Path && rc.RouteParams.Equal(other.RouteParams, keys...)
 }
 
-// // Filter returns true if the route matches the filters
-// func (rc *RouteConfig) Filter(filters map[string]string) bool {
+// messageFilter returns true if the route matches message filters
+func (rc *RouteConfig) messageFilter(m *protocol.Message) bool {
+	if m.Filters == nil {
+		return true
+	}
 
-// }
+	for key, value := range m.Filters {
+		if rc.Get(key) != value {
+			return false
+		}
+	}
+
+	return true
+}
 
 type RouteParams map[string]string
 

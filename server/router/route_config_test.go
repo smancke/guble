@@ -144,3 +144,65 @@ func TestRouteConfig_Equal(t *testing.T) {
 		a.Equal(c.result, second.Equal(first, c.keys...), "Failed backwards check for case: "+name)
 	}
 }
+
+func TestRouteConfig_messageFilter(t *testing.T) {
+	a := assert.New(t)
+
+	routeConfig := RouteConfig{
+		RouteParams: RouteParams{
+			"field1": "value1",
+			"field2": "value2",
+		},
+	}
+
+	testcases := map[string]struct {
+		// filters on the message
+		filters map[string]string
+
+		// expected result
+		result bool
+	}{
+		"no filter": {
+			filters: nil,
+			result:  true,
+		},
+		"partial filter": {
+			filters: map[string]string{
+				"field1": "value1",
+			},
+			result: true,
+		},
+		"full filter": {
+			filters: map[string]string{
+				"field1": "value1",
+				"field2": "value2",
+			},
+			result: true,
+		},
+		"one invalid filter": {
+			filters: map[string]string{
+				"field1": "value1",
+				"field2": "value3",
+			},
+			result: false,
+		},
+		"both invalid": {
+			filters: map[string]string{
+				"field1": "value3",
+				"field2": "value4",
+			},
+			result: false,
+		},
+		"partial invalid": {
+			filters: map[string]string{
+				"field2": "value4",
+			},
+			result: false,
+		},
+	}
+
+	for name, c := range testcases {
+		m := &protocol.Message{Filters: c.filters}
+		a.Equal(c.result, routeConfig.messageFilter(m), "Failed filter: "+name)
+	}
+}
