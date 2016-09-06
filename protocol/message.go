@@ -120,6 +120,13 @@ func (msg *Message) decodeFilters(data []byte) {
 	}
 }
 
+func (msg *Message) SetFilter(key, value string) {
+	if msg.Filters == nil {
+		msg.Filters = make(map[string]string, 1)
+	}
+	msg.Filters[key] = value
+}
+
 // Valid constants for the NotificationMessage.Name
 const (
 	SUCCESS_CONNECTED     = "connected"

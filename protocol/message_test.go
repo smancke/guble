@@ -194,3 +194,33 @@ func Test_Message_getPartitionFromTopic(t *testing.T) {
 	a.Equal("", Path("/").Partition())
 	a.Equal("", Path("").Partition())
 }
+
+func TestMessage_Filters(t *testing.T) {
+	a := assert.New(t)
+
+	msg := &Message{}
+	msg.SetFilter("user", "user01")
+	msg.SetFilter("device_id", "ID_DEVICE")
+
+	a.NotNil(msg.Filters)
+	a.Equal(msg.Filters["user"], "user01")
+	a.Equal(msg.Filters["device_id"], "ID_DEVICE")
+
+	a.JSONEq(`{"user": "user01","device_id":"ID_DEVICE"}`, string(msg.encodeFilters()))
+}
+
+func TestMessage_decodeFilters(t *testing.T) {
+	a := assert.New(t)
+
+	msg := &Message{}
+
+	filters := []byte(`{"user": "user01","device_id":"ID_DEVICE"}`)
+	msg.decodeFilters(filters)
+
+	a.NotNil(msg.Filters)
+	a.Contains(msg.Filters, "user")
+	a.Contains(msg.Filters, "device_id")
+
+	a.Equal(msg.Filters["user"], "user01")
+	a.Equal(msg.Filters["device_id"], "ID_DEVICE")
+}
