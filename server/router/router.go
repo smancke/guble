@@ -366,7 +366,7 @@ func matchesTopic(messagePath, routePath protocol.Path) bool {
 func removeIfMatching(slice []*Route, route *Route) ([]*Route, bool) {
 	position := -1
 	for p, r := range slice {
-		if r.Equal(route, "application_id") {
+		if r.Equal(route) {
 			position = p
 			break
 		}

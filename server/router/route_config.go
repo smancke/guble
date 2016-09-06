@@ -41,6 +41,11 @@ func (rc *RouteConfig) Equal(other RouteConfig, keys ...string) bool {
 	return rc.Path == other.Path && rc.RouteParams.Equal(other.RouteParams, keys...)
 }
 
+// // Filter returns true if the route matches the filters
+// func (rc *RouteConfig) Filter(filters map[string]string) bool {
+
+// }
+
 type RouteParams map[string]string
 
 func (rp *RouteParams) String() string {
