@@ -4,14 +4,15 @@ import (
 	"github.com/smancke/guble/testutil"
 
 	"fmt"
-	"github.com/gorilla/websocket"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/assert"
 )
 
-var aNormalMessage = `/foo/bar,42,user01,phone01,id123,1420110000,0
+var aNormalMessage = `/foo/bar,42,user01,phone01,{},1420110000,0
 
 Hello World`
 

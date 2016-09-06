@@ -91,7 +91,7 @@ func (api *RestMessageAPI) extractTopic(path string) (string, error) {
 	return topic, nil
 }
 
-// setFilters sets and field found in the format `filterCamelCaseField` in the
+// setFilters sets a field found in the format `filterCamelCaseField` in the
 // query of the request to underscore format on the message filters
 func (api *RestMessageAPI) setFilters(r *http.Request, msg *protocol.Message) {
 	for name, values := range r.URL.Query() {
