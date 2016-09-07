@@ -1,7 +1,6 @@
 package gcm
 
 import (
-	"encoding/json"
 	"errors"
 	"math"
 	"strconv"
@@ -417,42 +416,4 @@ func (s *subscription) replaceCanonical(newGCMID string) error {
 	}
 	newS.start()
 	return errSubReplaced
-}
-
-func newPipeMessage(s *subscription, m *protocol.Message) *pipeMessage {
-	return &pipeMessage{s, m, make(chan *gcm.Response, 1), make(chan error, 1)}
-}
-
-// Pipeline message
-type pipeMessage struct {
-	*subscription
-	message *protocol.Message
-	resultC chan *gcm.Response
-	errC    chan error
-}
-
-func (pm *pipeMessage) payload() map[string]interface{} {
-	return messageMap(pm.message)
-}
-
-func (pm *pipeMessage) closeChannels() {
-	close(pm.resultC)
-	close(pm.errC)
-}
-
-// ignoreMessage will send a errIgnoreMessage in to the error channel so the processing can continue
-func (pm *pipeMessage) ignoreMessage() {
-	pm.errC <- errIgnoreMessage
-}
-
-func messageMap(m *protocol.Message) map[string]interface{} {
-	payload := make(map[string]interface{})
-
-	if m.Body[0] == '{' {
-		json.Unmarshal(m.Body, &payload)
-	} else {
-		payload["message"] = m.BodyAsString()
-	}
-
-	return payload
 }

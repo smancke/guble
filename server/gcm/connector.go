@@ -172,8 +172,9 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 	gcmID := pm.subscription.route.Get(applicationIDKey)
 
 	gcmMessage := &gcm.Message{
-		To:   gcmID,
-		Data: pm.payload(),
+		To:           gcmID,
+		Data:         pm.data(),
+		Notification: pm.notification(),
 	}
 	logger.WithFields(log.Fields{
 		"gcmID":      gcmID,
