@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/azer/snakecase"
+
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
 
@@ -15,7 +17,10 @@ import (
 	"strings"
 )
 
-const xHeaderPrefix = "x-guble-"
+const (
+	xHeaderPrefix = "x-guble-"
+	filterPrefix  = "filter"
+)
 
 var errNotFound = errors.New("Not Found.")
 
@@ -66,9 +71,12 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Body:          body,
 		UserID:        q(r, `userId`),
 		ApplicationID: xid.New().String(),
-		OptionalID:    q(r, `messageId`),
 		HeaderJSON:    headersToJSON(r.Header),
 	}
+
+	// add filters
+	api.setFilters(r, msg)
+
 	api.router.HandleMessage(msg)
 	fmt.Fprintf(w, "OK")
 }
@@ -86,6 +94,16 @@ func (api *RestMessageAPI) extractTopic(path string) (string, error) {
 	return topic, nil
 }
 
+// setFilters sets a field found in the format `filterCamelCaseField` in the
+// query of the request to underscore format on the message filters
+func (api *RestMessageAPI) setFilters(r *http.Request, msg *protocol.Message) {
+	for name, values := range r.URL.Query() {
+		if strings.HasPrefix(name, filterPrefix) && len(values) > 0 {
+			msg.SetFilter(filterName(name), values[0])
+		}
+	}
+}
+
 // returns a query parameter
 func q(r *http.Request, name string) string {
 	params := r.URL.Query()[name]
@@ -93,6 +111,11 @@ func q(r *http.Request, name string) string {
 		return params[0]
 	}
 	return ""
+}
+
+// transform from filterCamelCase to camel_case
+func filterName(name string) string {
+	return snakecase.SnakeCase(strings.TrimPrefix(name, filterPrefix))
 }
 
 func headersToJSON(header http.Header) string {

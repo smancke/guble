@@ -2,9 +2,12 @@ package protocol
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // Message is a struct that represents a message in the guble protocol, as the server sends it to the client.
@@ -23,8 +26,9 @@ type Message struct {
 	// The id of the sending application
 	ApplicationID string
 
-	// An optional ID given by the sender
-	OptionalID string
+	// Filters applied to this message. The message will be sent only to the
+	// routes that match the filters
+	Filters map[string]string
 
 	// The time of publishing, as Unix Timestamp date
 	Time int64
@@ -84,11 +88,44 @@ func (msg *Message) writeMetadata(buff *bytes.Buffer) {
 	buff.WriteString(",")
 	buff.WriteString(msg.ApplicationID)
 	buff.WriteString(",")
-	buff.WriteString(msg.OptionalID)
+	buff.Write(msg.encodeFilters())
 	buff.WriteString(",")
 	buff.WriteString(strconv.FormatInt(msg.Time, 10))
 	buff.WriteString(",")
 	buff.WriteString(strconv.FormatUint(uint64(msg.NodeID), 10))
+}
+
+func (msg *Message) encodeFilters() []byte {
+	if msg.Filters == nil {
+		return []byte{}
+	}
+
+	data, err := json.Marshal(msg.Filters)
+	if err != nil {
+		log.WithError(err).WithField("filters", msg.Filters).Error("Error encoding filters")
+		return []byte{}
+	}
+
+	return data
+}
+
+func (msg *Message) decodeFilters(data []byte) {
+	if len(data) == 0 {
+		return
+	}
+
+	msg.Filters = make(map[string]string)
+	err := json.Unmarshal(data, &msg.Filters)
+	if err != nil {
+		log.WithError(err).WithField("data", string(data)).Error("Error decoding filters")
+	}
+}
+
+func (msg *Message) SetFilter(key, value string) {
+	if msg.Filters == nil {
+		msg.Filters = make(map[string]string, 1)
+	}
+	msg.Filters[key] = value
 }
 
 // Valid constants for the NotificationMessage.Name
@@ -188,10 +225,10 @@ func ParseMessage(message []byte) (*Message, error) {
 		Path:          Path(meta[0]),
 		UserID:        meta[2],
 		ApplicationID: meta[3],
-		OptionalID:    meta[4],
 		Time:          publishingTime,
 		NodeID:        uint8(nodeID),
 	}
+	msg.decodeFilters([]byte(meta[4]))
 
 	if len(parts) >= 2 {
 		msg.HeaderJSON = parts[1]

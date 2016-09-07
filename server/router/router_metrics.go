@@ -22,6 +22,7 @@ var (
 	mTotalMessagesNotMatchingTopic             = metrics.NewInt("guble.router.total_messages_not_matching_topic")
 	mTotalMessageStoreErrors                   = metrics.NewInt("guble.router.total_errors_message_store")
 	mTotalDeliverMessageErrors                 = metrics.NewInt("guble.router.total_errors_deliver_message")
+	mTotalNotMatchedByFilters                  = metrics.NewInt("guble.router.total_not_matched_by_filters")
 )
 
 func resetRouterMetrics() {
@@ -42,4 +43,5 @@ func resetRouterMetrics() {
 	mTotalMessageStoreErrors.Set(0)
 	mTotalMessagesIncomingBytes.Set(0)
 	mTotalMessagesStoredBytes.Set(0)
+	mTotalNotMatchedByFilters.Set(0)
 }

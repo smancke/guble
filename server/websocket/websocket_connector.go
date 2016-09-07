@@ -247,13 +247,10 @@ func (ws *WebSocket) handleSendCmd(cmd *protocol.Cmd) {
 		HeaderJSON:    cmd.HeaderJSON,
 		Body:          cmd.Body,
 	}
-	if len(args) == 2 {
-		msg.OptionalID = args[1]
-	}
 
 	ws.router.HandleMessage(msg)
 
-	ws.sendOK(protocol.SUCCESS_SEND, msg.OptionalID)
+	ws.sendOK(protocol.SUCCESS_SEND, "")
 }
 
 func (ws *WebSocket) cleanAndClose() {

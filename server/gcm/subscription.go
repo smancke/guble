@@ -21,7 +21,7 @@ const (
 	subBufferSize = 50
 
 	// applicationIDKey is the key name set on the route params to identify the application
-	applicationIDKey = "application_id"
+	applicationIDKey = "device_id"
 
 	// userIDKey is the key name set on the route params to identify the user
 	userIDKey = "user_id"
@@ -76,6 +76,7 @@ func initSubscription(connector *Connector, topic, userID, gcmID string, lastID 
 		RouteParams: router.RouteParams{userIDKey: userID, applicationIDKey: gcmID},
 		Path:        protocol.Path(topic),
 		ChannelSize: subBufferSize,
+		Matcher:     subscriptionMatcher,
 	})
 
 	s := newSubscription(connector, route, lastID)
@@ -94,6 +95,10 @@ func initSubscription(connector *Connector, topic, userID, gcmID string, lastID 
 	}
 
 	return s, s.restart()
+}
+
+func subscriptionMatcher(route, other router.RouteConfig, keys ...string) bool {
+	return route.Path == other.Path && route.Get(applicationIDKey) == other.Get(applicationIDKey)
 }
 
 // exists returns true if the subscription is present with the same key in gcm.subscriptions

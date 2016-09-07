@@ -45,7 +45,7 @@ func TestServerHTTP(t *testing.T) {
 		a.Equal("{}", msg.HeaderJSON)
 		a.Equal("/my/topic", string(msg.Path))
 		a.True(len(msg.ApplicationID) > 0)
-		a.Equal("42", msg.OptionalID)
+		a.Nil(msg.Filters)
 		a.Equal("marvin", msg.UserID)
 	})
 
@@ -130,4 +130,66 @@ func TestExtractTopic(t *testing.T) {
 			a.Equal(c.err, err, m)
 		}
 	}
+}
+
+func TestRestMessageAPI_setFilters(t *testing.T) {
+	a := assert.New(t)
+
+	body := bytes.NewBufferString("")
+	req, err := http.NewRequest(
+		http.MethodPost,
+		"http://localhost/api/message/topic?filterUserID=user01&filterDeviceID=ABC&filterDummyCamelCase=dummy_value",
+		body)
+	a.NoError(err)
+
+	api := &RestMessageAPI{}
+	msg := &protocol.Message{}
+
+	api.setFilters(req, msg)
+
+	a.NotNil(msg.Filters)
+	if a.Contains(msg.Filters, "user_id") {
+		a.Equal("user01", msg.Filters["user_id"])
+	}
+	if a.Contains(msg.Filters, "device_id") {
+		a.Equal("ABC", msg.Filters["device_id"])
+	}
+	if a.Contains(msg.Filters, "dummy_camel_case") {
+		a.Equal("dummy_value", msg.Filters["dummy_camel_case"])
+	}
+}
+
+func TestRestMessageAPI_SetFiltersWhenServing(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
+	a := assert.New(t)
+
+	body := bytes.NewBufferString("")
+	req, err := http.NewRequest(
+		http.MethodPost,
+		"http://localhost/test/message/topic?filterUserID=user01&filterDeviceID=ABC&filterDummyCamelCase=dummy_value",
+		body)
+	a.NoError(err)
+
+	routerMock := NewMockRouter(testutil.MockCtrl)
+	api := NewRestMessageAPI(routerMock, "/test/")
+	recorder := httptest.NewRecorder()
+
+	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *protocol.Message) error {
+		a.NotNil(msg.Filters)
+		if a.Contains(msg.Filters, "user_id") {
+			a.Equal("user01", msg.Filters["user_id"])
+		}
+		if a.Contains(msg.Filters, "device_id") {
+			a.Equal("ABC", msg.Filters["device_id"])
+		}
+		if a.Contains(msg.Filters, "dummy_camel_case") {
+			a.Equal("dummy_value", msg.Filters["dummy_camel_case"])
+		}
+
+		return nil
+	})
+
+	api.ServeHTTP(recorder, req)
 }

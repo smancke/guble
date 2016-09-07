@@ -185,16 +185,20 @@ func TestRouter_HandleMessageNotAllowed(t *testing.T) {
 	a.NoError(err)
 }
 
-func TestRouter_ReplacingOfRoutes(t *testing.T) {
+func TestRouter_ReplacingOfRoutesMatchingAppID(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a Router with a route
 	router, _, _, _ := aStartedRouter()
 
+	matcherFunc := func(route, other RouteConfig, keys ...string) bool {
+		return route.Path == other.Path && route.Get("application_id") == other.Get("application_id")
+	}
 	router.Subscribe(NewRoute(
 		RouteConfig{
 			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
 			Path:        protocol.Path("/blah"),
+			Matcher:     matcherFunc,
 		},
 	))
 
@@ -203,6 +207,7 @@ func TestRouter_ReplacingOfRoutes(t *testing.T) {
 		RouteConfig{
 			RouteParams: RouteParams{"application_id": "appid01", "user_id": "newUserId"},
 			Path:        protocol.Path("/blah"),
+			Matcher:     matcherFunc,
 		},
 	))
 
