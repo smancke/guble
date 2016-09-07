@@ -95,7 +95,7 @@ func TestParsingAMinimalMessage(t *testing.T) {
 	assert.Equal(Path("/"), msg.Path)
 	assert.Equal("", msg.UserID)
 	assert.Equal("", msg.ApplicationID)
-	assert.Equal(nil, msg.Filters)
+	assert.Nil(msg.Filters)
 	assert.Equal(unixTime.Unix(), msg.Time)
 	assert.Equal("", msg.HeaderJSON)
 
