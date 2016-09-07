@@ -84,6 +84,7 @@ func (r *Route) Deliver(msg *protocol.Message) error {
 
 	if !r.messageFilter(msg) {
 		loggerMessage.Debug("Message filter didn't match route")
+		mTotalNotMatchedByFilters.Add(1)
 		return nil
 	}
 
