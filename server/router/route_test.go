@@ -162,7 +162,73 @@ func testRoute() *Route {
 	return NewRoute(options)
 }
 
-// TODO Bogdan
 func TestRoute_messageFilter(t *testing.T) {
+	a := assert.New(t)
 
+	route := NewRoute(RouteConfig{
+		Path:        "/topic",
+		ChannelSize: 1,
+		RouteParams: RouteParams{
+			"field1": "value1",
+			"field2": "value2",
+		},
+	})
+
+	msg := &protocol.Message{
+		ID:   1,
+		Path: "/topic",
+	}
+	route.Deliver(msg)
+
+	// test message is received on the channel
+	a.True(isMessageReceived(route, msg))
+
+	msg = &protocol.Message{
+		ID:   1,
+		Path: "/topic",
+	}
+	msg.SetFilter("field1", "value1")
+	route.Deliver(msg)
+	a.True(isMessageReceived(route, msg))
+
+	msg = &protocol.Message{
+		ID:   1,
+		Path: "/topic",
+	}
+	msg.SetFilter("field1", "value1")
+	msg.SetFilter("field2", "value2")
+	route.Deliver(msg)
+	a.True(isMessageReceived(route, msg))
+
+	msg = &protocol.Message{
+		ID:   1,
+		Path: "/topic",
+	}
+	msg.SetFilter("field1", "value1")
+	msg.SetFilter("field2", "value2")
+	msg.SetFilter("field3", "value3")
+	route.Deliver(msg)
+	a.False(isMessageReceived(route, msg))
+
+	msg = &protocol.Message{
+		ID:   1,
+		Path: "/topic",
+	}
+	msg.SetFilter("field3", "value3")
+	route.Deliver(msg)
+	a.False(isMessageReceived(route, msg))
+}
+
+func isMessageReceived(route *Route, msg *protocol.Message) bool {
+	select {
+	case m, opened := <-route.MessagesChannel():
+		if !opened {
+			return false
+		}
+
+		return m == msg
+	case <-time.After(20 * time.Millisecond):
+	}
+
+	return false
 }
