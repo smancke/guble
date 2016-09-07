@@ -26,7 +26,8 @@ type Message struct {
 	// The id of the sending application
 	ApplicationID string
 
-	// An optional ID given by the sender
+	// Filters applied to this message. The message will be sent only to the
+	// routes that match the filters
 	Filters map[string]string
 
 	// The time of publishing, as Unix Timestamp date

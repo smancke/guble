@@ -17,7 +17,10 @@ import (
 	"strings"
 )
 
-const xHeaderPrefix = "x-guble-"
+const (
+	xHeaderPrefix = "x-guble-"
+	filterPrefix  = "filter"
+)
 
 var errNotFound = errors.New("Not Found.")
 
@@ -95,7 +98,7 @@ func (api *RestMessageAPI) extractTopic(path string) (string, error) {
 // query of the request to underscore format on the message filters
 func (api *RestMessageAPI) setFilters(r *http.Request, msg *protocol.Message) {
 	for name, values := range r.URL.Query() {
-		if strings.HasPrefix(name, "filter") && len(values) > 0 {
+		if strings.HasPrefix(name, filterPrefix) && len(values) > 0 {
 			msg.SetFilter(filterName(name), values[0])
 		}
 	}
@@ -112,7 +115,7 @@ func q(r *http.Request, name string) string {
 
 // transform from filterCamelCase to camel_case
 func filterName(name string) string {
-	return snakecase.SnakeCase(strings.TrimPrefix(name, "filter"))
+	return snakecase.SnakeCase(strings.TrimPrefix(name, filterPrefix))
 }
 
 func headersToJSON(header http.Header) string {
