@@ -2,6 +2,7 @@ package restclient
 
 import (
 	"github.com/stretchr/testify/assert"
+	"net/url"
 	"testing"
 )
 
@@ -72,7 +73,10 @@ func TestGetURL(t *testing.T) {
 		},
 	}
 
+	var err error
 	for name, c := range testcases {
+		_, err = url.Parse(c.expected)
+		a.NoError(err)
 		a.Equal(c.expected,
 			getURL(c.endpoint, c.topic, c.userID, c.params),
 			"Failed check for case: "+name)
