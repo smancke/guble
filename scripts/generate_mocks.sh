@@ -80,6 +80,11 @@ $MOCKGEN -self_package gcm -package gcm \
       github.com/smancke/guble/server/store \
       MessageStore
 
+$MOCKGEN -self_package gcm -package gcm \
+      -destination server/gcm/mocks_gcm_gen_test.go \
+      github.com/Bogh/gcm \
+      Sender
+
 # server mocks
 $MOCKGEN -package server \
       -destination server/mocks_router_gen_test.go \

@@ -7,8 +7,9 @@ import (
 	"github.com/smancke/guble/protocol"
 )
 
-func newPipeMessage(s *subscription, m *protocol.Message) *pipeMessage {
-	return &pipeMessage{s, m, make(chan *gcm.Response, 1), make(chan error, 1), nil}
+type fcmJSON struct {
+	Notification *gcm.Notification      `json:notification,omitempty`
+	Data         map[string]interface{} `json:data`
 }
 
 // Pipeline message
@@ -17,48 +18,47 @@ type pipeMessage struct {
 	message *protocol.Message
 	resultC chan *gcm.Response
 	errC    chan error
-	json    map[string]interface{}
+	fcmJSON *fcmJSON
+}
+
+func newPipeMessage(s *subscription, m *protocol.Message) *pipeMessage {
+	return &pipeMessage{s, m, make(chan *gcm.Response, 1), make(chan error, 1), nil}
 }
 
 func (pm *pipeMessage) data() map[string]interface{} {
-	json := pm.jsonBody()
-	if data, ok := json["data"]; ok {
-		if mapData, ok := data.(map[string]interface{}); ok {
-			return mapData
-		}
-		return map[string]interface{}{"message": data}
+	fcm, err := pm.fcm()
+	if err == nil && fcm.Data != nil {
+		return fcm.Data
 	}
 
-	return map[string]interface{}{"message": pm.message.Body}
+	jsonBody := make(map[string]interface{})
+	err = json.Unmarshal(pm.message.Body, jsonBody)
+	if err != nil {
+		return map[string]interface{}{"message": pm.message.Body}
+	}
+	return jsonBody
 }
 
 func (pm *pipeMessage) notification() *gcm.Notification {
-	json := pm.jsonBody()
-
-	if json == nil {
-		return nil
-	}
-
-	if notification, ok := json["notification"]; ok {
-		if gcmNotification, ok := notification.(gcm.Notification); ok {
-			return &gcmNotification
-		}
+	fcm, err := pm.fcm()
+	if err == nil && fcm.Notification != nil {
+		return fcm.Notification
 	}
 	return nil
 }
 
-func (pm *pipeMessage) jsonBody() map[string]interface{} {
-	if pm.json != nil {
-		return pm.json
+func (pm *pipeMessage) fcm() (*fcmJSON, error) {
+	if pm.fcmJSON != nil {
+		return pm.fcmJSON, nil
 	}
 
-	pm.json = make(map[string]interface{})
-	err := json.Unmarshal(pm.message.Body, &pm.json)
+	pm.fcmJSON = &fcmJSON{}
+	err := json.Unmarshal(pm.message.Body, pm.fcmJSON)
 	if err != nil {
-		pm.logger.WithField("error", err.Error()).Debug("Cannot unmarshal message body to json object")
+		return nil, err
 	}
 
-	return pm.json
+	return pm.fcmJSON, nil
 }
 
 func (pm *pipeMessage) closeChannels() {
