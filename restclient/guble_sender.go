@@ -64,7 +64,9 @@ func getURL(endpoint, topic, userID string, params map[string]string) string {
 	uv.Add("userId", userID)
 	if params != nil {
 		for k, v := range params {
-			uv.Add(k, v)
+			if k != "" {
+				uv.Add(k, v)
+			}
 		}
 	}
 	return fmt.Sprintf("%s/%s?%s", endpoint, topic, uv.Encode())

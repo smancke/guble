@@ -56,12 +56,19 @@ func TestGetURL(t *testing.T) {
 			},
 			expected: "http://localhost:8080/api/topic?filterCriteria1=value1&filterCriteria2=value2&userId=user",
 		},
-		"endpoint, valid topic, valid user, one param invalid inside URL": {
+		"endpoint, valid topic, valid user, one param value invalid inside URL": {
 			endpoint: "http://localhost:8080/api",
 			topic:    "topic",
 			userID:   "user",
 			params:   map[string]string{"filterCriteria1": "?"},
 			expected: "http://localhost:8080/api/topic?filterCriteria1=%3F&userId=user",
+		},
+		"endpoint, valid topic, valid user, one param key empty": {
+			endpoint: "http://localhost:8080/api",
+			topic:    "topic",
+			userID:   "user",
+			params:   map[string]string{"": "value"},
+			expected: "http://localhost:8080/api/topic?userId=user",
 		},
 	}
 
