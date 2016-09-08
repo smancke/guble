@@ -1,6 +1,7 @@
 package gcm
 
 import (
+	"github.com/Bogh/gcm"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
@@ -369,6 +370,91 @@ func TestConnector_SubscriptionExists(t *testing.T) {
 
 	a.Equal(http.StatusOK, w.Code)
 	a.Equal("subscription exists", w.Body.String())
+}
+
+func TestGCM_FCMFormatMessage(t *testing.T) {
+	mockCtrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
+	a := assert.New(t)
+
+	var subRoute *router.Route
+
+	connector, routerMock, _ := testSimpleGCM(t, false)
+	gcmSenderMock := NewMockSender(mockCtrl)
+	connector.Sender = gcmSenderMock
+	connector.Start()
+	defer connector.Stop()
+	time.Sleep(50 * time.Millisecond)
+
+	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) (*router.Route, error) {
+		subRoute = route
+		return route, nil
+	})
+
+	postSubscription(t, connector, "user01", "device01", "topic")
+
+	// send a fully formated GCM message
+	m := &protocol.Message{
+		Path: "/topic",
+		ID:   1,
+		Body: []byte(fullFCMMessage),
+	}
+
+	if !a.NotNil(subRoute) {
+		return
+	}
+
+	doneC := make(chan bool)
+
+	gcmSenderMock.EXPECT().Send(gomock.Any()).Do(func(m *gcm.Message) (*gcm.Response, error) {
+		a.NotNil(m.Notification)
+		a.Equal("TEST", m.Notification.Title)
+		a.Equal("notification body", m.Notification.Body)
+		a.Equal("ic_notification_test_icon", m.Notification.Icon)
+		a.Equal("estimated_arrival", m.Notification.ClickAction)
+
+		a.NotNil(m.Data)
+		if a.Contains(m.Data, "field1") {
+			a.Equal("value1", m.Data["field1"])
+		}
+		if a.Contains(m.Data, "field2") {
+			a.Equal("value2", m.Data["field2"])
+		}
+
+		doneC <- true
+		return nil, nil
+	}).Return(&gcm.Response{}, nil)
+
+	subRoute.Deliver(m)
+	select {
+	case <-doneC:
+	case <-time.After(100 * time.Millisecond):
+		a.Fail("Message not received by FCM")
+	}
+
+	m = &protocol.Message{
+		Path: "/topic",
+		ID:   1,
+		Body: []byte(`plain body`),
+	}
+
+	gcmSenderMock.EXPECT().Send(gomock.Any()).Do(func(m *gcm.Message) (*gcm.Response, error) {
+		a.Nil(m.Notification)
+
+		a.NotNil(m.Data)
+		a.Contains(m.Data, "message")
+
+		doneC <- true
+		return nil, nil
+	}).Return(&gcm.Response{}, nil)
+
+	subRoute.Deliver(m)
+	select {
+	case <-doneC:
+	case <-time.After(100 * time.Millisecond):
+		a.Fail("Message not received by FCM")
+	}
 }
 
 func testGCMResponse(t *testing.T, jsonResponse string) (*Connector, *MockRouter, chan bool) {
