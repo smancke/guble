@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
-	"strings"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -38,14 +37,7 @@ func (gs gubleSender) Check() bool {
 }
 
 func (gs gubleSender) Send(topic string, body []byte, userID string, params map[string]string) error {
-	url := fmt.Sprintf("%s/%s?userId=%s",
-		strings.TrimPrefix(gs.Endpoint, "/"), topic, userID)
-	if params != nil {
-		for k, v := range params {
-			url = url + "&" + k + "=" + v
-		}
-	}
-	request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	request, err := http.NewRequest(http.MethodPost, getURL(gs.Endpoint, topic, userID, params), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -64,4 +56,15 @@ func (gs gubleSender) Send(topic string, body []byte, userID string, params map[
 		return fmt.Errorf("Error code returned from guble: %d", response.StatusCode)
 	}
 	return nil
+}
+
+func getURL(endpoint, topic, userID string, params map[string]string) string {
+	url := fmt.Sprintf("%s/%s?userId=%s", endpoint, topic, userID)
+	if params != nil {
+		for k, v := range params {
+			url = url + "&" + k + "=" + v
+		}
+	}
+	logger.WithField("url", url).WithField("endpoint", endpoint).Debug("getURL")
+	return url
 }
