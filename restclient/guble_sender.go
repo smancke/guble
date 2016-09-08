@@ -37,9 +37,14 @@ func (gs gubleSender) Check() bool {
 	return response.StatusCode == http.StatusOK
 }
 
-func (gs gubleSender) Send(topic string, body []byte, userID string) error {
-	url := fmt.Sprintf("%s%s?userId=%s",
+func (gs gubleSender) Send(topic string, body []byte, userID string, params map[string]string) error {
+	url := fmt.Sprintf("%s/%s?userId=%s",
 		strings.TrimPrefix(gs.Endpoint, "/"), topic, userID)
+	if params != nil {
+		for k, v := range params {
+			url = url + "&" + k + "=" + v
+		}
+	}
 	request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return err
