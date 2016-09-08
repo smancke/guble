@@ -15,36 +15,36 @@ func TestGetURL(t *testing.T) {
 		params   map[string]string
 
 		// expected result
-		result string
+		expected string
 	}{
 		"endpoint only, no topic, no user, no params": {
 			endpoint: "http://localhost:8080/api",
-			result:   "http://localhost:8080/api/?userId=",
+			expected: "http://localhost:8080/api/?userId=",
 		},
 		"endpoint, valid topic, no user, no params": {
 			endpoint: "http://localhost:8080/api",
 			topic:    "topic",
-			result:   "http://localhost:8080/api/topic?userId=",
+			expected: "http://localhost:8080/api/topic?userId=",
 		},
 		"endpoint, valid topic, valid user, no params": {
 			endpoint: "http://localhost:8080/api",
 			topic:    "topic",
 			userID:   "user",
-			result:   "http://localhost:8080/api/topic?userId=user",
+			expected: "http://localhost:8080/api/topic?userId=user",
 		},
 		"endpoint, valid topic, valid user, empty params": {
 			endpoint: "http://localhost:8080/api",
 			topic:    "topic",
 			userID:   "user",
 			params:   map[string]string{},
-			result:   "http://localhost:8080/api/topic?userId=user",
+			expected: "http://localhost:8080/api/topic?userId=user",
 		},
 		"endpoint, valid topic, valid user, one valid param": {
 			endpoint: "http://localhost:8080/api",
 			topic:    "topic",
 			userID:   "user",
 			params:   map[string]string{"filterCriteria1": "value1"},
-			result:   "http://localhost:8080/api/topic?userId=user&filterCriteria1=value1",
+			expected: "http://localhost:8080/api/topic?filterCriteria1=value1&userId=user",
 		},
 		"endpoint, valid topic, valid user, more valid params": {
 			endpoint: "http://localhost:8080/api",
@@ -54,19 +54,19 @@ func TestGetURL(t *testing.T) {
 				"filterCriteria1": "value1",
 				"filterCriteria2": "value2",
 			},
-			result: "http://localhost:8080/api/topic?userId=user&filterCriteria1=value1&filterCriteria2=value2",
+			expected: "http://localhost:8080/api/topic?filterCriteria1=value1&filterCriteria2=value2&userId=user",
 		},
-		"endpoint, valid topic, valid user, one invalid param": {
+		"endpoint, valid topic, valid user, one param invalid inside URL": {
 			endpoint: "http://localhost:8080/api",
 			topic:    "topic",
 			userID:   "user",
 			params:   map[string]string{"filterCriteria1": "?"},
-			result:   "http://localhost:8080/api/topic?userId=user&filterCriteria1=?",
+			expected: "http://localhost:8080/api/topic?filterCriteria1=%3F&userId=user",
 		},
 	}
 
 	for name, c := range testcases {
-		a.Equal(c.result,
+		a.Equal(c.expected,
 			getURL(c.endpoint, c.topic, c.userID, c.params),
 			"Failed check for case: "+name)
 	}

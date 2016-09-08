@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	log "github.com/Sirupsen/logrus"
+	"net/url"
 )
 
 type gubleSender struct {
@@ -59,12 +60,12 @@ func (gs gubleSender) Send(topic string, body []byte, userID string, params map[
 }
 
 func getURL(endpoint, topic, userID string, params map[string]string) string {
-	url := fmt.Sprintf("%s/%s?userId=%s", endpoint, topic, userID)
+	uv := url.Values{}
+	uv.Add("userId", userID)
 	if params != nil {
 		for k, v := range params {
-			url = url + "&" + k + "=" + v
+			uv.Add(k, v)
 		}
 	}
-	logger.WithField("url", url).WithField("endpoint", endpoint).Debug("getURL")
-	return url
+	return fmt.Sprintf("%s/%s?%s", endpoint, topic, uv.Encode())
 }
