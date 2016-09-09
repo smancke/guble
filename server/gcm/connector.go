@@ -169,20 +169,17 @@ func (conn *Connector) loopPipeline(id int) {
 }
 
 func (conn *Connector) sendMessage(pm *pipeMessage) {
-	gcmID := pm.subscription.route.Get(applicationIDKey)
+	fcmID := pm.subscription.route.Get(applicationIDKey)
 
-	gcmMessage := &gcm.Message{
-		To:           gcmID,
-		Data:         pm.data(),
-		Notification: pm.notification(),
-	}
+	fcmMessage := pm.fcmMessage()
+	fcmMessage.To = fcmID
 	logger.WithFields(log.Fields{
-		"gcmID":      gcmID,
+		"fcmID":      fcmID,
 		"pipeLength": len(conn.pipelineC),
 	}).Debug("Sending message")
 
 	beforeSend := time.Now()
-	response, err := conn.Sender.Send(gcmMessage)
+	response, err := conn.Sender.Send(fcmMessage)
 	latencyDuration := time.Now().Sub(beforeSend)
 
 	if err != nil && !pm.subscription.isValidResponseError(err) {
