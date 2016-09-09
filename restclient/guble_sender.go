@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
-	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	"net/url"
 )
 
 type gubleSender struct {
@@ -37,10 +37,8 @@ func (gs gubleSender) Check() bool {
 	return response.StatusCode == http.StatusOK
 }
 
-func (gs gubleSender) Send(topic string, body []byte, userID string) error {
-	url := fmt.Sprintf("%s%s?userId=%s",
-		strings.TrimPrefix(gs.Endpoint, "/"), topic, userID)
-	request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+func (gs gubleSender) Send(topic string, body []byte, userID string, params map[string]string) error {
+	request, err := http.NewRequest(http.MethodPost, getURL(gs.Endpoint, topic, userID, params), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -59,4 +57,17 @@ func (gs gubleSender) Send(topic string, body []byte, userID string) error {
 		return fmt.Errorf("Error code returned from guble: %d", response.StatusCode)
 	}
 	return nil
+}
+
+func getURL(endpoint, topic, userID string, params map[string]string) string {
+	uv := url.Values{}
+	uv.Add("userId", userID)
+	if params != nil {
+		for k, v := range params {
+			if k != "" {
+				uv.Add(k, v)
+			}
+		}
+	}
+	return fmt.Sprintf("%s/%s?%s", endpoint, topic, uv.Encode())
 }
