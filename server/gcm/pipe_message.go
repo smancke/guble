@@ -9,11 +9,6 @@ import (
 	"github.com/smancke/guble/protocol"
 )
 
-type fcmJSON struct {
-	Notification *gcm.Notification      `json:"notification,omitempty"`
-	Data         map[string]interface{} `json:"data"`
-}
-
 // Pipeline message
 type pipeMessage struct {
 	*subscription
