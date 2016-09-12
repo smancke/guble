@@ -10,8 +10,8 @@ import (
 )
 
 type fcmJSON struct {
-	Notification *gcm.Notification      `json:notification,omitempty`
-	Data         map[string]interface{} `json:data`
+	Notification *gcm.Notification      `json:"notification,omitempty"`
+	Data         map[string]interface{} `json:"data"`
 }
 
 // Pipeline message
