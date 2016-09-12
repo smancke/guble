@@ -15,23 +15,24 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-func Test_MessagePartition_forConcurrentWriteAndReads(t *testing.T) {
+func TestMessagePartitionConcurrentWriteAndReads(t *testing.T) {
+	t.Parallel()
 	// testutil.PprofDebug()
 	a := assert.New(t)
-	dir, _ := ioutil.TempDir("", "guble_partition_store_test")
+	dir, _ := ioutil.TempDir("", "guble_partition_robustness_test")
 	defer os.RemoveAll(dir)
 
-	store, _ := newMessagePartition(dir, "myMessages")
+	s, _ := newMessagePartition(dir, "myMessages")
 
-	n := 2000 * 100
-	nReaders := 7
+	n := 100000
+	nReaders := 6
 
 	writerDone := make(chan bool)
-	go messagePartitionWriter(a, store, n, writerDone)
+	go messagePartitionWriter(a, s, n, writerDone)
 
 	readerDone := make(chan bool)
 	for i := 1; i <= nReaders; i++ {
-		go messagePartitionReader("reader"+strconv.Itoa(i), a, store, n, readerDone)
+		go messagePartitionReader("reader"+strconv.Itoa(i), a, s, n, readerDone)
 	}
 
 	select {

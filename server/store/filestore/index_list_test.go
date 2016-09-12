@@ -9,7 +9,7 @@ import (
 )
 
 func Test_SortedListSanity(t *testing.T) {
-
+	t.Parallel()
 	a := assert.New(t)
 	list := newIndexList(1000)
 

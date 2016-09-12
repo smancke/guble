@@ -12,6 +12,7 @@ import (
 )
 
 func Test_Fetch(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_store_test")
 	//defer os.RemoveAll(dir)
@@ -76,51 +77,54 @@ func Test_Fetch(t *testing.T) {
 }
 
 func Test_MessageStore_Close(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_store_test")
 	//defer os.RemoveAll(dir)
 
 	// when i store a message
-	store := New(dir)
-	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
-	a.NoError(store.Store("p2", uint64(1), []byte("1111111111")))
+	s := New(dir)
+	a.NoError(s.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
+	a.NoError(s.Store("p2", uint64(1), []byte("1111111111")))
 
-	a.Equal(2, len(store.partitions))
+	a.Equal(2, len(s.partitions))
 
-	a.NoError(store.Stop())
+	a.NoError(s.Stop())
 
-	a.Equal(0, len(store.partitions))
+	a.Equal(0, len(s.partitions))
 }
 
 func Test_MaxMessageId(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_store_test")
 	//defer os.RemoveAll(dir)
 	expectedMaxID := 2
 
 	// when i store a message
-	store := New(dir)
-	a.NoError(store.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
-	a.NoError(store.Store("p1", uint64(expectedMaxID), []byte("bbbbbbbbbb")))
+	s := New(dir)
+	a.NoError(s.Store("p1", uint64(1), []byte("aaaaaaaaaa")))
+	a.NoError(s.Store("p1", uint64(expectedMaxID), []byte("bbbbbbbbbb")))
 
-	maxID, err := store.MaxMessageID("p1")
+	maxID, err := s.MaxMessageID("p1")
 	a.Nil(err, "No error should be received for partition p1")
 	a.Equal(maxID, uint64(expectedMaxID), fmt.Sprintf("MaxId should be [%d]", expectedMaxID))
 }
 
 func Test_MaxMessageIdError(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
-	store := New("/TestDir")
+	s := New("/TestDir")
 
-	_, err := store.MaxMessageID("p2")
+	_, err := s.MaxMessageID("p2")
 	a.NotNil(err)
 }
 
 func Test_MessagePartitionReturningError(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
-
-	store := New("/TestDir")
-	_, err := store.Partition("p1")
+	s := New("/TestDir")
+	_, err := s.Partition("p1")
 	a.NotNil(err)
 	fmt.Println(err)
 
@@ -130,6 +134,7 @@ func Test_MessagePartitionReturningError(t *testing.T) {
 }
 
 func Test_FetchWithError(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	mStore := New("/TestDir")
 
@@ -141,6 +146,7 @@ func Test_FetchWithError(t *testing.T) {
 }
 
 func Test_StoreWithError(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	mStore := New("/TestDir")
 
@@ -149,6 +155,7 @@ func Test_StoreWithError(t *testing.T) {
 }
 
 func Test_DoInTx(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_store_test")
 	mStore := New(dir)
@@ -161,6 +168,7 @@ func Test_DoInTx(t *testing.T) {
 }
 
 func Test_DoInTxError(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	mStore := New("/TestDir")
 
@@ -169,6 +177,7 @@ func Test_DoInTxError(t *testing.T) {
 }
 
 func Test_Check(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_store_test")
 	mStore := New(dir)

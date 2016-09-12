@@ -15,6 +15,7 @@ import (
 )
 
 func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
@@ -35,6 +36,7 @@ func TestFileMessageStore_GenerateNextMsgId(t *testing.T) {
 }
 
 func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
@@ -71,7 +73,9 @@ func TestFileMessageStore_GenerateNextMsgIdMultipleNodes(t *testing.T) {
 }
 
 func Test_MessagePartition_loadFiles(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
+
 	// allow five messages per file
 	messagesPerFile = uint64(5)
 
@@ -118,6 +122,7 @@ func Test_MessagePartition_loadFiles(t *testing.T) {
 }
 
 func Test_MessagePartition_correctIdAfterRestart(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
@@ -187,13 +192,15 @@ func Benchmark_Storing_1MB_Messages(b *testing.B) {
 	b.StopTimer()
 }
 
-func Test_calculateFetchList(t *testing.T) {
+func TestCalculateFetchList(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
 	// allow five messages per file
 	messagesPerFile = uint64(5)
 
 	msgData := []byte("aaaaaaaaaa") // 10 bytes message
 
-	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_message_partition_test")
 	defer os.RemoveAll(dir)
 
@@ -345,7 +352,8 @@ func matchSortedList(t *testing.T, expected, actual indexList) bool {
 	return assert.NoError(t, err)
 }
 
-func Test_Partition_Fetch(t *testing.T) {
+func TestPartition_Fetch(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 
 	// allow five messages per file
@@ -476,6 +484,7 @@ func Test_Partition_Fetch(t *testing.T) {
 }
 
 func TestFilenameGeneration(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 
 	mStore := &messagePartition{
