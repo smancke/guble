@@ -68,31 +68,3 @@ func TestPipeMessage_fcmMessage(t *testing.T) {
 		a.Equal([]byte("plain body message"), fcmMessage.Data["message"])
 	}
 }
-
-// func TestPipeMessage_data(t *testing.T) {
-// 	a := assert.New(t)
-
-// 	m := &protocol.Message{
-// 		Body: []byte(fullFCMMessage),
-// 	}
-// 	pm := newPipeMessage(nil, m)
-// 	data := pm.data()
-// 	a.NotNil(data)
-// 	a.IsType(map[string]interface{}{}, data)
-// 	if a.Contains(data, "field1") {
-// 		a.Equal("value1", data["field1"])
-// 	}
-// 	if a.Contains(data, "field2") {
-// 		a.Equal("value2", data["field2"])
-// 	}
-
-// 	m = &protocol.Message{
-// 		Body: []byte(`{"field1": "value1", "field2": "value2"}`),
-// 	}
-// 	pm = newPipeMessage(nil, m)
-// 	data = pm.data()
-// 	a.NotNil(data)
-// 	a.IsType(map[string]interface{}{}, data)
-// 	a.Contains(data, "message")
-// 	a.IsType([]byte{}, data["message"])
-// }
