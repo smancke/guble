@@ -29,23 +29,21 @@ func newPipeMessage(s *subscription, m *protocol.Message) *pipeMessage {
 func (pm *pipeMessage) fcmMessage() *gcm.Message {
 	m := &gcm.Message{}
 	err := json.Unmarshal(pm.message.Body, m)
-	if err == nil && m.Notification != nil && m.Data != nil {
-		return m
-	} else if err != nil {
+	if err != nil {
 		pm.subscription.logger.WithFields(log.Fields{
 			"error":     err.Error(),
 			"body":      string(pm.message.Body),
 			"messageID": pm.message.ID,
-		}).Debug("Error decoding gcm.Message from guble message body")
-	}
-
-	err = json.Unmarshal(pm.message.Body, &m.Data)
-	if err == nil {
+		}).Debug("Could not decode gcm.Message from guble message body")
+	} else if m.Notification != nil && m.Data != nil {
 		return m
 	}
 
-	m.Data = map[string]interface{}{
-		"message": pm.message.Body,
+	err = json.Unmarshal(pm.message.Body, &m.Data)
+	if err != nil {
+		m.Data = map[string]interface{}{
+			"message": pm.message.Body,
+		}
 	}
 	return m
 }
