@@ -111,7 +111,7 @@ type Subscriber struct {
 
 func Test_FranzIntegration(t *testing.T) {
 	defer testutil.ResetDefaultRegistryHealthCheck()
-	defer testutil.EnableDebugForMethod()()
+	//defer testutil.EnableDebugForMethod()()
 
 	a := assert.New(t)
 

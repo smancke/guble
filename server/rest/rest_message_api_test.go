@@ -80,13 +80,13 @@ func TestServeHTTP_GetError(t *testing.T) {
 func TestServeHTTP_GetSubscribers(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
-	defer testutil.EnableDebugForMethod()()
+	//defer testutil.EnableDebugForMethod()()
 
 	a := assert.New(t)
 
 	routerMock := NewMockRouter(testutil.MockCtrl)
 	api := NewRestMessageAPI(routerMock, "/api")
-	routerMock.EXPECT().GetSubscribersForTopic(gomock.Any()).Return("{}", nil)
+	routerMock.EXPECT().GetSubscribersForTopic(gomock.Any()).Return([]byte("{}"), nil)
 	url, _ := url.Parse("http://localhost/api/subscribers/mytopic")
 	// and a http context
 	req := &http.Request{
