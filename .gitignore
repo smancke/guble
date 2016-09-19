@@ -2,3 +2,5 @@ cover.out
 .goxc.json
 /.idea
 *.iml
+guble
+guble-cli/guble-cli

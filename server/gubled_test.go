@@ -56,11 +56,11 @@ func TestGcmOnlyStartedIfEnabled(t *testing.T) {
 	routerMock := initRouterMock()
 	routerMock.EXPECT().KVStore().Return(kvstore.NewMemoryKVStore(), nil)
 
-	*config.GCM.Enabled = true
-	*config.GCM.APIKey = "xyz"
+	*config.FCM.Enabled = true
+	*config.FCM.APIKey = "xyz"
 	a.True(containsGcmModule(CreateModules(routerMock)))
 
-	*config.GCM.Enabled = false
+	*config.FCM.Enabled = false
 	a.False(containsGcmModule(CreateModules(routerMock)))
 }
 
@@ -85,8 +85,8 @@ func TestPanicOnMissingGcmApiKey(t *testing.T) {
 	}()
 
 	routerMock := initRouterMock()
-	*config.GCM.APIKey = ""
-	*config.GCM.Enabled = true
+	*config.FCM.APIKey = ""
+	*config.FCM.Enabled = true
 	CreateModules(routerMock)
 }
 
@@ -111,7 +111,7 @@ func TestStartServiceModules(t *testing.T) {
 	// when starting a simple valid service
 	*config.KVS = "memory"
 	*config.MS = "file"
-	*config.GCM.Enabled = false
+	*config.FCM.Enabled = false
 
 	// using an available port for http
 	testHttpPort++

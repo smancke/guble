@@ -30,7 +30,7 @@ const (
 )
 
 var (
-	defaultGCMEndpoint = gcm.GcmSendEndpoint
+	defaultFCMEndpoint = gcm.GcmSendEndpoint
 	environments       = []string{development, integration, preproduction, production}
 )
 
@@ -43,8 +43,8 @@ type (
 		Password *string
 		DbName   *string
 	}
-	// GCMConfig is used for configuring the Google Cloud Messaging component.
-	GCMConfig struct {
+	// FCMConfig is used for configuring the Google Cloud Messaging component.
+	FCMConfig struct {
 		Enabled  *bool
 		APIKey   *string
 		Workers  *int
@@ -68,7 +68,7 @@ type (
 		MetricsEndpoint *string
 		Profile         *string
 		Postgres        PostgresConfig
-		GCM             GCMConfig
+		FCM             FCMConfig
 		Cluster         ClusterConfig
 	}
 )
@@ -135,20 +135,20 @@ var (
 				Envar("GUBLE_PG_DBNAME").
 				String(),
 		},
-		GCM: GCMConfig{
-			Enabled: kingpin.Flag("gcm", "Enable the Google Cloud Messaging Connector").
-				Envar("GUBLE_GCM").
+		FCM: FCMConfig{
+			Enabled: kingpin.Flag("fcm", "Enable the Google Firebase Cloud Messaging connector").
+				Envar("GUBLE_FCM").
 				Bool(),
-			APIKey: kingpin.Flag("gcm-api-key", "The Google API Key for Google Cloud Messaging").
-				Envar("GUBLE_GCM_API_KEY").
+			APIKey: kingpin.Flag("fcm-api-key", "The Google API Key for Google Firebase Cloud Messaging").
+				Envar("GUBLE_FCM_API_KEY").
 				String(),
-			Workers: kingpin.Flag("gcm-workers", "The number of workers handling traffic with Google Cloud Messaging (default: GOMAXPROCS)").
+			Workers: kingpin.Flag("fcm-workers", "The number of workers handling traffic with Google Firebase Cloud Messaging (default: GOMAXPROCS)").
 				Default(strconv.Itoa(runtime.GOMAXPROCS(0))).
-				Envar("GUBLE_GCM_WORKERS").
+				Envar("GUBLE_FCM_WORKERS").
 				Int(),
-			Endpoint: kingpin.Flag("gcm-endpoint", "The Google Cloud Messaging endpoint").
-				Default(defaultGCMEndpoint).
-				Envar("GUBLE_GCM_ENDPOINT").
+			Endpoint: kingpin.Flag("fcm-endpoint", "The Google Firebase Cloud Messaging endpoint").
+				Default(defaultFCMEndpoint).
+				Envar("GUBLE_FCM_ENDPOINT").
 				String(),
 		},
 		Cluster: ClusterConfig{

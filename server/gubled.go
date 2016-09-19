@@ -118,21 +118,21 @@ var CreateModules = func(router router.Router) []interface{} {
 
 	modules = append(modules, rest.NewRestMessageAPI(router, "/api/"))
 
-	if *config.GCM.Enabled {
+	if *config.FCM.Enabled {
 		logger.Info("Google cloud messaging: enabled")
 
-		if *config.GCM.APIKey == "" {
+		if *config.FCM.APIKey == "" {
 			logger.Panic("GCM API Key has to be provided, if GCM is enabled")
 		}
 
-		logger.WithField("count", *config.GCM.Workers).Debug("GCM workers")
+		logger.WithField("count", *config.FCM.Workers).Debug("GCM workers")
 
 		if g, err := gcm.New(
 			router,
 			"/gcm/",
-			*config.GCM.APIKey,
-			*config.GCM.Workers,
-			*config.GCM.Endpoint); err != nil {
+			*config.FCM.APIKey,
+			*config.FCM.Workers,
+			*config.FCM.Endpoint); err != nil {
 			logger.WithError(err).Error("Error creating GCMConnector")
 
 		} else {

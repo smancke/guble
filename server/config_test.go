@@ -1,12 +1,10 @@
 package server
 
 import (
+	"github.com/stretchr/testify/assert"
+	"net"
 	"os"
 	"testing"
-
-	"net"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestParsingOfEnvironmentVariables(t *testing.T) {
@@ -44,14 +42,14 @@ func TestParsingOfEnvironmentVariables(t *testing.T) {
 	os.Setenv("GUBLE_MS", "ms-backend")
 	defer os.Unsetenv("GUBLE_MS")
 
-	os.Setenv("GUBLE_GCM", "true")
-	defer os.Unsetenv("GUBLE_GCM")
+	os.Setenv("GUBLE_FCM", "true")
+	defer os.Unsetenv("GUBLE_FCM")
 
-	os.Setenv("GUBLE_GCM_API_KEY", "gcm-api-key")
-	defer os.Unsetenv("GUBLE_GCM_API_KEY")
+	os.Setenv("GUBLE_FCM_API_KEY", "fcm-api-key")
+	defer os.Unsetenv("GUBLE_FCM_API_KEY")
 
-	os.Setenv("GUBLE_GCM_WORKERS", "3")
-	defer os.Unsetenv("GUBLE_GCM_WORKERS")
+	os.Setenv("GUBLE_FCM_WORKERS", "3")
+	defer os.Unsetenv("GUBLE_FCM_WORKERS")
 
 	os.Setenv("GUBLE_NODE_ID", "1")
 	defer os.Unsetenv("GUBLE_NODE_ID")
@@ -102,9 +100,9 @@ func TestParsingArgs(t *testing.T) {
 		"--ms", "ms-backend",
 		"--health-endpoint", "health_endpoint",
 		"--metrics-endpoint", "metrics_endpoint",
-		"--gcm",
-		"--gcm-api-key", "gcm-api-key",
-		"--gcm-workers", "3",
+		"--fcm",
+		"--fcm-api-key", "fcm-api-key",
+		"--fcm-workers", "3",
 		"--node-id", "1",
 		"--node-port", "10000",
 		"--pg-host", "pg-host",
@@ -131,9 +129,9 @@ func assertArguments(a *assert.Assertions) {
 
 	a.Equal("metrics_endpoint", *config.MetricsEndpoint)
 
-	a.Equal(true, *config.GCM.Enabled)
-	a.Equal("gcm-api-key", *config.GCM.APIKey)
-	a.Equal(3, *config.GCM.Workers)
+	a.Equal(true, *config.FCM.Enabled)
+	a.Equal("fcm-api-key", *config.FCM.APIKey)
+	a.Equal(3, *config.FCM.Workers)
 
 	a.Equal(uint8(1), *config.Cluster.NodeID)
 	a.Equal(10000, *config.Cluster.NodePort)

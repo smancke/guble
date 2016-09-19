@@ -28,7 +28,7 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 * Persistent message store with transparent live and offline fetching
 * WebSocket and REST APIs for message publishing
 * Commandline client and Go client library
-* Google Cloud Messaging adapter: delivery of messages as GCM push notifications
+* Google Firebase Cloud Messaging adapter: delivery of messages as FCM push notifications
 * Docker image for client and server
 * Simple Authentication and Access-Management
 * Clean shutdown
@@ -79,7 +79,7 @@ This is the current (and fast changing) roadmap and todo list:
 * Add Postgresql as KV Backend
 * Add Consul as KV Backend
 * Storing the sequence-Id of topics in KV store, if we turn off persistence
-* Cleanup, documentation, and test coverage of the GCM connector
+* Upgrade, Cleanup, documentation, and test coverage of the FCM connector
 * Make notification messages optional by client configuration
 * Load testing with 5000 connections per instance
 * Improved authentication and access-management
