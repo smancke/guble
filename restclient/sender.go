@@ -7,4 +7,6 @@ type Sender interface {
 
 	// Check returns `true` if the guble server endpoint is reachable, or `false` otherwise.
 	Check() bool
+
+	GetSubscribers(topic string) ([]byte, error)
 }

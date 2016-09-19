@@ -12,14 +12,16 @@ import (
 	"github.com/rs/xid"
 
 	"bytes"
+	log "github.com/opencontainers/runc/Godeps/_workspace/src/github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"strings"
 )
 
 const (
-	xHeaderPrefix = "x-guble-"
-	filterPrefix  = "filter"
+	xHeaderPrefix     = "x-guble-"
+	filterPrefix      = "filter"
+	subscribersPrefix = "/subscribers"
 )
 
 var errNotFound = errors.New("Not Found.")
@@ -48,6 +50,27 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Method == http.MethodGet {
+		log.WithField("url", r.URL.Path).Info("Get ")
+		topic, err := api.extractTopic(r.URL.Path, subscribersPrefix)
+		log.WithField("topic", topic).WithField("err", err).Info("Extract")
+		if err != nil {
+			if err == errNotFound {
+				http.NotFound(w, r)
+				return
+			}
+			http.Error(w, "Server error.", http.StatusInternalServerError)
+			return
+		}
+		resp, err := api.router.GetSubscribersForTopic(topic)
+		w.Header().Set("Content-Type", "application/json")
+
+		//fmt.Fprintf(w,resp)
+		i, err := w.Write(resp)
+		log.WithField("Err", err).WithField("i", i).WithField("resp", string(resp)).Info("Wrote as  response")
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -57,7 +80,7 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `Can not read body`, http.StatusBadRequest)
 		return
 	}
-	topic, err := api.extractTopic(r.URL.Path)
+	topic, err := api.extractTopic(r.URL.Path, "/message")
 	if err != nil {
 		if err == errNotFound {
 			http.NotFound(w, r)
@@ -81,8 +104,8 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "OK")
 }
 
-func (api *RestMessageAPI) extractTopic(path string) (string, error) {
-	p := removeTrailingSlash(api.prefix) + "/message"
+func (api *RestMessageAPI) extractTopic(path string, requestTypeTopicPrefix string) (string, error) {
+	p := removeTrailingSlash(api.prefix) + requestTypeTopicPrefix
 	if !strings.HasPrefix(path, p) {
 		return "", errNotFound
 	}
