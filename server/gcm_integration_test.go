@@ -129,9 +129,9 @@ func serviceSetUp(t *testing.T) (*service.Service, func()) {
 	*config.Cluster.NodeID = 0
 	*config.StoragePath = dir
 	*config.MetricsEndpoint = "/admin/metrics"
-	*config.GCM.Enabled = true
-	*config.GCM.APIKey = "WILL BE OVERWRITTEN"
-	*config.GCM.Workers = 1 // use only one worker so we can control the number of messages that go to GCM
+	*config.FCM.Enabled = true
+	*config.FCM.APIKey = "WILL BE OVERWRITTEN"
+	*config.FCM.Workers = 1 // use only one worker so we can control the number of messages that go to GCM
 
 	var s *service.Service
 	for s == nil {

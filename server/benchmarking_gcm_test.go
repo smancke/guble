@@ -189,9 +189,9 @@ func (params *benchParams) setUp() {
 	*config.KVS = "memory"
 	*config.MS = "file"
 	*config.StoragePath = dir
-	*config.GCM.Enabled = true
-	*config.GCM.APIKey = "WILL BE OVERWRITTEN"
-	*config.GCM.Workers = params.workers
+	*config.FCM.Enabled = true
+	*config.FCM.APIKey = "WILL BE OVERWRITTEN"
+	*config.FCM.Workers = params.workers
 
 	params.service = StartService()
 
