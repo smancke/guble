@@ -142,8 +142,8 @@ var (
 			APIKey: kingpin.Flag("fcm-api-key", "The Google API Key for Google Firebase Cloud Messaging").
 				Envar("GUBLE_FCM_API_KEY").
 				String(),
-			Workers: kingpin.Flag("fcm-workers", "The number of workers handling traffic with Google Firebase Cloud Messaging (default: GOMAXPROCS)").
-				Default(strconv.Itoa(runtime.GOMAXPROCS(0))).
+			Workers: kingpin.Flag("fcm-workers", "The number of workers handling traffic with Google Firebase Cloud Messaging (default: number of CPUs)").
+				Default(strconv.Itoa(runtime.NumCPU())).
 				Envar("GUBLE_FCM_WORKERS").
 				Int(),
 			Endpoint: kingpin.Flag("fcm-endpoint", "The Google Firebase Cloud Messaging endpoint").
