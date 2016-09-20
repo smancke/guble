@@ -319,7 +319,7 @@ func (conn *Connector) loadSubscription(entry [2]string) {
 func (conn *Connector) syncLoop() error {
 	r := router.NewRoute(router.RouteConfig{
 		Path:        syncPath,
-		ChannelSize: 100,
+		ChannelSize: 5000,
 	})
 	_, err := conn.router.Subscribe(r)
 	if err != nil {
