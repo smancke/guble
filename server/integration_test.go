@@ -118,7 +118,7 @@ func Test_FranzIntegration(t *testing.T) {
 	s, cleanup := serviceSetUp(t)
 	defer cleanup()
 
-	subscribe_multiple_clients(t, s, 4)
+	subscribeMultipleClients(t, s, 4)
 	a.Nil(nil)
 
 	restClient := restclient.New(s.WebServer().GetAddr())
@@ -137,7 +137,7 @@ func Test_FranzIntegration(t *testing.T) {
 
 }
 
-func subscribe_multiple_clients(t *testing.T, service *service.Service, noOfClients int) {
+func subscribeMultipleClients(t *testing.T, service *service.Service, noOfClients int) {
 
 	a := assert.New(t)
 

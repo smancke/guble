@@ -190,27 +190,26 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 	return nil
 }
 
-func (router *router) GetSubscribersForTopic(topicPath string) (JSONResponse []byte, err error) {
+func (router *router) GetSubscribersForTopic(topicPath string) ([]byte, error) {
 
-	sliceOfRouteParams := make([]map[string]string, 0)
+	subscribers := make([]RouteParams, 0)
 
-	slice, present := router.routes[protocol.Path(topicPath)]
+	routes, present := router.routes[protocol.Path(topicPath)]
 	if present {
-		for index, currRoute := range slice {
+		for index, currRoute := range routes {
 			logger.WithFields(log.Fields{
 				"index":      index,
 				"routeParam": currRoute.RouteParams,
 			}).Info("Added route to slice")
-			sliceOfRouteParams = append(sliceOfRouteParams, currRoute.RouteParams)
+			subscribers = append(subscribers, currRoute.RouteParams)
 		}
-		serialized, err := json.Marshal(sliceOfRouteParams)
-		logger.WithField("json_Response", string(serialized)).Info("Serialized json as string")
-		if err != nil {
-			return nil, err
-		}
-		return serialized, nil
 	}
-	return nil, ErrInvalidRoute
+
+	serialized, err := json.Marshal(subscribers)
+	if err != nil {
+		return nil, err
+	}
+	return serialized, nil
 }
 
 // Subscribe adds a route to the subscribers. If there is already a route with same Application Id and Path, it will be replaced.

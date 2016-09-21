@@ -53,8 +53,9 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		log.WithField("url", r.URL.Path).Info("Get ")
 		topic, err := api.extractTopic(r.URL.Path, subscribersPrefix)
-		log.WithField("topic", topic).WithField("err", err).Info("Extract")
+		log.WithField("topic", topic).WithField("err", err).Debug("Extract")
 		if err != nil {
+			log.WithField("err", err).Error("Extracting topic failed")
 			if err == errNotFound {
 				http.NotFound(w, r)
 				return
@@ -64,10 +65,13 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		resp, err := api.router.GetSubscribersForTopic(topic)
 		w.Header().Set("Content-Type", "application/json")
-
-		//fmt.Fprintf(w,resp)
 		i, err := w.Write(resp)
-		log.WithField("Err", err).WithField("i", i).WithField("resp", string(resp)).Info("Wrote as  response")
+		log.WithField("noOfBytes", i).WithField("topic", topic).Debug("Wrote as  response for GetSubscribersForTopic")
+		if err != nil {
+			log.WithField("Err", err).Error("Writing to byte stream failed")
+			http.Error(w, "Server error.", http.StatusInternalServerError)
+			return
+		}
 		return
 	}
 

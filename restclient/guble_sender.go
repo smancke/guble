@@ -24,6 +24,7 @@ func New(endpoint string) Sender {
 }
 
 func (gs gubleSender) GetSubscribers(topic string) ([]byte, error) {
+	logger.WithField("topic", topic).Info("GetSubscribers called")
 	body := make([]byte, 0)
 	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/api/subscribers%s", gs.Endpoint, topic), bytes.NewReader(body))
 	logger.WithField("url", fmt.Sprintf("%s/subscribers/%s", gs.Endpoint, topic))
@@ -55,7 +56,7 @@ func (gs gubleSender) GetSubscribers(topic string) ([]byte, error) {
 		"header": response.Header,
 		"code":   response.StatusCode,
 		"body":   string(content),
-	}).Debug("Guble response ")
+	}).Info("++Guble response ")
 	return content, nil
 
 }
