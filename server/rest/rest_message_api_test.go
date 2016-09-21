@@ -57,6 +57,7 @@ func TestServerHTTP(t *testing.T) {
 // Server should return an 405 Method Not Allowed in case method request is not POST
 func TestServeHTTP_GetError(t *testing.T) {
 	a := assert.New(t)
+	defer testutil.EnableDebugForMethod()()
 	api := NewRestMessageAPI(nil, "/api")
 
 	url, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")
@@ -72,7 +73,31 @@ func TestServeHTTP_GetError(t *testing.T) {
 	// when: I POST a message
 	api.ServeHTTP(w, req)
 
-	a.Equal(http.StatusMethodNotAllowed, w.Code)
+	a.Equal(http.StatusNotFound, w.Code)
+}
+
+// Server should return an 405 Method Not Allowed in case method request is not POST
+func TestServeHTTP_GetSubscribers(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	//defer testutil.EnableDebugForMethod()()
+
+	a := assert.New(t)
+
+	routerMock := NewMockRouter(testutil.MockCtrl)
+	api := NewRestMessageAPI(routerMock, "/api")
+	routerMock.EXPECT().GetSubscribersForTopic(gomock.Any()).Return([]byte("{}"), nil)
+	url, _ := url.Parse("http://localhost/api/subscribers/mytopic")
+	// and a http context
+	req := &http.Request{
+		Method: http.MethodGet,
+		URL:    url,
+	}
+	w := &httptest.ResponseRecorder{}
+
+	// when: I POST a message
+	api.ServeHTTP(w, req)
+	a.Equal(http.StatusOK, w.Code)
 }
 
 func TestHeadersToJSON(t *testing.T) {
@@ -120,7 +145,7 @@ func TestExtractTopic(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		topic, err := api.extractTopic(c.path)
+		topic, err := api.extractTopic(c.path, "/message")
 		m := "Assertion failed for path: " + c.path
 
 		if c.err == nil {

@@ -7,7 +7,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"bytes"
 	"encoding/json"
+	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/restclient"
+	"github.com/smancke/guble/testutil"
+	"io/ioutil"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
@@ -93,4 +101,62 @@ func checkConnectedNotificationJSON(t *testing.T, user string, connectedJSON str
 	assert.True(t, len(m["ApplicationId"]) > 0)
 	_, e := time.Parse(time.RFC3339, m["Time"])
 	assert.NoError(t, e)
+}
+
+//Used only for test and Unmarshall of the json response
+type Subscriber struct {
+	DeviceID string `json:"device_id"`
+	UserID   string `json:"user_id"`
+}
+
+func Test_FranzIntegration(t *testing.T) {
+	defer testutil.ResetDefaultRegistryHealthCheck()
+	//defer testutil.EnableDebugForMethod()()
+
+	a := assert.New(t)
+
+	s, cleanup := serviceSetUp(t)
+	defer cleanup()
+
+	subscribeMultipleClients(t, s, 4)
+	a.Nil(nil)
+
+	restClient := restclient.New(s.WebServer().GetAddr())
+	content, err := restClient.GetSubscribers(testTopic)
+	a.NoError(err)
+	log.WithField("content", content).Info("COntetn recve")
+	routeParams := make([]*Subscriber, 0)
+
+	err = json.Unmarshal(content, &routeParams)
+	a.Equal(4, len(routeParams), "Should have 4 subscribers")
+	for i, rp := range routeParams {
+		a.Equal(fmt.Sprintf("gcmId%d", i), rp.DeviceID)
+		a.Equal(fmt.Sprintf("%d", i), rp.UserID)
+	}
+	a.NoError(err)
+
+}
+
+func subscribeMultipleClients(t *testing.T, service *service.Service, noOfClients int) {
+
+	a := assert.New(t)
+
+	// create GCM subscription with topic: gcmTopic
+	for i := 0; i < noOfClients; i++ {
+		urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/%%s", service.WebServer().GetAddr())
+		url := fmt.Sprintf(urlFormat, i, i, strings.TrimPrefix(testTopic, "/"))
+		response, errPost := http.Post(
+			url,
+			"text/plain",
+			bytes.NewBufferString(""),
+		)
+		logger.WithField("url", url).Debug("subscribe")
+		a.NoError(errPost)
+		a.Equal(response.StatusCode, 200)
+
+		body, errReadAll := ioutil.ReadAll(response.Body)
+		a.NoError(errReadAll)
+		a.Equal(fmt.Sprintf("subscribed: %s\n", testTopic), string(body))
+	}
+
 }

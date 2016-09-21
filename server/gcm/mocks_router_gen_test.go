@@ -65,6 +65,17 @@ func (_mr *_MockRouterRecorder) Fetch(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Fetch", arg0)
 }
 
+func (_m *MockRouter) GetSubscribersForTopic(_param0 string) ([]byte, error) {
+	ret := _m.ctrl.Call(_m, "GetSubscribersForTopic", _param0)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockRouterRecorder) GetSubscribersForTopic(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetSubscribersForTopic", arg0)
+}
+
 func (_m *MockRouter) HandleMessage(_param0 *protocol.Message) error {
 	ret := _m.ctrl.Call(_m, "HandleMessage", _param0)
 	ret0, _ := ret[0].(error)

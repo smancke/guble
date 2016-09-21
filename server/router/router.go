@@ -9,6 +9,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/health"
 
+	"encoding/json"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/cluster"
@@ -34,6 +35,7 @@ type Router interface {
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
 	HandleMessage(message *protocol.Message) error
+	GetSubscribersForTopic(topic string) ([]byte, error)
 }
 
 // Helper struct to pass `Route` to subscription channel and provide a notification channel.
@@ -186,6 +188,28 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 	}
 
 	return nil
+}
+
+func (router *router) GetSubscribersForTopic(topicPath string) ([]byte, error) {
+
+	subscribers := make([]RouteParams, 0)
+
+	routes, present := router.routes[protocol.Path(topicPath)]
+	if present {
+		for index, currRoute := range routes {
+			logger.WithFields(log.Fields{
+				"index":      index,
+				"routeParam": currRoute.RouteParams,
+			}).Info("Added route to slice")
+			subscribers = append(subscribers, currRoute.RouteParams)
+		}
+	}
+
+	serialized, err := json.Marshal(subscribers)
+	if err != nil {
+		return nil, err
+	}
+	return serialized, nil
 }
 
 // Subscribe adds a route to the subscribers. If there is already a route with same Application Id and Path, it will be replaced.
