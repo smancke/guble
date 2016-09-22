@@ -222,7 +222,6 @@ func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		conn.deleteSubscription(w, topic, userID, gcmID)
 	}
-
 }
 
 func (conn *Connector) addSubscription(w http.ResponseWriter, topic, userID, gcmID string) {

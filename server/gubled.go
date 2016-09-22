@@ -94,7 +94,7 @@ var CreateKVStore = func() kvstore.KVStore {
 // (currently, based on guble configuration).
 var CreateMessageStore = func() store.MessageStore {
 	switch *config.MS {
-	case "none", "":
+	case "none", "memory", "":
 		return dummystore.New(kvstore.NewMemoryKVStore())
 	case "file":
 		logger.WithField("storagePath", *config.StoragePath).Info("Using FileMessageStore in directory")
@@ -119,27 +119,27 @@ var CreateModules = func(router router.Router) []interface{} {
 	modules = append(modules, rest.NewRestMessageAPI(router, "/api/"))
 
 	if *config.FCM.Enabled {
-		logger.Info("Google cloud messaging: enabled")
+		logger.Info("Google Firebase Cloud Messaging: enabled")
 
 		if *config.FCM.APIKey == "" {
-			logger.Panic("GCM API Key has to be provided, if GCM is enabled")
+			logger.Panic("FCM API Key has to be provided, if GCM is enabled")
 		}
 
-		logger.WithField("count", *config.FCM.Workers).Debug("GCM workers")
+		logger.WithField("count", *config.FCM.Workers).Debug("FCM workers")
 
-		if g, err := gcm.New(
+		if fcmConn, err := gcm.New(
 			router,
 			"/gcm/",
 			*config.FCM.APIKey,
 			*config.FCM.Workers,
 			*config.FCM.Endpoint); err != nil {
-			logger.WithError(err).Error("Error creating GCMConnector")
+			logger.WithError(err).Error("Error creating FCM connector")
 
 		} else {
-			modules = append(modules, g)
+			modules = append(modules, fcmConn)
 		}
 	} else {
-		logger.Info("Google cloud messaging: disabled")
+		logger.Info("Google Firebase Cloud Messaging: disabled")
 	}
 
 	return modules
