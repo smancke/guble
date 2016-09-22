@@ -127,7 +127,7 @@ func (conn *Connector) Stop() error {
 // Check returns nil if health-check succeeds, or an error if health-check fails
 // by sending a request with only apikey. If the response is processed by the GCM endpoint
 // the gcmStatus will be UP, otherwise the error from sending the message will be returned.
-func (conn *Connector) Check() error {
+func (conn *Connector) check() error {
 	message := &gcm.Message{
 		To: "ABC",
 	}

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	log "github.com/Sirupsen/logrus"
+	"io/ioutil"
 	"net/url"
 )
 
@@ -20,6 +21,44 @@ func New(endpoint string) Sender {
 		Endpoint:   endpoint,
 		httpClient: &http.Client{},
 	}
+}
+
+func (gs gubleSender) GetSubscribers(topic string) ([]byte, error) {
+	logger.WithField("topic", topic).Info("GetSubscribers called")
+	body := make([]byte, 0)
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/api/subscribers%s", gs.Endpoint, topic), bytes.NewReader(body))
+	logger.WithField("url", fmt.Sprintf("%s/subscribers/%s", gs.Endpoint, topic))
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := gs.httpClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		logger.WithFields(log.Fields{
+			"header": response.Header,
+			"code":   response.StatusCode,
+			"status": response.Status,
+		}).Error("Guble response error")
+		return nil, fmt.Errorf("Error code returned from guble: %d", response.StatusCode)
+	}
+
+	content, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.WithFields(log.Fields{
+		"header": response.Header,
+		"code":   response.StatusCode,
+		"body":   string(content),
+	}).Info("++Guble response ")
+	return content, nil
+
 }
 
 func (gs gubleSender) Check() bool {
