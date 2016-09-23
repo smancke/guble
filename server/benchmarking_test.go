@@ -43,10 +43,10 @@ func TestThroughput(t *testing.T) {
 
 	dir, _ := ioutil.TempDir("", "guble_benchmarking_test")
 
-	*config.HttpListen = "localhost:0"
-	*config.KVS = "memory"
-	*config.MS = "file"
-	*config.StoragePath = dir
+	*Config.HttpListen = "localhost:0"
+	*Config.KVS = "memory"
+	*Config.MS = "file"
+	*Config.StoragePath = dir
 
 	service := StartService()
 

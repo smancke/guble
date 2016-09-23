@@ -37,11 +37,11 @@ const (
 // ValidateStoragePath validates the guble configuration with regard to the storagePath
 // (which can be used by MessageStore and/or KVStore implementations).
 var ValidateStoragePath = func() error {
-	if *config.KVS == fileOption || *config.MS == fileOption {
-		testfile := path.Join(*config.StoragePath, "write-test-file")
+	if *Config.KVS == fileOption || *Config.MS == fileOption {
+		testfile := path.Join(*Config.StoragePath, "write-test-file")
 		f, err := os.Create(testfile)
 		if err != nil {
-			logger.WithError(err).WithField("storagePath", *config.StoragePath).Error("Storage path not present/writeable.")
+			logger.WithError(err).WithField("storagePath", *Config.StoragePath).Error("Storage path not present/writeable.")
 			return err
 		}
 		f.Close()
@@ -59,11 +59,11 @@ var CreateAccessManager = func() auth.AccessManager {
 // CreateKVStore is a func which returns a kvstore.KVStore implementation
 // (currently, based on guble configuration).
 var CreateKVStore = func() kvstore.KVStore {
-	switch *config.KVS {
+	switch *Config.KVS {
 	case "memory":
 		return kvstore.NewMemoryKVStore()
 	case "file":
-		db := kvstore.NewSqliteKVStore(path.Join(*config.StoragePath, "kv-store.db"), true)
+		db := kvstore.NewSqliteKVStore(path.Join(*Config.StoragePath, "kv-store.db"), true)
 		if err := db.Open(); err != nil {
 			logger.WithError(err).Panic("Could not open sqlite database connection")
 		}
@@ -71,11 +71,11 @@ var CreateKVStore = func() kvstore.KVStore {
 	case "postgres":
 		db := kvstore.NewPostgresKVStore(kvstore.PostgresConfig{
 			ConnParams: map[string]string{
-				"host":     *config.Postgres.Host,
-				"port":     strconv.Itoa(*config.Postgres.Port),
-				"user":     *config.Postgres.User,
-				"password": *config.Postgres.Password,
-				"dbname":   *config.Postgres.DbName,
+				"host":     *Config.Postgres.Host,
+				"port":     strconv.Itoa(*Config.Postgres.Port),
+				"user":     *Config.Postgres.User,
+				"password": *Config.Postgres.Password,
+				"dbname":   *Config.Postgres.DbName,
 				"sslmode":  "disable",
 			},
 			MaxIdleConns: 1,
@@ -86,21 +86,21 @@ var CreateKVStore = func() kvstore.KVStore {
 		}
 		return db
 	default:
-		panic(fmt.Errorf("Unknown key-value backend: %q", *config.KVS))
+		panic(fmt.Errorf("Unknown key-value backend: %q", *Config.KVS))
 	}
 }
 
 // CreateMessageStore is a func which returns a store.MessageStore implementation
 // (currently, based on guble configuration).
 var CreateMessageStore = func() store.MessageStore {
-	switch *config.MS {
+	switch *Config.MS {
 	case "none", "memory", "":
 		return dummystore.New(kvstore.NewMemoryKVStore())
 	case "file":
-		logger.WithField("storagePath", *config.StoragePath).Info("Using FileMessageStore in directory")
-		return filestore.New(*config.StoragePath)
+		logger.WithField("storagePath", *Config.StoragePath).Info("Using FileMessageStore in directory")
+		return filestore.New(*Config.StoragePath)
 	default:
-		panic(fmt.Errorf("Unknown message-store backend: %q", *config.MS))
+		panic(fmt.Errorf("Unknown message-store backend: %q", *Config.MS))
 	}
 }
 
@@ -118,21 +118,21 @@ var CreateModules = func(router router.Router) []interface{} {
 
 	modules = append(modules, rest.NewRestMessageAPI(router, "/api/"))
 
-	if *config.FCM.Enabled {
+	if *Config.FCM.Enabled {
 		logger.Info("Google Firebase Cloud Messaging: enabled")
 
-		if *config.FCM.APIKey == "" {
+		if *Config.FCM.APIKey == "" {
 			logger.Panic("FCM API Key has to be provided, if GCM is enabled")
 		}
 
-		logger.WithField("count", *config.FCM.Workers).Debug("FCM workers")
+		logger.WithField("count", *Config.FCM.Workers).Debug("FCM workers")
 
 		if fcmConn, err := gcm.New(
 			router,
 			"/gcm/",
-			*config.FCM.APIKey,
-			*config.FCM.Workers,
-			*config.FCM.Endpoint); err != nil {
+			*Config.FCM.APIKey,
+			*Config.FCM.Workers,
+			*Config.FCM.Endpoint); err != nil {
 			logger.WithError(err).Error("Error creating FCM connector")
 
 		} else {
@@ -155,14 +155,14 @@ func Main() {
 
 	parseConfig()
 
-	log.SetFormatter(&logformatter.LogstashFormatter{Env: *config.EnvName})
-	level, err := log.ParseLevel(*config.Log)
+	log.SetFormatter(&logformatter.LogstashFormatter{Env: *Config.EnvName})
+	level, err := log.ParseLevel(*Config.Log)
 	if err != nil {
 		logger.WithError(err).Fatal("Invalid log level")
 	}
 	log.SetLevel(level)
 
-	switch *config.Profile {
+	switch *Config.Profile {
 	case cpuProfile:
 		logger.Info("starting to profile cpu")
 		defer profile.Start(profile.CPUProfile).Stop()
@@ -206,13 +206,13 @@ func StartService() *service.Service {
 		err error
 	)
 
-	if *config.Cluster.NodeID > 0 {
-		exitIfInvalidClusterParams(*config.Cluster.NodeID, *config.Cluster.NodePort, *config.Cluster.Remotes)
+	if *Config.Cluster.NodeID > 0 {
+		exitIfInvalidClusterParams(*Config.Cluster.NodeID, *Config.Cluster.NodePort, *Config.Cluster.Remotes)
 		logger.Info("Starting in cluster-mode")
 		cl, err = cluster.New(&cluster.Config{
-			ID:      *config.Cluster.NodeID,
-			Port:    *config.Cluster.NodePort,
-			Remotes: *config.Cluster.Remotes,
+			ID:      *Config.Cluster.NodeID,
+			Port:    *Config.Cluster.NodePort,
+			Remotes: *Config.Cluster.Remotes,
 		})
 		if err != nil {
 			logger.WithField("err", err).Fatal("Module could not be started (cluster)")
@@ -222,11 +222,11 @@ func StartService() *service.Service {
 	}
 
 	r := router.New(accessManager, messageStore, kvStore, cl)
-	websrv := webserver.New(*config.HttpListen)
+	websrv := webserver.New(*Config.HttpListen)
 
 	srv := service.New(r, websrv).
-		HealthEndpoint(*config.HealthEndpoint).
-		MetricsEndpoint(*config.MetricsEndpoint)
+		HealthEndpoint(*Config.HealthEndpoint).
+		MetricsEndpoint(*Config.MetricsEndpoint)
 
 	srv.RegisterModules(0, 6, kvStore, messageStore)
 	srv.RegisterModules(4, 3, CreateModules(r)...)

@@ -128,7 +128,6 @@ WAIT:
 			break WAIT
 		}
 	}
-
 }
 
 var syncTopic = "/sync"

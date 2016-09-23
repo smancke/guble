@@ -57,7 +57,7 @@ type (
 		Remotes  *tcpAddrList
 	}
 	// Config is used for configuring Guble (including its components).
-	Config struct {
+	GubleConfig struct {
 		Log             *string
 		EnvName         *string
 		HttpListen      *string
@@ -75,7 +75,7 @@ type (
 
 var (
 	parsed = false
-	config = &Config{
+	Config = &GubleConfig{
 		Log: kingpin.Flag("log", "Log level").
 			Default(log.ErrorLevel.String()).
 			Envar("GUBLE_LOG").

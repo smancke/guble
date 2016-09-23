@@ -66,7 +66,7 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resp, err := api.router.GetSubscribersForTopic(topic)
 		w.Header().Set("Content-Type", "application/json")
 		i, err := w.Write(resp)
-		log.WithField("noOfBytes", i).WithField("topic", topic).Debug("Wrote as  response for GetSubscribersForTopic")
+		log.WithField("noOfBytes", i).WithField("topic", topic).Debug("Wrote as response for GetSubscribersForTopic")
 		if err != nil {
 			log.WithField("Err", err).Error("Writing to byte stream failed")
 			http.Error(w, "Server error.", http.StatusInternalServerError)
