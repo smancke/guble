@@ -62,7 +62,7 @@ func (gs gubleSender) GetSubscribers(topic string) ([]byte, error) {
 }
 
 func (gs gubleSender) Check() bool {
-	request, err := http.NewRequest(http.MethodHead, gs.Endpoint, nil)
+	request, err := http.NewRequest(http.MethodHead, fmt.Sprintf("http://%s/api",gs.Endpoint), nil)
 	if err != nil {
 		logger.WithError(err).Error("error creating request url")
 		return false
