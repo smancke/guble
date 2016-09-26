@@ -8,5 +8,6 @@ type Sender interface {
 	// Check returns `true` if the guble server endpoint is reachable, or `false` otherwise.
 	Check() bool
 
+	// GetSubscribers returns a binary encoded JSON of all subscribers of 'topic' or an error otherwise
 	GetSubscribers(topic string) ([]byte, error)
 }

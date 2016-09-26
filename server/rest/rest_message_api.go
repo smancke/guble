@@ -12,10 +12,11 @@ import (
 	"github.com/rs/xid"
 
 	"bytes"
-	log "github.com/opencontainers/runc/Godeps/_workspace/src/github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	log "github.com/opencontainers/runc/Godeps/_workspace/src/github.com/Sirupsen/logrus"
 )
 
 const (

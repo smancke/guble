@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"net/url"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 type gubleSender struct {
@@ -26,7 +28,11 @@ func New(endpoint string) Sender {
 func (gs gubleSender) GetSubscribers(topic string) ([]byte, error) {
 	logger.WithField("topic", topic).Info("GetSubscribers called")
 	body := make([]byte, 0)
-	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/api/subscribers%s", gs.Endpoint, topic), bytes.NewReader(body))
+	request, err := http.NewRequest(
+		http.MethodGet,
+		fmt.Sprintf("%s/subscribers/%s", gs.Endpoint, trimPrefixSlash(topic)),
+		bytes.NewReader(body),
+	)
 	logger.WithField("url", fmt.Sprintf("%s/subscribers/%s", gs.Endpoint, topic))
 	if err != nil {
 		return nil, err
@@ -109,4 +115,11 @@ func getURL(endpoint, topic, userID string, params map[string]string) string {
 		}
 	}
 	return fmt.Sprintf("%s/%s?%s", endpoint, topic, uv.Encode())
+}
+
+func trimPrefixSlash(topic string) string {
+	if strings.HasPrefix(topic, "/") {
+		return strings.TrimPrefix(topic, "/")
+	}
+	return topic
 }
