@@ -348,7 +348,7 @@ func (s *subscription) pipe(m *protocol.Message) error {
 		}
 		s.logger.WithFields(log.Fields{
 			"messageID": m.ID,
-		}).Info("Delivered message to FCM")
+		}).Debug("Delivered message to FCM")
 		return s.handleGCMResponse(response)
 	case err := <-pipeMessage.errC:
 		if err == errIgnoreMessage {

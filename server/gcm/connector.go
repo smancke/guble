@@ -169,7 +169,7 @@ func (conn *Connector) loopPipeline(id int) {
 }
 
 func (conn *Connector) sendMessage(pm *pipeMessage) {
-	fcmID := pm.subscription.route.RouteParams.Get(applicationIDKey)
+	fcmID := pm.subscription.route.Get(applicationIDKey)
 
 	fcmMessage := pm.fcmMessage()
 	fcmMessage.To = fcmID
