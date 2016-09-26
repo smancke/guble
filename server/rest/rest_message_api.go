@@ -16,7 +16,7 @@ import (
 	"net/http"
 	"strings"
 
-	log "github.com/opencontainers/runc/Godeps/_workspace/src/github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
