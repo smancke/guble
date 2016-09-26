@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/restclient"
 	"github.com/smancke/guble/testutil"
 	"io/ioutil"
