@@ -51,9 +51,9 @@ func (tnc *testClusterNodeConfig) parseConfig() error {
 		"--storage-path", tnc.StoragePath,
 		"--health-endpoint", "",
 
-		"--gcm",
-		"--gcm-api-key", "WILL BE OVERWRITTEN",
-		"--gcm-workers", "4",
+		"--fcm",
+		"--fcm-api-key", "WILL BE OVERWRITTEN",
+		"--fcm-workers", "4",
 	}
 
 	if tnc.MemoryStore != "" {
