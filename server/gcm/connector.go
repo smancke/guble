@@ -42,7 +42,7 @@ const (
 
 var logger = log.WithFields(log.Fields{
 	"app":    "guble",
-	"module": "gcm",
+	"module": "fcm",
 })
 
 // Connector is the structure for handling the communication with Google Cloud Messaging
@@ -169,11 +169,12 @@ func (conn *Connector) loopPipeline(id int) {
 }
 
 func (conn *Connector) sendMessage(pm *pipeMessage) {
-	fcmID := pm.subscription.route.Get(applicationIDKey)
+	fcmID := pm.subscription.route.RouteParams.Get(applicationIDKey)
 
 	fcmMessage := pm.fcmMessage()
 	fcmMessage.To = fcmID
 	logger.WithFields(log.Fields{
+		"fcmTo":      fcmMessage.To,
 		"fcmID":      fcmID,
 		"pipeLength": len(conn.pipelineC),
 	}).Debug("Sending message")

@@ -313,7 +313,8 @@ func (s *subscription) bytes() []byte {
 // store data in kvstore
 func (s *subscription) store() error {
 	s.logger.WithField("lastID", s.lastID).Debug("Storing subscription")
-	err := s.connector.kvStore.Put(schema, s.Key(), s.bytes())
+	applicationID := s.route.Get(applicationIDKey)
+	err := s.connector.kvStore.Put(schema, applicationID, s.bytes())
 	if err != nil {
 		s.logger.WithError(err).Error("Error storing in KVStore")
 	}
@@ -345,13 +346,16 @@ func (s *subscription) pipe(m *protocol.Message) error {
 		if err := s.setLastID(pipeMessage.message.ID); err != nil {
 			return err
 		}
+		s.logger.WithFields(log.Fields{
+			"messageID": m.ID,
+		}).Info("Delivered message to FCM")
 		return s.handleGCMResponse(response)
 	case err := <-pipeMessage.errC:
 		if err == errIgnoreMessage {
 			s.logger.WithField("message", m).Info("Ignoring message")
 			return nil
 		}
-		s.logger.WithError(err).Error("Error sending message to GCM")
+		s.logger.WithField("error", err.Error()).Error("Error sending message to FCM")
 		return err
 	}
 }
@@ -361,11 +365,11 @@ func (s *subscription) handleGCMResponse(response *gcm.Response) error {
 		return nil
 	}
 
+	s.logger.WithField("count", response.Success).Debug("Handling FCM Error")
 	if err := s.handleJSONError(response); err != nil {
 		return err
 	}
 
-	s.logger.WithField("count", response.Success).Debug("Delivered messages to GCM")
 	if response.CanonicalIDs != 0 {
 		// we only send to one receiver,
 		// so we know that we can replace the old id with the first registration id (=canonical id)
