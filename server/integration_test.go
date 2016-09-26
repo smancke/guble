@@ -111,7 +111,7 @@ type Subscriber struct {
 
 func Test_FranzIntegration(t *testing.T) {
 	defer testutil.ResetDefaultRegistryHealthCheck()
-	//defer testutil.EnableDebugForMethod()()
+	defer testutil.EnableDebugForMethod()()
 
 	a := assert.New(t)
 
@@ -121,10 +121,9 @@ func Test_FranzIntegration(t *testing.T) {
 	subscribeMultipleClients(t, s, 4)
 	a.Nil(nil)
 
-	restClient := restclient.New(s.WebServer().GetAddr())
+	restClient := restclient.New(fmt.Sprintf("http://%s/api", s.WebServer().GetAddr()))
 	content, err := restClient.GetSubscribers(testTopic)
 	a.NoError(err)
-	log.WithField("content", content).Info("COntetn recve")
 	routeParams := make([]*Subscriber, 0)
 
 	err = json.Unmarshal(content, &routeParams)
