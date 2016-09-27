@@ -21,10 +21,10 @@ func Benchmark_E2E_Fetch_HelloWorld_Messages(b *testing.B) {
 	dir, _ := ioutil.TempDir("", "guble_benchmarking_fetch_test")
 	defer os.RemoveAll(dir)
 
-	*config.HttpListen = "localhost:0"
-	*config.KVS = "memory"
-	*config.MS = "file"
-	*config.StoragePath = dir
+	*Config.HttpListen = "localhost:0"
+	*Config.KVS = "memory"
+	*Config.MS = "file"
+	*Config.StoragePath = dir
 	service := StartService()
 	defer service.Stop()
 

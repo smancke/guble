@@ -62,9 +62,8 @@ func (gs gubleSender) GetSubscribers(topic string) ([]byte, error) {
 		"header": response.Header,
 		"code":   response.StatusCode,
 		"body":   string(content),
-	}).Info("++Guble response ")
+	}).Debug("Guble response")
 	return content, nil
-
 }
 
 func (gs gubleSender) Check() bool {

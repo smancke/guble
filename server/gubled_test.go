@@ -20,29 +20,29 @@ func TestValidateStoragePath(t *testing.T) {
 	valid := os.TempDir()
 	invalid := os.TempDir() + "/non-existing-directory-for-guble-test"
 
-	*config.MS = "file"
+	*Config.MS = "file"
 
-	*config.StoragePath = valid
+	*Config.StoragePath = valid
 	a.NoError(ValidateStoragePath())
-	*config.StoragePath = invalid
+	*Config.StoragePath = invalid
 
 	a.Error(ValidateStoragePath())
 
-	*config.KVS = "file"
+	*Config.KVS = "file"
 	a.Error(ValidateStoragePath())
 }
 
 func TestCreateKVStoreBackend(t *testing.T) {
 	a := assert.New(t)
-	*config.KVS = "memory"
+	*Config.KVS = "memory"
 	memory := CreateKVStore()
 	a.Equal("*kvstore.MemoryKVStore", reflect.TypeOf(memory).String())
 
 	dir, _ := ioutil.TempDir("", "guble_test")
 	defer os.RemoveAll(dir)
 
-	*config.KVS = "file"
-	*config.StoragePath = dir
+	*Config.KVS = "file"
+	*Config.StoragePath = dir
 	sqlite := CreateKVStore()
 	a.Equal("*kvstore.SqliteKVStore", reflect.TypeOf(sqlite).String())
 }
@@ -56,11 +56,11 @@ func TestGcmOnlyStartedIfEnabled(t *testing.T) {
 	routerMock := initRouterMock()
 	routerMock.EXPECT().KVStore().Return(kvstore.NewMemoryKVStore(), nil)
 
-	*config.FCM.Enabled = true
-	*config.FCM.APIKey = "xyz"
+	*Config.FCM.Enabled = true
+	*Config.FCM.APIKey = "xyz"
 	a.True(containsGcmModule(CreateModules(routerMock)))
 
-	*config.FCM.Enabled = false
+	*Config.FCM.Enabled = false
 	a.False(containsGcmModule(CreateModules(routerMock)))
 }
 
@@ -85,8 +85,8 @@ func TestPanicOnMissingGcmApiKey(t *testing.T) {
 	}()
 
 	routerMock := initRouterMock()
-	*config.FCM.APIKey = ""
-	*config.FCM.Enabled = true
+	*Config.FCM.APIKey = ""
+	*Config.FCM.Enabled = true
 	CreateModules(routerMock)
 }
 
@@ -97,7 +97,7 @@ func TestCreateStoreBackendPanicInvalidBackend(t *testing.T) {
 			p = recover()
 		}()
 
-		*config.KVS = "foo bar"
+		*Config.KVS = "foo bar"
 		CreateKVStore()
 	}()
 	assert.NotNil(t, p)
@@ -109,14 +109,14 @@ func TestStartServiceModules(t *testing.T) {
 	a := assert.New(t)
 
 	// when starting a simple valid service
-	*config.KVS = "memory"
-	*config.MS = "file"
-	*config.FCM.Enabled = false
+	*Config.KVS = "memory"
+	*Config.MS = "file"
+	*Config.FCM.Enabled = false
 
 	// using an available port for http
 	testHttpPort++
 	logger.WithField("port", testHttpPort).Debug("trying to use HTTP Port")
-	*config.HttpListen = fmt.Sprintf(":%d", testHttpPort)
+	*Config.HttpListen = fmt.Sprintf(":%d", testHttpPort)
 
 	s := StartService()
 

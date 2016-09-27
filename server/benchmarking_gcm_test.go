@@ -185,13 +185,13 @@ func (params *benchParams) setUp() {
 
 	params.dir = dir
 
-	*config.HttpListen = "localhost:0"
-	*config.KVS = "memory"
-	*config.MS = "file"
-	*config.StoragePath = dir
-	*config.FCM.Enabled = true
-	*config.FCM.APIKey = "WILL BE OVERWRITTEN"
-	*config.FCM.Workers = params.workers
+	*Config.HttpListen = "localhost:0"
+	*Config.KVS = "memory"
+	*Config.MS = "file"
+	*Config.StoragePath = dir
+	*Config.FCM.Enabled = true
+	*Config.FCM.APIKey = "WILL BE OVERWRITTEN"
+	*Config.FCM.Workers = params.workers
 
 	params.service = StartService()
 

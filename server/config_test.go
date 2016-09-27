@@ -121,30 +121,30 @@ func TestParsingArgs(t *testing.T) {
 }
 
 func assertArguments(a *assert.Assertions) {
-	a.Equal("http_listen", *config.HttpListen)
-	a.Equal("kvs-backend", *config.KVS)
-	a.Equal(os.TempDir(), *config.StoragePath)
-	a.Equal("ms-backend", *config.MS)
-	a.Equal("health_endpoint", *config.HealthEndpoint)
+	a.Equal("http_listen", *Config.HttpListen)
+	a.Equal("kvs-backend", *Config.KVS)
+	a.Equal(os.TempDir(), *Config.StoragePath)
+	a.Equal("ms-backend", *Config.MS)
+	a.Equal("health_endpoint", *Config.HealthEndpoint)
 
-	a.Equal("metrics_endpoint", *config.MetricsEndpoint)
+	a.Equal("metrics_endpoint", *Config.MetricsEndpoint)
 
-	a.Equal(true, *config.FCM.Enabled)
-	a.Equal("fcm-api-key", *config.FCM.APIKey)
-	a.Equal(3, *config.FCM.Workers)
+	a.Equal(true, *Config.FCM.Enabled)
+	a.Equal("fcm-api-key", *Config.FCM.APIKey)
+	a.Equal(3, *Config.FCM.Workers)
 
-	a.Equal(uint8(1), *config.Cluster.NodeID)
-	a.Equal(10000, *config.Cluster.NodePort)
+	a.Equal(uint8(1), *Config.Cluster.NodeID)
+	a.Equal(10000, *Config.Cluster.NodePort)
 
-	a.Equal("pg-host", *config.Postgres.Host)
-	a.Equal(5432, *config.Postgres.Port)
-	a.Equal("pg-user", *config.Postgres.User)
-	a.Equal("pg-password", *config.Postgres.Password)
-	a.Equal("pg-dbname", *config.Postgres.DbName)
+	a.Equal("pg-host", *Config.Postgres.Host)
+	a.Equal(5432, *Config.Postgres.Port)
+	a.Equal("pg-user", *Config.Postgres.User)
+	a.Equal("pg-password", *Config.Postgres.Password)
+	a.Equal("pg-dbname", *Config.Postgres.DbName)
 
-	a.Equal("debug", *config.Log)
-	a.Equal("dev", *config.EnvName)
-	a.Equal("mem", *config.Profile)
+	a.Equal("debug", *Config.Log)
+	a.Equal("dev", *Config.EnvName)
+	a.Equal("mem", *Config.Profile)
 
 	assertClusterRemotes(a)
 }
@@ -155,5 +155,5 @@ func assertClusterRemotes(a *assert.Assertions) {
 	ipList := make(tcpAddrList, 0)
 	ipList = append(ipList, ip1)
 	ipList = append(ipList, ip2)
-	a.Equal(ipList, *config.Cluster.Remotes)
+	a.Equal(ipList, *Config.Cluster.Remotes)
 }

@@ -124,20 +124,20 @@ func serviceSetUp(t *testing.T) (*service.Service, func()) {
 	dir, errTempDir := ioutil.TempDir("", "guble_gcm_test")
 	assert.NoError(t, errTempDir)
 
-	*config.KVS = "memory"
-	*config.MS = "file"
-	*config.Cluster.NodeID = 0
-	*config.StoragePath = dir
-	*config.MetricsEndpoint = "/admin/metrics"
-	*config.FCM.Enabled = true
-	*config.FCM.APIKey = "WILL BE OVERWRITTEN"
-	*config.FCM.Workers = 1 // use only one worker so we can control the number of messages that go to GCM
+	*Config.KVS = "memory"
+	*Config.MS = "file"
+	*Config.Cluster.NodeID = 0
+	*Config.StoragePath = dir
+	*Config.MetricsEndpoint = "/admin/metrics"
+	*Config.FCM.Enabled = true
+	*Config.FCM.APIKey = "WILL BE OVERWRITTEN"
+	*Config.FCM.Workers = 1 // use only one worker so we can control the number of messages that go to GCM
 
 	var s *service.Service
 	for s == nil {
 		testHttpPort++
 		logger.WithField("port", testHttpPort).Debug("trying to use HTTP Port")
-		*config.HttpListen = fmt.Sprintf("127.0.0.1:%d", testHttpPort)
+		*Config.HttpListen = fmt.Sprintf("127.0.0.1:%d", testHttpPort)
 		s = StartService()
 	}
 	return s, func() {
