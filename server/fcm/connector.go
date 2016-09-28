@@ -112,10 +112,10 @@ func (conn *Connector) reset() {
 
 // Stop signals the closing of FCM Connector
 func (conn *Connector) Stop() error {
-	logger.Debug("Stopping ...")
+	logger.Debug("stopping")
 	close(conn.stopC)
 	conn.wg.Wait()
-	logger.Debug("Stopped")
+	logger.Debug("stopped")
 	return nil
 }
 
@@ -128,7 +128,7 @@ func (conn *Connector) check() error {
 	}
 	_, err := conn.Sender.Send(message)
 	if err != nil {
-		logger.WithField("error", err.Error()).Error("Error checking FCM connection")
+		logger.WithField("error", err.Error()).Error("error checking FCM connection")
 		return err
 	}
 	return nil
@@ -139,10 +139,10 @@ func (conn *Connector) check() error {
 func (conn *Connector) loopPipeline(id int) {
 	conn.wg.Add(1)
 	defer func() {
-		logger.WithField("id", id).Debug("Worker stopped")
+		logger.WithField("id", id).Debug("fcm worker stopped")
 		conn.wg.Done()
 	}()
-	logger.WithField("id", id).Debug("Worker started")
+	logger.WithField("id", id).Debug("fcm worker started")
 
 	for {
 		select {
@@ -170,7 +170,7 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 		"fcmTo":      fcmMessage.To,
 		"fcmID":      fcmID,
 		"pipeLength": len(conn.pipelineC),
-	}).Debug("Sending message")
+	}).Debug("sending message")
 
 	beforeSend := time.Now()
 	response, err := conn.Sender.Send(fcmMessage)
@@ -200,16 +200,14 @@ func (conn *Connector) GetPrefix() string {
 func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost && r.Method != http.MethodDelete {
 		logger.WithField("method", r.Method).Error("Only HTTP POST and DELETE methods supported.")
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
-
 	userID, fcmID, topic, err := conn.parseParams(r.URL.Path)
 	if err != nil {
-		http.Error(w, "Invalid Parameters in request", http.StatusBadRequest)
+		http.Error(w, `{"error":"invalid parameters in request}`, http.StatusBadRequest)
 		return
 	}
-
 	switch r.Method {
 	case http.MethodPost:
 		conn.addSubscription(w, topic, userID, fcmID)
@@ -224,11 +222,11 @@ func (conn *Connector) addSubscription(w http.ResponseWriter, topic, userID, fcm
 		// synchronize subscription after storing if cluster exists
 		conn.synchronizeSubscription(topic, userID, fcmID, false)
 	} else if err == errSubscriptionExists {
-		logger.WithField("subscription", s).Error("Subscription already exists")
-		fmt.Fprint(w, "subscription already exists")
+		logger.WithField("subscription", s).Error("subscription already exists")
+		fmt.Fprint(w, `{"error":"subscription already exists"}`)
 		return
 	}
-	fmt.Fprintf(w, "subscribed: %v\n", topic)
+	fmt.Fprintf(w, `{"subscribed":"%v"}`, topic)
 }
 
 func (conn *Connector) deleteSubscription(w http.ResponseWriter, topic, userID, fcmID string) {
@@ -236,17 +234,18 @@ func (conn *Connector) deleteSubscription(w http.ResponseWriter, topic, userID, 
 
 	s, ok := conn.subscriptions[subscriptionKey]
 	if !ok {
-		logger.WithField("subscriptionKey", subscriptionKey).
-			WithField("subscriptions", conn.subscriptions).
-			Info("Subscription not found")
-		http.Error(w, "subscription not found", http.StatusNotFound)
+		logger.WithFields(log.Fields{
+			"subscriptionKey": subscriptionKey,
+			"subscriptions":   conn.subscriptions,
+		}).Info("subscription not found")
+		http.Error(w, `{"error":"subscription not found"}`, http.StatusNotFound)
 		return
 	}
 
 	conn.synchronizeSubscription(topic, userID, fcmID, true)
 
 	s.remove()
-	fmt.Fprintf(w, "unsubscribed: %v\n", topic)
+	fmt.Fprintf(w, `{"unsubscribed":"%v"}`, topic)
 }
 
 // parseParams will parse the HTTP URL with format /fcm/:userid/:fcmid/subscribe/*topic
@@ -282,7 +281,7 @@ func (conn *Connector) loadSubscriptions() {
 		conn.loadSubscription(entry)
 		count++
 	}
-	logger.WithField("count", count).Info("Loaded FCM subscriptions")
+	logger.WithField("count", count).Info("loaded all FCM subscriptions")
 }
 
 // loadSubscription loads a kvstore entry and creates a subscription from it
@@ -303,7 +302,7 @@ func (conn *Connector) loadSubscription(entry [2]string) {
 		"userID": userID,
 		"topic":  topic,
 		"lastID": lastID,
-	}).Debug("Loaded FCM subscription")
+	}).Debug("loaded a FCM subscription")
 }
 
 // Creates a route and listens for subscription synchronization
@@ -318,11 +317,11 @@ func (conn *Connector) syncLoop() error {
 	}
 
 	go func() {
-		logger.Info("Sync loop starting")
+		logger.Info("sync loop starting")
 		conn.wg.Add(1)
 
 		defer func() {
-			logger.Info("Sync loop stopped")
+			logger.Info("sync loop stopped")
 			conn.wg.Done()
 		}()
 
@@ -330,22 +329,22 @@ func (conn *Connector) syncLoop() error {
 			select {
 			case m, opened := <-r.MessagesChannel():
 				if !opened {
-					logger.Error("Sync loop channel closed")
+					logger.Error("sync loop channel closed")
 					return
 				}
 
 				if m.NodeID == conn.cluster.Config.ID {
-					logger.Debug("Received own subscription loop")
+					logger.Debug("received own subscription loop")
 					continue
 				}
 
 				subscriptionSync, err := (&subscriptionSync{}).Decode(m.Body)
 				if err != nil {
-					logger.WithError(err).Error("Error decoding subscription sync")
+					logger.WithError(err).Error("error decoding subscription sync")
 					continue
 				}
 
-				logger.Debug("Initializing sync subscription without storing it.")
+				logger.Debug("initializing sync subscription without storing it")
 				if subscriptionSync.Remove {
 					subscriptionKey := composeSubscriptionKey(
 						subscriptionSync.Topic,
@@ -364,7 +363,7 @@ func (conn *Connector) syncLoop() error {
 					subscriptionSync.FCMID,
 					0,
 					false); err != nil {
-					logger.WithError(err).Error("Error synchronizing subscription")
+					logger.WithError(err).Error("error synchronizing subscription")
 				}
 			case <-conn.stopC:
 				return
@@ -380,12 +379,10 @@ func (conn *Connector) synchronizeSubscription(topic, userID, fcmID string, remo
 	if conn.cluster == nil {
 		return nil
 	}
-
 	data, err := (&subscriptionSync{topic, userID, fcmID, remove}).Encode()
 	if err != nil {
 		return err
 	}
-
 	return conn.router.HandleMessage(&protocol.Message{
 		Path: syncPath,
 		Body: data,
