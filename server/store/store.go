@@ -76,9 +76,6 @@ type FetchRequest struct {
 	// Count is the maximum number of messages to return
 	Count int
 
-	// Prefix is the message prefix to filter
-	Prefix []byte
-
 	// MessageC is the channel to send the message back to the receiver
 	MessageC chan FetchedMessage
 
