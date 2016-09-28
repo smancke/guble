@@ -53,7 +53,7 @@ func TestConnector_ServeHTTPWithErrorCases(t *testing.T) {
 	g.ServeHTTP(w, req)
 
 	// check the result
-	a.Equal("Method not allowed\n", string(w.Body.Bytes()))
+	a.Equal("{\"error\":\"method not allowed\"}\n", string(w.Body.Bytes()))
 	a.Equal(w.Code, http.StatusMethodNotAllowed)
 
 	// send a new request with wrong parameters encoding
@@ -63,10 +63,11 @@ func TestConnector_ServeHTTPWithErrorCases(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	g.ServeHTTP(w2, req)
 
-	a.Equal("Invalid Parameters in request\n", string(w2.Body.Bytes()))
+	a.Equal("{\"error\":\"invalid parameters in request\"}\n", string(w2.Body.Bytes()))
 	a.Equal(w2.Code, http.StatusBadRequest)
 }
 
+//TODO Cosmin Bogdan test should be re-enabled after Check() works and is a public func
 //func TestConnector_Check(t *testing.T) {
 //	_, finish := testutil.NewMockCtrl(t)
 //	defer finish()
@@ -368,7 +369,7 @@ func TestConnector_SubscriptionExists(t *testing.T) {
 	g.ServeHTTP(w, req)
 
 	a.Equal(http.StatusOK, w.Code)
-	a.Equal("subscription already exists", w.Body.String())
+	a.Equal("{\"error\":\"subscription already exists\"}", w.Body.String())
 }
 
 func TestFCMFormatMessage(t *testing.T) {
@@ -497,7 +498,7 @@ func postSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string)
 
 	gcm.ServeHTTP(w, req)
 
-	a.Equal(fmt.Sprintf("subscribed: /%s\n", topic), string(w.Body.Bytes()))
+	a.Equal(fmt.Sprintf(`{"subscribed":"/%s"}`, topic), string(w.Body.Bytes()))
 }
 
 func deleteSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string) {
@@ -509,5 +510,5 @@ func deleteSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic strin
 
 	gcm.ServeHTTP(w, req)
 
-	a.Equal(fmt.Sprintf("unsubscribed: /%s\n", topic), string(w.Body.Bytes()))
+	a.Equal(fmt.Sprintf(`{"unsubscribed":"/%s"}`, topic), string(w.Body.Bytes()))
 }

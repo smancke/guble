@@ -132,14 +132,12 @@ func Test_FranzIntegration(t *testing.T) {
 		a.Equal(fmt.Sprintf("%d", i), rp.UserID)
 	}
 	a.NoError(err)
-
 }
 
 func subscribeMultipleClients(t *testing.T, service *service.Service, noOfClients int) {
-
 	a := assert.New(t)
 
-	// create GCM subscription with topic: gcmTopic
+	// create FCM subscription for topic
 	for i := 0; i < noOfClients; i++ {
 		urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/%%s", service.WebServer().GetAddr())
 		url := fmt.Sprintf(urlFormat, i, i, strings.TrimPrefix(testTopic, "/"))
@@ -154,7 +152,6 @@ func subscribeMultipleClients(t *testing.T, service *service.Service, noOfClient
 
 		body, errReadAll := ioutil.ReadAll(response.Body)
 		a.NoError(errReadAll)
-		a.Equal(fmt.Sprintf("subscribed: %s\n", testTopic), string(body))
+		a.Equal(fmt.Sprintf(`{"subscribed":"%s"}`, testTopic), string(body))
 	}
-
 }
