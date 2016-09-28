@@ -54,7 +54,7 @@ type expectedValues struct {
 
 // Test that restarting the service continues to fetch messages from store
 // for a subscription from lastID
-func TestGCM_Restart(t *testing.T) {
+func TestFCMRestart(t *testing.T) {
 	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	a := assert.New(t)
@@ -115,7 +115,7 @@ func TestGCM_Restart(t *testing.T) {
 		select {
 		case <-receiveC:
 		case <-time.After(2 * timeoutForOneMessage):
-			a.Fail("GCM message not received")
+			a.Fail("FCM message not received")
 		}
 	}
 }
@@ -170,7 +170,7 @@ func subscriptionSetUp(t *testing.T, service *service.Service) {
 
 	body, errReadAll := ioutil.ReadAll(response.Body)
 	a.NoError(errReadAll)
-	a.Equal(fmt.Sprintf("subscribed: %s\n", testTopic), string(body))
+	a.Equal(fmt.Sprintf(`{"subscribed":"%s"}`, testTopic), string(body))
 }
 
 func assertMetrics(a *assert.Assertions, s *service.Service, expected expectedValues) {

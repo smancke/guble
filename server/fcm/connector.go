@@ -205,7 +205,7 @@ func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	userID, fcmID, topic, err := conn.parseParams(r.URL.Path)
 	if err != nil {
-		http.Error(w, `{"error":"invalid parameters in request}`, http.StatusBadRequest)
+		http.Error(w, `{"error":"invalid parameters in request"}`, http.StatusBadRequest)
 		return
 	}
 	switch r.Method {
