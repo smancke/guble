@@ -64,12 +64,10 @@ func New(router router.Router, prefix string, apiKey string, nWorkers int, endpo
 	if err != nil {
 		return nil, err
 	}
-
 	if endpoint != "" {
 		logger.WithField("fcmEndpoint", endpoint).Info("using FCM endpoint")
 		gcm.GcmSendEndpoint = endpoint
 	}
-
 	return &Connector{
 		Sender:        gcm.NewSender(apiKey, sendRetries, sendTimeout),
 		router:        router,
