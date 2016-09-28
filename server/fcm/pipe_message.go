@@ -1,4 +1,4 @@
-package gcm
+package fcm
 
 import (
 	"encoding/json"

@@ -4,13 +4,13 @@
 package router
 
 import (
-	gomock "github.com/golang/mock/gomock"
-	protocol "github.com/smancke/guble/protocol"
-	auth "github.com/smancke/guble/server/auth"
-	cluster "github.com/smancke/guble/server/cluster"
-	kvstore "github.com/smancke/guble/server/kvstore"
+	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/server/cluster"
+	"github.com/smancke/guble/server/kvstore"
 
-	store "github.com/smancke/guble/server/store"
+	"github.com/smancke/guble/server/store"
 )
 
 // Mock of Router interface

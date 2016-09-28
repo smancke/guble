@@ -6,7 +6,7 @@ import (
 	"github.com/smancke/guble/logformatter"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/cluster"
-	"github.com/smancke/guble/server/gcm"
+	"github.com/smancke/guble/server/fcm"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/rest"
@@ -122,19 +122,18 @@ var CreateModules = func(router router.Router) []interface{} {
 		logger.Info("Google Firebase Cloud Messaging: enabled")
 
 		if *Config.FCM.APIKey == "" {
-			logger.Panic("FCM API Key has to be provided, if GCM is enabled")
+			logger.Panic("FCM API Key has to be provided, if FCM is enabled")
 		}
 
 		logger.WithField("count", *Config.FCM.Workers).Debug("FCM workers")
 
-		if fcmConn, err := gcm.New(
+		if fcmConn, err := fcm.New(
 			router,
 			"/gcm/",
 			*Config.FCM.APIKey,
 			*Config.FCM.Workers,
 			*Config.FCM.Endpoint); err != nil {
 			logger.WithError(err).Error("Error creating FCM connector")
-
 		} else {
 			modules = append(modules, fcmConn)
 		}

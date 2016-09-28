@@ -13,7 +13,7 @@ import (
 	"encoding/json"
 
 	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/server/gcm"
+	"github.com/smancke/guble/server/fcm"
 	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
@@ -54,7 +54,7 @@ type expectedValues struct {
 
 // Test that restarting the service continues to fetch messages from store
 // for a subscription from lastID
-func TestGCM_Restart(t *testing.T) {
+func TestFCMRestart(t *testing.T) {
 	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	a := assert.New(t)
@@ -65,10 +65,10 @@ func TestGCM_Restart(t *testing.T) {
 
 	assertMetrics(a, s, expectedValues{true, 0, 0, 0})
 
-	var gcmConnector *gcm.Connector
+	var gcmConnector *fcm.Connector
 	var ok bool
 	for _, iface := range s.ModulesSortedByStartOrder() {
-		gcmConnector, ok = iface.(*gcm.Connector)
+		gcmConnector, ok = iface.(*fcm.Connector)
 		if ok {
 			break
 		}
@@ -78,7 +78,7 @@ func TestGCM_Restart(t *testing.T) {
 	// add a high timeout so the messages are processed slow
 	gcmConnector.Sender = testutil.CreateGcmSender(
 		testutil.CreateRoundTripperWithCountAndTimeout(
-			http.StatusOK, testutil.SuccessGCMResponse, receiveC, 10*time.Millisecond))
+			http.StatusOK, testutil.SuccessFCMResponse, receiveC, 10*time.Millisecond))
 
 	// create subscription on topic
 	subscriptionSetUp(t, s)
@@ -115,7 +115,7 @@ func TestGCM_Restart(t *testing.T) {
 		select {
 		case <-receiveC:
 		case <-time.After(2 * timeoutForOneMessage):
-			a.Fail("GCM message not received")
+			a.Fail("FCM message not received")
 		}
 	}
 }
@@ -170,7 +170,7 @@ func subscriptionSetUp(t *testing.T, service *service.Service) {
 
 	body, errReadAll := ioutil.ReadAll(response.Body)
 	a.NoError(errReadAll)
-	a.Equal(fmt.Sprintf("subscribed: %s\n", testTopic), string(body))
+	a.Equal(fmt.Sprintf(`{"subscribed":"%s"}`, testTopic), string(body))
 }
 
 func assertMetrics(a *assert.Assertions, s *service.Service, expected expectedValues) {
