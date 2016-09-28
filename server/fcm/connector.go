@@ -59,7 +59,7 @@ type Connector struct {
 }
 
 // New creates a new *Connector without starting it
-func New(router router.Router, prefix string, APIKey string, nWorkers int, endpoint string) (*Connector, error) {
+func New(router router.Router, prefix string, apiKey string, nWorkers int, endpoint string) (*Connector, error) {
 	kvStore, err := router.KVStore()
 	if err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func New(router router.Router, prefix string, APIKey string, nWorkers int, endpo
 	}
 
 	return &Connector{
-		Sender:        gcm.NewSender(APIKey, sendRetries, sendTimeout),
+		Sender:        gcm.NewSender(apiKey, sendRetries, sendTimeout),
 		router:        router,
 		cluster:       router.Cluster(),
 		kvStore:       kvStore,
@@ -79,7 +79,6 @@ func New(router router.Router, prefix string, APIKey string, nWorkers int, endpo
 		pipelineC:     make(chan *pipeMessage, bufferSize),
 		stopC:         make(chan bool),
 		nWorkers:      nWorkers,
-		broadcastPath: removeTrailingSlash(prefix) + "/broadcast",
 		subscriptions: make(map[string]*subscription),
 	}, nil
 }
