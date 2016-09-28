@@ -82,7 +82,7 @@ func ResetDefaultRegistryHealthCheck() {
 }
 
 const (
-	SuccessGCMResponse = `{
+	SuccessFCMResponse = `{
 	   "multicast_id":3,
 	   "success":1,
 	   "failure":0,
@@ -96,7 +96,7 @@ const (
 	   ]
 	}`
 
-	ErrorGCMResponse = `{
+	ErrorFCMResponse = `{
 	   "multicast_id":3,
 	   "success":0,
 	   "failure":1,
@@ -105,7 +105,7 @@ const (
 	   "results":[
 	      {
 	         "message_id":"err",
-	         "registration_id":"gcmCanonicalID",
+	         "registration_id":"fcmCanonicalID",
 	         "error":"InvalidRegistration"
 	      }
 	   ]
@@ -123,7 +123,7 @@ func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) 
 func CreateGcmSender(rt RoundTripperFunc) gcm.Sender {
 	log.WithFields(log.Fields{
 		"module": "testing",
-	}).Debug("Create GCM sender")
+	}).Debug("Create FCM sender")
 	httpClient := &http.Client{Transport: rt}
 
 	client := gcm.NewSender("1234", 0, 3*time.Second)

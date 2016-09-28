@@ -13,7 +13,7 @@ import (
 	"encoding/json"
 
 	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/server/gcm"
+	"github.com/smancke/guble/server/fcm"
 	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
@@ -65,10 +65,10 @@ func TestGCM_Restart(t *testing.T) {
 
 	assertMetrics(a, s, expectedValues{true, 0, 0, 0})
 
-	var gcmConnector *gcm.Connector
+	var gcmConnector *fcm.Connector
 	var ok bool
 	for _, iface := range s.ModulesSortedByStartOrder() {
-		gcmConnector, ok = iface.(*gcm.Connector)
+		gcmConnector, ok = iface.(*fcm.Connector)
 		if ok {
 			break
 		}
@@ -78,7 +78,7 @@ func TestGCM_Restart(t *testing.T) {
 	// add a high timeout so the messages are processed slow
 	gcmConnector.Sender = testutil.CreateGcmSender(
 		testutil.CreateRoundTripperWithCountAndTimeout(
-			http.StatusOK, testutil.SuccessGCMResponse, receiveC, 10*time.Millisecond))
+			http.StatusOK, testutil.SuccessFCMResponse, receiveC, 10*time.Millisecond))
 
 	// create subscription on topic
 	subscriptionSetUp(t, s)

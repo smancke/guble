@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smancke/guble/server/gcm"
+	"github.com/smancke/guble/server/fcm"
 	"github.com/smancke/guble/testutil"
 
 	"errors"
@@ -96,14 +96,14 @@ func newTestClusterNode(t *testing.T, nodeConfig testClusterNodeConfig) *testClu
 		return nil
 	}
 
-	service := StartService()
+	s := StartService()
 
 	var (
-		gcmConnector *gcm.Connector
+		gcmConnector *fcm.Connector
 		ok           bool
 	)
-	for _, iface := range service.ModulesSortedByStartOrder() {
-		if gcmConnector, ok = iface.(*gcm.Connector); ok {
+	for _, iface := range s.ModulesSortedByStartOrder() {
+		if gcmConnector, ok = iface.(*fcm.Connector); ok {
 			break
 		}
 	}
@@ -118,7 +118,7 @@ func newTestClusterNode(t *testing.T, nodeConfig testClusterNodeConfig) *testClu
 			t:         t,
 			Connector: gcmConnector,
 		},
-		Service: service,
+		Service: s,
 	}
 }
 
@@ -151,7 +151,7 @@ func (tcn *testClusterNode) cleanup(removeDir bool) {
 
 type TestGCM struct {
 	t         *testing.T
-	Connector *gcm.Connector
+	Connector *fcm.Connector
 	Received  int // received messages
 
 	receiveC chan bool
@@ -197,9 +197,9 @@ func (tgcm *TestGCM) unsubscribe(addr, topic, id string) {
 		bytes.NewBufferString(""))
 	a.NoError(err)
 
-	client := &http.Client{}
+	hc := &http.Client{}
 
-	response, err := client.Do(req)
+	response, err := hc.Do(req)
 	if a.NoError(err) {
 		a.Equal(response.StatusCode, 200)
 	}
