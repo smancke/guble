@@ -38,30 +38,28 @@ var logger = log.WithFields(log.Fields{
 	"module": "fcm",
 })
 
-type MessageDeliveryCallback func(*protocol.Message)
-
 // Config is used for configuring the Firebase Cloud Messaging component.
 type Config struct {
 	Enabled         *bool
 	APIKey          *string
 	Workers         *int
 	Endpoint        *string
-	MessageDelivery MessageDeliveryCallback
+	MessageDelivery protocol.MessageDeliveryCallback
 }
 
 // Connector is the structure for handling the communication with Firebase Cloud Messaging
 type Connector struct {
-	Sender        gcm.Sender
-	router        router.Router
-	cluster       *cluster.Cluster
-	kvStore       kvstore.KVStore
-	prefix        string
-	pipelineC     chan *pipeMessage
-	stopC         chan bool
-	nWorkers      int
-	wg            sync.WaitGroup
-	broadcastPath string
-	subscriptions map[string]*subscription
+	Sender          gcm.Sender
+	MessageDelivery protocol.MessageDeliveryCallback
+	router          router.Router
+	cluster         *cluster.Cluster
+	kvStore         kvstore.KVStore
+	prefix          string
+	pipelineC       chan *pipeMessage
+	stopC           chan bool
+	nWorkers        int
+	wg              sync.WaitGroup
+	subscriptions   map[string]*subscription
 }
 
 // New creates a new *Connector without starting it
@@ -75,15 +73,16 @@ func New(router router.Router, prefix string, config Config) (*Connector, error)
 		gcm.GcmSendEndpoint = *config.Endpoint
 	}
 	return &Connector{
-		Sender:        gcm.NewSender(*config.APIKey, sendRetries, sendTimeout),
-		router:        router,
-		cluster:       router.Cluster(),
-		kvStore:       kvStore,
-		prefix:        prefix,
-		pipelineC:     make(chan *pipeMessage, bufferSize),
-		stopC:         make(chan bool),
-		nWorkers:      *config.Workers,
-		subscriptions: make(map[string]*subscription),
+		Sender:          gcm.NewSender(*config.APIKey, sendRetries, sendTimeout),
+		MessageDelivery: config.MessageDelivery,
+		router:          router,
+		cluster:         router.Cluster(),
+		kvStore:         kvStore,
+		prefix:          prefix,
+		pipelineC:       make(chan *pipeMessage, bufferSize),
+		stopC:           make(chan bool),
+		subscriptions:   make(map[string]*subscription),
+		nWorkers:        *config.Workers,
 	}, nil
 }
 
