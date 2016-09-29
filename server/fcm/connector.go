@@ -64,6 +64,7 @@ type Connector struct {
 
 // New creates a new *Connector without starting it
 func New(router router.Router, prefix string, config Config) (*Connector, error) {
+	logger.WithField("count", *config.Workers).Debug("FCM workers")
 	kvStore, err := router.KVStore()
 	if err != nil {
 		return nil, err
@@ -193,6 +194,9 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 	metrics.AddToMaps(currentTotalMessagesLatenciesKey, int64(latencyDuration), mMinute, mHour, mDay)
 	metrics.AddToMaps(currentTotalMessagesKey, 1, mMinute, mHour, mDay)
 
+	if conn.MessageDelivery != nil {
+		go conn.MessageDelivery(pm.message)
+	}
 	pm.resultC <- response
 }
 
