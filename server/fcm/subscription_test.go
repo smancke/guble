@@ -19,10 +19,10 @@ var (
 	fetchMessage = `/foo/bar,42,user01,phone01,id123,1420110000,1
 {"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}
 Hello World`
-	dummyGCMResponse = &gcm.Response{
+	dummyFCMResponse = &gcm.Response{
 		Results: []gcm.Result{{Error: ""}},
 	}
-	errorGCMNotRegisteredResponse = &gcm.Response{
+	errorFCMNotRegisteredResponse = &gcm.Response{
 		Error:   "NotRegistered",
 		Results: []gcm.Result{{Error: "NotRegistered"}},
 	}
@@ -62,18 +62,18 @@ func TestSub_Fetch(t *testing.T) {
 
 	done := make(chan struct{})
 
-	// read messages from gcm pipeline, must read 2 messages
+	// read messages from fcm pipeline, must read 2 messages
 	go func() {
 		// pipe message
 		pm := <-g.pipelineC
 		a.Equal(uint64(3), pm.message.ID)
 		// acknowledge the response
-		pm.resultC <- dummyGCMResponse
+		pm.resultC <- dummyFCMResponse
 
 		// pipe message
 		pm = <-g.pipelineC
 		a.Equal(uint64(4), pm.message.ID)
-		pm.resultC <- dummyGCMResponse
+		pm.resultC <- dummyFCMResponse
 
 		close(done)
 	}()
@@ -116,7 +116,7 @@ func TestSub_Restart(t *testing.T) {
 		for {
 			select {
 			case pm := <-g.pipelineC:
-				pm.resultC <- dummyGCMResponse
+				pm.resultC <- dummyFCMResponse
 			case <-done:
 				return
 			}
@@ -180,7 +180,7 @@ func TestSubscription_JSONError(t *testing.T) {
 		for {
 			select {
 			case pm := <-g.pipelineC:
-				pm.resultC <- errorGCMNotRegisteredResponse
+				pm.resultC <- errorFCMNotRegisteredResponse
 			case <-done:
 				return
 			}

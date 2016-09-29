@@ -91,7 +91,7 @@ func TestConnector_ServeHTTPWithErrorCases(t *testing.T) {
 //	a.Error(gcm.check())
 //}
 
-func TestGCM_SaveAndLoadSubs(t *testing.T) {
+func TestFCM_SaveAndLoadSubs(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
@@ -499,26 +499,26 @@ func testSimpleFCM(t *testing.T, mockStore bool) (*Connector, *MockRouter, *Mock
 	return g, routerMock, storeMock
 }
 
-func postSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string) {
+func postSubscription(t *testing.T, fcmConn *Connector, userID, gcmID, topic string) {
 	a := assert.New(t)
 	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
 	req, err := http.NewRequest(http.MethodPost, u, nil)
 	a.NoError(err)
 	w := httptest.NewRecorder()
 
-	gcm.ServeHTTP(w, req)
+	fcmConn.ServeHTTP(w, req)
 
 	a.Equal(fmt.Sprintf(`{"subscribed":"/%s"}`, topic), string(w.Body.Bytes()))
 }
 
-func deleteSubscription(t *testing.T, gcm *Connector, userID, gcmID, topic string) {
+func deleteSubscription(t *testing.T, fcmConn *Connector, userID, gcmID, topic string) {
 	a := assert.New(t)
 	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
 	req, err := http.NewRequest(http.MethodDelete, u, nil)
 	a.NoError(err)
 	w := httptest.NewRecorder()
 
-	gcm.ServeHTTP(w, req)
+	fcmConn.ServeHTTP(w, req)
 
 	a.Equal(fmt.Sprintf(`{"unsubscribed":"/%s"}`, topic), string(w.Body.Bytes()))
 }

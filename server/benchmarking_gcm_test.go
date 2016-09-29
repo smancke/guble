@@ -23,13 +23,13 @@ import (
 )
 
 const (
-	gcmTopic = "/topic"
+	fcmTopic = "/topic"
 )
 
-// GCM benchmarks
+// FCM benchmarks
 // Default number of clients and subscriptions are 8, for tests that do not
 // specify this in their name
-func BenchmarkGCM_1Workers50MilliTimeout(b *testing.B) {
+func BenchmarkFCM_1Workers50MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       1,
@@ -42,7 +42,7 @@ func BenchmarkGCM_1Workers50MilliTimeout(b *testing.B) {
 	fmt.Println(params)
 }
 
-func BenchmarkGCM_8Workers50MilliTimeout(b *testing.B) {
+func BenchmarkFCM_8Workers50MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       8,
@@ -55,7 +55,7 @@ func BenchmarkGCM_8Workers50MilliTimeout(b *testing.B) {
 	fmt.Println(params)
 }
 
-func BenchmarkGCM_16Workers50MilliTimeout(b *testing.B) {
+func BenchmarkFCM_16Workers50MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       16,
@@ -68,7 +68,7 @@ func BenchmarkGCM_16Workers50MilliTimeout(b *testing.B) {
 	fmt.Println(params)
 }
 
-func BenchmarkGCM_1Workers100MilliTimeout(b *testing.B) {
+func BenchmarkFCM_1Workers100MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       1,
@@ -81,7 +81,7 @@ func BenchmarkGCM_1Workers100MilliTimeout(b *testing.B) {
 	fmt.Println(params)
 }
 
-func BenchmarkGCM_8Workers100MilliTimeout(b *testing.B) {
+func BenchmarkFCM_8Workers100MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       8,
@@ -94,7 +94,7 @@ func BenchmarkGCM_8Workers100MilliTimeout(b *testing.B) {
 	fmt.Println(params)
 }
 
-func BenchmarkGCM_16Workers100MilliTimeout(b *testing.B) {
+func BenchmarkFCM_16Workers100MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       16,
@@ -108,7 +108,7 @@ func BenchmarkGCM_16Workers100MilliTimeout(b *testing.B) {
 }
 
 func sendMessageSample(c client.Client) error {
-	return c.Send(gcmTopic, "test-body", "{id:id}")
+	return c.Send(fcmTopic, "test-body", "{id:id}")
 }
 
 type sender func(c client.Client) error
@@ -195,24 +195,24 @@ func (params *benchParams) setUp() {
 
 	params.service = StartService()
 
-	var gcmConnector *fcm.Connector
+	var fcmConn *fcm.Connector
 	var ok bool
 	for _, iface := range params.service.ModulesSortedByStartOrder() {
-		gcmConnector, ok = iface.(*fcm.Connector)
+		fcmConn, ok = iface.(*fcm.Connector)
 		if ok {
 			break
 		}
 	}
 	a.True(ok, "There should be a module of type GCMConnector")
 
-	gcmConnector.Sender = testutil.CreateGcmSender(
+	fcmConn.Sender = testutil.CreateGcmSender(
 		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, testutil.SuccessFCMResponse, params.receiveC, params.timeout))
 
 	urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/%%s", params.service.WebServer().GetAddr())
 	for i := 1; i <= params.subscriptions; i++ {
 		// create GCM subscription with topic: gcmTopic
 		response, errPost := http.Post(
-			fmt.Sprintf(urlFormat, i, i, strings.TrimPrefix(gcmTopic, "/")),
+			fmt.Sprintf(urlFormat, i, i, strings.TrimPrefix(fcmTopic, "/")),
 			"text/plain",
 			bytes.NewBufferString(""),
 		)

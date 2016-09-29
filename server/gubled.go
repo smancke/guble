@@ -28,11 +28,16 @@ import (
 	"syscall"
 
 	"github.com/pkg/profile"
+	"github.com/smancke/guble/protocol"
 )
 
 const (
 	fileOption = "file"
 )
+
+var MessageDelivery = func(m *protocol.Message) {
+	logger.WithField("message", m).Debug("message delivered")
+}
 
 // ValidateStoragePath validates the guble configuration with regard to the storagePath
 // (which can be used by MessageStore and/or KVStore implementations).
@@ -111,7 +116,7 @@ var CreateModules = func(router router.Router) []interface{} {
 	var modules []interface{}
 
 	if wsHandler, err := websocket.NewWSHandler(router, "/stream/"); err != nil {
-		logger.WithError(err).Error("Error loading WSHandler module:")
+		logger.WithError(err).Error("Error loading WSHandler module")
 	} else {
 		modules = append(modules, wsHandler)
 	}

@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	// registrationsSchema is the default sqlite schema for GCM
+	// schema is the default database schema for FCM
 	schema = "gcm_registration"
 
 	// sendRetries is the number of retries when sending a message
@@ -28,7 +28,6 @@ const (
 
 	subscribePrefixPath = "subscribe"
 
-	// default channel buffer size
 	bufferSize = 1000
 
 	syncPath = protocol.Path("/fcm/sync")
@@ -39,12 +38,15 @@ var logger = log.WithFields(log.Fields{
 	"module": "fcm",
 })
 
+type MessageDeliveryCallback func(*protocol.Message)
+
 // Config is used for configuring the Firebase Cloud Messaging component.
 type Config struct {
-	Enabled  *bool
-	APIKey   *string
-	Workers  *int
-	Endpoint *string
+	Enabled         *bool
+	APIKey          *string
+	Workers         *int
+	Endpoint        *string
+	MessageDelivery MessageDeliveryCallback
 }
 
 // Connector is the structure for handling the communication with Firebase Cloud Messaging
