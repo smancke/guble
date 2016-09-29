@@ -1,24 +1,20 @@
 package fcm
 
 import (
+	"errors"
+	"fmt"
 	"github.com/Bogh/gcm"
-
 	log "github.com/Sirupsen/logrus"
-
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/cluster"
 	"github.com/smancke/guble/server/kvstore"
+	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/router"
-
-	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/smancke/guble/server/metrics"
 )
 
 const (
@@ -43,7 +39,15 @@ var logger = log.WithFields(log.Fields{
 	"module": "fcm",
 })
 
-// Connector is the structure for handling the communication with Google Firebase Cloud Messaging
+// Config is used for configuring the Firebase Cloud Messaging component.
+type Config struct {
+	Enabled  *bool
+	APIKey   *string
+	Workers  *int
+	Endpoint *string
+}
+
+// Connector is the structure for handling the communication with Firebase Cloud Messaging
 type Connector struct {
 	Sender        gcm.Sender
 	router        router.Router
@@ -59,24 +63,24 @@ type Connector struct {
 }
 
 // New creates a new *Connector without starting it
-func New(router router.Router, prefix string, apiKey string, nWorkers int, endpoint string) (*Connector, error) {
+func New(router router.Router, prefix string, config Config) (*Connector, error) {
 	kvStore, err := router.KVStore()
 	if err != nil {
 		return nil, err
 	}
-	if endpoint != "" {
-		logger.WithField("fcmEndpoint", endpoint).Info("using FCM endpoint")
-		gcm.GcmSendEndpoint = endpoint
+	if *config.Endpoint != "" {
+		logger.WithField("fcmEndpoint", *config.Endpoint).Info("using FCM endpoint")
+		gcm.GcmSendEndpoint = *config.Endpoint
 	}
 	return &Connector{
-		Sender:        gcm.NewSender(apiKey, sendRetries, sendTimeout),
+		Sender:        gcm.NewSender(*config.APIKey, sendRetries, sendTimeout),
 		router:        router,
 		cluster:       router.Cluster(),
 		kvStore:       kvStore,
 		prefix:        prefix,
 		pipelineC:     make(chan *pipeMessage, bufferSize),
 		stopC:         make(chan bool),
-		nWorkers:      nWorkers,
+		nWorkers:      *config.Workers,
 		subscriptions: make(map[string]*subscription),
 	}, nil
 }

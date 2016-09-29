@@ -477,7 +477,17 @@ func testSimpleFCM(t *testing.T, mockStore bool) (*Connector, *MockRouter, *Mock
 	kvStore := kvstore.NewMemoryKVStore()
 	routerMock.EXPECT().KVStore().Return(kvStore, nil)
 
-	g, err := New(routerMock, "/gcm/", "testApi", 1, "")
+	key := "testApi"
+	nWorkers := 1
+	endpoint := ""
+	g, err := New(
+		routerMock,
+		"/gcm/",
+		Config{
+			APIKey:   &key,
+			Workers:  &nWorkers,
+			Endpoint: &endpoint,
+		})
 	assert.NoError(t, err)
 
 	var storeMock *MockMessageStore

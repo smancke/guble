@@ -183,7 +183,7 @@ func (tgcm *TestGCM) subscribe(addr, topic, id string) {
 
 	body, err := ioutil.ReadAll(response.Body)
 	a.NoError(err)
-	a.Equal(fmt.Sprintf("subscribed: %s\n", topic), string(body))
+	a.Equal(fmt.Sprintf(`{"subscribed":"%s"}`, topic), string(body))
 }
 
 func (tgcm *TestGCM) unsubscribe(addr, topic, id string) {
@@ -206,7 +206,7 @@ func (tgcm *TestGCM) unsubscribe(addr, topic, id string) {
 
 	body, err := ioutil.ReadAll(response.Body)
 	a.NoError(err)
-	a.Equal(fmt.Sprintf("unsubscribed: %s\n", topic), string(body))
+	a.Equal(fmt.Sprintf(`{"unsubscribed":"%s"}`, topic), string(body))
 }
 
 // Wait waits count * tgcm.timeout, wait ensure count number of messages have been waited to pass
