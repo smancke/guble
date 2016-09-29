@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/store"
 )
 
 // Matcher is a func type that receives two route configurations pointers as parameters and
@@ -29,6 +30,8 @@ type RouteConfig struct {
 
 	// If Matcher is set will be used to check equality of the routes
 	Matcher Matcher `json:"-"`
+
+	fetchRequest store.FetchRequest
 }
 
 func (rc *RouteConfig) Equal(other RouteConfig, keys ...string) bool {

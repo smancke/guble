@@ -146,7 +146,7 @@ func (s *synchronizer) requestLoop(nodeID uint8, smr *syncMessageRequest) {
 		StartID:   smr.StartID,
 		EndID:     smr.EndID,
 		Direction: 1,
-		MessageC:  make(chan store.FetchedMessage, 10),
+		MessageC:  make(chan *store.FetchedMessage, 10),
 		ErrorC:    make(chan error),
 		StartC:    make(chan int),
 		Count:     math.MaxInt32,
@@ -154,7 +154,7 @@ func (s *synchronizer) requestLoop(nodeID uint8, smr *syncMessageRequest) {
 
 	s.store.Fetch(req)
 
-	var fetchedMessage store.FetchedMessage
+	var fetchedMessage *store.FetchedMessage
 
 	opened := true
 	for opened {

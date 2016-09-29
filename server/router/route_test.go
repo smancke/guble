@@ -232,3 +232,13 @@ func isMessageReceived(route *Route, msg *protocol.Message) bool {
 
 	return false
 }
+
+// Test route fetching mechanism.
+// If a route has a fetch request it should return the messages from the store
+// and then continue with the messages received from the router.
+//
+// Based on the fetch request the route may not accept subscription and just close the
+// channel when the fetch is done.
+func TestRoute_FetchRequest(t *testing.T) {
+
+}

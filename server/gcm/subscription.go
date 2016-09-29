@@ -285,7 +285,7 @@ func (s *subscription) createFetchRequest() store.FetchRequest {
 		StartID:   s.lastID + 1,
 		Direction: 1,
 		Count:     math.MaxInt32,
-		MessageC:  make(chan store.FetchedMessage, 5),
+		MessageC:  make(chan *store.FetchedMessage, 5),
 		ErrorC:    make(chan error),
 		StartC:    make(chan int),
 	}

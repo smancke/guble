@@ -418,7 +418,7 @@ func (p *messagePartition) Fetch(req *store.FetchRequest) {
 
 		req.StartC <- fetchList.len()
 
-		err = p.fetchByFetchlist(fetchList, req.MessageC)
+		err = p.fetchByFetchlist(fetchList, req)
 
 		if err != nil {
 			log.WithField("err", err).Error("Error calculating list")
@@ -430,7 +430,7 @@ func (p *messagePartition) Fetch(req *store.FetchRequest) {
 }
 
 // fetchByFetchlist fetches the messages in the supplied fetchlist and sends them to the message-channel
-func (p *messagePartition) fetchByFetchlist(fetchList *indexList, messageC chan store.FetchedMessage) error {
+func (p *messagePartition) fetchByFetchlist(fetchList *indexList, req *store.FetchRequest) error {
 	return fetchList.mapWithPredicate(func(index *index, _ int) error {
 		filename := p.composeMsgFilenameForPosition(uint64(index.fileID))
 		file, err := os.Open(filename)
@@ -449,7 +449,7 @@ func (p *messagePartition) fetchByFetchlist(fetchList *indexList, messageC chan 
 			return err
 		}
 
-		messageC <- store.FetchedMessage{index.id, msg}
+		req.Push(index.id, msg)
 		return nil
 	})
 }
