@@ -111,7 +111,6 @@ func (s *subscription) subscribe() error {
 		s.logger.WithError(err).Error("Error subscribing in router")
 		return err
 	}
-
 	s.logger.Debug("Subscribed")
 	return nil
 }
@@ -199,7 +198,7 @@ func (s *subscription) subscriptionLoop() {
 			select {
 			case <-s.connector.stopC:
 				return
-			case <-time.After(10 * time.Millisecond):
+			case <-time.After(5 * time.Millisecond):
 			}
 
 			if !opened {
@@ -343,12 +342,10 @@ func (s *subscription) pipe(m *protocol.Message) error {
 	// wait for response
 	select {
 	case response := <-pipeMessage.resultC:
+		s.logger.WithField("messageID", m.ID).Debug("Delivered message to FCM")
 		if err := s.setLastID(pipeMessage.message.ID); err != nil {
 			return err
 		}
-		s.logger.WithFields(log.Fields{
-			"messageID": m.ID,
-		}).Debug("Delivered message to FCM")
 		return s.handleFCMResponse(response)
 	case err := <-pipeMessage.errC:
 		if err == errIgnoreMessage {
@@ -406,18 +403,18 @@ func (s *subscription) isValidResponseError(err error) bool {
 // replaceCanonical replaces subscription with canonical id,
 // creates a new subscription but alters the route to have the new ApplicationID
 func (s *subscription) replaceCanonical(newFCMID string) error {
-	s.logger.WithField("newGCMID", newFCMID).Info("Replacing with canonicalID")
+	s.logger.WithField("newFCMID", newFCMID).Info("Replacing with FCM canonicalID")
 	// delete current route from kvstore
 	s.remove()
 
 	// reuse the route but change the ApplicationID
 	route := s.route
 	route.Set(applicationIDKey, newFCMID)
-	newS := newSubscription(s.connector, route, s.lastID)
+	newSub := newSubscription(s.connector, route, s.lastID)
 
-	if err := newS.store(); err != nil {
+	if err := newSub.store(); err != nil {
 		return err
 	}
-	newS.start()
+	newSub.start()
 	return errSubReplaced
 }
