@@ -10,6 +10,7 @@ import (
 	"github.com/docker/distribution/health"
 
 	"encoding/json"
+
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/cluster"
@@ -30,12 +31,13 @@ type Router interface {
 	MessageStore() (store.MessageStore, error)
 	KVStore() (kvstore.KVStore, error)
 	Cluster() *cluster.Cluster
-	Fetch(store.FetchRequest) error
+	Fetch(*store.FetchRequest) error
 
 	Subscribe(r *Route) (*Route, error)
 	Unsubscribe(r *Route)
 	HandleMessage(message *protocol.Message) error
 	GetSubscribersForTopic(topic string) ([]byte, error)
+	Done() <-chan bool
 }
 
 // Helper struct to pass `Route` to subscription channel and provide a notification channel.
@@ -107,7 +109,7 @@ func (router *router) Start() error {
 				case unsubscriber := <-router.unsubscribeC:
 					router.unsubscribe(unsubscriber.route)
 					unsubscriber.doneC <- true
-				case <-router.stopC:
+				case <-router.Done():
 					router.setStopping(true)
 				}
 			}()
@@ -234,6 +236,7 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 		route: r,
 		doneC: make(chan bool),
 	}
+
 	router.subscribeC <- req
 	<-req.doneC
 	return r, nil
@@ -318,6 +321,10 @@ func (router *router) setStopping(v bool) {
 	defer router.Unlock()
 
 	router.stopping = v
+}
+
+func (router *router) Done() <-chan bool {
+	return router.stopC
 }
 
 func (router *router) isStopping() error {
@@ -425,7 +432,7 @@ func (router *router) KVStore() (kvstore.KVStore, error) {
 	return router.kvStore, nil
 }
 
-func (router *router) Fetch(req store.FetchRequest) error {
+func (router *router) Fetch(req *store.FetchRequest) error {
 	if err := router.isStopping(); err != nil {
 		return err
 	}

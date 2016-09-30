@@ -141,7 +141,7 @@ func (s *synchronizer) requestLoop(nodeID uint8, smr *syncMessageRequest) {
 		"syncMessageRequest": smr,
 	}).Debug("Sending requested messages")
 
-	req := store.FetchRequest{
+	req := &store.FetchRequest{
 		Partition: smr.Partition,
 		StartID:   smr.StartID,
 		EndID:     smr.EndID,

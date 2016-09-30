@@ -279,8 +279,8 @@ func (s *subscription) fetch() error {
 	}
 }
 
-func (s *subscription) createFetchRequest() store.FetchRequest {
-	return store.FetchRequest{
+func (s *subscription) createFetchRequest() *store.FetchRequest {
+	return &store.FetchRequest{
 		Partition: s.route.Path.Partition(),
 		StartID:   s.lastID + 1,
 		Direction: 1,

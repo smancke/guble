@@ -3,10 +3,11 @@ package router
 import (
 	"errors"
 	"fmt"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/smancke/guble/server/store"
 
 	"github.com/smancke/guble/protocol"
 
@@ -20,18 +21,23 @@ const (
 var (
 	errEmptyQueue = errors.New("Empty queue")
 	errTimeout    = errors.New("Channel sending timeout")
+
+	ErrMissingFetchRequest = errors.New("Missing FetchRequest configuration.")
 )
 
 // Route represents a topic for subscription that has a channel to receive messages.
 type Route struct {
 	RouteConfig
 
+	messageStore store.MessageStore
+
 	messagesC chan *protocol.Message
 
 	// queue that will store the messages in correct order.
 	// The queue can have a settable size;
 	// if it reaches the capacity the route is closed.
-	queue *queue
+	queue         *queue
+	prevQueueSize int
 
 	closeC chan struct{}
 
@@ -54,6 +60,11 @@ func NewRoute(config RouteConfig) *Route {
 
 		logger: logger.WithFields(log.Fields{"path": config.Path, "params": config.RouteParams}),
 	}
+
+	if route.FetchRequest != nil {
+		route.FetchRequest.Partition = route.Path.Partition()
+	}
+
 	return route
 }
 
@@ -112,6 +123,79 @@ func (r *Route) Deliver(msg *protocol.Message) error {
 func (r *Route) MessagesChannel() <-chan *protocol.Message {
 	return r.messagesC
 }
+
+// Provice accepts a router to use for fetching/subscribing and a boolean
+// indicating if it should close the route after fetching without subscribing
+// The method is blocking until fetch is finished or route is subscribed
+func (r *Route) Provide(router Router, subscribe bool) error {
+	if r.FetchRequest != nil {
+		err := r.handleFetch(router)
+		if err != nil {
+			return err
+		}
+	} else if !subscribe {
+		return ErrMissingFetchRequest
+	}
+	if !subscribe {
+		return nil
+	}
+	return r.handleSubscribe(router)
+}
+
+func (r *Route) handleFetch(router Router) error {
+	if err := router.Fetch(r.FetchRequest); err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case count := <-r.FetchRequest.StartC:
+			r.logger.WithField("count", count).Debug("Fetching messages")
+		case fetchedMessage, open := <-r.FetchRequest.Messages():
+			if !open {
+				r.logger.Debug("Fetch channel closed.")
+				return nil
+			}
+
+			r.logger.WithField("fetchedMessageID", fetchedMessage.ID).Debug("Fetched message")
+			message, err := protocol.ParseMessage(fetchedMessage.Message)
+			if err != nil {
+				return err
+			}
+
+			r.logger.WithField("messageID", message.ID).Debug("Sending fetched message in channel")
+			r.Deliver(message)
+		case err := <-r.FetchRequest.Errors():
+			return err
+		case <-router.Done():
+			r.logger.Debug("Stopping fetch because the router is shutting down")
+			return nil
+		}
+	}
+
+	return nil
+}
+
+func (r *Route) handleSubscribe(router Router) error {
+	_, err := router.Subscribe(r)
+	return err
+}
+
+// func (r *Route) handleFetchRequest(fr *store.FetchRequest) {
+// 	// set queue size to infinite to store the messages received from router
+// 	r.mu.Lock()
+// 	defer r.mu.Unlock()
+// 	currentQueueSize := r.queueSize
+// 	r.queueSize = -1
+
+// 	opened := true
+// 	for opened {
+// 		select {
+// 		case fetchedMessage, opened := fr.Messages():
+
+// 		}
+// 	}
+// }
 
 // Close closes the route channel.
 func (r *Route) Close() error {
@@ -209,7 +293,7 @@ func (r *Route) consume() {
 		}
 	}()
 
-	runtime.Gosched()
+	// runtime.Gosched()
 }
 
 // send message through the channel

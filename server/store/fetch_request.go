@@ -30,7 +30,7 @@ type FetchRequest struct {
 	// Direction == 0: Only the Message with StartId
 	// Direction == 1: Fetch also the next Count Messages with a higher MessageId
 	// Direction == -1: Fetch also the next Count Messages with a lower MessageId
-	Direction int
+	Direction FetchDirection
 
 	// Count is the maximum number of messages to return
 	Count int
@@ -52,9 +52,10 @@ func NewFetchRequest(partition string, start, end uint64, direction FetchDirecti
 		Partition: partition,
 		StartID:   start,
 		EndID:     end,
-		Direction: int(direction),
+		Direction: direction,
 
-		StartC:   make(chan int),
+		StartC: make(chan int),
+		// TODO Bogdan decide the channel size and if should be customizable
 		MessageC: make(chan *FetchedMessage, 10),
 		ErrorC:   make(chan error),
 	}
@@ -73,9 +74,13 @@ func (fr *FetchRequest) Push(id uint64, message []byte) {
 }
 
 func (fr *FetchRequest) PushFetchMessage(fm *FetchedMessage) {
-
+	fr.MessageC <- fm
 }
 
 func (fr *FetchRequest) PushError(err error) {
 	fr.ErrorC <- err
+}
+
+func (fr *FetchRequest) Done() {
+	close(fr.MessageC)
 }

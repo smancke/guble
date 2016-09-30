@@ -31,7 +31,8 @@ type RouteConfig struct {
 	// If Matcher is set will be used to check equality of the routes
 	Matcher Matcher `json:"-"`
 
-	fetchRequest store.FetchRequest
+	// Partition of the FetchRequest is override to match the route path
+	FetchRequest *store.FetchRequest
 }
 
 func (rc *RouteConfig) Equal(other RouteConfig, keys ...string) bool {

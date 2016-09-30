@@ -129,13 +129,13 @@ func (fms *FileMessageStore) Store(partition string, msgID uint64, msg []byte) e
 
 // Fetch asynchronously fetches a set of messages defined by the fetch request.
 // It is a part of the `store.MessageStore` implementation.
-func (fms *FileMessageStore) Fetch(req store.FetchRequest) {
+func (fms *FileMessageStore) Fetch(req *store.FetchRequest) {
 	p, err := fms.Partition(req.Partition)
 	if err != nil {
 		req.ErrorC <- err
 		return
 	}
-	p.Fetch(&req)
+	p.Fetch(req)
 }
 
 // DoInTx is a part of the `store.MessageStore` implementation.

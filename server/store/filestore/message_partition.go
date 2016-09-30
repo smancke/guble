@@ -425,7 +425,7 @@ func (p *messagePartition) Fetch(req *store.FetchRequest) {
 			req.ErrorC <- err
 			return
 		}
-		close(req.MessageC)
+		req.Done()
 	}()
 }
 

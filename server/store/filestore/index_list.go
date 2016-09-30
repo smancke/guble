@@ -226,7 +226,7 @@ func (l *indexList) extract(req *store.FetchRequest) *indexList {
 		}
 
 		potentialEntries.insert(elem)
-		currentPos += req.Direction
+		currentPos += int(req.Direction)
 
 		// // if we reach req.EndID than we break
 		if req.EndID > 0 && elem.id >= req.EndID {

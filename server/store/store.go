@@ -19,7 +19,7 @@ type MessageStore interface {
 	// Fetch fetches a set of messages.
 	// The results, as well as errors are communicated asynchronously using
 	// the channels, supplied by the FetchRequest.
-	Fetch(FetchRequest)
+	Fetch(*FetchRequest)
 
 	// MaxMessageId returns the highest message id for a particular partition
 	MaxMessageID(partition string) (uint64, error)

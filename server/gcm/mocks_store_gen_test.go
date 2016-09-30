@@ -40,7 +40,7 @@ func (_mr *_MockMessageStoreRecorder) DoInTx(arg0, arg1 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DoInTx", arg0, arg1)
 }
 
-func (_m *MockMessageStore) Fetch(_param0 store.FetchRequest) {
+func (_m *MockMessageStore) Fetch(_param0 *store.FetchRequest) {
 	_m.ctrl.Call(_m, "Fetch", _param0)
 }
 
