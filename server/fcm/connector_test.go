@@ -10,6 +10,8 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -310,6 +312,43 @@ func TestConnector_Subscribe(t *testing.T) {
 
 	postSubscription(t, g, "user2", "fcm2", "baskets")
 	a.Equal(len(g.subscriptions), 2)
+}
+
+func TestConnector_RetrieveSubscriptions(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	a := assert.New(t)
+
+	g, routerMock, _ := testSimpleFCM(t, true)
+
+	routerMock.EXPECT().Subscribe(gomock.Any())
+	routerMock.EXPECT().Subscribe(gomock.Any())
+
+	w := httptest.NewRecorder()
+	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", "user01", "fcm01", "/test")
+
+	//subscribe first user
+	req, err := http.NewRequest(http.MethodPost, u, nil)
+	a.NoError(err)
+	g.ServeHTTP(w, req)
+
+	//subscribe second user
+	w = httptest.NewRecorder()
+	u2 := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", "user01", "fcm01", "/test2")
+	req, err = http.NewRequest(http.MethodPost, u2, nil)
+	a.NoError(err)
+	g.ServeHTTP(w, req)
+	a.Equal(http.StatusOK, w.Code)
+
+	// retrieve all subscriptions
+	w = httptest.NewRecorder()
+	u3 := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/", "user01", "fcm01")
+	req, err = http.NewRequest(http.MethodGet, u3, nil)
+	a.NoError(err)
+	g.ServeHTTP(w, req)
+	a.Equal(http.StatusOK, w.Code)
+	response, _ := json.Marshal([]string{"//test", "//test2"})
+	a.Equal(bytes.NewBuffer(response).String(), w.Body.String())
 }
 
 func TestConnector_Unsubscribe(t *testing.T) {
