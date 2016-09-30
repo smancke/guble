@@ -39,17 +39,17 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	a.NoError(err)
 
 	// fetch first, starting at 0
-	fetchFirst1 := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
+	fetchFirst1 := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r *store.FetchRequest) {
 		go func() {
 			a.Equal("foo", r.Partition)
-			a.Equal(1, r.Direction)
+			a.Equal(store.DirectionForward, r.Direction)
 			a.Equal(uint64(0), r.StartID)
 			a.Equal(int(math.MaxInt32), r.Count)
 
 			r.StartC <- 2
 
-			r.MessageC <- store.FetchedMessage{ID: uint64(1), Message: []byte("fetch_first1-a")}
-			r.MessageC <- store.FetchedMessage{ID: uint64(2), Message: []byte("fetch_first1-b")}
+			r.MessageC <- &store.FetchedMessage{ID: uint64(1), Message: []byte("fetch_first1-a")}
+			r.MessageC <- &store.FetchedMessage{ID: uint64(2), Message: []byte("fetch_first1-b")}
 			close(r.MessageC)
 		}()
 	})
@@ -62,15 +62,15 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	messageID1.After(fetchFirst1)
 
 	// fetch again, starting at 3, because, there is still a gap
-	fetchFirst2 := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
+	fetchFirst2 := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r *store.FetchRequest) {
 		go func() {
 			a.Equal("foo", r.Partition)
-			a.Equal(1, r.Direction)
+			a.Equal(store.DirectionForward, r.Direction)
 			a.Equal(uint64(3), r.StartID)
 			a.Equal(int(math.MaxInt32), r.Count)
 
 			r.StartC <- 1
-			r.MessageC <- store.FetchedMessage{ID: uint64(3), Message: []byte("fetch_first2-a")}
+			r.MessageC <- &store.FetchedMessage{ID: uint64(3), Message: []byte("fetch_first2-a")}
 			close(r.MessageC)
 		}()
 	})
@@ -93,13 +93,13 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 	subscribe.After(messageID2)
 
 	// router closed, so we fetch again, starting at 6 (after meesages from subscribe)
-	fetchAfter := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
+	fetchAfter := messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r *store.FetchRequest) {
 		go func() {
 			a.Equal(uint64(6), r.StartID)
 			a.Equal(int(math.MaxInt32), r.Count)
 
 			r.StartC <- 1
-			r.MessageC <- store.FetchedMessage{ID: uint64(6), Message: []byte("fetch_after-a")}
+			r.MessageC <- &store.FetchedMessage{ID: uint64(6), Message: []byte("fetch_after-a")}
 			close(r.MessageC)
 		}()
 	})
@@ -163,11 +163,11 @@ func Test_Receiver_Fetch_Returns_Correct_Messages(t *testing.T) {
 
 	messages := []string{"The answer ", "is 42"}
 	done := make(chan bool)
-	messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
+	messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r *store.FetchRequest) {
 		go func() {
 			r.StartC <- len(messages)
 			for i, m := range messages {
-				r.MessageC <- store.FetchedMessage{ID: uint64(i + 1), Message: []byte(m)}
+				r.MessageC <- &store.FetchedMessage{ID: uint64(i + 1), Message: []byte(m)}
 			}
 			close(r.MessageC)
 			done <- true
@@ -235,7 +235,7 @@ func Test_Receiver_Fetch_Produces_Correct_Fetch_Requests(t *testing.T) {
 		}
 
 		done := make(chan bool)
-		messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
+		messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r *store.FetchRequest) {
 			a.Equal(test.expect.Partition, r.Partition, test.desc)
 			a.Equal(test.expect.Direction, r.Direction, test.desc)
 			a.Equal(test.expect.StartID, r.StartID, test.desc)
@@ -261,7 +261,7 @@ func Test_Receiver_Fetch_Sends_error_on_failure(t *testing.T) {
 		rec, msgChannel, _, messageStore, err := aMockedReceiver(arg)
 		a.NoError(err)
 
-		messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r store.FetchRequest) {
+		messageStore.EXPECT().Fetch(gomock.Any()).Do(func(r *store.FetchRequest) {
 			go func() {
 				r.ErrorC <- errors.New("expected test error")
 			}()
