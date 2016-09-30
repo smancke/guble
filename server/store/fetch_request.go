@@ -1,5 +1,7 @@
 package store
 
+import "math"
+
 const (
 	DirectionOneMessage FetchDirection = 0
 	DirectionForward    FetchDirection = 1
@@ -47,12 +49,19 @@ type FetchRequest struct {
 	StartC chan int
 }
 
-func NewFetchRequest(partition string, start, end uint64, direction FetchDirection) *FetchRequest {
+// Creates a new FetchRequest pointer initialized with provided values
+// if `count` is negative will be set to MaxInt32
+func NewFetchRequest(partition string, start, end uint64, direction FetchDirection, count int) *FetchRequest {
+	if count < 0 {
+		count = math.MaxInt32
+	}
 	return &FetchRequest{
 		Partition: partition,
 		StartID:   start,
 		EndID:     end,
 		Direction: direction,
+
+		Count: count,
 
 		StartC: make(chan int),
 		// TODO Bogdan decide the channel size and if should be customizable

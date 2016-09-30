@@ -265,8 +265,8 @@ func TestRoute_Provide_Fetch(t *testing.T) {
 
 	route := NewRoute(RouteConfig{
 		Path:         protocol.Path("/fetch_request"),
-		ChannelSize:  2,
-		FetchRequest: store.NewFetchRequest("", 0, 0, store.DirectionForward),
+		ChannelSize:  5,
+		FetchRequest: store.NewFetchRequest("", 0, 0, store.DirectionForward, -1),
 	})
 
 	routerMock.EXPECT().Done().Return(make(chan bool)).AnyTimes()
@@ -282,6 +282,7 @@ func TestRoute_Provide_Fetch(t *testing.T) {
 		req.Done()
 	})
 
+	done := make(chan struct{})
 	go func() {
 		receivedMessages := 0
 		for i := 1; i <= 2; i++ {
@@ -296,11 +297,12 @@ func TestRoute_Provide_Fetch(t *testing.T) {
 			}
 		}
 		a.Equal(2, receivedMessages)
+		close(done)
 	}()
 
 	err := route.Provide(routerMock, false)
 	a.NoError(err)
-	time.Sleep(500 * time.Millisecond)
+	<-done
 }
 
 func TestRoute_Provide_WithSubscribe(t *testing.T) {
@@ -314,7 +316,7 @@ func TestRoute_Provide_WithSubscribe(t *testing.T) {
 	route := NewRoute(RouteConfig{
 		Path:         protocol.Path("/fetch_request"),
 		ChannelSize:  2,
-		FetchRequest: store.NewFetchRequest("", 0, 0, store.DirectionForward),
+		FetchRequest: store.NewFetchRequest("", 0, 0, store.DirectionForward, -1),
 	})
 
 	routerMock.EXPECT().Done().Return(make(chan bool)).AnyTimes()
@@ -344,6 +346,7 @@ func TestRoute_Provide_WithSubscribe(t *testing.T) {
 		return r, nil
 	}).After(fetchCall)
 
+	done := make(chan struct{})
 	go func() {
 		receivedMessages := 0
 		for i := 1; i <= 4; i++ {
@@ -358,15 +361,25 @@ func TestRoute_Provide_WithSubscribe(t *testing.T) {
 			}
 		}
 		a.Equal(4, receivedMessages)
+		close(done)
 	}()
 
 	err := route.Provide(routerMock, true)
 	a.NoError(err)
-	time.Sleep(500 * time.Millisecond)
+	<-done
 }
 
 // Test that the route will fetch in case new messages arrived that match the
 // fetch request
 // func TestRoute_Provide_MultipleFetch(t *testing.T) {
+// 	// Using a valid router test that the fetch mechanism of a route will continue to fetch
+// 	// until the received messages after the fetch started
+// 	ctrl, finish := testutil.NewMockCtrl(t)
+// 	defer finish()
+
+// 	a := assert.New(t)
+
+// 	msMock := NewMockMessageStore(ctrl)
+// 	router := New(auth.AllowAllAccessManager(true), msMock, nil, nil)
 
 // }
