@@ -46,7 +46,7 @@ func TestConnector_ServeHTTPWithErrorCases(t *testing.T) {
 
 	u, _ := url.Parse("http://localhost/gcm/marvin/fcmId123/subscribe/notifications")
 	// and a http context
-	req := &http.Request{URL: u, Method: "GET"}
+	req := &http.Request{URL: u, Method: "HEAD"}
 	w := httptest.NewRecorder()
 
 	// do a GET instead of POST
@@ -151,8 +151,11 @@ func TestConnector_parseParams(t *testing.T) {
 	}
 
 	for i, c := range testCases {
-		userID, fcmID, topic, err := g.parseParams(c.urlPath)
-
+		userID, fcmID, unparsed, err := g.parseUserIdAndDeviceId(c.urlPath)
+		var topic string
+		if err == nil {
+			topic, err = g.parseTopic(unparsed)
+		}
 		//if error message is present check only the error
 		if c.err != "" {
 			a.NotNil(err)
