@@ -20,6 +20,7 @@ import (
 
 	"encoding/json"
 	"github.com/smancke/guble/server/metrics"
+	"sort"
 )
 
 const (
@@ -240,6 +241,7 @@ func (conn *Connector) retriveSubscription(w http.ResponseWriter, userID, fcmID 
 		}
 	}
 
+	sort.Strings(topics)
 	err := json.NewEncoder(w).Encode(topics)
 	if err != nil {
 		http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)

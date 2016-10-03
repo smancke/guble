@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -368,10 +369,12 @@ func TestConnector_RetrieveSubscriptions(t *testing.T) {
 	g.ServeHTTP(w, req)
 	a.Equal(http.StatusOK, w.Code)
 
-	a.Equal(2, len(strings.Split(w.Body.String(), ",")),
-		"There should be 2 values in the JSON separated with a comma")
-	a.True(strings.Contains(w.Body.String(), "/test"))
-	a.True(strings.Contains(w.Body.String(), "/test2"))
+	var bytes bytes.Buffer
+	expTopics := []string{"/test2", "/test"}
+	sort.Strings(expTopics)
+	err = json.NewEncoder(&bytes).Encode(expTopics)
+	a.NoError(err)
+	a.JSONEq(bytes.String(), w.Body.String())
 }
 
 func TestConnector_Unsubscribe(t *testing.T) {
