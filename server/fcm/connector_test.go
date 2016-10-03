@@ -314,6 +314,24 @@ func TestConnector_Subscribe(t *testing.T) {
 	a.Equal(len(g.subscriptions), 2)
 }
 
+func TestConnector_RetrieveNoSubscriptions(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	a := assert.New(t)
+
+	g, _, _ := testSimpleFCM(t, true)
+
+	w := httptest.NewRecorder()
+	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/", "user01", "fcm01")
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	a.NoError(err)
+
+	g.ServeHTTP(w, req)
+	a.Equal(http.StatusOK, w.Code)
+	response, _ := json.Marshal([]string{})
+	a.Equal(bytes.NewBuffer(response).String(), w.Body.String())
+}
+
 func TestConnector_RetrieveSubscriptions(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
@@ -325,7 +343,7 @@ func TestConnector_RetrieveSubscriptions(t *testing.T) {
 	routerMock.EXPECT().Subscribe(gomock.Any())
 
 	w := httptest.NewRecorder()
-	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", "user01", "fcm01", "/test")
+	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", "user01", "fcm01", "test")
 
 	//subscribe first user
 	req, err := http.NewRequest(http.MethodPost, u, nil)
@@ -334,7 +352,7 @@ func TestConnector_RetrieveSubscriptions(t *testing.T) {
 
 	//subscribe second user
 	w = httptest.NewRecorder()
-	u2 := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", "user01", "fcm01", "/test2")
+	u2 := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", "user01", "fcm01", "test2")
 	req, err = http.NewRequest(http.MethodPost, u2, nil)
 	a.NoError(err)
 	g.ServeHTTP(w, req)
@@ -347,7 +365,7 @@ func TestConnector_RetrieveSubscriptions(t *testing.T) {
 	a.NoError(err)
 	g.ServeHTTP(w, req)
 	a.Equal(http.StatusOK, w.Code)
-	response, _ := json.Marshal([]string{"//test", "//test2"})
+	response, _ := json.Marshal([]string{"/test", "/test2"})
 	a.Equal(bytes.NewBuffer(response).String(), w.Body.String())
 }
 
