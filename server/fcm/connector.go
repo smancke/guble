@@ -204,7 +204,7 @@ func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
-	userID, fcmID, unparsedPath, err := conn.parseUserIdAndDeviceId(r.URL.Path)
+	userID, fcmID, unparsedPath, err := conn.parseUserIDAndDeviceId(r.URL.Path)
 	if err != nil {
 		http.Error(w, `{"error":"invalid parameters in request"}`, http.StatusBadRequest)
 		return
@@ -225,11 +225,11 @@ func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		conn.deleteSubscription(w, topic, userID, fcmID)
 	case http.MethodGet:
-		conn.retriveAllSubscription(w, userID, fcmID)
+		conn.retriveSubscription(w, userID, fcmID)
 	}
 }
 
-func (conn *Connector) retriveAllSubscription(w http.ResponseWriter, userID, fcmID string) {
+func (conn *Connector) retriveSubscription(w http.ResponseWriter, userID, fcmID string) {
 	topics := make([]string, 0)
 
 	for k, v := range conn.subscriptions {
@@ -239,11 +239,11 @@ func (conn *Connector) retriveAllSubscription(w http.ResponseWriter, userID, fcm
 			topics = append(topics, string(v.route.Path))
 		}
 	}
-	serialized, err := json.Marshal(topics)
+
+	err := json.NewEncoder(w).Encode(topics)
 	if err != nil {
 		http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
 	}
-	w.Write(serialized)
 }
 
 func (conn *Connector) addSubscription(w http.ResponseWriter, topic, userID, fcmID string) {
@@ -278,7 +278,7 @@ func (conn *Connector) deleteSubscription(w http.ResponseWriter, topic, userID, 
 	fmt.Fprintf(w, `{"unsubscribed":"%v"}`, topic)
 }
 
-func (conn *Connector) parseUserIdAndDeviceId(path string) (userID, fcmID, unparsedPath string, err error) {
+func (conn *Connector) parseUserIDAndDeviceId(path string) (userID, fcmID, unparsedPath string, err error) {
 	currentURLPath := removeTrailingSlash(path)
 
 	if !strings.HasPrefix(currentURLPath, conn.prefix) {

@@ -153,7 +153,7 @@ func TestConnector_parseParams(t *testing.T) {
 	}
 
 	for i, c := range testCases {
-		userID, fcmID, unparsed, err := g.parseUserIdAndDeviceId(c.urlPath)
+		userID, fcmID, unparsed, err := g.parseUserIDAndDeviceId(c.urlPath)
 		var topic string
 		if err == nil {
 			topic, err = g.parseTopic(unparsed)
@@ -328,8 +328,10 @@ func TestConnector_RetrieveNoSubscriptions(t *testing.T) {
 
 	g.ServeHTTP(w, req)
 	a.Equal(http.StatusOK, w.Code)
-	response, _ := json.Marshal([]string{})
-	a.Equal(bytes.NewBuffer(response).String(), w.Body.String())
+	var bytes bytes.Buffer
+	err = json.NewEncoder(&bytes).Encode([]string{})
+	a.NoError(err)
+	a.Equal(bytes.String(), w.Body.String())
 }
 
 func TestConnector_RetrieveSubscriptions(t *testing.T) {
@@ -365,8 +367,11 @@ func TestConnector_RetrieveSubscriptions(t *testing.T) {
 	a.NoError(err)
 	g.ServeHTTP(w, req)
 	a.Equal(http.StatusOK, w.Code)
-	response, _ := json.Marshal([]string{"/test", "/test2"})
-	a.Equal(bytes.NewBuffer(response).String(), w.Body.String())
+
+	a.Equal(2, len(strings.Split(w.Body.String(), ",")),
+		"There should be 2 values in the JSON separated with a comma")
+	a.True(strings.Contains(w.Body.String(), "/test"))
+	a.True(strings.Contains(w.Body.String(), "/test2"))
 }
 
 func TestConnector_Unsubscribe(t *testing.T) {
