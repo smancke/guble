@@ -35,7 +35,7 @@ const (
 	fileOption = "file"
 )
 
-var MessageDelivery = func(m *protocol.Message) {
+var AfterMessageDelivery = func(m *protocol.Message) {
 	logger.WithField("message", m).Debug("message delivered")
 }
 
@@ -128,7 +128,7 @@ var CreateModules = func(router router.Router) []interface{} {
 		if *Config.FCM.APIKey == "" {
 			logger.Panic("The API Key has to be provided when Firebase Cloud Messaging is enabled")
 		}
-		Config.FCM.MessageDelivery = MessageDelivery
+		Config.FCM.AfterMessageDelivery = AfterMessageDelivery
 		if fcmConn, err := fcm.New(router, "/gcm/", Config.FCM); err != nil {
 			logger.WithError(err).Error("Error creating FCM connector")
 		} else {

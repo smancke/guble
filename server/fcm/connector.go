@@ -34,32 +34,31 @@ const (
 )
 
 var logger = log.WithFields(log.Fields{
-	"app":    "guble",
 	"module": "fcm",
 })
 
 // Config is used for configuring the Firebase Cloud Messaging component.
 type Config struct {
-	Enabled         *bool
-	APIKey          *string
-	Workers         *int
-	Endpoint        *string
-	MessageDelivery protocol.MessageDeliveryCallback
+	Enabled              *bool
+	APIKey               *string
+	Workers              *int
+	Endpoint             *string
+	AfterMessageDelivery protocol.MessageDeliveryCallback
 }
 
 // Connector is the structure for handling the communication with Firebase Cloud Messaging
 type Connector struct {
-	Sender          gcm.Sender
-	MessageDelivery protocol.MessageDeliveryCallback
-	router          router.Router
-	cluster         *cluster.Cluster
-	kvStore         kvstore.KVStore
-	prefix          string
-	pipelineC       chan *pipeMessage
-	stopC           chan bool
-	nWorkers        int
-	wg              sync.WaitGroup
-	subscriptions   map[string]*subscription
+	Sender               gcm.Sender
+	AfterMessageDelivery protocol.MessageDeliveryCallback
+	router               router.Router
+	cluster              *cluster.Cluster
+	kvStore              kvstore.KVStore
+	prefix               string
+	pipelineC            chan *pipeMessage
+	stopC                chan bool
+	nWorkers             int
+	wg                   sync.WaitGroup
+	subscriptions        map[string]*subscription
 }
 
 // New creates a new *Connector without starting it
@@ -74,16 +73,16 @@ func New(router router.Router, prefix string, config Config) (*Connector, error)
 		gcm.GcmSendEndpoint = *config.Endpoint
 	}
 	return &Connector{
-		Sender:          gcm.NewSender(*config.APIKey, sendRetries, sendTimeout),
-		MessageDelivery: config.MessageDelivery,
-		router:          router,
-		cluster:         router.Cluster(),
-		kvStore:         kvStore,
-		prefix:          prefix,
-		pipelineC:       make(chan *pipeMessage, bufferSize),
-		stopC:           make(chan bool),
-		subscriptions:   make(map[string]*subscription),
-		nWorkers:        *config.Workers,
+		Sender:               gcm.NewSender(*config.APIKey, sendRetries, sendTimeout),
+		AfterMessageDelivery: config.AfterMessageDelivery,
+		router:               router,
+		cluster:              router.Cluster(),
+		kvStore:              kvStore,
+		prefix:               prefix,
+		pipelineC:            make(chan *pipeMessage, bufferSize),
+		stopC:                make(chan bool),
+		subscriptions:        make(map[string]*subscription),
+		nWorkers:             *config.Workers,
 	}, nil
 }
 
@@ -194,8 +193,8 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 	metrics.AddToMaps(currentTotalMessagesLatenciesKey, int64(latencyDuration), mMinute, mHour, mDay)
 	metrics.AddToMaps(currentTotalMessagesKey, 1, mMinute, mHour, mDay)
 
-	if conn.MessageDelivery != nil {
-		go conn.MessageDelivery(pm.message)
+	if conn.AfterMessageDelivery != nil {
+		go conn.AfterMessageDelivery(pm.message)
 	}
 	pm.resultC <- response
 }
