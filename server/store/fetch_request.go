@@ -62,12 +62,19 @@ func NewFetchRequest(partition string, start, end uint64, direction FetchDirecti
 		Direction: direction,
 
 		Count: count,
-
-		StartC: make(chan int),
-		// TODO Bogdan decide the channel size and if should be customizable
-		MessageC: make(chan *FetchedMessage, 10),
-		ErrorC:   make(chan error),
 	}
+}
+
+func (fr *FetchRequest) Init() {
+	fr.StartC = make(chan int)
+	// TODO Bogdan decide the channel size and if should be customizable
+	fr.MessageC = make(chan *FetchedMessage, 10)
+	fr.ErrorC = make(chan error)
+}
+
+func (fr *FetchRequest) Fetch(ms MessageStore) {
+	fr.Init()
+	ms.Fetch(fr)
 }
 
 func (fr *FetchRequest) Messages() <-chan *FetchedMessage {
@@ -76,6 +83,10 @@ func (fr *FetchRequest) Messages() <-chan *FetchedMessage {
 
 func (fr *FetchRequest) Errors() <-chan error {
 	return fr.ErrorC
+}
+
+func (fr *FetchRequest) Error(err error) {
+	fr.ErrorC <- err
 }
 
 func (fr *FetchRequest) Push(id uint64, message []byte) {

@@ -143,18 +143,39 @@ func (r *Route) Provide(router Router, subscribe bool) error {
 }
 
 func (r *Route) handleFetch(router Router) error {
+	ms, err := router.MessageStore()
+	if err != nil {
+		return err
+	}
+
+	var lastID uint64
+	received := 0
+
+Refetch:
+	// check if we need to continue fetching
+	maxID, err := ms.MaxMessageID(r.FetchRequest.Partition)
+	if err != nil {
+		return err
+	}
+
+	if received >= r.FetchRequest.Count || lastID >= maxID ||
+		(r.FetchRequest.EndID > 0 && r.FetchRequest.EndID >= maxID) {
+		return nil
+	}
+
 	if err := router.Fetch(r.FetchRequest); err != nil {
 		return err
 	}
 
 	for {
+		// count := <-r.FetchRequest.StartC
+		r.logger.Debug("Fetching messages")
+
 		select {
-		case count := <-r.FetchRequest.StartC:
-			r.logger.WithField("count", count).Debug("Fetching messages")
 		case fetchedMessage, open := <-r.FetchRequest.Messages():
 			if !open {
 				r.logger.Debug("Fetch channel closed.")
-				return nil
+				goto Refetch
 			}
 
 			r.logger.WithField("fetchedMessageID", fetchedMessage.ID).Debug("Fetched message")
@@ -165,6 +186,8 @@ func (r *Route) handleFetch(router Router) error {
 
 			r.logger.WithField("messageID", message.ID).Debug("Sending fetched message in channel")
 			r.Deliver(message)
+			lastID = message.ID
+			received++
 		case err := <-r.FetchRequest.Errors():
 			return err
 		case <-router.Done():

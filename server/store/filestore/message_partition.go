@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -415,18 +416,18 @@ func (p *messagePartition) Fetch(req *store.FetchRequest) {
 			req.ErrorC <- err
 			return
 		}
-
 		req.StartC <- fetchList.len()
 
 		err = p.fetchByFetchlist(fetchList, req)
 
 		if err != nil {
 			log.WithField("err", err).Error("Error calculating list")
-			req.ErrorC <- err
+			req.Error(err)
 			return
 		}
 		req.Done()
 	}()
+	runtime.Gosched()
 }
 
 // fetchByFetchlist fetches the messages in the supplied fetchlist and sends them to the message-channel

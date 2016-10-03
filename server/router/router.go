@@ -436,7 +436,7 @@ func (router *router) Fetch(req *store.FetchRequest) error {
 	if err := router.isStopping(); err != nil {
 		return err
 	}
-	router.messageStore.Fetch(req)
+	req.Fetch(router.messageStore)
 	return nil
 }
 

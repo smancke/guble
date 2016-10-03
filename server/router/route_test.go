@@ -1,6 +1,8 @@
 package router
 
 import (
+	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"testing"
@@ -8,6 +10,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/store"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
@@ -369,17 +373,94 @@ func TestRoute_Provide_WithSubscribe(t *testing.T) {
 	<-done
 }
 
+type startable interface {
+	Start() error
+}
+
+type stopable interface {
+	Stop() error
+}
+
 // Test that the route will fetch in case new messages arrived that match the
 // fetch request
-// func TestRoute_Provide_MultipleFetch(t *testing.T) {
-// 	// Using a valid router test that the fetch mechanism of a route will continue to fetch
-// 	// until the received messages after the fetch started
-// 	ctrl, finish := testutil.NewMockCtrl(t)
-// 	defer finish()
+func TestRoute_Provide_MultipleFetch(t *testing.T) {
+	// Using a valid router test that the fetch mechanism of a route will continue to fetch
+	// until the received messages after the fetch started
+	defer testutil.EnableDebugForMethod()()
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
-// 	a := assert.New(t)
+	a := assert.New(t)
 
-// 	msMock := NewMockMessageStore(ctrl)
-// 	router := New(auth.AllowAllAccessManager(true), msMock, nil, nil)
+	memoryKV := kvstore.NewMemoryKVStore()
 
-// }
+	msMock := NewMockMessageStore(ctrl)
+	router := New(auth.AllowAllAccessManager(true), msMock, memoryKV, nil)
+
+	if startable, ok := router.(startable); ok {
+		startable.Start()
+		if stopable, ok := router.(stopable); ok {
+			defer stopable.Stop()
+		}
+	}
+
+	path := protocol.Path("/fetch_request")
+
+	route := NewRoute(RouteConfig{
+		Path:         path,
+		ChannelSize:  4,
+		FetchRequest: store.NewFetchRequest("", 0, 0, store.DirectionForward, math.MaxInt32),
+	})
+
+	block := make(chan struct{})
+	maxIDExpect := msMock.EXPECT().MaxMessageID(gomock.Any()).
+		Return(uint64(2), nil)
+	msMock.EXPECT().Fetch(gomock.Any()).Do(func(req *store.FetchRequest) {
+		a.Equal("fetch_request", req.Partition)
+
+		// block the fetch request until pushing some new messages in the router
+		<-block
+		req.Push(1, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(1), 1)))
+		req.Push(2, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(2), 1)))
+		req.Done()
+	}).After(maxIDExpect)
+
+	msMock.EXPECT().MaxMessageID(gomock.Any()).
+		Return(uint64(4), nil).Times(2)
+	msMock.EXPECT().Fetch(gomock.Any()).Do(func(req *store.FetchRequest) {
+		a.Equal("fetch_request", req.Partition)
+
+		// block the fetch request until pushing some new messages in the router
+		req.Push(3, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(3), 1)))
+		req.Push(4, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(4), 1)))
+		req.Done()
+	})
+
+	msMock.EXPECT().StoreMessage(gomock.Any(), gomock.Any()).AnyTimes()
+
+	router.HandleMessage(&protocol.Message{ID: 3, Path: path, Body: []byte("dummy body")})
+	router.HandleMessage(&protocol.Message{ID: 4, Path: path, Body: []byte("dummy body")})
+
+	done := make(chan struct{})
+	go func() {
+		receivedMessages := 0
+		for i := 1; i <= 4; i++ {
+			select {
+			case m, opened := <-route.MessagesChannel():
+				if opened {
+					receivedMessages++
+					a.Equal(uint64(i), m.ID)
+				}
+			case <-time.After(50 * time.Millisecond):
+				a.Fail(fmt.Sprintf("Message not received: %d", i))
+			}
+		}
+		a.Equal(4, receivedMessages)
+		close(done)
+	}()
+	close(block)
+
+	err := route.Provide(router, true)
+	a.NoError(err)
+	<-done
+}
