@@ -409,7 +409,6 @@ func (p *messagePartition) Fetch(req *store.FetchRequest) {
 
 	go func() {
 		fetchList, err := p.calculateFetchList(req)
-		println("DAFUQ 2")
 
 		if err != nil {
 			log.WithField("err", err).Error("Error calculating list")

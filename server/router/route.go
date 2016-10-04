@@ -3,6 +3,7 @@ package router
 import (
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -299,6 +300,7 @@ func (r *Route) consume() {
 			r.queue.remove()
 		}
 	}()
+	runtime.Gosched()
 }
 
 // send message through the channel
