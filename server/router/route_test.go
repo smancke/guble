@@ -283,11 +283,14 @@ func TestRoute_Provide_Fetch(t *testing.T) {
 		a.Equal(uint64(0), req.StartID)
 		a.Equal(uint64(0), req.EndID)
 		a.Equal(store.DirectionForward, req.Direction)
+		go func() {
+			req.StartC <- 2
 
-		// send to messages
-		req.Push(1, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(1), 1)))
-		req.Push(2, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(2), 1)))
-		req.Done()
+			// send to messages
+			req.Push(1, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(1), 1)))
+			req.Push(2, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(2), 1)))
+			req.Done()
+		}()
 	})
 
 	done := make(chan struct{})
@@ -336,10 +339,14 @@ func TestRoute_Provide_WithSubscribe(t *testing.T) {
 		a.Equal(uint64(0), req.EndID)
 		a.Equal(store.DirectionForward, req.Direction)
 
-		// send to messages
-		req.Push(1, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(1), 1)))
-		req.Push(2, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(2), 1)))
-		req.Done()
+		go func() {
+			req.StartC <- 2
+
+			// send to messages
+			req.Push(1, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(1), 1)))
+			req.Push(2, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(2), 1)))
+			req.Done()
+		}()
 	})
 
 	msMock.EXPECT().MaxMessageID(gomock.Eq("fetch_request")).Return(uint64(2), nil).Times(2)
@@ -392,8 +399,6 @@ type stopable interface {
 // Test that the route will fetch in case new messages arrived that match the
 // fetch request
 func TestRoute_Provide_MultipleFetch(t *testing.T) {
-	// Using a valid router test that the fetch mechanism of a route will continue to fetch
-	// until the received messages after the fetch started
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
@@ -426,21 +431,27 @@ func TestRoute_Provide_MultipleFetch(t *testing.T) {
 		a.Equal("fetch_request", req.Partition)
 
 		// block the fetch request until pushing some new messages in the router
-		<-block
-		req.Push(1, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(1), 1)))
-		req.Push(2, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(2), 1)))
-		req.Done()
+		go func() {
+			<-block
+			req.StartC <- 2
+			req.Push(1, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(1), 1)))
+			req.Push(2, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(2), 1)))
+			req.Done()
+		}()
 	}).After(maxIDExpect)
 
 	msMock.EXPECT().MaxMessageID(gomock.Any()).
 		Return(uint64(4), nil).Times(2)
 	msMock.EXPECT().Fetch(gomock.Any()).Do(func(req *store.FetchRequest) {
 		a.Equal("fetch_request", req.Partition)
+		go func() {
+			req.StartC <- 2
 
-		// block the fetch request until pushing some new messages in the router
-		req.Push(3, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(3), 1)))
-		req.Push(4, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(4), 1)))
-		req.Done()
+			// block the fetch request until pushing some new messages in the router
+			req.Push(3, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(3), 1)))
+			req.Push(4, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(4), 1)))
+			req.Done()
+		}()
 	})
 
 	msMock.EXPECT().StoreMessage(gomock.Any(), gomock.Any()).AnyTimes()
@@ -468,6 +479,67 @@ func TestRoute_Provide_MultipleFetch(t *testing.T) {
 	close(block)
 
 	err := route.Provide(router, true)
+	a.NoError(err)
+	<-done
+}
+
+func TestRoute_Provide_EndIDSubscribe(t *testing.T) {
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
+	a := assert.New(t)
+	msMock := NewMockMessageStore(ctrl)
+	routerMock := NewMockRouter(ctrl)
+
+	routerMock.EXPECT().MessageStore().Return(msMock, nil)
+
+	route := NewRoute(RouteConfig{
+		Path:         protocol.Path("/fetch_request"),
+		ChannelSize:  5,
+		FetchRequest: store.NewFetchRequest("", 8, 10, store.DirectionForward, -1),
+	})
+
+	msMock.EXPECT().MaxMessageID("fetch_request").Return(uint64(12), nil).Times(2)
+
+	routerMock.EXPECT().Done().Return(make(chan bool)).AnyTimes()
+	routerMock.EXPECT().Fetch(gomock.Any()).Do(func(req *store.FetchRequest) {
+		a.Equal(req.Partition, "fetch_request")
+		a.Equal(uint64(8), req.StartID)
+		a.Equal(uint64(10), req.EndID)
+		a.Equal(store.DirectionForward, req.Direction)
+
+		go func() {
+			req.StartC <- 3
+
+			// send the messages
+			req.Push(8, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(8), 1)))
+			req.Push(9, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(9), 1)))
+			req.Push(10, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(10), 1)))
+			req.Done()
+		}()
+	})
+
+	routerMock.EXPECT().Subscribe(gomock.Eq(route)).Return(route, nil)
+
+	done := make(chan struct{})
+	go func() {
+		receivedMessages := 0
+		for i := 8; i <= 10; i++ {
+			select {
+			case m, opened := <-route.MessagesChannel():
+				if opened {
+					receivedMessages++
+					a.Equal(uint64(i), m.ID)
+				}
+			case <-time.After(50 * time.Millisecond):
+				a.Fail("Message not received")
+			}
+		}
+		a.Equal(3, receivedMessages)
+		close(done)
+	}()
+
+	err := route.Provide(routerMock, true)
 	a.NoError(err)
 	<-done
 }

@@ -162,7 +162,7 @@ REFETCH:
 	}
 
 	if received >= r.FetchRequest.Count || lastID >= maxID ||
-		(r.FetchRequest.EndID > 0 && r.FetchRequest.EndID >= maxID) {
+		(r.FetchRequest.EndID > 0 && r.FetchRequest.EndID <= lastID) {
 		return nil
 	}
 	r.FetchRequest.Init()
@@ -173,6 +173,9 @@ REFETCH:
 
 	for {
 		select {
+		case count := <-r.FetchRequest.StartC:
+			r.logger.WithField("count", count).Debug("Receiving messages")
+
 		case fetchedMessage, open := <-r.FetchRequest.Messages():
 			if !open {
 				r.logger.Debug("Fetch channel closed.")
