@@ -205,12 +205,11 @@ func (rec *Receiver) fetchOnlyLoop() {
 }
 
 func (rec *Receiver) fetch() error {
-	fetch := store.FetchRequest{
+	fetch := &store.FetchRequest{
 		Partition: rec.path.Partition(),
-		MessageC:  make(chan store.FetchedMessage, 10), //TODO MAKE more tests when the receiver will be refactored after the route params is integrated.Initial capacity was 3
+		MessageC:  make(chan *store.FetchedMessage, 10), //TODO MAKE more tests when the receiver will be refactored after the route params is integrated.Initial capacity was 3
 		ErrorC:    make(chan error),
 		StartC:    make(chan int),
-		Prefix:    []byte(rec.path),
 		Count:     rec.maxCount,
 	}
 

@@ -4,13 +4,13 @@
 package fcm
 
 import (
-	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/auth"
-	"github.com/smancke/guble/server/cluster"
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/server/store"
+	gomock "github.com/golang/mock/gomock"
+	protocol "github.com/smancke/guble/protocol"
+	auth "github.com/smancke/guble/server/auth"
+	cluster "github.com/smancke/guble/server/cluster"
+	kvstore "github.com/smancke/guble/server/kvstore"
+	router "github.com/smancke/guble/server/router"
+	store "github.com/smancke/guble/server/store"
 )
 
 // Mock of Router interface
@@ -55,7 +55,17 @@ func (_mr *_MockRouterRecorder) Cluster() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Cluster")
 }
 
-func (_m *MockRouter) Fetch(_param0 store.FetchRequest) error {
+func (_m *MockRouter) Done() <-chan bool {
+	ret := _m.ctrl.Call(_m, "Done")
+	ret0, _ := ret[0].(<-chan bool)
+	return ret0
+}
+
+func (_mr *_MockRouterRecorder) Done() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Done")
+}
+
+func (_m *MockRouter) Fetch(_param0 *store.FetchRequest) error {
 	ret := _m.ctrl.Call(_m, "Fetch", _param0)
 	ret0, _ := ret[0].(error)
 	return ret0

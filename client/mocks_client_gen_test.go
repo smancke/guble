@@ -4,9 +4,9 @@
 package client
 
 import (
-	"github.com/golang/mock/gomock"
-
-	"github.com/smancke/guble/protocol"
+	gomock "github.com/golang/mock/gomock"
+	
+	protocol "github.com/smancke/guble/protocol"
 )
 
 // Mock of WSConnection interface

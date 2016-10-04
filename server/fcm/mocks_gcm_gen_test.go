@@ -4,8 +4,8 @@
 package fcm
 
 import (
-	"github.com/Bogh/gcm"
-	"github.com/golang/mock/gomock"
+	gcm "github.com/Bogh/gcm"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // Mock of Sender interface

@@ -39,13 +39,13 @@ func Test_Fetch(t *testing.T) {
 	}
 
 	for _, testcase := range testCases {
-		testcase.req.MessageC = make(chan store.FetchedMessage)
+		testcase.req.MessageC = make(chan *store.FetchedMessage)
 		testcase.req.ErrorC = make(chan error)
 		testcase.req.StartC = make(chan int)
 
 		messages := []string{}
 
-		mStore.Fetch(testcase.req)
+		mStore.Fetch(&testcase.req)
 
 		select {
 		case numberOfResults := <-testcase.req.StartC:
@@ -135,7 +135,7 @@ func Test_FetchWithError(t *testing.T) {
 
 	chanCallBack := make(chan error, 1)
 	aFetchRequest := store.FetchRequest{Partition: "p1", StartID: 2, Count: 1, ErrorC: chanCallBack}
-	mStore.Fetch(aFetchRequest)
+	mStore.Fetch(&aFetchRequest)
 	err := <-aFetchRequest.ErrorC
 	a.NotNil(err)
 }

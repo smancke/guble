@@ -97,7 +97,7 @@ func (dms *DummyMessageStore) store(partition string, msgId uint64, msg []byte) 
 
 // Fetch does nothing in this dummy implementation.
 // It is a part of the `store.MessageStore` implementation.
-func (dms *DummyMessageStore) Fetch(req store.FetchRequest) {
+func (dms *DummyMessageStore) Fetch(req *store.FetchRequest) {
 }
 
 // MaxMessageID is a part of the `store.MessageStore` implementation.

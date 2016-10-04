@@ -278,13 +278,13 @@ func (s *subscription) fetch() error {
 	}
 }
 
-func (s *subscription) createFetchRequest() store.FetchRequest {
-	return store.FetchRequest{
+func (s *subscription) createFetchRequest() *store.FetchRequest {
+	return &store.FetchRequest{
 		Partition: s.route.Path.Partition(),
 		StartID:   s.lastID + 1,
 		Direction: 1,
 		Count:     math.MaxInt32,
-		MessageC:  make(chan store.FetchedMessage, 5),
+		MessageC:  make(chan *store.FetchedMessage, 5),
 		ErrorC:    make(chan error),
 		StartC:    make(chan int),
 	}

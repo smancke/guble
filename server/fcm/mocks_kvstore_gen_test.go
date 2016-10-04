@@ -4,7 +4,7 @@
 package fcm
 
 import (
-	"github.com/golang/mock/gomock"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // Mock of KVStore interface

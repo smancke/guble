@@ -62,7 +62,7 @@ func messagePartitionReader(name string, a *assert.Assertions, mStore *messagePa
 	lastReadMessage := 0
 
 	for lastReadMessage < n {
-		msgC := make(chan store.FetchedMessage)
+		msgC := make(chan *store.FetchedMessage, 10)
 		errorC := make(chan error)
 
 		log.WithFields(log.Fields{
