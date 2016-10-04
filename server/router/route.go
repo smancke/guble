@@ -170,7 +170,7 @@ REFETCH:
 	if err := router.Fetch(r.FetchRequest); err != nil {
 		return err
 	}
-	count := <-r.FetchRequest.StartC
+	count := r.FetchRequest.Ready()
 	r.logger.WithField("count", count).Debug("Receiving messages")
 
 	for {
