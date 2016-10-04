@@ -1,6 +1,7 @@
 package fcm
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/Bogh/gcm"
@@ -10,18 +11,12 @@ import (
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/router"
-
-	"errors"
-	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"encoding/json"
-	"github.com/smancke/guble/server/metrics"
-	"sort"
 )
 
 const (
