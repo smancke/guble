@@ -18,7 +18,12 @@ type pipeMessage struct {
 }
 
 func newPipeMessage(s *subscription, m *protocol.Message) *pipeMessage {
-	return &pipeMessage{s, m, make(chan *gcm.Response, 1), make(chan error, 1)}
+	return &pipeMessage{
+		s,
+		m,
+		make(chan *gcm.Response, 1),
+		make(chan error, 1),
+	}
 }
 
 func (pm *pipeMessage) fcmMessage() *gcm.Message {

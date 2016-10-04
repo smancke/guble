@@ -40,7 +40,7 @@ func (e *jsonError) Error() string {
 	return e.json
 }
 
-// subscription represent a GCM subscription
+// subscription represents a FCM subscription
 type subscription struct {
 	connector *Connector
 	route     *router.Route
@@ -70,9 +70,9 @@ func newSubscription(connector *Connector, route *router.Route, lastID uint64) *
 }
 
 // initSubscription creates a subscription and adds it in router/kvstore then starts listening for messages
-func initSubscription(connector *Connector, topic, userID, gcmID string, lastID uint64, store bool) (*subscription, error) {
+func initSubscription(connector *Connector, topic, userID, fcmID string, lastID uint64, store bool) (*subscription, error) {
 	route := router.NewRoute(router.RouteConfig{
-		RouteParams: router.RouteParams{userIDKey: userID, applicationIDKey: gcmID},
+		RouteParams: router.RouteParams{userIDKey: userID, applicationIDKey: fcmID},
 		Path:        protocol.Path(topic),
 		ChannelSize: subBufferSize,
 		Matcher:     subscriptionMatcher,
@@ -83,7 +83,7 @@ func initSubscription(connector *Connector, topic, userID, gcmID string, lastID 
 		return nil, errSubscriptionExists
 	}
 
-	// add subscription to gcm map
+	// add subscription to map
 	s.connector.subscriptions[s.Key()] = s
 
 	s.logger.Debug("New subscription")
@@ -100,7 +100,7 @@ func subscriptionMatcher(route, other router.RouteConfig, keys ...string) bool {
 	return route.Path == other.Path && route.Get(applicationIDKey) == other.Get(applicationIDKey)
 }
 
-// exists returns true if the subscription is present with the same key in gcm.subscriptions
+// exists returns true if the subscription is present with the same key in subscriptions map
 func (s *subscription) exists() bool {
 	_, ok := s.connector.subscriptions[s.Key()]
 	return ok
@@ -111,7 +111,6 @@ func (s *subscription) subscribe() error {
 		s.logger.WithError(err).Error("Error subscribing in router")
 		return err
 	}
-
 	s.logger.Debug("Subscribed")
 	return nil
 }
@@ -176,7 +175,7 @@ func (s *subscription) shouldFetch() bool {
 	return s.lastID < maxID
 }
 
-// subscriptionLoop that will run in a goroutine and pipe messages from route to gcm
+// subscriptionLoop that will run in a goroutine and pipe messages from route to fcm
 // Attention: in order for this loop to finish the route channel must stop sending messages
 func (s *subscription) subscriptionLoop() {
 	s.logger.Debug("Starting subscription loop")
@@ -199,7 +198,7 @@ func (s *subscription) subscriptionLoop() {
 			select {
 			case <-s.connector.stopC:
 				return
-			case <-time.After(10 * time.Millisecond):
+			case <-time.After(5 * time.Millisecond):
 			}
 
 			if !opened {
@@ -213,7 +212,7 @@ func (s *subscription) subscriptionLoop() {
 				if err == errSubReplaced {
 					return
 				}
-				// the subscription is not registered with GCM anymore
+				// the subscription is not registered with FCM anymore
 				if _, ok := err.(*jsonError); ok {
 					return
 				}
@@ -268,7 +267,7 @@ func (s *subscription) fetch() error {
 			}
 			s.logger.WithFields(log.Fields{"ID": msgAndID.ID, "parsedID": message.ID}).Debug("Fetched message")
 
-			// Pipe message into gcm connector
+			// Pipe message into fcm connector
 			s.pipe(message)
 		case err := <-req.ErrorC:
 			return err
@@ -343,13 +342,11 @@ func (s *subscription) pipe(m *protocol.Message) error {
 	// wait for response
 	select {
 	case response := <-pipeMessage.resultC:
+		s.logger.WithField("messageID", m.ID).Debug("Delivered message to FCM")
 		if err := s.setLastID(pipeMessage.message.ID); err != nil {
 			return err
 		}
-		s.logger.WithFields(log.Fields{
-			"messageID": m.ID,
-		}).Debug("Delivered message to FCM")
-		return s.handleGCMResponse(response)
+		return s.handleFCMResponse(response)
 	case err := <-pipeMessage.errC:
 		if err == errIgnoreMessage {
 			s.logger.WithField("message", m).Info("Ignoring message")
@@ -360,7 +357,7 @@ func (s *subscription) pipe(m *protocol.Message) error {
 	}
 }
 
-func (s *subscription) handleGCMResponse(response *gcm.Response) error {
+func (s *subscription) handleFCMResponse(response *gcm.Response) error {
 	if response.Ok() {
 		return nil
 	}
@@ -405,19 +402,19 @@ func (s *subscription) isValidResponseError(err error) bool {
 
 // replaceCanonical replaces subscription with canonical id,
 // creates a new subscription but alters the route to have the new ApplicationID
-func (s *subscription) replaceCanonical(newGCMID string) error {
-	s.logger.WithField("newGCMID", newGCMID).Info("Replacing with canonicalID")
+func (s *subscription) replaceCanonical(newFCMID string) error {
+	s.logger.WithField("newFCMID", newFCMID).Info("Replacing with FCM canonicalID")
 	// delete current route from kvstore
 	s.remove()
 
 	// reuse the route but change the ApplicationID
 	route := s.route
-	route.Set(applicationIDKey, newGCMID)
-	newS := newSubscription(s.connector, route, s.lastID)
+	route.Set(applicationIDKey, newFCMID)
+	newSub := newSubscription(s.connector, route, s.lastID)
 
-	if err := newS.store(); err != nil {
+	if err := newSub.store(); err != nil {
 		return err
 	}
-	newS.start()
+	newSub.start()
 	return errSubReplaced
 }

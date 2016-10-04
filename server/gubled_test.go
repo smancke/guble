@@ -73,7 +73,7 @@ func containsFCMModule(modules []interface{}) bool {
 	return false
 }
 
-func TestPanicOnMissingGcmApiKey(t *testing.T) {
+func TestPanicOnMissingFCMApiKey(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 

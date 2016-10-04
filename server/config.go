@@ -6,6 +6,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	"fmt"
+	"github.com/smancke/guble/server/fcm"
 	"net"
 	"runtime"
 	"strconv"
@@ -43,13 +44,6 @@ type (
 		Password *string
 		DbName   *string
 	}
-	// FCMConfig is used for configuring the Google Cloud Messaging component.
-	FCMConfig struct {
-		Enabled  *bool
-		APIKey   *string
-		Workers  *int
-		Endpoint *string
-	}
 	// ClusterConfig is used for configuring the cluster component.
 	ClusterConfig struct {
 		NodeID   *uint8
@@ -68,7 +62,7 @@ type (
 		MetricsEndpoint *string
 		Profile         *string
 		Postgres        PostgresConfig
-		FCM             FCMConfig
+		FCM             fcm.Config
 		Cluster         ClusterConfig
 	}
 )
@@ -135,7 +129,7 @@ var (
 				Envar("GUBLE_PG_DBNAME").
 				String(),
 		},
-		FCM: FCMConfig{
+		FCM: fcm.Config{
 			Enabled: kingpin.Flag("fcm", "Enable the Google Firebase Cloud Messaging connector").
 				Envar("GUBLE_FCM").
 				Bool(),
