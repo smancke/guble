@@ -182,7 +182,7 @@ func (tgcm *TestFCM) subscribe(addr, topic, id string) {
 
 	body, err := ioutil.ReadAll(response.Body)
 	a.NoError(err)
-	a.Equal(fmt.Sprintf(`{"subscribed":"%s"}`, topic), string(body))
+	a.Equal(fmt.Sprintf("{\"subscribed\":\"%s\"}", topic), string(body))
 }
 
 func (tgcm *TestFCM) unsubscribe(addr, topic, id string) {

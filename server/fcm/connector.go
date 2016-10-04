@@ -10,11 +10,18 @@ import (
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/router"
+
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"encoding/json"
+	"github.com/smancke/guble/server/metrics"
+	"sort"
 )
 
 const (
@@ -206,21 +213,51 @@ func (conn *Connector) GetPrefix() string {
 
 // ServeHTTP handles the subscription in FCM
 func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost && r.Method != http.MethodDelete {
-		logger.WithField("method", r.Method).Error("Only HTTP POST and DELETE methods supported.")
+	if r.Method != http.MethodPost && r.Method != http.MethodDelete && r.Method != http.MethodGet {
+		logger.WithField("method", r.Method).Error("Only HTTP POST, GET and DELETE methods supported.")
 		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
-	userID, fcmID, topic, err := conn.parseParams(r.URL.Path)
+	userID, fcmID, unparsedPath, err := conn.parseUserIDAndDeviceId(r.URL.Path)
 	if err != nil {
 		http.Error(w, `{"error":"invalid parameters in request"}`, http.StatusBadRequest)
 		return
 	}
 	switch r.Method {
 	case http.MethodPost:
+		topic, err := conn.parseTopic(unparsedPath)
+		if err != nil {
+			http.Error(w, `{"error":"invalid parameters in request"}`, http.StatusBadRequest)
+			return
+		}
 		conn.addSubscription(w, topic, userID, fcmID)
 	case http.MethodDelete:
+		topic, err := conn.parseTopic(unparsedPath)
+		if err != nil {
+			http.Error(w, `{"error":"invalid parameters in request"}`, http.StatusBadRequest)
+			return
+		}
 		conn.deleteSubscription(w, topic, userID, fcmID)
+	case http.MethodGet:
+		conn.retriveSubscription(w, userID, fcmID)
+	}
+}
+
+func (conn *Connector) retriveSubscription(w http.ResponseWriter, userID, fcmID string) {
+	topics := make([]string, 0)
+
+	for k, v := range conn.subscriptions {
+		logger.WithField("key", k).Info("retriveAllSubscription")
+		if v.route.Get(applicationIDKey) == fcmID && v.route.Get(userIDKey) == userID {
+			logger.WithField("path", v.route.Path).Info("retriveAllSubscription path")
+			topics = append(topics, string(v.route.Path))
+		}
+	}
+
+	sort.Strings(topics)
+	err := json.NewEncoder(w).Encode(topics)
+	if err != nil {
+		http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
 	}
 }
 
@@ -256,9 +293,7 @@ func (conn *Connector) deleteSubscription(w http.ResponseWriter, topic, userID, 
 	fmt.Fprintf(w, `{"unsubscribed":"%v"}`, topic)
 }
 
-// parseParams will parse the HTTP URL with format /fcm/:userid/:fcmid/subscribe/*topic
-// returning the parsed Params, or error if the request is not in the correct format
-func (conn *Connector) parseParams(path string) (userID, fcmID, topic string, err error) {
+func (conn *Connector) parseUserIDAndDeviceId(path string) (userID, fcmID, unparsedPath string, err error) {
 	currentURLPath := removeTrailingSlash(path)
 
 	if !strings.HasPrefix(currentURLPath, conn.prefix) {
@@ -274,13 +309,19 @@ func (conn *Connector) parseParams(path string) (userID, fcmID, topic string, er
 	}
 	userID = splitParams[0]
 	fcmID = splitParams[1]
+	unparsedPath = splitParams[2]
+	return
+}
 
-	if !strings.HasPrefix(splitParams[2], subscribePrefixPath+"/") {
+// parseParams will parse the HTTP URL with format /fcm/:userid/:fcmid/subscribe/*topic
+// returning the parsed Params, or error if the request is not in the correct format
+func (conn *Connector) parseTopic(unparsedPath string) (topic string, err error) {
+	if !strings.HasPrefix(unparsedPath, subscribePrefixPath+"/") {
 		err = errors.New("FCM request third param is not subscribe")
 		return
 	}
-	topic = strings.TrimPrefix(splitParams[2], subscribePrefixPath)
-	return userID, fcmID, topic, nil
+	topic = strings.TrimPrefix(unparsedPath, subscribePrefixPath)
+	return topic, nil
 }
 
 func (conn *Connector) loadSubscriptions() {
