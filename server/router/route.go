@@ -124,7 +124,7 @@ func (r *Route) MessagesChannel() <-chan *protocol.Message {
 	return r.messagesC
 }
 
-// Provice accepts a router to use for fetching/subscribing and a boolean
+// Provide accepts a router to use for fetching/subscribing and a boolean
 // indicating if it should close the route after fetching without subscribing
 // The method is blocking until fetch is finished or route is subscribed
 func (r *Route) Provide(router Router, subscribe bool) error {
@@ -153,7 +153,7 @@ func (r *Route) handleFetch(router Router) error {
 		received int
 	)
 
-Refetch:
+REFETCH:
 	// check if we need to continue fetching
 	maxID, err := ms.MaxMessageID(r.FetchRequest.Partition)
 	if err != nil {
@@ -175,7 +175,7 @@ Refetch:
 		case fetchedMessage, open := <-r.FetchRequest.Messages():
 			if !open {
 				r.logger.Debug("Fetch channel closed.")
-				goto Refetch
+				goto REFETCH
 			}
 
 			r.logger.WithField("fetchedMessageID", fetchedMessage.ID).Debug("Fetched message")
@@ -203,22 +203,6 @@ func (r *Route) handleSubscribe(router Router) error {
 	_, err := router.Subscribe(r)
 	return err
 }
-
-// func (r *Route) handleFetchRequest(fr *store.FetchRequest) {
-// 	// set queue size to infinite to store the messages received from router
-// 	r.mu.Lock()
-// 	defer r.mu.Unlock()
-// 	currentQueueSize := r.queueSize
-// 	r.queueSize = -1
-
-// 	opened := true
-// 	for opened {
-// 		select {
-// 		case fetchedMessage, opened := fr.Messages():
-
-// 		}
-// 	}
-// }
 
 // Close closes the route channel.
 func (r *Route) Close() error {
@@ -315,8 +299,6 @@ func (r *Route) consume() {
 			r.queue.remove()
 		}
 	}()
-
-	// runtime.Gosched()
 }
 
 // send message through the channel

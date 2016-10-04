@@ -6,6 +6,9 @@ const (
 	DirectionOneMessage FetchDirection = 0
 	DirectionForward    FetchDirection = 1
 	DirectionBackwards  FetchDirection = -1
+
+	// TODO Bogdan decide the channel size and if should be customizable
+	FetchBufferSize = 10
 )
 
 type FetchDirection int
@@ -67,14 +70,8 @@ func NewFetchRequest(partition string, start, end uint64, direction FetchDirecti
 
 func (fr *FetchRequest) Init() {
 	fr.StartC = make(chan int)
-	// TODO Bogdan decide the channel size and if should be customizable
-	fr.MessageC = make(chan *FetchedMessage, 10)
+	fr.MessageC = make(chan *FetchedMessage, FetchBufferSize)
 	fr.ErrorC = make(chan error)
-}
-
-func (fr *FetchRequest) Fetch(ms MessageStore) {
-	fr.Init()
-	ms.Fetch(fr)
 }
 
 func (fr *FetchRequest) Messages() <-chan *FetchedMessage {

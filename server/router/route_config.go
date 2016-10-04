@@ -28,10 +28,11 @@ type RouteConfig struct {
 	// If timeout is reached the route is closed.
 	timeout time.Duration
 
-	// If Matcher is set will be used to check equality of the routes
+	// Matcher if set will be used to check equality of the routes
 	Matcher Matcher `json:"-"`
 
-	// Partition of the FetchRequest is override to match the route path
+	// FetchRequest to fetch messages before subscribing
+	// The Partition field of the FetchRequest is overrided with the Partition of the Route topic
 	FetchRequest *store.FetchRequest
 }
 

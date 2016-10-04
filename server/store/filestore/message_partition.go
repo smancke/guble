@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -410,6 +409,7 @@ func (p *messagePartition) Fetch(req *store.FetchRequest) {
 
 	go func() {
 		fetchList, err := p.calculateFetchList(req)
+		println("DAFUQ 2")
 
 		if err != nil {
 			log.WithField("err", err).Error("Error calculating list")
@@ -427,7 +427,6 @@ func (p *messagePartition) Fetch(req *store.FetchRequest) {
 		}
 		req.Done()
 	}()
-	runtime.Gosched()
 }
 
 // fetchByFetchlist fetches the messages in the supplied fetchlist and sends them to the message-channel
