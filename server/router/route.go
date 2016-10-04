@@ -162,7 +162,7 @@ REFETCH:
 	}
 
 	if received >= r.FetchRequest.Count || lastID >= maxID ||
-		(r.FetchRequest.EndID > 0 && r.FetchRequest.EndID >= maxID) {
+		(r.FetchRequest.EndID > 0 && r.FetchRequest.EndID <= lastID) {
 		return nil
 	}
 	r.FetchRequest.Init()
@@ -170,6 +170,8 @@ REFETCH:
 	if err := router.Fetch(r.FetchRequest); err != nil {
 		return err
 	}
+	count := r.FetchRequest.Ready()
+	r.logger.WithField("count", count).Debug("Receiving messages")
 
 	for {
 		select {

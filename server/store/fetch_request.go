@@ -74,6 +74,12 @@ func (fr *FetchRequest) Init() {
 	fr.ErrorC = make(chan error)
 }
 
+// Ready returns the count of messages that will be returned meaning that
+// the fetch is starting. It reads the number from the StartC channel.
+func (fr *FetchRequest) Ready() int {
+	return <-fr.StartC
+}
+
 func (fr *FetchRequest) Messages() <-chan *FetchedMessage {
 	return fr.MessageC
 }
