@@ -170,12 +170,11 @@ REFETCH:
 	if err := router.Fetch(r.FetchRequest); err != nil {
 		return err
 	}
+	count := <-r.FetchRequest.StartC
+	r.logger.WithField("count", count).Debug("Receiving messages")
 
 	for {
 		select {
-		case count := <-r.FetchRequest.StartC:
-			r.logger.WithField("count", count).Debug("Receiving messages")
-
 		case fetchedMessage, open := <-r.FetchRequest.Messages():
 			if !open {
 				r.logger.Debug("Fetch channel closed.")
