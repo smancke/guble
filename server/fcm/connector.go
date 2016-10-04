@@ -1,30 +1,26 @@
 package fcm
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/Bogh/gcm"
-
 	log "github.com/Sirupsen/logrus"
-
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/cluster"
 	"github.com/smancke/guble/server/kvstore"
+	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/router"
-
-	"errors"
-	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"encoding/json"
-	"github.com/smancke/guble/server/metrics"
-	"sort"
 )
 
 const (
-	// registrationsSchema is the default sqlite schema for GCM
+	// schema is the default database schema for FCM
 	schema = "gcm_registration"
 
 	// sendRetries is the number of retries when sending a message
@@ -34,52 +30,61 @@ const (
 
 	subscribePrefixPath = "subscribe"
 
-	// default channel buffer size
 	bufferSize = 1000
 
 	syncPath = protocol.Path("/fcm/sync")
 )
 
 var logger = log.WithFields(log.Fields{
-	"app":    "guble",
 	"module": "fcm",
 })
 
-// Connector is the structure for handling the communication with Google Firebase Cloud Messaging
+// Config is used for configuring the Firebase Cloud Messaging component.
+type Config struct {
+	Enabled              *bool
+	APIKey               *string
+	Workers              *int
+	Endpoint             *string
+	AfterMessageDelivery protocol.MessageDeliveryCallback
+}
+
+// Connector is the structure for handling the communication with Firebase Cloud Messaging
 type Connector struct {
-	Sender        gcm.Sender
-	router        router.Router
-	cluster       *cluster.Cluster
-	kvStore       kvstore.KVStore
-	prefix        string
-	pipelineC     chan *pipeMessage
-	stopC         chan bool
-	nWorkers      int
-	wg            sync.WaitGroup
-	broadcastPath string
-	subscriptions map[string]*subscription
+	Sender               gcm.Sender
+	AfterMessageDelivery protocol.MessageDeliveryCallback
+	router               router.Router
+	cluster              *cluster.Cluster
+	kvStore              kvstore.KVStore
+	prefix               string
+	pipelineC            chan *pipeMessage
+	stopC                chan bool
+	nWorkers             int
+	wg                   sync.WaitGroup
+	subscriptions        map[string]*subscription
 }
 
 // New creates a new *Connector without starting it
-func New(router router.Router, prefix string, apiKey string, nWorkers int, endpoint string) (*Connector, error) {
+func New(router router.Router, prefix string, config Config) (*Connector, error) {
+	logger.WithField("count", *config.Workers).Debug("FCM workers")
 	kvStore, err := router.KVStore()
 	if err != nil {
 		return nil, err
 	}
-	if endpoint != "" {
-		logger.WithField("fcmEndpoint", endpoint).Info("using FCM endpoint")
-		gcm.GcmSendEndpoint = endpoint
+	if *config.Endpoint != "" {
+		logger.WithField("fcmEndpoint", *config.Endpoint).Info("using FCM endpoint")
+		gcm.GcmSendEndpoint = *config.Endpoint
 	}
 	return &Connector{
-		Sender:        gcm.NewSender(apiKey, sendRetries, sendTimeout),
-		router:        router,
-		cluster:       router.Cluster(),
-		kvStore:       kvStore,
-		prefix:        prefix,
-		pipelineC:     make(chan *pipeMessage, bufferSize),
-		stopC:         make(chan bool),
-		nWorkers:      nWorkers,
-		subscriptions: make(map[string]*subscription),
+		Sender:               gcm.NewSender(*config.APIKey, sendRetries, sendTimeout),
+		AfterMessageDelivery: config.AfterMessageDelivery,
+		router:               router,
+		cluster:              router.Cluster(),
+		kvStore:              kvStore,
+		prefix:               prefix,
+		pipelineC:            make(chan *pipeMessage, bufferSize),
+		stopC:                make(chan bool),
+		subscriptions:        make(map[string]*subscription),
+		nWorkers:             *config.Workers,
 	}, nil
 }
 
@@ -190,6 +195,9 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 	metrics.AddToMaps(currentTotalMessagesLatenciesKey, int64(latencyDuration), mMinute, mHour, mDay)
 	metrics.AddToMaps(currentTotalMessagesKey, 1, mMinute, mHour, mDay)
 
+	if conn.AfterMessageDelivery != nil {
+		go conn.AfterMessageDelivery(pm.message)
+	}
 	pm.resultC <- response
 }
 

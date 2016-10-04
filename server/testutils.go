@@ -84,7 +84,7 @@ func (tnc *testClusterNodeConfig) parseConfig() error {
 type testClusterNode struct {
 	testClusterNodeConfig
 	t       *testing.T
-	GCM     *TestGCM
+	FCM     *TestFCM
 	Service *service.Service
 }
 
@@ -114,7 +114,7 @@ func newTestClusterNode(t *testing.T, nodeConfig testClusterNodeConfig) *testClu
 	return &testClusterNode{
 		testClusterNodeConfig: nodeConfig,
 		t: t,
-		GCM: &TestGCM{
+		FCM: &TestFCM{
 			t:         t,
 			Connector: gcmConnector,
 		},
@@ -131,15 +131,15 @@ func (tcn *testClusterNode) client(userID string, bufferSize int, autoReconnect 
 }
 
 func (tcn *testClusterNode) Subscribe(topic, id string) {
-	tcn.GCM.subscribe(tcn.Service.WebServer().GetAddr(), topic, id)
+	tcn.FCM.subscribe(tcn.Service.WebServer().GetAddr(), topic, id)
 }
 
 func (tcn *testClusterNode) Unsubscribe(topic, id string) {
-	tcn.GCM.unsubscribe(tcn.Service.WebServer().GetAddr(), topic, id)
+	tcn.FCM.unsubscribe(tcn.Service.WebServer().GetAddr(), topic, id)
 }
 
 func (tcn *testClusterNode) cleanup(removeDir bool) {
-	tcn.GCM.cleanup()
+	tcn.FCM.cleanup()
 	err := tcn.Service.Stop()
 	assert.NoError(tcn.t, err)
 
@@ -149,27 +149,26 @@ func (tcn *testClusterNode) cleanup(removeDir bool) {
 	}
 }
 
-type TestGCM struct {
+type TestFCM struct {
+	sync.RWMutex
 	t         *testing.T
 	Connector *fcm.Connector
 	Received  int // received messages
-
-	receiveC chan bool
-	timeout  time.Duration
-	sync.RWMutex
+	receiveC  chan bool
+	timeout   time.Duration
 }
 
-func (tgcm *TestGCM) setupRoundTripper(timeout time.Duration, bufferSize int, response string) {
+func (tgcm *TestFCM) setupRoundTripper(timeout time.Duration, bufferSize int, response string) {
 	tgcm.receiveC = make(chan bool, bufferSize)
 	tgcm.timeout = timeout
 	tgcm.Connector.Sender = testutil.CreateGcmSender(
 		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, response, tgcm.receiveC, timeout))
 
-	// start counting the received messages to GCM
+	// start counting the received messages to FCM
 	tgcm.receive()
 }
 
-func (tgcm *TestGCM) subscribe(addr, topic, id string) {
+func (tgcm *TestFCM) subscribe(addr, topic, id string) {
 	urlFormat := fmt.Sprintf("http://%s/gcm/user_%%s/gcm_%%s/subscribe/%%s", addr)
 
 	a := assert.New(tgcm.t)
@@ -186,7 +185,7 @@ func (tgcm *TestGCM) subscribe(addr, topic, id string) {
 	a.Equal(fmt.Sprintf("{\"subscribed\":\"%s\"}", topic), string(body))
 }
 
-func (tgcm *TestGCM) unsubscribe(addr, topic, id string) {
+func (tgcm *TestFCM) unsubscribe(addr, topic, id string) {
 	urlFormat := fmt.Sprintf("http://%s/gcm/user_%%s/gcm_%%s/subscribe/%%s", addr)
 
 	a := assert.New(tgcm.t)
@@ -206,18 +205,18 @@ func (tgcm *TestGCM) unsubscribe(addr, topic, id string) {
 
 	body, err := ioutil.ReadAll(response.Body)
 	a.NoError(err)
-	a.Equal(fmt.Sprintf("unsubscribed: %s\n", topic), string(body))
+	a.Equal(fmt.Sprintf(`{"unsubscribed":"%s"}`, topic), string(body))
 }
 
 // Wait waits count * tgcm.timeout, wait ensure count number of messages have been waited to pass
 // through GCM round tripper
-func (tgcm *TestGCM) wait(count int) {
+func (tgcm *TestFCM) wait(count int) {
 	time.Sleep(time.Duration(count) * tgcm.timeout)
 }
 
 // Receive starts a goroutine that will receive on the receiveC and increment the Received counter
 // Returns an error if channel is not create
-func (tgcm *TestGCM) receive() error {
+func (tgcm *TestFCM) receive() error {
 	if tgcm.receiveC == nil {
 		return errors.New("Round tripper not created")
 	}
@@ -235,20 +234,20 @@ func (tgcm *TestGCM) receive() error {
 	return nil
 }
 
-func (tgcm *TestGCM) checkReceived(expected int) {
+func (tgcm *TestFCM) checkReceived(expected int) {
 	time.Sleep((50 * time.Millisecond) + tgcm.timeout)
 	tgcm.RLock()
 	defer tgcm.RUnlock()
 	assert.Equal(tgcm.t, expected, tgcm.Received)
 }
 
-func (tgcm *TestGCM) reset() {
+func (tgcm *TestFCM) reset() {
 	tgcm.Lock()
 	defer tgcm.Unlock()
 	tgcm.Received = 0
 }
 
-func (tgcm *TestGCM) cleanup() {
+func (tgcm *TestFCM) cleanup() {
 	if tgcm.receiveC != nil {
 		close(tgcm.receiveC)
 	}

@@ -65,10 +65,10 @@ func TestFCMRestart(t *testing.T) {
 
 	assertMetrics(a, s, expectedValues{true, 0, 0, 0})
 
-	var gcmConnector *fcm.Connector
+	var fcmConn *fcm.Connector
 	var ok bool
 	for _, iface := range s.ModulesSortedByStartOrder() {
-		gcmConnector, ok = iface.(*fcm.Connector)
+		fcmConn, ok = iface.(*fcm.Connector)
 		if ok {
 			break
 		}
@@ -76,7 +76,7 @@ func TestFCMRestart(t *testing.T) {
 	a.True(ok, "There should be a module of type GCMConnector")
 
 	// add a high timeout so the messages are processed slow
-	gcmConnector.Sender = testutil.CreateGcmSender(
+	fcmConn.Sender = testutil.CreateGcmSender(
 		testutil.CreateRoundTripperWithCountAndTimeout(
 			http.StatusOK, testutil.SuccessFCMResponse, receiveC, 10*time.Millisecond))
 
@@ -92,7 +92,7 @@ func TestFCMRestart(t *testing.T) {
 		c.Send(testTopic, "dummy body", "{dummy: value}")
 	}
 
-	// receive one message only from GCM
+	// receive one message only from FCM
 	select {
 	case <-receiveC:
 	case <-time.After(timeoutForOneMessage):
@@ -131,7 +131,7 @@ func serviceSetUp(t *testing.T) (*service.Service, func()) {
 	*Config.MetricsEndpoint = "/admin/metrics"
 	*Config.FCM.Enabled = true
 	*Config.FCM.APIKey = "WILL BE OVERWRITTEN"
-	*Config.FCM.Workers = 1 // use only one worker so we can control the number of messages that go to GCM
+	*Config.FCM.Workers = 1 // use only one worker so we can control the number of messages that go to FCM
 
 	var s *service.Service
 	for s == nil {
@@ -159,7 +159,7 @@ func subscriptionSetUp(t *testing.T, service *service.Service) {
 	a := assert.New(t)
 
 	urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/%%s", service.WebServer().GetAddr())
-	// create GCM subscription with topic: gcmTopic
+	// create GCM subscription
 	response, errPost := http.Post(
 		fmt.Sprintf(urlFormat, 1, 1, strings.TrimPrefix(testTopic, "/")),
 		"text/plain",

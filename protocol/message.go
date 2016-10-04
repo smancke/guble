@@ -42,6 +42,8 @@ type Message struct {
 	NodeID uint8
 }
 
+type MessageDeliveryCallback func(*Message)
+
 // Metadata returns the first line of a serialized message, without the newline
 func (msg *Message) Metadata() string {
 	buff := &bytes.Buffer{}
@@ -99,13 +101,11 @@ func (msg *Message) encodeFilters() []byte {
 	if msg.Filters == nil {
 		return []byte{}
 	}
-
 	data, err := json.Marshal(msg.Filters)
 	if err != nil {
 		log.WithError(err).WithField("filters", msg.Filters).Error("Error encoding filters")
 		return []byte{}
 	}
-
 	return data
 }
 
@@ -113,7 +113,6 @@ func (msg *Message) decodeFilters(data []byte) {
 	if len(data) == 0 {
 		return
 	}
-
 	msg.Filters = make(map[string]string)
 	err := json.Unmarshal(data, &msg.Filters)
 	if err != nil {

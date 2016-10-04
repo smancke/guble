@@ -16,10 +16,6 @@ import (
 	"time"
 )
 
-const (
-	gcmMockedAPIKey = "1234"
-)
-
 // MockCtrl is a gomock.Controller to use globally
 var MockCtrl *gomock.Controller
 
@@ -112,7 +108,7 @@ const (
 	}`
 )
 
-// RoundTripperFunc mocks/implements a http.RoundTripper in order to not send the test request to GCM.
+// RoundTripperFunc mocks/implements a http.RoundTripper in order to not send the test request to FCM.
 type RoundTripperFunc func(req *http.Request) *http.Response
 
 func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -149,7 +145,7 @@ func CreateRoundTripperWithJsonResponse(statusCode int, body string, doneC chan 
 	})
 }
 
-// CreateRoundTripperWithCountAndTimeout will mock the GCM API and will send each request as a count into a channel
+// CreateRoundTripperWithCountAndTimeout will mock the FCM API and will send each request as a count into a channel
 func CreateRoundTripperWithCountAndTimeout(statusCode int, body string, countC chan bool, to time.Duration) RoundTripperFunc {
 	log.WithFields(log.Fields{"module": "testing"}).Debug("CreateRoundTripperWithCount")
 	return RoundTripperFunc(func(req *http.Request) *http.Response {

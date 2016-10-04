@@ -28,11 +28,16 @@ import (
 	"syscall"
 
 	"github.com/pkg/profile"
+	"github.com/smancke/guble/protocol"
 )
 
 const (
 	fileOption = "file"
 )
+
+var AfterMessageDelivery = func(m *protocol.Message) {
+	logger.WithField("message", m).Debug("message delivered")
+}
 
 // ValidateStoragePath validates the guble configuration with regard to the storagePath
 // (which can be used by MessageStore and/or KVStore implementations).
@@ -111,7 +116,7 @@ var CreateModules = func(router router.Router) []interface{} {
 	var modules []interface{}
 
 	if wsHandler, err := websocket.NewWSHandler(router, "/stream/"); err != nil {
-		logger.WithError(err).Error("Error loading WSHandler module:")
+		logger.WithError(err).Error("Error loading WSHandler module")
 	} else {
 		modules = append(modules, wsHandler)
 	}
@@ -119,26 +124,18 @@ var CreateModules = func(router router.Router) []interface{} {
 	modules = append(modules, rest.NewRestMessageAPI(router, "/api/"))
 
 	if *Config.FCM.Enabled {
-		logger.Info("Google Firebase Cloud Messaging: enabled")
-
+		logger.Info("Firebase Cloud Messaging: enabled")
 		if *Config.FCM.APIKey == "" {
-			logger.Panic("FCM API Key has to be provided, if FCM is enabled")
+			logger.Panic("The API Key has to be provided when Firebase Cloud Messaging is enabled")
 		}
-
-		logger.WithField("count", *Config.FCM.Workers).Debug("FCM workers")
-
-		if fcmConn, err := fcm.New(
-			router,
-			"/gcm/",
-			*Config.FCM.APIKey,
-			*Config.FCM.Workers,
-			*Config.FCM.Endpoint); err != nil {
+		Config.FCM.AfterMessageDelivery = AfterMessageDelivery
+		if fcmConn, err := fcm.New(router, "/gcm/", Config.FCM); err != nil {
 			logger.WithError(err).Error("Error creating FCM connector")
 		} else {
 			modules = append(modules, fcmConn)
 		}
 	} else {
-		logger.Info("Google Firebase Cloud Messaging: disabled")
+		logger.Info("Firebase Cloud Messaging: disabled")
 	}
 
 	return modules
