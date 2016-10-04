@@ -148,8 +148,10 @@ func (r *Route) handleFetch(router Router) error {
 		return err
 	}
 
-	var lastID uint64
-	received := 0
+	var (
+		lastID   uint64
+		received int
+	)
 
 Refetch:
 	// check if we need to continue fetching
@@ -162,15 +164,13 @@ Refetch:
 		(r.FetchRequest.EndID > 0 && r.FetchRequest.EndID >= maxID) {
 		return nil
 	}
+	r.FetchRequest.Init()
 
 	if err := router.Fetch(r.FetchRequest); err != nil {
 		return err
 	}
 
 	for {
-		// count := <-r.FetchRequest.StartC
-		r.logger.Debug("Fetching messages")
-
 		select {
 		case fetchedMessage, open := <-r.FetchRequest.Messages():
 			if !open {

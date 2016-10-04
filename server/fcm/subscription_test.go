@@ -1,4 +1,4 @@
-package gcm
+package fcm
 
 import (
 	"strconv"
@@ -34,14 +34,14 @@ func TestSub_Fetch(t *testing.T) {
 
 	a := assert.New(t)
 
-	gcm, routerMock, _ := testSimpleGCM(t, false)
+	g, routerMock, _ := testSimpleFCM(t, false)
 
 	route := router.NewRoute(router.RouteConfig{
 		RouteParams: router.RouteParams{userIDKey: "user01", applicationIDKey: "phone01"},
 		Path:        protocol.Path("/foo/bar"),
 		ChannelSize: subBufferSize,
 	})
-	sub := newSubscription(gcm, route, 2)
+	sub := newSubscription(g, route, 2)
 
 	// simulate the fetch
 	routerMock.EXPECT().Fetch(gomock.Any()).Do(func(req *store.FetchRequest) {
@@ -65,13 +65,13 @@ func TestSub_Fetch(t *testing.T) {
 	// read messages from gcm pipeline, must read 2 messages
 	go func() {
 		// pipe message
-		pm := <-gcm.pipelineC
+		pm := <-g.pipelineC
 		a.Equal(uint64(3), pm.message.ID)
 		// acknowledge the response
 		pm.resultC <- dummyGCMResponse
 
 		// pipe message
-		pm = <-gcm.pipelineC
+		pm = <-g.pipelineC
 		a.Equal(uint64(4), pm.message.ID)
 		pm.resultC <- dummyGCMResponse
 
@@ -91,32 +91,31 @@ func TestSub_Fetch(t *testing.T) {
 	// start subscription fetching
 	err := sub.fetch()
 	a.NoError(err)
-
 }
 
 // Test that if a route is closed, but no explicit shutdown the subscription will
-// try to refetch messages from store and then resubscribe
+// try to re-fetch messages from store and then resubscribe
 func TestSub_Restart(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
 	a := assert.New(t)
 
-	gcm, routerMock, storeMock := testSimpleGCM(t, true)
+	g, routerMock, storeMock := testSimpleFCM(t, true)
 
 	route := router.NewRoute(router.RouteConfig{
 		RouteParams: router.RouteParams{userIDKey: "user01", applicationIDKey: "phone01"},
 		Path:        protocol.Path("/foo/bar"),
 		ChannelSize: subBufferSize,
 	})
-	sub := newSubscription(gcm, route, 2)
+	sub := newSubscription(g, route, 2)
 
 	// start goroutine that will take the messages from the pipeline
 	done := make(chan struct{})
 	go func() {
 		for {
 			select {
-			case pm := <-gcm.pipelineC:
+			case pm := <-g.pipelineC:
 				pm.resultC <- dummyGCMResponse
 			case <-done:
 				return
@@ -168,19 +167,19 @@ func TestSubscription_JSONError(t *testing.T) {
 
 	a := assert.New(t)
 
-	gcm, routerMock, _ := testSimpleGCM(t, true)
+	g, routerMock, _ := testSimpleFCM(t, true)
 	routerMock.EXPECT().Subscribe(gomock.Any())
 
-	sub, err := initSubscription(gcm, "/foo/bar", "user01", "gcm01", 0, true)
+	sub, err := initSubscription(g, "/foo/bar", "user01", "gcm01", 0, true)
 	a.NoError(err)
-	a.Equal(1, len(gcm.subscriptions))
+	a.Equal(1, len(g.subscriptions))
 
 	// start goroutine that will take the messages from the pipeline
 	done := make(chan struct{})
 	go func() {
 		for {
 			select {
-			case pm := <-gcm.pipelineC:
+			case pm := <-g.pipelineC:
 				pm.resultC <- errorGCMNotRegisteredResponse
 			case <-done:
 				return
@@ -197,7 +196,7 @@ func TestSubscription_JSONError(t *testing.T) {
 
 	// subscriptions should be removed at this point
 	time.Sleep(time.Second)
-	a.Equal(0, len(gcm.subscriptions))
+	a.Equal(0, len(g.subscriptions))
 
 	close(done)
 }

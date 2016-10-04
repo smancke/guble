@@ -52,7 +52,7 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
-		log.WithField("url", r.URL.Path).Info("Get ")
+		log.WithField("url", r.URL.Path).Debug("GET")
 		topic, err := api.extractTopic(r.URL.Path, subscribersPrefix)
 		log.WithField("topic", topic).WithField("err", err).Debug("Extract")
 		if err != nil {
@@ -82,7 +82,7 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, `Can not read body`, http.StatusBadRequest)
+		http.Error(w, "Can not read body", http.StatusBadRequest)
 		return
 	}
 	topic, err := api.extractTopic(r.URL.Path, "/message")
@@ -97,7 +97,7 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	msg := &protocol.Message{
 		Path:          protocol.Path(topic),
 		Body:          body,
-		UserID:        q(r, `userId`),
+		UserID:        q(r, "userId"),
 		ApplicationID: xid.New().String(),
 		HeaderJSON:    headersToJSON(r.Header),
 	}

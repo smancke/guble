@@ -47,7 +47,7 @@ func TestCreateKVStoreBackend(t *testing.T) {
 	a.Equal("*kvstore.SqliteKVStore", reflect.TypeOf(sqlite).String())
 }
 
-func TestGcmOnlyStartedIfEnabled(t *testing.T) {
+func TestFCMOnlyStartedIfEnabled(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
@@ -58,15 +58,15 @@ func TestGcmOnlyStartedIfEnabled(t *testing.T) {
 
 	*Config.FCM.Enabled = true
 	*Config.FCM.APIKey = "xyz"
-	a.True(containsGcmModule(CreateModules(routerMock)))
+	a.True(containsFCMModule(CreateModules(routerMock)))
 
 	*Config.FCM.Enabled = false
-	a.False(containsGcmModule(CreateModules(routerMock)))
+	a.False(containsFCMModule(CreateModules(routerMock)))
 }
 
-func containsGcmModule(modules []interface{}) bool {
+func containsFCMModule(modules []interface{}) bool {
 	for _, module := range modules {
-		if reflect.TypeOf(module).String() == "*gcm.Connector" {
+		if reflect.TypeOf(module).String() == "*fcm.Connector" {
 			return true
 		}
 	}

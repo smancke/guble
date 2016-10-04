@@ -1,8 +1,6 @@
-package gcm
+package fcm
 
 import (
-	"encoding/json"
-
 	"github.com/Bogh/gcm"
 
 	log "github.com/Sirupsen/logrus"
@@ -20,7 +18,9 @@ import (
 	"sync"
 	"time"
 
+	"encoding/json"
 	"github.com/smancke/guble/server/metrics"
+	"sort"
 )
 
 const (
@@ -37,7 +37,7 @@ const (
 	// default channel buffer size
 	bufferSize = 1000
 
-	syncPath = protocol.Path("/gcm/sync")
+	syncPath = protocol.Path("/fcm/sync")
 )
 
 var logger = log.WithFields(log.Fields{
@@ -45,7 +45,7 @@ var logger = log.WithFields(log.Fields{
 	"module": "fcm",
 })
 
-// Connector is the structure for handling the communication with Google Cloud Messaging
+// Connector is the structure for handling the communication with Google Firebase Cloud Messaging
 type Connector struct {
 	Sender        gcm.Sender
 	router        router.Router
@@ -61,19 +61,17 @@ type Connector struct {
 }
 
 // New creates a new *Connector without starting it
-func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int, endpoint string) (*Connector, error) {
+func New(router router.Router, prefix string, apiKey string, nWorkers int, endpoint string) (*Connector, error) {
 	kvStore, err := router.KVStore()
 	if err != nil {
 		return nil, err
 	}
-
 	if endpoint != "" {
-		logger.WithField("gcmEndpoint", endpoint).Info("Using GCM endpoint")
+		logger.WithField("fcmEndpoint", endpoint).Info("using FCM endpoint")
 		gcm.GcmSendEndpoint = endpoint
 	}
-
 	return &Connector{
-		Sender:        gcm.NewSender(gcmAPIKey, sendRetries, sendTimeout),
+		Sender:        gcm.NewSender(apiKey, sendRetries, sendTimeout),
 		router:        router,
 		cluster:       router.Cluster(),
 		kvStore:       kvStore,
@@ -81,7 +79,6 @@ func New(router router.Router, prefix string, gcmAPIKey string, nWorkers int, en
 		pipelineC:     make(chan *pipeMessage, bufferSize),
 		stopC:         make(chan bool),
 		nWorkers:      nWorkers,
-		broadcastPath: removeTrailingSlash(prefix) + "/broadcast",
 		subscriptions: make(map[string]*subscription),
 	}, nil
 }
@@ -115,52 +112,50 @@ func (conn *Connector) reset() {
 	conn.subscriptions = make(map[string]*subscription)
 }
 
-// Stop signals the closing of GCMConnector
+// Stop signals the closing of FCM Connector
 func (conn *Connector) Stop() error {
-	logger.Debug("Stopping ...")
+	logger.Debug("stopping")
 	close(conn.stopC)
 	conn.wg.Wait()
-	logger.Debug("Stopped")
+	logger.Debug("stopped")
 	return nil
 }
 
 // Check returns nil if health-check succeeds, or an error if health-check fails
-// by sending a request with only apikey. If the response is processed by the GCM endpoint
-// the gcmStatus will be UP, otherwise the error from sending the message will be returned.
+// by sending a request with only apikey. If the response is processed by the FCM endpoint
+// the status will be UP, otherwise the error from sending the message will be returned.
 func (conn *Connector) check() error {
 	message := &gcm.Message{
 		To: "ABC",
 	}
 	_, err := conn.Sender.Send(message)
 	if err != nil {
-		logger.WithField("error", err.Error()).Error("Error checking GCM connection")
+		logger.WithField("error", err.Error()).Error("error checking FCM connection")
 		return err
 	}
 	return nil
 }
 
-// loopPipeline awaits in a loop for messages subscriptions to be forwarded to GCM,
+// loopPipeline awaits in a loop for messages subscriptions to be forwarded to FCM,
 // until the stop-channel is closed
 func (conn *Connector) loopPipeline(id int) {
 	conn.wg.Add(1)
 	defer func() {
-		logger.WithField("id", id).Debug("Worker stopped")
+		logger.WithField("id", id).Debug("fcm worker stopped")
 		conn.wg.Done()
 	}()
-	logger.WithField("id", id).Debug("Worker started")
+	logger.WithField("id", id).Debug("fcm worker started")
 
 	for {
 		select {
 		case pm := <-conn.pipelineC:
-			// only forward to gcm message which have subscription on this node and not the other received from cluster
+			// only forward to FCM messages which have subscription on this node and not the other received from cluster
 			if pm != nil {
 				if conn.cluster != nil && conn.cluster.Config.ID != pm.message.NodeID {
 					pm.ignoreMessage()
 					continue
 				}
-
 				conn.sendMessage(pm)
-
 			}
 		case <-conn.stopC:
 			return
@@ -177,7 +172,7 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 		"fcmTo":      fcmMessage.To,
 		"fcmID":      fcmID,
 		"pipeLength": len(conn.pipelineC),
-	}).Debug("Sending message")
+	}).Debug("sending message")
 
 	beforeSend := time.Now()
 	response, err := conn.Sender.Send(fcmMessage)
@@ -203,86 +198,117 @@ func (conn *Connector) GetPrefix() string {
 	return conn.prefix
 }
 
-// ServeHTTP handles the subscription in GCM
+// ServeHTTP handles the subscription in FCM
 func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost && r.Method != http.MethodDelete {
-		logger.WithField("method", r.Method).Error("Only HTTP POST and DELETE methods supported.")
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if r.Method != http.MethodPost && r.Method != http.MethodDelete && r.Method != http.MethodGet {
+		logger.WithField("method", r.Method).Error("Only HTTP POST, GET and DELETE methods supported.")
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
-
-	userID, gcmID, topic, err := conn.parseParams(r.URL.Path)
+	userID, fcmID, unparsedPath, err := conn.parseUserIDAndDeviceId(r.URL.Path)
 	if err != nil {
-		http.Error(w, "Invalid Parameters in request", http.StatusBadRequest)
+		http.Error(w, `{"error":"invalid parameters in request"}`, http.StatusBadRequest)
 		return
 	}
-
 	switch r.Method {
 	case http.MethodPost:
-		conn.addSubscription(w, topic, userID, gcmID)
+		topic, err := conn.parseTopic(unparsedPath)
+		if err != nil {
+			http.Error(w, `{"error":"invalid parameters in request"}`, http.StatusBadRequest)
+			return
+		}
+		conn.addSubscription(w, topic, userID, fcmID)
 	case http.MethodDelete:
-		conn.deleteSubscription(w, topic, userID, gcmID)
+		topic, err := conn.parseTopic(unparsedPath)
+		if err != nil {
+			http.Error(w, `{"error":"invalid parameters in request"}`, http.StatusBadRequest)
+			return
+		}
+		conn.deleteSubscription(w, topic, userID, fcmID)
+	case http.MethodGet:
+		conn.retriveSubscription(w, userID, fcmID)
 	}
 }
 
-func (conn *Connector) addSubscription(w http.ResponseWriter, topic, userID, gcmID string) {
-	s, err := initSubscription(conn, topic, userID, gcmID, 0, true)
+func (conn *Connector) retriveSubscription(w http.ResponseWriter, userID, fcmID string) {
+	topics := make([]string, 0)
+
+	for k, v := range conn.subscriptions {
+		logger.WithField("key", k).Info("retriveAllSubscription")
+		if v.route.Get(applicationIDKey) == fcmID && v.route.Get(userIDKey) == userID {
+			logger.WithField("path", v.route.Path).Info("retriveAllSubscription path")
+			topics = append(topics, string(v.route.Path))
+		}
+	}
+
+	sort.Strings(topics)
+	err := json.NewEncoder(w).Encode(topics)
+	if err != nil {
+		http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
+	}
+}
+
+func (conn *Connector) addSubscription(w http.ResponseWriter, topic, userID, fcmID string) {
+	s, err := initSubscription(conn, topic, userID, fcmID, 0, true)
 	if err == nil {
 		// synchronize subscription after storing if cluster exists
-		conn.synchronizeSubscription(topic, userID, gcmID, false)
+		conn.synchronizeSubscription(topic, userID, fcmID, false)
 	} else if err == errSubscriptionExists {
-		logger.WithField("subscription", s).Error("Subscription exists")
-		fmt.Fprint(w, "subscription exists")
+		logger.WithField("subscription", s).Error("subscription already exists")
+		fmt.Fprint(w, `{"error":"subscription already exists"}`)
 		return
 	}
-
-	fmt.Fprintf(w, "subscribed: %v\n", topic)
+	fmt.Fprintf(w, `{"subscribed":"%v"}`, topic)
 }
 
-func (conn *Connector) deleteSubscription(w http.ResponseWriter, topic, userID, gcmID string) {
-	subscriptionKey := composeSubscriptionKey(topic, userID, gcmID)
+func (conn *Connector) deleteSubscription(w http.ResponseWriter, topic, userID, fcmID string) {
+	subscriptionKey := composeSubscriptionKey(topic, userID, fcmID)
 
 	s, ok := conn.subscriptions[subscriptionKey]
 	if !ok {
-		logger.
-			WithField("subscriptionKey", subscriptionKey).
-			WithField("subscriptions", conn.subscriptions).
-			Info("Subscription not found")
-		http.Error(w, "subscription not found\n", http.StatusNotFound)
+		logger.WithFields(log.Fields{
+			"subscriptionKey": subscriptionKey,
+			"subscriptions":   conn.subscriptions,
+		}).Info("subscription not found")
+		http.Error(w, `{"error":"subscription not found"}`, http.StatusNotFound)
 		return
 	}
 
-	conn.synchronizeSubscription(topic, userID, gcmID, true)
+	conn.synchronizeSubscription(topic, userID, fcmID, true)
 
 	s.remove()
-	fmt.Fprintf(w, "unsubscribed: %v\n", topic)
+	fmt.Fprintf(w, `{"unsubscribed":"%v"}`, topic)
 }
 
-// parseParams will parse the HTTP URL with format /gcm/:userid/:gcmid/subscribe/*topic
-// returning the parsed Params, or error if the request is not in the correct format
-func (conn *Connector) parseParams(path string) (userID, gcmID, topic string, err error) {
+func (conn *Connector) parseUserIDAndDeviceId(path string) (userID, fcmID, unparsedPath string, err error) {
 	currentURLPath := removeTrailingSlash(path)
 
 	if !strings.HasPrefix(currentURLPath, conn.prefix) {
-		err = errors.New("gcm: GCM request is not starting with gcm prefix")
+		err = errors.New("FCM request is not starting with correct prefix")
 		return
 	}
 	pathAfterPrefix := strings.TrimPrefix(currentURLPath, conn.prefix)
 
 	splitParams := strings.SplitN(pathAfterPrefix, "/", 3)
 	if len(splitParams) != 3 {
-		err = errors.New("gcm: GCM request has wrong number of params")
+		err = errors.New("FCM request has wrong number of params")
 		return
 	}
 	userID = splitParams[0]
-	gcmID = splitParams[1]
+	fcmID = splitParams[1]
+	unparsedPath = splitParams[2]
+	return
+}
 
-	if !strings.HasPrefix(splitParams[2], subscribePrefixPath+"/") {
-		err = errors.New("gcm: GCM request third param is not subscribe")
+// parseParams will parse the HTTP URL with format /fcm/:userid/:fcmid/subscribe/*topic
+// returning the parsed Params, or error if the request is not in the correct format
+func (conn *Connector) parseTopic(unparsedPath string) (topic string, err error) {
+	if !strings.HasPrefix(unparsedPath, subscribePrefixPath+"/") {
+		err = errors.New("FCM request third param is not subscribe")
 		return
 	}
-	topic = strings.TrimPrefix(splitParams[2], subscribePrefixPath)
-	return userID, gcmID, topic, nil
+	topic = strings.TrimPrefix(unparsedPath, subscribePrefixPath)
+	return topic, nil
 }
 
 func (conn *Connector) loadSubscriptions() {
@@ -291,12 +317,12 @@ func (conn *Connector) loadSubscriptions() {
 		conn.loadSubscription(entry)
 		count++
 	}
-	logger.WithField("count", count).Info("Loaded GCM subscriptions")
+	logger.WithField("count", count).Info("loaded all FCM subscriptions")
 }
 
 // loadSubscription loads a kvstore entry and creates a subscription from it
 func (conn *Connector) loadSubscription(entry [2]string) {
-	gcmID := entry[0]
+	fcmID := entry[0]
 	values := strings.Split(entry[1], ":")
 	userID := values[0]
 	topic := values[1]
@@ -305,14 +331,14 @@ func (conn *Connector) loadSubscription(entry [2]string) {
 		lastID = 0
 	}
 
-	initSubscription(conn, topic, userID, gcmID, lastID, false)
+	initSubscription(conn, topic, userID, fcmID, lastID, false)
 
 	logger.WithFields(log.Fields{
-		"gcmID":  gcmID,
+		"fcmID":  fcmID,
 		"userID": userID,
 		"topic":  topic,
 		"lastID": lastID,
-	}).Debug("Loaded GCM subscription")
+	}).Debug("loaded a FCM subscription")
 }
 
 // Creates a route and listens for subscription synchronization
@@ -327,11 +353,11 @@ func (conn *Connector) syncLoop() error {
 	}
 
 	go func() {
-		logger.Info("Sync loop starting")
+		logger.Info("sync loop starting")
 		conn.wg.Add(1)
 
 		defer func() {
-			logger.Info("Sync loop stopped")
+			logger.Info("sync loop stopped")
 			conn.wg.Done()
 		}()
 
@@ -339,27 +365,27 @@ func (conn *Connector) syncLoop() error {
 			select {
 			case m, opened := <-r.MessagesChannel():
 				if !opened {
-					logger.Error("Sync loop channel closed")
+					logger.Error("sync loop channel closed")
 					return
 				}
 
 				if m.NodeID == conn.cluster.Config.ID {
-					logger.Debug("Received own subscription loop")
+					logger.Debug("received own subscription loop")
 					continue
 				}
 
 				subscriptionSync, err := (&subscriptionSync{}).Decode(m.Body)
 				if err != nil {
-					logger.WithError(err).Error("Error decoding subscription sync")
+					logger.WithError(err).Error("error decoding subscription sync")
 					continue
 				}
 
-				logger.Debug("Initializing sync subscription without storing it.")
+				logger.Debug("initializing sync subscription without storing it")
 				if subscriptionSync.Remove {
 					subscriptionKey := composeSubscriptionKey(
 						subscriptionSync.Topic,
 						subscriptionSync.UserID,
-						subscriptionSync.GCMID)
+						subscriptionSync.FCMID)
 					if s, ok := conn.subscriptions[subscriptionKey]; ok {
 						s.remove()
 					}
@@ -370,10 +396,10 @@ func (conn *Connector) syncLoop() error {
 					conn,
 					subscriptionSync.Topic,
 					subscriptionSync.UserID,
-					subscriptionSync.GCMID,
+					subscriptionSync.FCMID,
 					0,
 					false); err != nil {
-					logger.WithError(err).Error("Error synchronizing subscription")
+					logger.WithError(err).Error("error synchronizing subscription")
 				}
 			case <-conn.stopC:
 				return
@@ -384,40 +410,19 @@ func (conn *Connector) syncLoop() error {
 	return nil
 }
 
-func (conn *Connector) synchronizeSubscription(topic, userID, gcmID string, remove bool) error {
+func (conn *Connector) synchronizeSubscription(topic, userID, fcmID string, remove bool) error {
 	// there is no cluster setup, no need for synchronization of subscription
 	if conn.cluster == nil {
 		return nil
 	}
-
-	data, err := (&subscriptionSync{topic, userID, gcmID, remove}).Encode()
+	data, err := (&subscriptionSync{topic, userID, fcmID, remove}).Encode()
 	if err != nil {
 		return err
 	}
-
 	return conn.router.HandleMessage(&protocol.Message{
 		Path: syncPath,
 		Body: data,
 	})
-}
-
-// used to sync subscriptions with other nodes
-type subscriptionSync struct {
-	Topic  string
-	UserID string
-	GCMID  string
-	Remove bool
-}
-
-func (s *subscriptionSync) Encode() ([]byte, error) {
-	return json.Marshal(s)
-}
-
-func (s *subscriptionSync) Decode(data []byte) (*subscriptionSync, error) {
-	if err := json.Unmarshal(data, s); err != nil {
-		return nil, err
-	}
-	return s, nil
 }
 
 func removeTrailingSlash(path string) string {
@@ -427,11 +432,9 @@ func removeTrailingSlash(path string) string {
 	return path
 }
 
-func composeSubscriptionKey(topic, userID, gcmID string) string {
+func composeSubscriptionKey(topic, userID, fcmID string) string {
 	return fmt.Sprintf("%s %s:%s %s:%s",
 		topic,
-		applicationIDKey,
-		gcmID,
-		userIDKey,
-		userID)
+		applicationIDKey, fcmID,
+		userIDKey, userID)
 }

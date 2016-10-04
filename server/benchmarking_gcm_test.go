@@ -4,7 +4,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/server/gcm"
+	"github.com/smancke/guble/server/fcm"
 	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/testutil"
 
@@ -195,10 +195,10 @@ func (params *benchParams) setUp() {
 
 	params.service = StartService()
 
-	var gcmConnector *gcm.Connector
+	var gcmConnector *fcm.Connector
 	var ok bool
 	for _, iface := range params.service.ModulesSortedByStartOrder() {
-		gcmConnector, ok = iface.(*gcm.Connector)
+		gcmConnector, ok = iface.(*fcm.Connector)
 		if ok {
 			break
 		}
@@ -206,7 +206,7 @@ func (params *benchParams) setUp() {
 	a.True(ok, "There should be a module of type GCMConnector")
 
 	gcmConnector.Sender = testutil.CreateGcmSender(
-		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, testutil.SuccessGCMResponse, params.receiveC, params.timeout))
+		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, testutil.SuccessFCMResponse, params.receiveC, params.timeout))
 
 	urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/%%s", params.service.WebServer().GetAddr())
 	for i := 1; i <= params.subscriptions; i++ {

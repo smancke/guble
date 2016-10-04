@@ -1,5 +1,8 @@
 #!/bin/bash -xe
 
+# Prerequisites: mockgen should be installed
+#   go get github.com/golang/mock/mockgen
+
 if [ -z "$GOPATH" ]; then
       echo "Missing $GOPATH!";
       exit 1
@@ -64,24 +67,24 @@ $MOCKGEN  -self_package client -package client \
 replace "client/mocks_client_gen_test.go" "client \"github.com\/smancke\/guble\/client\"" "client\."
 
 
-# server/gcm mocks
-$MOCKGEN -package gcm \
-      -destination server/gcm/mocks_router_gen_test.go \
+# server/fcm mocks
+$MOCKGEN -package fcm \
+      -destination server/fcm/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
       Router
 
-$MOCKGEN -self_package gcm -package gcm \
-      -destination server/gcm/mocks_kvstore_gen_test.go \
+$MOCKGEN -self_package fcm -package fcm \
+      -destination server/fcm/mocks_kvstore_gen_test.go \
       github.com/smancke/guble/server/kvstore \
       KVStore
 
-$MOCKGEN -self_package gcm -package gcm \
-      -destination server/gcm/mocks_store_gen_test.go \
+$MOCKGEN -self_package fcm -package fcm \
+      -destination server/fcm/mocks_store_gen_test.go \
       github.com/smancke/guble/server/store \
       MessageStore
 
-$MOCKGEN -self_package gcm -package gcm \
-      -destination server/gcm/mocks_gcm_gen_test.go \
+$MOCKGEN -self_package fcm -package fcm \
+      -destination server/fcm/mocks_gcm_gen_test.go \
       github.com/Bogh/gcm \
       Sender
 

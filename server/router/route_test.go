@@ -2,7 +2,6 @@ package router
 
 import (
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 	"testing"
@@ -261,17 +260,22 @@ func TestRoute_Provide_ErrMissingFetchRequest(t *testing.T) {
 }
 
 func TestRoute_Provide_Fetch(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
+	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
 	a := assert.New(t)
-	routerMock := NewMockRouter(testutil.MockCtrl)
+	msMock := NewMockMessageStore(ctrl)
+	routerMock := NewMockRouter(ctrl)
+
+	routerMock.EXPECT().MessageStore().Return(msMock, nil)
 
 	route := NewRoute(RouteConfig{
 		Path:         protocol.Path("/fetch_request"),
 		ChannelSize:  5,
 		FetchRequest: store.NewFetchRequest("", 0, 0, store.DirectionForward, -1),
 	})
+
+	msMock.EXPECT().MaxMessageID("fetch_request").Return(uint64(2), nil).Times(2)
 
 	routerMock.EXPECT().Done().Return(make(chan bool)).AnyTimes()
 	routerMock.EXPECT().Fetch(gomock.Any()).Do(func(req *store.FetchRequest) {
@@ -310,21 +314,23 @@ func TestRoute_Provide_Fetch(t *testing.T) {
 }
 
 func TestRoute_Provide_WithSubscribe(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
+	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
 	a := assert.New(t)
-	// msMock := NewMockMessageStore(testutil.MockCtrl)
-	routerMock := NewMockRouter(testutil.MockCtrl)
+	msMock := NewMockMessageStore(ctrl)
+	routerMock := NewMockRouter(ctrl)
+
+	routerMock.EXPECT().MessageStore().Return(msMock, nil)
 
 	route := NewRoute(RouteConfig{
 		Path:         protocol.Path("/fetch_request"),
-		ChannelSize:  2,
+		ChannelSize:  4,
 		FetchRequest: store.NewFetchRequest("", 0, 0, store.DirectionForward, -1),
 	})
 
 	routerMock.EXPECT().Done().Return(make(chan bool)).AnyTimes()
-	fetchCall := routerMock.EXPECT().Fetch(gomock.Any()).Do(func(req *store.FetchRequest) {
+	routerMock.EXPECT().Fetch(gomock.Any()).Do(func(req *store.FetchRequest) {
 		a.Equal(req.Partition, "fetch_request")
 		a.Equal(uint64(0), req.StartID)
 		a.Equal(uint64(0), req.EndID)
@@ -335,6 +341,8 @@ func TestRoute_Provide_WithSubscribe(t *testing.T) {
 		req.Push(2, []byte(strings.Replace(dummyMessageBytes, "MESSAGE_ID", strconv.Itoa(2), 1)))
 		req.Done()
 	})
+
+	msMock.EXPECT().MaxMessageID(gomock.Eq("fetch_request")).Return(uint64(2), nil).Times(2)
 
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *Route) (*Route, error) {
 		a.Equal(route, r)
@@ -348,7 +356,7 @@ func TestRoute_Provide_WithSubscribe(t *testing.T) {
 		}
 
 		return r, nil
-	}).After(fetchCall)
+	})
 
 	done := make(chan struct{})
 	go func() {
@@ -386,7 +394,6 @@ type stopable interface {
 func TestRoute_Provide_MultipleFetch(t *testing.T) {
 	// Using a valid router test that the fetch mechanism of a route will continue to fetch
 	// until the received messages after the fetch started
-	defer testutil.EnableDebugForMethod()()
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
@@ -409,7 +416,7 @@ func TestRoute_Provide_MultipleFetch(t *testing.T) {
 	route := NewRoute(RouteConfig{
 		Path:         path,
 		ChannelSize:  4,
-		FetchRequest: store.NewFetchRequest("", 0, 0, store.DirectionForward, math.MaxInt32),
+		FetchRequest: store.NewFetchRequest("", 0, 0, store.DirectionForward, -1),
 	})
 
 	block := make(chan struct{})
