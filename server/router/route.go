@@ -188,7 +188,9 @@ REFETCH:
 			}
 
 			r.logger.WithField("messageID", message.ID).Debug("Sending fetched message in channel")
-			r.Deliver(message)
+			if err := r.Deliver(message); err != nil {
+				return err
+			}
 			lastID = message.ID
 			received++
 		case err := <-r.FetchRequest.Errors():
