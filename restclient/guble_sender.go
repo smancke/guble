@@ -82,6 +82,12 @@ func (gs gubleSender) Check() bool {
 }
 
 func (gs gubleSender) Send(topic string, body []byte, userID string, params map[string]string) error {
+	logger.WithFields(log.Fields{
+		"topic":  topic,
+		"body":   body,
+		"userID": userID,
+		"params": params,
+	}).Debug("Sending guble message")
 	request, err := http.NewRequest(http.MethodPost, getURL(gs.Endpoint, topic, userID, params), bytes.NewReader(body))
 	if err != nil {
 		return err
