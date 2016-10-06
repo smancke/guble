@@ -115,7 +115,7 @@ type sender func(c client.Client) error
 
 type benchParams struct {
 	*testing.B
-	workers       int           // number of gcm workers
+	workers       int           // number of fcm workers
 	subscriptions int           // number of subscriptions listening on the topic
 	timeout       time.Duration // gcm timeout response
 	clients       int           // number of clients

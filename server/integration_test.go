@@ -50,32 +50,32 @@ import (
 func initServerAndClients(t *testing.T) (*service.Service, client.Client, client.Client, func()) {
 	*Config.HttpListen = "localhost:0"
 	*Config.KVS = "memory"
-	service := StartService()
+	s := StartService()
 
 	time.Sleep(time.Millisecond * 100)
 
 	var err error
-	client1, err := client.Open("ws://"+service.WebServer().GetAddr()+"/stream/user/user1", "http://localhost", 1, false)
+	client1, err := client.Open("ws://"+s.WebServer().GetAddr()+"/stream/user/user1", "http://localhost", 1, false)
 	assert.NoError(t, err)
 
 	checkConnectedNotificationJSON(t, "user1",
 		expectStatusMessage(t, client1, protocol.SUCCESS_CONNECTED, "You are connected to the server."),
 	)
 
-	client2, err := client.Open("ws://"+service.WebServer().GetAddr()+"/stream/user/user2", "http://localhost", 1, false)
+	client2, err := client.Open("ws://"+s.WebServer().GetAddr()+"/stream/user/user2", "http://localhost", 1, false)
 	assert.NoError(t, err)
 	checkConnectedNotificationJSON(t, "user2",
 		expectStatusMessage(t, client2, protocol.SUCCESS_CONNECTED, "You are connected to the server."),
 	)
 
-	return service, client1, client2, func() {
+	return s, client1, client2, func() {
 		if client1 != nil {
 			client1.Close()
 		}
 		if client2 != nil {
 			client2.Close()
 		}
-		service.Stop()
+		s.Stop()
 	}
 }
 
@@ -102,7 +102,7 @@ func checkConnectedNotificationJSON(t *testing.T, user string, connectedJSON str
 	assert.NoError(t, e)
 }
 
-//Used only for test and Unmarshall of the json response
+//Used only for test and unmarshal of the json response
 type Subscriber struct {
 	DeviceID string `json:"device_id"`
 	UserID   string `json:"user_id"`

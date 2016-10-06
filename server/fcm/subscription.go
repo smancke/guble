@@ -52,7 +52,7 @@ type subscription struct {
 // Creates a subscription and returns the pointer
 func newSubscription(connector *Connector, route *router.Route, lastID uint64) *subscription {
 	subLogger := logger.WithFields(log.Fields{
-		"gcmID":  route.Get(applicationIDKey),
+		"fcmID":  route.Get(applicationIDKey),
 		"userID": route.Get(userIDKey),
 		"topic":  string(route.Path),
 		"lastID": lastID,

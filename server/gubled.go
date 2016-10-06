@@ -33,6 +33,7 @@ import (
 
 const (
 	fileOption = "file"
+	fcmPath    = "/gcm/"
 )
 
 var AfterMessageDelivery = func(m *protocol.Message) {
@@ -129,7 +130,7 @@ var CreateModules = func(router router.Router) []interface{} {
 			logger.Panic("The API Key has to be provided when Firebase Cloud Messaging is enabled")
 		}
 		Config.FCM.AfterMessageDelivery = AfterMessageDelivery
-		if fcmConn, err := fcm.New(router, "/gcm/", Config.FCM); err != nil {
+		if fcmConn, err := fcm.New(router, fcmPath, Config.FCM); err != nil {
 			logger.WithError(err).Error("Error creating FCM connector")
 		} else {
 			modules = append(modules, fcmConn)
@@ -197,10 +198,8 @@ func StartService() *service.Service {
 	messageStore := CreateMessageStore()
 	kvStore := CreateKVStore()
 
-	var (
-		cl  *cluster.Cluster
-		err error
-	)
+	var cl *cluster.Cluster
+	var err error
 
 	if *Config.Cluster.NodeID > 0 {
 		exitIfInvalidClusterParams(*Config.Cluster.NodeID, *Config.Cluster.NodePort, *Config.Cluster.Remotes)
