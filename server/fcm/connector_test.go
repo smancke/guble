@@ -370,7 +370,7 @@ func TestConnector_RetrieveSubscriptions(t *testing.T) {
 	a.Equal(http.StatusOK, w.Code)
 
 	var bytes bytes.Buffer
-	expTopics := []string{"/test2", "/test"}
+	expTopics := []string{"test2", "test"}
 	sort.Strings(expTopics)
 	err = json.NewEncoder(&bytes).Encode(expTopics)
 	a.NoError(err)

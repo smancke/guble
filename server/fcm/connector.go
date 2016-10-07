@@ -244,7 +244,7 @@ func (conn *Connector) retriveSubscription(w http.ResponseWriter, userID, fcmID 
 		logger.WithField("key", k).Info("retriveAllSubscription")
 		if v.route.Get(applicationIDKey) == fcmID && v.route.Get(userIDKey) == userID {
 			logger.WithField("path", v.route.Path).Info("retriveAllSubscription path")
-			topics = append(topics, string(v.route.Path))
+			topics = append(topics, trimPrefixSlash(string(v.route.Path)))
 		}
 	}
 
@@ -437,6 +437,13 @@ func removeTrailingSlash(path string) string {
 		return path[:len(path)-1]
 	}
 	return path
+}
+
+func trimPrefixSlash(topic string) string {
+	if strings.HasPrefix(topic, "/") {
+		return strings.TrimPrefix(topic, "/")
+	}
+	return topic
 }
 
 func composeSubscriptionKey(topic, userID, fcmID string) string {
