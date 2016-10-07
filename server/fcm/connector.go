@@ -21,7 +21,7 @@ import (
 
 const (
 	// schema is the default database schema for FCM
-	schema = "gcm_registration"
+	schema = "fcm_registration"
 
 	// sendRetries is the number of retries when sending a message
 	sendRetries = 5
