@@ -32,6 +32,8 @@ const (
 
 	bufferSize = 1000
 
+	routeChannelSize = 100
+
 	syncPath = protocol.Path("/fcm/sync")
 )
 
@@ -206,7 +208,7 @@ func (conn *Connector) GetPrefix() string {
 // ServeHTTP handles the subscription in FCM
 func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost && r.Method != http.MethodDelete && r.Method != http.MethodGet {
-		logger.WithField("method", r.Method).Error("Only HTTP POST, GET and DELETE methods supported.")
+		logger.WithField("method", r.Method).Error("Only HTTP POST, GET and DELETE methods are supported.")
 		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
@@ -231,11 +233,11 @@ func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		conn.deleteSubscription(w, topic, userID, fcmID)
 	case http.MethodGet:
-		conn.retriveSubscription(w, userID, fcmID)
+		conn.retrieveSubscription(w, userID, fcmID)
 	}
 }
 
-func (conn *Connector) retriveSubscription(w http.ResponseWriter, userID, fcmID string) {
+func (conn *Connector) retrieveSubscription(w http.ResponseWriter, userID, fcmID string) {
 	topics := make([]string, 0)
 
 	for k, v := range conn.subscriptions {
@@ -350,7 +352,7 @@ func (conn *Connector) loadSubscription(entry [2]string) {
 func (conn *Connector) syncLoop() error {
 	r := router.NewRoute(router.RouteConfig{
 		Path:        syncPath,
-		ChannelSize: 5000,
+		ChannelSize: routeChannelSize,
 	})
 	_, err := conn.router.Subscribe(r)
 	if err != nil {

@@ -17,7 +17,7 @@ import (
 
 const (
 	// default subscription channel buffer size
-	subBufferSize = 5000
+	subBufferSize = 50
 
 	// applicationIDKey is the key name set on the route params to identify the application
 	applicationIDKey = "device_id"
