@@ -8,14 +8,13 @@ import (
 // MemoryKVStore is a struct representing an in-memory key-value store.
 type MemoryKVStore struct {
 	data  map[string]map[string][]byte
-	mutex *sync.RWMutex
+	mutex sync.RWMutex
 }
 
 // NewMemoryKVStore returns a new configured MemoryKVStore.
 func NewMemoryKVStore() *MemoryKVStore {
 	return &MemoryKVStore{
-		data:  make(map[string]map[string][]byte),
-		mutex: &sync.RWMutex{},
+		data: make(map[string]map[string][]byte),
 	}
 }
 
