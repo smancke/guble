@@ -152,7 +152,7 @@ func TestSub_Restart(t *testing.T) {
 	routerMock.EXPECT().Subscribe(gomock.Any())
 
 	sub.start()
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 
 	// subscription route shouldn't be equal anymore
 	a.NotEqual(route, sub.route)
