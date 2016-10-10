@@ -1,6 +1,7 @@
 package apns
 
 import (
+	"crypto/tls"
 	"errors"
 	log "github.com/Sirupsen/logrus"
 	"github.com/sideshow/apns2"
@@ -27,7 +28,9 @@ var (
 // Config is used for configuring the APNS module.
 type Config struct {
 	Enabled             *bool
+	Production          *bool
 	CertificateFileName *string
+	CertificateBytes    *[]byte
 	CertificatePassword *string
 }
 
@@ -48,7 +51,7 @@ func New(router router.Router, prefix string, config Config) (*Connector, error)
 		return nil, err
 	}
 	return &Connector{
-		client:  getClient(*config.CertificateFileName, *config.CertificatePassword, false),
+		client:  getClient(config),
 		router:  router,
 		kvStore: kvStore,
 		prefix:  prefix,
@@ -62,14 +65,17 @@ func (conn *Connector) Start() error {
 	// temporarily: send a notification when connector is starting
 	// topic + device are given using environment variables
 	if conn.client != nil {
-		topic := os.Getenv("APNS_TOPIC")
-		deviceToken := os.Getenv("APNS_DEVICE_TOKEN")
-		p := payload.NewPayload().
-			AlertTitle("REWE Guble").
-			AlertBody("Guble APNS connector just started").
-			ZeroBadge().
-			ContentAvailable()
-		sendAlert(conn.client, topic, deviceToken, p)
+		sendAlert(conn.client,
+			&apns2.Notification{
+				Priority:    apns2.PriorityHigh,
+				Topic:       os.Getenv("APNS_TOPIC"),
+				DeviceToken: os.Getenv("APNS_DEVICE_TOKEN"),
+				Payload: payload.NewPayload().
+					AlertTitle("REWE").
+					AlertBody("Guble APNS connector just started").
+					Badge(1).
+					ContentAvailable(),
+			})
 	}
 	return nil
 }
@@ -92,7 +98,7 @@ func (conn *Connector) GetPrefix() string {
 	return conn.prefix
 }
 
-// ServeHTTP handles the subscription in APNS
+// ServeHTTP handles the subscription-related processes in APNS
 func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
@@ -101,25 +107,28 @@ func (conn *Connector) Check() error {
 	return nil
 }
 
-func getClient(certFileName string, certPassword string, production bool) *apns2.Client {
-	cert, errCert := certificate.FromP12File(certFileName, certPassword)
+func getClient(c Config) *apns2.Client {
+	var (
+		cert    tls.Certificate
+		errCert error
+	)
+	if c.CertificateFileName != nil && *c.CertificateFileName != "" {
+		cert, errCert = certificate.FromP12File(*c.CertificateFileName, *c.CertificatePassword)
+	} else {
+		cert, errCert = certificate.FromP12Bytes(*c.CertificateBytes, *c.CertificatePassword)
+	}
 	if errCert != nil {
 		log.WithError(errCert).Error("APNS certificate error")
+		return nil
 	}
-	if production {
+	if *c.Production {
 		return apns2.NewClient(cert).Production()
 	}
 	return apns2.NewClient(cert).Development()
 }
 
-func sendAlert(cl *apns2.Client, topic string, deviceToken string, p *payload.Payload) error {
-	notification := &apns2.Notification{
-		Priority:    apns2.PriorityHigh,
-		Topic:       topic,
-		DeviceToken: deviceToken,
-		Payload:     p,
-	}
-	response, errPush := cl.Push(notification)
+func sendAlert(cl *apns2.Client, n *apns2.Notification) error {
+	response, errPush := cl.Push(n)
 	if errPush != nil {
 		log.WithError(errPush).Error("APNS error when trying to push notification")
 		return errPush

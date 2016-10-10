@@ -148,12 +148,18 @@ var (
 				String(),
 		},
 		APNS: apns.Config{
-			Enabled: kingpin.Flag("apns", "Enable the APNS connector").
+			Enabled: kingpin.Flag("apns", "Enable the APNS connector (by default, in Development mode)").
 				Envar("GUBLE_APNS").
 				Bool(),
-			CertificateFileName: kingpin.Flag("apns-cert-file", "The APNS certificate file").
+			Production: kingpin.Flag("apns-production", "Enable the APNS connector in Production mode").
+				Envar("GUBLE_APNS_PRODUCTION").
+				Bool(),
+			CertificateFileName: kingpin.Flag("apns-cert-file", "The APNS certificate file name").
 				Envar("GUBLE_APNS_CERT_FILE").
 				String(),
+			CertificateBytes: kingpin.Flag("apns-cert-bytes", "The APNS certificate bytes, as a string of hex-values").
+				Envar("GUBLE_APNS_CERT_BYTES").
+				HexBytes(),
 			CertificatePassword: kingpin.Flag("apns-cert-password", "The APNS certificate password").
 				Envar("GUBLE_APNS_CERT_PASSWORD").
 				String(),
