@@ -18,11 +18,11 @@ const (
 	// schema is the default database schema for APNS
 	schema = "apns_registration"
 
-	msgAPNSNotSent = "APNS notification was not sent"
+	msgNotSent = "APNS notification was not sent"
 )
 
 var (
-	errAPNSNotSent = errors.New(msgAPNSNotSent)
+	ErrAPNSNotSent = errors.New(msgNotSent)
 )
 
 // Config is used for configuring the APNS module.
@@ -65,17 +65,16 @@ func (conn *Connector) Start() error {
 	// temporarily: send a notification when connector is starting
 	// topic + device are given using environment variables
 	if conn.client != nil {
-		sendAlert(conn.client,
-			&apns2.Notification{
-				Priority:    apns2.PriorityHigh,
-				Topic:       os.Getenv("APNS_TOPIC"),
-				DeviceToken: os.Getenv("APNS_DEVICE_TOKEN"),
-				Payload: payload.NewPayload().
-					AlertTitle("REWE").
-					AlertBody("Guble APNS connector just started").
-					Badge(1).
-					ContentAvailable(),
-			})
+		conn.sendAlert(&apns2.Notification{
+			Priority:    apns2.PriorityHigh,
+			Topic:       os.Getenv("APNS_TOPIC"),
+			DeviceToken: os.Getenv("APNS_DEVICE_TOKEN"),
+			Payload: payload.NewPayload().
+				AlertTitle("REWE").
+				AlertBody("Guble APNS connector just started").
+				Badge(1).
+				ContentAvailable(),
+		})
 	}
 	return nil
 }
@@ -127,15 +126,15 @@ func getClient(c Config) *apns2.Client {
 	return apns2.NewClient(cert).Development()
 }
 
-func sendAlert(cl *apns2.Client, n *apns2.Notification) error {
-	response, errPush := cl.Push(n)
+func (conn *Connector) sendAlert(n *apns2.Notification) error {
+	response, errPush := conn.client.Push(n)
 	if errPush != nil {
 		log.WithError(errPush).Error("APNS error when trying to push notification")
 		return errPush
 	}
 	if !response.Sent() {
-		log.WithField("id", response.ApnsID).WithField("reason", response.Reason).Error(msgAPNSNotSent)
-		return errAPNSNotSent
+		log.WithField("id", response.ApnsID).WithField("reason", response.Reason).Error(msgNotSent)
+		return ErrAPNSNotSent
 	}
 	log.WithField("id", response.ApnsID).Debug("APNS notification was successfully sent")
 	return nil
