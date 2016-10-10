@@ -29,11 +29,13 @@ import (
 
 	"github.com/pkg/profile"
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/apns"
 )
 
 const (
 	fileOption = "file"
 	fcmPath    = "/gcm/"
+	apnsPath   = "/apns/"
 )
 
 var AfterMessageDelivery = func(m *protocol.Message) {
@@ -137,6 +139,20 @@ var CreateModules = func(router router.Router) []interface{} {
 		}
 	} else {
 		logger.Info("Firebase Cloud Messaging: disabled")
+	}
+
+	if *Config.APNS.Enabled {
+		logger.Info("APNS: enabled")
+		if *Config.APNS.CertificateFileName == "" || *Config.APNS.CertificatePassword == "" {
+			logger.Panic("The certificate filename and password have to be provided when APNS is enabled")
+		}
+		if apnsConn, err := apns.New(router, apnsPath, Config.APNS); err != nil {
+			logger.WithError(err).Error("Error creating APNS connector")
+		} else {
+			modules = append(modules, apnsConn)
+		}
+	} else {
+		logger.Info("APNS: disabled")
 	}
 
 	return modules

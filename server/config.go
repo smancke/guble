@@ -6,6 +6,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	"fmt"
+	"github.com/smancke/guble/server/apns"
 	"github.com/smancke/guble/server/fcm"
 	"net"
 	"runtime"
@@ -63,6 +64,7 @@ type (
 		Profile         *string
 		Postgres        PostgresConfig
 		FCM             fcm.Config
+		APNS            apns.Config
 		Cluster         ClusterConfig
 	}
 )
@@ -143,6 +145,17 @@ var (
 			Endpoint: kingpin.Flag("fcm-endpoint", "The Google Firebase Cloud Messaging endpoint").
 				Default(defaultFCMEndpoint).
 				Envar("GUBLE_FCM_ENDPOINT").
+				String(),
+		},
+		APNS: apns.Config{
+			Enabled: kingpin.Flag("apns", "Enable the APNS connector").
+				Envar("GUBLE_APNS").
+				Bool(),
+			CertificateFileName: kingpin.Flag("apns-cert-file", "The APNS certificate file").
+				Envar("GUBLE_APNS_CERT_FILE").
+				String(),
+			CertificatePassword: kingpin.Flag("apns-cert-password", "The APNS certificate password").
+				Envar("GUBLE_APNS_CERT_PASSWORD").
 				String(),
 		},
 		Cluster: ClusterConfig{
