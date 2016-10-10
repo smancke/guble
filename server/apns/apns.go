@@ -7,7 +7,6 @@ import (
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/certificate"
 	"github.com/sideshow/apns2/payload"
-	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
 	"net/http"
 	"os"
@@ -36,26 +35,20 @@ type Config struct {
 
 // Connector is the structure for handling the communication with APNS
 type Connector struct {
-	client  *apns2.Client
-	router  router.Router
-	kvStore kvstore.KVStore
-	prefix  string
-	stopC   chan bool
-	wg      sync.WaitGroup
+	client *apns2.Client
+	router router.Router
+	prefix string
+	stopC  chan bool
+	wg     sync.WaitGroup
 }
 
 // New creates a new *Connector without starting it
 func New(router router.Router, prefix string, config Config) (*Connector, error) {
-	kvStore, err := router.KVStore()
-	if err != nil {
-		return nil, err
-	}
 	return &Connector{
-		client:  getClient(config),
-		router:  router,
-		kvStore: kvStore,
-		prefix:  prefix,
-		stopC:   make(chan bool),
+		client: getClient(config),
+		router: router,
+		prefix: prefix,
+		stopC:  make(chan bool),
 	}, nil
 }
 
