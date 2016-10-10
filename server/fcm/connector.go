@@ -241,7 +241,7 @@ func (conn *Connector) retrieveSubscription(w http.ResponseWriter, userID, fcmID
 	topics := make([]string, 0)
 
 	for k, v := range conn.subscriptions {
-		logger.WithField("key", k).Info("retriveAllSubscription")
+		logger.WithField("key", k).Info("retrieveSubscription")
 		if v.route.Get(applicationIDKey) == fcmID && v.route.Get(userIDKey) == userID {
 			logger.WithField("path", v.route.Path).Info("retriveAllSubscription path")
 			topics = append(topics, trimPrefixSlash(string(v.route.Path)))
