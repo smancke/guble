@@ -234,7 +234,6 @@ func TestConnector_StartWithMessageSending(t *testing.T) {
 }
 
 func TestConnector_GetErrorMessageFromFCM(t *testing.T) {
-	defer testutil.EnableDebugForMethod()()
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
