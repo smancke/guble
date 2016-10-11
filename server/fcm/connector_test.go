@@ -258,6 +258,10 @@ func TestConnector_GetErrorMessageFromFCM(t *testing.T) {
 		appid := route.Get(applicationIDKey)
 		a.Equal("fcmCanonicalID", appid)
 	})
+	msMock := NewMockMessageStore(testutil.MockCtrl)
+
+	routerMock.EXPECT().MessageStore().Return(msMock, nil)
+	msMock.EXPECT().MaxMessageID(gomock.Any()).Return(uint64(4), nil)
 
 	// Wait for subscriptions to finish loading
 	time.Sleep(100 * time.Millisecond)

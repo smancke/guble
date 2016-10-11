@@ -2,7 +2,6 @@ package fcm
 
 import (
 	"errors"
-	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -126,10 +125,11 @@ func (s *subscription) remove() *subscription {
 
 // start loop to receive messages from route
 func (s *subscription) start() error {
-	if err := s.subscribe(); err != nil {
+	s.route.FetchRequest = s.createFetchRequest()
+	go s.subscriptionLoop()
+	if err := s.route.Provide(s.connector.router, true); err != nil {
 		return err
 	}
-	go s.subscriptionLoop()
 	return nil
 }
 
@@ -141,38 +141,15 @@ func (s *subscription) restart() error {
 		ChannelSize: subBufferSize,
 	})
 
-	// fetch until we reach the end
-	for s.shouldFetch() {
-		// fetch from last id if applicable
-		if err := s.fetch(); err != nil {
-			return err
-		}
-	}
-
-	// subscribe to the router and start
+	// subscribe to the router and start the loop
 	return s.start()
 }
 
-// returns true if we should continue fetching
-// checks if lastID has not reached maxMessageID from partition
-func (s *subscription) shouldFetch() bool {
+func (s *subscription) createFetchRequest() *store.FetchRequest {
 	if s.lastID <= 0 {
-		return false
+		return nil
 	}
-
-	messageStore, err := s.connector.router.MessageStore()
-	if err != nil {
-		s.logger.WithField("error", err).Error("Error retrieving message store instance from router")
-		return false
-	}
-
-	maxID, err := messageStore.MaxMessageID(s.route.Path.Partition())
-	if err != nil {
-		s.logger.WithField("error", err).Error("Error retrieving max message ID")
-		return false
-	}
-
-	return s.lastID < maxID
+	return store.NewFetchRequest("", s.lastID+1, 0, store.DirectionForward, -1)
 }
 
 // subscriptionLoop that will run in a goroutine and pipe messages from route to fcm
@@ -235,58 +212,6 @@ func (s *subscription) subscriptionLoop() {
 		if stoppingErr, ok := err.(*router.ModuleStoppingError); ok {
 			s.logger.WithField("error", stoppingErr).Debug("Error restarting subscription")
 		}
-	}
-}
-
-// fetch messages from store starting with lastID
-func (s *subscription) fetch() error {
-	s.connector.wg.Add(1)
-	defer func() {
-		s.logger.WithField("lastID", s.lastID).Debug("Stop fetching")
-		s.connector.wg.Done()
-	}()
-
-	s.logger.WithField("lastID", s.lastID).Debug("Fetching from store")
-	req := s.createFetchRequest()
-	if err := s.connector.router.Fetch(req); err != nil {
-		return err
-	}
-
-	for {
-		select {
-		case results := <-req.StartC:
-			s.logger.WithField("count", results).Debug("Receiving count")
-		case msgAndID, open := <-req.MessageC:
-			if !open {
-				s.logger.Debug("Fetch channel closed.")
-				return nil
-			}
-			message, err := protocol.ParseMessage(msgAndID.Message)
-			if err != nil {
-				return err
-			}
-			s.logger.WithFields(log.Fields{"ID": msgAndID.ID, "parsedID": message.ID}).Debug("Fetched message")
-
-			// Pipe message into fcm connector
-			s.pipe(message)
-		case err := <-req.ErrorC:
-			return err
-		case <-s.connector.stopC:
-			s.logger.Debug("Stopping fetch because service is shutting down")
-			return nil
-		}
-	}
-}
-
-func (s *subscription) createFetchRequest() *store.FetchRequest {
-	return &store.FetchRequest{
-		Partition: s.route.Path.Partition(),
-		StartID:   s.lastID + 1,
-		Direction: 1,
-		Count:     math.MaxInt32,
-		MessageC:  make(chan *store.FetchedMessage, 5),
-		ErrorC:    make(chan error),
-		StartC:    make(chan int),
 	}
 }
 

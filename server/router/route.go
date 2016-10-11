@@ -62,10 +62,6 @@ func NewRoute(config RouteConfig) *Route {
 		logger: logger.WithFields(log.Fields{"path": config.Path, "params": config.RouteParams}),
 	}
 
-	if route.FetchRequest != nil {
-		route.FetchRequest.Partition = route.Path.Partition()
-	}
-
 	return route
 }
 
@@ -144,6 +140,11 @@ func (r *Route) Provide(router Router, subscribe bool) error {
 }
 
 func (r *Route) handleFetch(router Router) error {
+	if r.isInvalid() {
+		return ErrInvalidRoute
+	}
+
+	r.FetchRequest.Partition = r.Path.Partition()
 	ms, err := router.MessageStore()
 	if err != nil {
 		return err
@@ -159,6 +160,10 @@ REFETCH:
 	maxID, err := ms.MaxMessageID(r.FetchRequest.Partition)
 	if err != nil {
 		return err
+	}
+
+	if r.FetchRequest.StartID > maxID && r.FetchRequest.Direction == store.DirectionForward {
+		return nil
 	}
 
 	if received >= r.FetchRequest.Count || lastID >= maxID ||
@@ -188,7 +193,9 @@ REFETCH:
 			}
 
 			r.logger.WithField("messageID", message.ID).Debug("Sending fetched message in channel")
-			r.Deliver(message)
+			if err := r.Deliver(message); err != nil {
+				return err
+			}
 			lastID = message.ID
 			received++
 		case err := <-r.FetchRequest.Errors():

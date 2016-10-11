@@ -1,6 +1,12 @@
 package store
 
-import "math"
+import (
+	"errors"
+	"math"
+	"sync"
+)
+
+var ErrRequestDone = errors.New("Fetch request is done")
 
 const (
 	DirectionOneMessage FetchDirection = 0
@@ -21,6 +27,7 @@ type FetchedMessage struct {
 
 // FetchRequest is used for fetching messages in a MessageStore.
 type FetchRequest struct {
+	sync.RWMutex
 
 	// Partition is the Store name to search for messages
 	Partition string
@@ -50,6 +57,8 @@ type FetchRequest struct {
 	// is returned, before sending the first message.
 	// The Fetch() methods blocks on putting the number to the start channel.
 	StartC chan int
+
+	done bool
 }
 
 // Creates a new FetchRequest pointer initialized with provided values
@@ -69,6 +78,10 @@ func NewFetchRequest(partition string, start, end uint64, direction FetchDirecti
 }
 
 func (fr *FetchRequest) Init() {
+	fr.Lock()
+	defer fr.Unlock()
+	fr.done = false
+
 	fr.StartC = make(chan int)
 	fr.MessageC = make(chan *FetchedMessage, FetchBufferSize)
 	fr.ErrorC = make(chan error)
@@ -104,6 +117,16 @@ func (fr *FetchRequest) PushError(err error) {
 	fr.ErrorC <- err
 }
 
+func (fr *FetchRequest) IsDone() bool {
+	fr.RLock()
+	defer fr.RUnlock()
+	return fr.done
+}
+
 func (fr *FetchRequest) Done() {
+	fr.Lock()
+	defer fr.Unlock()
+	fr.done = true
+
 	close(fr.MessageC)
 }

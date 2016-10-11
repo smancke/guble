@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	fetchMessage = `/foo/bar,42,user01,phone01,id123,1420110000,1
+	fetchMessage = `/foo/bar,42,user01,phone01,{},1420110000,1
 {"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}
 Hello World`
 	dummyFCMResponse = &gcm.Response{
@@ -27,71 +27,6 @@ Hello World`
 		Results: []gcm.Result{{Error: "NotRegistered"}},
 	}
 )
-
-func TestSub_Fetch(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
-
-	a := assert.New(t)
-
-	g, routerMock, _ := testSimpleFCM(t, false)
-
-	route := router.NewRoute(router.RouteConfig{
-		RouteParams: router.RouteParams{userIDKey: "user01", applicationIDKey: "phone01"},
-		Path:        protocol.Path("/foo/bar"),
-		ChannelSize: subBufferSize,
-	})
-	sub := newSubscription(g, route, 2)
-
-	// simulate the fetch
-	routerMock.EXPECT().Fetch(gomock.Any()).Do(func(req *store.FetchRequest) {
-		go func() {
-			// send 2 messages from the store
-			req.StartC <- 2
-			var id uint64 = 3
-			for i := 0; i < 2; i++ {
-				req.MessageC <- &store.FetchedMessage{
-					ID:      id,
-					Message: []byte(strings.Replace(fetchMessage, "42", strconv.FormatUint(id, 10), 1)),
-				}
-				id++
-			}
-			close(req.MessageC)
-		}()
-	})
-
-	done := make(chan struct{})
-
-	// read messages from fcm pipeline, must read 2 messages
-	go func() {
-		// pipe message
-		pm := <-g.pipelineC
-		a.Equal(uint64(3), pm.message.ID)
-		// acknowledge the response
-		pm.resultC <- dummyFCMResponse
-
-		// pipe message
-		pm = <-g.pipelineC
-		a.Equal(uint64(4), pm.message.ID)
-		pm.resultC <- dummyFCMResponse
-
-		close(done)
-	}()
-
-	go func() {
-		select {
-		case <-done:
-			// all good
-		case <-time.After(30 * time.Millisecond):
-			// taking too long, fail the test
-			a.Fail("Fetching messages and piping them took too long.")
-		}
-	}()
-
-	// start subscription fetching
-	err := sub.fetch()
-	a.NoError(err)
-}
 
 // Test that if a route is closed, but no explicit shutdown the subscription will
 // try to re-fetch messages from store and then resubscribe
@@ -123,15 +58,9 @@ func TestSub_Restart(t *testing.T) {
 		}
 	}()
 
-	routerMock.EXPECT().Subscribe(gomock.Eq(route))
+	storeMock.EXPECT().MaxMessageID(gomock.Eq("foo")).Return(uint64(4), nil).AnyTimes()
 
-	// expect again for a subscription
-	routerMock.EXPECT().Subscribe(gomock.Any())
-	storeMock.EXPECT().MaxMessageID("foo").Return(uint64(4), nil).AnyTimes()
-
-	sub.start()
-
-	time.Sleep(10 * time.Millisecond)
+	routerMock.EXPECT().Done().Return(make(chan bool)).AnyTimes()
 
 	// simulate the fetch
 	routerMock.EXPECT().Fetch(gomock.Any()).Do(func(req *store.FetchRequest) {
@@ -146,12 +75,18 @@ func TestSub_Restart(t *testing.T) {
 				}
 				id++
 			}
-			close(req.MessageC)
+			req.Done()
 		}()
 	})
+
+	// Forcefully close the route so the subscription runs the restart
 	route.Close()
 
-	time.Sleep(20 * time.Millisecond)
+	// expect again for a subscription
+	routerMock.EXPECT().Subscribe(gomock.Any())
+
+	sub.start()
+	time.Sleep(50 * time.Millisecond)
 
 	// subscription route shouldn't be equal anymore
 	a.NotEqual(route, sub.route)

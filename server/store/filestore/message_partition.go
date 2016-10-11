@@ -431,6 +431,10 @@ func (p *messagePartition) Fetch(req *store.FetchRequest) {
 // fetchByFetchlist fetches the messages in the supplied fetchlist and sends them to the message-channel
 func (p *messagePartition) fetchByFetchlist(fetchList *indexList, req *store.FetchRequest) error {
 	return fetchList.mapWithPredicate(func(index *index, _ int) error {
+		if req.IsDone() {
+			return store.ErrRequestDone
+		}
+
 		filename := p.composeMsgFilenameForPosition(uint64(index.fileID))
 		file, err := os.Open(filename)
 		if err != nil {
