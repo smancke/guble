@@ -251,20 +251,20 @@ func (s *subscription) setLastID(ID uint64) error {
 
 // pipe sends a message into the pipeline and waits for response saving the last id in the kvstore
 func (s *subscription) pipe(m *protocol.Message) error {
-	pipeMessage := newSubscriptionMessage(s, m)
-	defer pipeMessage.closeChannels()
+	subscriptionMessage := newSubscriptionMessage(s, m)
+	defer subscriptionMessage.closeChannels()
 
-	s.connector.pipelineC <- pipeMessage
+	s.connector.pipelineC <- subscriptionMessage
 
 	// wait for response
 	select {
-	case response := <-pipeMessage.resultC:
+	case response := <-subscriptionMessage.resultC:
 		s.logger.WithField("messageID", m.ID).Debug("Delivered message to FCM")
-		if err := s.setLastID(pipeMessage.message.ID); err != nil {
+		if err := s.setLastID(subscriptionMessage.message.ID); err != nil {
 			return err
 		}
 		return s.handleFCMResponse(response)
-	case err := <-pipeMessage.errC:
+	case err := <-subscriptionMessage.errC:
 		if err == errIgnoreMessage {
 			s.logger.WithField("message", m).Info("Ignoring message")
 			return nil
