@@ -15,8 +15,6 @@ import (
 	"github.com/smancke/guble/server/store"
 )
 
-var logger = log.WithField("module", "filestore")
-
 // FileMessageStore is a struct used by the filesystem-based implementation of the MessageStore interface.
 // It holds the base directory, a map of messagePartitions etc.
 type FileMessageStore struct {

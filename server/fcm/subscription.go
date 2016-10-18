@@ -114,9 +114,9 @@ func (s *subscription) subscribe() error {
 	return nil
 }
 
-// unsubscribe from router and remove KVStore
+// unsubscribe from router and remove from KVStore
 func (s *subscription) remove() *subscription {
-	s.logger.Info("Removing subscription")
+	s.logger.Debug("Removing subscription")
 	s.connector.router.Unsubscribe(s.route)
 	delete(s.connector.subscriptions, s.Key())
 	s.connector.kvStore.Delete(schema, s.Key())

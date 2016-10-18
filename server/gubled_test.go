@@ -58,6 +58,7 @@ func TestFCMOnlyStartedIfEnabled(t *testing.T) {
 
 	*Config.FCM.Enabled = true
 	*Config.FCM.APIKey = "xyz"
+	*Config.APNS.Enabled = false
 	a.True(containsFCMModule(CreateModules(routerMock)))
 
 	*Config.FCM.Enabled = false
@@ -112,6 +113,7 @@ func TestStartServiceModules(t *testing.T) {
 	*Config.KVS = "memory"
 	*Config.MS = "file"
 	*Config.FCM.Enabled = false
+	*Config.APNS.Enabled = false
 
 	// using an available port for http
 	testHttpPort++
