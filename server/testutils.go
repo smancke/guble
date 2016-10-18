@@ -99,11 +99,11 @@ func newTestClusterNode(t *testing.T, nodeConfig testClusterNodeConfig) *testClu
 	s := StartService()
 
 	var (
-		gcmConnector *fcm.Connector
+		fcmConnector *fcm.Connector
 		ok           bool
 	)
 	for _, iface := range s.ModulesSortedByStartOrder() {
-		if gcmConnector, ok = iface.(*fcm.Connector); ok {
+		if fcmConnector, ok = iface.(*fcm.Connector); ok {
 			break
 		}
 	}
@@ -116,7 +116,7 @@ func newTestClusterNode(t *testing.T, nodeConfig testClusterNodeConfig) *testClu
 		t: t,
 		FCM: &TestFCM{
 			t:         t,
-			Connector: gcmConnector,
+			Connector: fcmConnector,
 		},
 		Service: s,
 	}
@@ -158,20 +158,20 @@ type TestFCM struct {
 	timeout   time.Duration
 }
 
-func (tgcm *TestFCM) setupRoundTripper(timeout time.Duration, bufferSize int, response string) {
-	tgcm.receiveC = make(chan bool, bufferSize)
-	tgcm.timeout = timeout
-	tgcm.Connector.Sender = testutil.CreateGcmSender(
-		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, response, tgcm.receiveC, timeout))
+func (tfcm *TestFCM) setupRoundTripper(timeout time.Duration, bufferSize int, response string) {
+	tfcm.receiveC = make(chan bool, bufferSize)
+	tfcm.timeout = timeout
+	tfcm.Connector.Sender = testutil.CreateFcmSender(
+		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, response, tfcm.receiveC, timeout))
 
 	// start counting the received messages to FCM
-	tgcm.receive()
+	tfcm.receive()
 }
 
-func (tgcm *TestFCM) subscribe(addr, topic, id string) {
-	urlFormat := fmt.Sprintf("http://%s/gcm/user_%%s/gcm_%%s/subscribe/%%s", addr)
+func (tfcm *TestFCM) subscribe(addr, topic, id string) {
+	urlFormat := fmt.Sprintf("http://%s/fcm/user_%%s/gcm_%%s/subscribe/%%s", addr)
 
-	a := assert.New(tgcm.t)
+	a := assert.New(tfcm.t)
 
 	response, err := http.Post(
 		fmt.Sprintf(urlFormat, id, id, strings.TrimPrefix(topic, "/")), "text/plain", bytes.NewBufferString(""),
@@ -185,10 +185,10 @@ func (tgcm *TestFCM) subscribe(addr, topic, id string) {
 	a.Equal(fmt.Sprintf("{\"subscribed\":\"%s\"}", topic), string(body))
 }
 
-func (tgcm *TestFCM) unsubscribe(addr, topic, id string) {
-	urlFormat := fmt.Sprintf("http://%s/gcm/user_%%s/gcm_%%s/subscribe/%%s", addr)
+func (tfcm *TestFCM) unsubscribe(addr, topic, id string) {
+	urlFormat := fmt.Sprintf("http://%s/fcm/user_%%s/gcm_%%s/subscribe/%%s", addr)
 
-	a := assert.New(tgcm.t)
+	a := assert.New(tfcm.t)
 
 	req, err := http.NewRequest(
 		http.MethodDelete,
@@ -210,23 +210,23 @@ func (tgcm *TestFCM) unsubscribe(addr, topic, id string) {
 
 // Wait waits count * tgcm.timeout, wait ensure count number of messages have been waited to pass
 // through GCM round tripper
-func (tgcm *TestFCM) wait(count int) {
-	time.Sleep(time.Duration(count) * tgcm.timeout)
+func (tfcm *TestFCM) wait(count int) {
+	time.Sleep(time.Duration(count) * tfcm.timeout)
 }
 
 // Receive starts a goroutine that will receive on the receiveC and increment the Received counter
 // Returns an error if channel is not create
-func (tgcm *TestFCM) receive() error {
-	if tgcm.receiveC == nil {
+func (tfcm *TestFCM) receive() error {
+	if tfcm.receiveC == nil {
 		return errors.New("Round tripper not created")
 	}
 
 	go func() {
 		for {
-			if _, opened := <-tgcm.receiveC; opened {
-				tgcm.Lock()
-				tgcm.Received++
-				tgcm.Unlock()
+			if _, opened := <-tfcm.receiveC; opened {
+				tfcm.Lock()
+				tfcm.Received++
+				tfcm.Unlock()
 			}
 		}
 	}()
@@ -234,21 +234,21 @@ func (tgcm *TestFCM) receive() error {
 	return nil
 }
 
-func (tgcm *TestFCM) checkReceived(expected int) {
-	time.Sleep((50 * time.Millisecond) + tgcm.timeout)
-	tgcm.RLock()
-	defer tgcm.RUnlock()
-	assert.Equal(tgcm.t, expected, tgcm.Received)
+func (tfcm *TestFCM) checkReceived(expected int) {
+	time.Sleep((50 * time.Millisecond) + tfcm.timeout)
+	tfcm.RLock()
+	defer tfcm.RUnlock()
+	assert.Equal(tfcm.t, expected, tfcm.Received)
 }
 
-func (tgcm *TestFCM) reset() {
-	tgcm.Lock()
-	defer tgcm.Unlock()
-	tgcm.Received = 0
+func (tfcm *TestFCM) reset() {
+	tfcm.Lock()
+	defer tfcm.Unlock()
+	tfcm.Received = 0
 }
 
-func (tgcm *TestFCM) cleanup() {
-	if tgcm.receiveC != nil {
-		close(tgcm.receiveC)
+func (tfcm *TestFCM) cleanup() {
+	if tfcm.receiveC != nil {
+		close(tfcm.receiveC)
 	}
 }

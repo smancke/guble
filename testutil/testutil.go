@@ -116,7 +116,7 @@ func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) 
 	return rt(req), nil
 }
 
-func CreateGcmSender(rt RoundTripperFunc) gcm.Sender {
+func CreateFcmSender(rt RoundTripperFunc) gcm.Sender {
 	log.WithFields(log.Fields{
 		"module": "testing",
 	}).Debug("Create FCM sender")
