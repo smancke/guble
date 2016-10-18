@@ -37,8 +37,6 @@ const (
 	syncPath = protocol.Path("/fcm/sync")
 )
 
-var logger = log.WithField("module", "fcm")
-
 // Config is used for configuring the Firebase Cloud Messaging component.
 type Config struct {
 	Enabled              *bool
@@ -56,7 +54,7 @@ type Connector struct {
 	cluster              *cluster.Cluster
 	kvStore              kvstore.KVStore
 	prefix               string
-	pipelineC            chan *pipeMessage
+	pipelineC            chan *subscriptionMessage
 	stopC                chan bool
 	nWorkers             int
 	wg                   sync.WaitGroup
@@ -81,7 +79,7 @@ func New(router router.Router, prefix string, config Config) (*Connector, error)
 		cluster:              router.Cluster(),
 		kvStore:              kvStore,
 		prefix:               prefix,
-		pipelineC:            make(chan *pipeMessage, bufferSize),
+		pipelineC:            make(chan *subscriptionMessage, bufferSize),
 		stopC:                make(chan bool),
 		subscriptions:        make(map[string]*subscription),
 		nWorkers:             *config.Workers,
@@ -168,7 +166,7 @@ func (conn *Connector) loopPipeline(id int) {
 	}
 }
 
-func (conn *Connector) sendMessage(pm *pipeMessage) {
+func (conn *Connector) sendMessage(pm *subscriptionMessage) {
 	fcmID := pm.subscription.route.Get(applicationIDKey)
 
 	fcmMessage := pm.fcmMessage()

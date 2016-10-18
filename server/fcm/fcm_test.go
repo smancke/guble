@@ -217,7 +217,7 @@ func TestConnector_StartWithMessageSending(t *testing.T) {
 	}
 	s := newSubscription(g, route, 0)
 
-	msgWithNoRecipients := newPipeMessage(s, &protocol.Message{
+	msgWithNoRecipients := newSubscriptionMessage(s, &protocol.Message{
 		ID:   uint64(4),
 		Body: []byte("{id:id}"),
 		Time: 1405544146,

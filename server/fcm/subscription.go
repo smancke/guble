@@ -31,14 +31,6 @@ var (
 	errSubscriptionExists = errors.New("Subscription exists")
 )
 
-type jsonError struct {
-	json string
-}
-
-func (e *jsonError) Error() string {
-	return e.json
-}
-
 // subscription represents a FCM subscription
 type subscription struct {
 	connector *Connector
@@ -259,7 +251,7 @@ func (s *subscription) setLastID(ID uint64) error {
 
 // pipe sends a message into the pipeline and waits for response saving the last id in the kvstore
 func (s *subscription) pipe(m *protocol.Message) error {
-	pipeMessage := newPipeMessage(s, m)
+	pipeMessage := newSubscriptionMessage(s, m)
 	defer pipeMessage.closeChannels()
 
 	s.connector.pipelineC <- pipeMessage
