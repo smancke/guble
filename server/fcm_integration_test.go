@@ -73,10 +73,10 @@ func TestFCMRestart(t *testing.T) {
 			break
 		}
 	}
-	a.True(ok, "There should be a module of type GCMConnector")
+	a.True(ok, "There should be a module of type FCMConnector")
 
 	// add a high timeout so the messages are processed slow
-	fcmConn.Sender = testutil.CreateGcmSender(
+	fcmConn.Sender = testutil.CreateFcmSender(
 		testutil.CreateRoundTripperWithCountAndTimeout(
 			http.StatusOK, testutil.SuccessFCMResponse, receiveC, 10*time.Millisecond))
 
@@ -96,7 +96,7 @@ func TestFCMRestart(t *testing.T) {
 	select {
 	case <-receiveC:
 	case <-time.After(timeoutForOneMessage):
-		a.Fail("Initial GCM message not received")
+		a.Fail("Initial FCM message not received")
 	}
 
 	assertMetrics(a, s, expectedValues{false, 1, 1, 1})
@@ -121,7 +121,7 @@ func TestFCMRestart(t *testing.T) {
 }
 
 func serviceSetUp(t *testing.T) (*service.Service, func()) {
-	dir, errTempDir := ioutil.TempDir("", "guble_gcm_test")
+	dir, errTempDir := ioutil.TempDir("", "guble_fcm_test")
 	assert.NoError(t, errTempDir)
 
 	*Config.KVS = "memory"
@@ -158,7 +158,7 @@ func clientSetUp(t *testing.T, service *service.Service) client.Client {
 func subscriptionSetUp(t *testing.T, service *service.Service) {
 	a := assert.New(t)
 
-	urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/%%s", service.WebServer().GetAddr())
+	urlFormat := fmt.Sprintf("http://%s/fcm/%%d/gcmId%%d/subscribe/%%s", service.WebServer().GetAddr())
 	// create GCM subscription
 	response, errPost := http.Post(
 		fmt.Sprintf(urlFormat, 1, 1, strings.TrimPrefix(testTopic, "/")),

@@ -34,7 +34,7 @@ import (
 
 const (
 	fileOption = "file"
-	fcmPath    = "/gcm/"
+	fcmPath    = "/fcm/"
 	apnsPath   = "/apns/"
 )
 

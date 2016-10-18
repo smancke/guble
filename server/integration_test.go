@@ -108,7 +108,7 @@ type Subscriber struct {
 	UserID   string `json:"user_id"`
 }
 
-func Test_FranzIntegration(t *testing.T) {
+func TestSubscribersIntegration(t *testing.T) {
 	defer testutil.ResetDefaultRegistryHealthCheck()
 	defer testutil.EnableDebugForMethod()()
 
@@ -139,7 +139,7 @@ func subscribeMultipleClients(t *testing.T, service *service.Service, noOfClient
 
 	// create FCM subscription for topic
 	for i := 0; i < noOfClients; i++ {
-		urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/%%s", service.WebServer().GetAddr())
+		urlFormat := fmt.Sprintf("http://%s/fcm/%%d/gcmId%%d/subscribe/%%s", service.WebServer().GetAddr())
 		url := fmt.Sprintf(urlFormat, i, i, strings.TrimPrefix(testTopic, "/"))
 		response, errPost := http.Post(
 			url,
