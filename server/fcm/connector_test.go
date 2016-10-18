@@ -333,10 +333,10 @@ func TestConnector_RetrieveNoSubscriptions(t *testing.T) {
 
 	g.ServeHTTP(w, req)
 	a.Equal(http.StatusOK, w.Code)
-	var bytes bytes.Buffer
-	err = json.NewEncoder(&bytes).Encode([]string{})
+	var b bytes.Buffer
+	err = json.NewEncoder(&b).Encode([]string{})
 	a.NoError(err)
-	a.Equal(bytes.String(), w.Body.String())
+	a.Equal(b.String(), w.Body.String())
 }
 
 func TestConnector_RetrieveSubscriptions(t *testing.T) {
@@ -373,12 +373,12 @@ func TestConnector_RetrieveSubscriptions(t *testing.T) {
 	g.ServeHTTP(w, req)
 	a.Equal(http.StatusOK, w.Code)
 
-	var bytes bytes.Buffer
+	var b bytes.Buffer
 	expTopics := []string{"test2", "test"}
 	sort.Strings(expTopics)
-	err = json.NewEncoder(&bytes).Encode(expTopics)
+	err = json.NewEncoder(&b).Encode(expTopics)
 	a.NoError(err)
-	a.JSONEq(bytes.String(), w.Body.String())
+	a.JSONEq(b.String(), w.Body.String())
 }
 
 func TestConnector_Unsubscribe(t *testing.T) {
@@ -537,7 +537,7 @@ func testFCMResponse(t *testing.T, jsonResponse string) (*Connector, *MockRouter
 
 	done := make(chan bool)
 	// return err
-	mockSender := testutil.CreateGcmSender(
+	mockSender := testutil.CreateFcmSender(
 		testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, jsonResponse, done))
 	g.Sender = mockSender
 	return g, routerMock, done

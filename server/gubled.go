@@ -33,7 +33,7 @@ import (
 
 const (
 	fileOption = "file"
-	fcmPath    = "/gcm/"
+	fcmPath    = "/fcm/"
 )
 
 var AfterMessageDelivery = func(m *protocol.Message) {

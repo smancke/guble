@@ -205,7 +205,7 @@ func (params *benchParams) setUp() {
 	}
 	a.True(ok, "There should be a module of type GCMConnector")
 
-	fcmConn.Sender = testutil.CreateGcmSender(
+	fcmConn.Sender = testutil.CreateFcmSender(
 		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, testutil.SuccessFCMResponse, params.receiveC, params.timeout))
 
 	urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/%%s", params.service.WebServer().GetAddr())
