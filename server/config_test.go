@@ -51,6 +51,18 @@ func TestParsingOfEnvironmentVariables(t *testing.T) {
 	os.Setenv("GUBLE_FCM_WORKERS", "3")
 	defer os.Unsetenv("GUBLE_FCM_WORKERS")
 
+	os.Setenv("GUBLE_APNS", "true")
+	defer os.Unsetenv("GUBLE_APNS")
+
+	os.Setenv("GUBLE_APNS_PRODUCTION", "true")
+	defer os.Unsetenv("GUBLE_APNS_PRODUCTION")
+
+	os.Setenv("GUBLE_APNS_CERT_BYTES", "00ff")
+	defer os.Unsetenv("GUBLE_APNS_CERT_BYTES")
+
+	os.Setenv("GUBLE_APNS_CERT_PASSWORD", "rotten")
+	defer os.Unsetenv("GUBLE_APNS_CERT_PASSWORD")
+
 	os.Setenv("GUBLE_NODE_ID", "1")
 	defer os.Unsetenv("GUBLE_NODE_ID")
 
@@ -103,6 +115,10 @@ func TestParsingArgs(t *testing.T) {
 		"--fcm",
 		"--fcm-api-key", "fcm-api-key",
 		"--fcm-workers", "3",
+		"--apns",
+		"--apns-production",
+		"--apns-cert-bytes", "00ff",
+		"--apns-cert-password", "rotten",
 		"--node-id", "1",
 		"--node-port", "10000",
 		"--pg-host", "pg-host",
@@ -132,6 +148,11 @@ func assertArguments(a *assert.Assertions) {
 	a.Equal(true, *Config.FCM.Enabled)
 	a.Equal("fcm-api-key", *Config.FCM.APIKey)
 	a.Equal(3, *Config.FCM.Workers)
+
+	a.Equal(true, *Config.APNS.Enabled)
+	a.Equal(true, *Config.APNS.Production)
+	a.Equal([]byte{0, 255}, *Config.APNS.CertificateBytes)
+	a.Equal("rotten", *Config.APNS.CertificatePassword)
 
 	a.Equal(uint8(1), *Config.Cluster.NodeID)
 	a.Equal(10000, *Config.Cluster.NodePort)

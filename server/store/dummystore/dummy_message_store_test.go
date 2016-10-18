@@ -65,7 +65,7 @@ func Test_DummyMessageStore_SyncIds(t *testing.T) {
 	dms.topicSequencesLock.Lock()
 	dms.setID("partition", uint64(42))
 	dms.topicSequencesLock.Unlock()
-	time.Sleep(time.Millisecond * 2)
+	time.Sleep(time.Millisecond * 4)
 
 	// the value is synced to the kv store
 	value, exist, _ := kvStore.Get(topicSchema, "partition")
