@@ -26,9 +26,9 @@ const (
 )
 
 var (
-	errSubReplaced        = errors.New("Subscription replaced")
-	errIgnoreMessage      = errors.New("Message ignored")
-	errSubscriptionExists = errors.New("Subscription exists")
+	errIgnoreMessage        = errors.New("Message ignored")
+	errSubscriptionExists   = errors.New("Subscription exists")
+	errSubscriptionReplaced = errors.New("Subscription replaced")
 )
 
 // subscription represents a FCM subscription
@@ -97,13 +97,16 @@ func (s *subscription) exists() bool {
 	return ok
 }
 
-func (s *subscription) subscribe() error {
-	if _, err := s.connector.router.Subscribe(s.route); err != nil {
-		s.logger.WithError(err).Error("Error subscribing in router")
-		return err
-	}
-	s.logger.Debug("Subscribed")
-	return nil
+// restart recreates the route and resubscribes
+func (s *subscription) restart() error {
+	s.route = router.NewRoute(router.RouteConfig{
+		RouteParams: s.route.RouteParams,
+		Path:        s.route.Path,
+		ChannelSize: subBufferSize,
+	})
+
+	// subscribe to the router and start the loop
+	return s.start()
 }
 
 // start loop to receive messages from route
@@ -114,18 +117,6 @@ func (s *subscription) start() error {
 		return err
 	}
 	return nil
-}
-
-// recreate the route and resubscribe
-func (s *subscription) restart() error {
-	s.route = router.NewRoute(router.RouteConfig{
-		RouteParams: s.route.RouteParams,
-		Path:        s.route.Path,
-		ChannelSize: subBufferSize,
-	})
-
-	// subscribe to the router and start the loop
-	return s.start()
 }
 
 func (s *subscription) createFetchRequest() *store.FetchRequest {
@@ -169,7 +160,7 @@ func (s *subscription) subscriptionLoop() {
 			if err := s.pipe(m); err != nil {
 				// abandon route if the following 2 errors are met
 				// the subscription has been replaced
-				if err == errSubReplaced {
+				if err == errSubscriptionReplaced {
 					return
 				}
 				// the subscription is not registered with FCM anymore
@@ -287,7 +278,7 @@ func (s *subscription) replaceCanonical(newFCMID string) error {
 		return err
 	}
 	newSub.start()
-	return errSubReplaced
+	return errSubscriptionReplaced
 }
 
 func (s *subscription) setLastID(ID uint64) error {
@@ -307,7 +298,7 @@ func (s *subscription) store() error {
 	return err
 }
 
-// bytes data to store in kvStore
+// bytes returns the data to store in kvStore
 func (s *subscription) bytes() []byte {
 	return []byte(strings.Join([]string{
 		s.route.Get(userIDKey),
@@ -316,7 +307,7 @@ func (s *subscription) bytes() []byte {
 	}, ":"))
 }
 
-// unsubscribe from router and remove from KVStore
+// remove unsubscribes from router, delete from connector's subscriptions, and remove from KVStore
 func (s *subscription) remove() *subscription {
 	s.logger.Debug("Removing subscription")
 	s.connector.router.Unsubscribe(s.route)
