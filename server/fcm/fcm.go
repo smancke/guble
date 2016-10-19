@@ -102,11 +102,10 @@ func (conn *Connector) Start() error {
 	// blocking until current subscriptions are loaded
 	conn.loadSubscriptions()
 
-	go func() {
-		for id := 1; id <= conn.nWorkers; id++ {
-			go conn.loopPipeline(id)
-		}
-	}()
+	for id := 1; id <= conn.nWorkers; id++ {
+		go conn.loopPipeline(id)
+	}
+
 	return nil
 }
 
