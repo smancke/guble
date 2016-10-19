@@ -180,8 +180,8 @@ func Test_NoReceiving_After_Unsubscribe(t *testing.T) {
 	node1 := newTestClusterNode(t, testClusterNodeConfig{
 		HttpListen: "0.0.0.0:8086",
 		NodeID:     1,
-		NodePort:   10000,
-		Remotes:    "0.0.0.0:10000",
+		NodePort:   10002,
+		Remotes:    "0.0.0.0:10002",
 	})
 	a.NotNil(node1)
 	defer node1.cleanup(true)
@@ -189,8 +189,8 @@ func Test_NoReceiving_After_Unsubscribe(t *testing.T) {
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
 		HttpListen: "0.0.0.0:8087",
 		NodeID:     2,
-		NodePort:   10001,
-		Remotes:    "0.0.0.0:10000",
+		NodePort:   10003,
+		Remotes:    "0.0.0.0:10002",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
