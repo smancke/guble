@@ -1,12 +1,10 @@
 package server
 
 import (
+	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/testutil"
-
-	log "github.com/Sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-
 	"testing"
 	"time"
 )
@@ -70,7 +68,7 @@ func Test_Cluster_Integration(t *testing.T) {
 		HttpListen: ":8093",
 		NodeID:     2,
 		NodePort:   11002,
-		Remotes:    "localhost:11002",
+		Remotes:    "localhost:11003",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
