@@ -130,7 +130,7 @@ WAIT:
 	}
 }
 
-var syncTopic = "/sync"
+var syncTopic = "/syncTopic"
 
 // Test synchronizing messages when a new node is
 func TestSynchronizerIntegration(t *testing.T) {
