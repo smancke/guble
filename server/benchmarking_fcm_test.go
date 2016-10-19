@@ -208,7 +208,7 @@ func (params *benchParams) setUp() {
 	fcmConn.Sender = testutil.CreateFcmSender(
 		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, testutil.SuccessFCMResponse, params.receiveC, params.timeout))
 
-	urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/%%s", params.service.WebServer().GetAddr())
+	urlFormat := fmt.Sprintf("http://%s/fcm/%%d/gcmId%%d/subscribe/%%s", params.service.WebServer().GetAddr())
 	for i := 1; i <= params.subscriptions; i++ {
 		// create GCM subscription with topic: gcmTopic
 		response, errPost := http.Post(
