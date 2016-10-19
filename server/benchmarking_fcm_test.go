@@ -203,7 +203,7 @@ func (params *benchParams) setUp() {
 			break
 		}
 	}
-	a.True(ok, "There should be a module of type GCMConnector")
+	a.True(ok, "There should be a module of type: FCM Connector")
 
 	fcmConn.Sender = testutil.CreateFcmSender(
 		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, testutil.SuccessFCMResponse, params.receiveC, params.timeout))
