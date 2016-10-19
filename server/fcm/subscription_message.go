@@ -2,10 +2,8 @@ package fcm
 
 import (
 	"encoding/json"
-
-	log "github.com/Sirupsen/logrus"
-
 	"github.com/Bogh/gcm"
+	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 )
 

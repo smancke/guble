@@ -2,16 +2,14 @@ package fcm
 
 import (
 	"errors"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/Bogh/gcm"
 	log "github.com/Sirupsen/logrus"
-
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/store"
+	"strconv"
+	"strings"
+	"time"
 )
 
 const (

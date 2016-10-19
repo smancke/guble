@@ -1,18 +1,16 @@
 package fcm
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"github.com/Bogh/gcm"
+	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/testutil"
-
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-
-	"bytes"
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
