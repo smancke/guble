@@ -1,12 +1,10 @@
 package server
 
 import (
-	"time"
-
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
-
 	"testing"
+	"time"
 )
 
 func Test_Subscribe_on_random_node(t *testing.T) {
