@@ -99,8 +99,8 @@ func (conn *Connector) Start() error {
 		}
 	}
 
-	// blocking until current subs are loaded
-	go conn.loadSubscriptions()
+	// blocking until current subscriptions are loaded
+	conn.loadSubscriptions()
 
 	go func() {
 		for id := 1; id <= conn.nWorkers; id++ {
