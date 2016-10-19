@@ -1,17 +1,14 @@
 package server
 
 import (
+	"bytes"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
-
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/server/fcm"
 	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/testutil"
-
 	"github.com/stretchr/testify/assert"
-
-	"bytes"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -221,7 +218,7 @@ func (params *benchParams) setUp() {
 
 		body, errReadAll := ioutil.ReadAll(response.Body)
 		a.NoError(errReadAll)
-		a.Equal("subscribed: /topic\n", string(body))
+		a.Equal("{\"subscribed\":\"/topic\"}", string(body))
 	}
 }
 
