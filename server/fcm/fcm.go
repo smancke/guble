@@ -180,7 +180,7 @@ func (conn *Connector) sendMessage(pm *subscriptionMessage) {
 	response, err := conn.Sender.Send(fcmMessage)
 	latencyDuration := time.Now().Sub(beforeSend)
 
-	if err != nil && !pm.subscription.isValidResponseError(err) {
+	if err != nil && !isValidResponseError(err) {
 		// Even if we receive an error we could still have a valid response
 		pm.errC <- err
 		mTotalSentMessageErrors.Add(1)
@@ -239,10 +239,10 @@ func (conn *Connector) retrieveSubscription(w http.ResponseWriter, userID, fcmID
 	topics := make([]string, 0)
 
 	for k, v := range conn.subscriptions {
-		logger.WithField("key", k).Info("retrieveSubscription")
+		logger.WithField("key", k).Debug("retrieveSubscription")
 		if v.route.Get(applicationIDKey) == fcmID && v.route.Get(userIDKey) == userID {
-			logger.WithField("path", v.route.Path).Info("retriveAllSubscription path")
-			topics = append(topics, trimPrefixSlash(string(v.route.Path)))
+			logger.WithField("path", v.route.Path).Debug("retrieveSubscription path")
+			topics = append(topics, strings.TrimPrefix(string(v.route.Path), "/"))
 		}
 	}
 
@@ -305,7 +305,7 @@ func (conn *Connector) parseUserIDAndDeviceId(path string) (userID, fcmID, unpar
 	return
 }
 
-// parseParams will parse the HTTP URL with format /fcm/:userid/:fcmid/subscribe/*topic
+// parseTopic will parse the HTTP URL with format /fcm/:userid/:fcmid/subscribe/*topic
 // returning the parsed Params, or error if the request is not in the correct format
 func (conn *Connector) parseTopic(unparsedPath string) (topic string, err error) {
 	if !strings.HasPrefix(unparsedPath, subscribePrefixPath+"/") {
@@ -346,7 +346,7 @@ func (conn *Connector) loadSubscription(entry [2]string) {
 	}).Debug("loaded a FCM subscription")
 }
 
-// Creates a route and listens for subscription synchronization
+// syncLoop creates a route and listens for subscription synchronization
 func (conn *Connector) syncLoop() error {
 	r := router.NewRoute(router.RouteConfig{
 		Path:        syncPath,
@@ -437,16 +437,15 @@ func removeTrailingSlash(path string) string {
 	return path
 }
 
-func trimPrefixSlash(topic string) string {
-	if strings.HasPrefix(topic, "/") {
-		return strings.TrimPrefix(topic, "/")
-	}
-	return topic
-}
-
 func composeSubscriptionKey(topic, userID, fcmID string) string {
 	return fmt.Sprintf("%s %s:%s %s:%s",
 		topic,
 		applicationIDKey, fcmID,
 		userIDKey, userID)
+}
+
+// isValidResponseError returns True if the error is accepted as a valid response
+// cases are InvalidRegistration and NotRegistered
+func isValidResponseError(err error) bool {
+	return err.Error() == "InvalidRegistration" || err.Error() == "NotRegistered"
 }
