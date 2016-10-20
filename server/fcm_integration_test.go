@@ -132,6 +132,7 @@ func serviceSetUp(t *testing.T) (*service.Service, func()) {
 	*Config.FCM.Enabled = true
 	*Config.FCM.APIKey = "WILL BE OVERWRITTEN"
 	*Config.FCM.Workers = 1 // use only one worker so we can control the number of messages that go to FCM
+	*Config.APNS.Enabled = false
 
 	var s *service.Service
 	for s == nil {

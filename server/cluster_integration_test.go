@@ -1,12 +1,10 @@
 package server
 
 import (
+	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/testutil"
-
-	log "github.com/Sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-
 	"testing"
 	"time"
 )
@@ -16,19 +14,19 @@ func Test_Cluster_Subscribe_To_Random_Node(t *testing.T) {
 	a := assert.New(t)
 
 	node1 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: ":8080",
+		HttpListen: "localhost:8090",
 		NodeID:     1,
-		NodePort:   10000,
-		Remotes:    "127.0.0.1:10000",
+		NodePort:   11000,
+		Remotes:    "localhost:11000",
 	})
 	a.NotNil(node1)
 	defer node1.cleanup(true)
 
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: ":8081",
+		HttpListen: "localhost:8091",
 		NodeID:     2,
-		NodePort:   10001,
-		Remotes:    "127.0.0.1:10000",
+		NodePort:   11001,
+		Remotes:    "localhost:11000",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
@@ -58,19 +56,19 @@ func Test_Cluster_Integration(t *testing.T) {
 	a := assert.New(t)
 
 	node1 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: ":8080",
+		HttpListen: "localhost:8092",
 		NodeID:     1,
-		NodePort:   10000,
-		Remotes:    "127.0.0.1:10000",
+		NodePort:   11002,
+		Remotes:    "localhost:11002",
 	})
 	a.NotNil(node1)
 	defer node1.cleanup(true)
 
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: ":8081",
+		HttpListen: "localhost:8093",
 		NodeID:     2,
-		NodePort:   10001,
-		Remotes:    "127.0.0.1:10000",
+		NodePort:   11003,
+		Remotes:    "localhost:11002",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
@@ -130,7 +128,7 @@ WAIT:
 	}
 }
 
-var syncTopic = "/sync"
+var syncTopic = "/syncTopic"
 
 // Test synchronizing messages when a new node is
 func TestSynchronizerIntegration(t *testing.T) {
@@ -140,10 +138,10 @@ func TestSynchronizerIntegration(t *testing.T) {
 	a := assert.New(t)
 
 	node1 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: ":8080",
+		HttpListen: "localhost:8094",
 		NodeID:     1,
-		NodePort:   10000,
-		Remotes:    "127.0.0.1:10000",
+		NodePort:   11004,
+		Remotes:    "localhost:11004",
 	})
 	a.NotNil(node1)
 	defer node1.cleanup(true)
@@ -160,10 +158,10 @@ func TestSynchronizerIntegration(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: ":8081",
+		HttpListen: "localhost:8095",
 		NodeID:     2,
-		NodePort:   10001,
-		Remotes:    "127.0.0.1:10000",
+		NodePort:   11005,
+		Remotes:    "localhost:11004",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)

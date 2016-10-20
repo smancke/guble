@@ -38,6 +38,7 @@ func newTestgroup(t *testing.T, groupID int, addr string, messagesToSend int) *t
 func TestThroughput(t *testing.T) {
 	// TODO: We disabled this test because the receiver implementation of fetching messages
 	// should be reimplemented according to the new message store
+	testutil.SkipIfDisabled(t)
 	testutil.SkipIfShort(t)
 	defer testutil.ResetDefaultRegistryHealthCheck()
 

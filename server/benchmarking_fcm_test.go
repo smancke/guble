@@ -1,17 +1,14 @@
 package server
 
 import (
+	"bytes"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
-
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/server/fcm"
 	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/testutil"
-
 	"github.com/stretchr/testify/assert"
-
-	"bytes"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -203,12 +200,12 @@ func (params *benchParams) setUp() {
 			break
 		}
 	}
-	a.True(ok, "There should be a module of type GCMConnector")
+	a.True(ok, "There should be a module of type: FCM Connector")
 
 	fcmConn.Sender = testutil.CreateFcmSender(
 		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, testutil.SuccessFCMResponse, params.receiveC, params.timeout))
 
-	urlFormat := fmt.Sprintf("http://%s/gcm/%%d/gcmId%%d/subscribe/%%s", params.service.WebServer().GetAddr())
+	urlFormat := fmt.Sprintf("http://%s/fcm/%%d/gcmId%%d/subscribe/%%s", params.service.WebServer().GetAddr())
 	for i := 1; i <= params.subscriptions; i++ {
 		// create GCM subscription with topic: gcmTopic
 		response, errPost := http.Post(
@@ -221,7 +218,7 @@ func (params *benchParams) setUp() {
 
 		body, errReadAll := ioutil.ReadAll(response.Body)
 		a.NoError(errReadAll)
-		a.Equal("subscribed: /topic\n", string(body))
+		a.Equal("{\"subscribed\":\"/topic\"}", string(body))
 	}
 }
 
