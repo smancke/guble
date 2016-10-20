@@ -12,19 +12,19 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 	a := assert.New(t)
 
 	node1 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: "127.0.0.1:8080",
+		HttpListen: "localhost:8080",
 		NodeID:     1,
 		NodePort:   20000,
-		Remotes:    "127.0.0.1:20000",
+		Remotes:    "localhost:20000",
 	})
 	a.NotNil(node1)
 	defer node1.cleanup(true)
 
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: "127.0.0.1:8081",
+		HttpListen: "localhost:8081",
 		NodeID:     2,
 		NodePort:   20001,
-		Remotes:    "127.0.0.1:20000",
+		Remotes:    "localhost:20000",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
@@ -50,23 +50,24 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 
 func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	// defer testutil.EnableDebugForMethod()()
+	testutil.SkipIfDisabled(t)
 	testutil.SkipIfShort(t)
 	a := assert.New(t)
 
 	nodeConfig1 := testClusterNodeConfig{
-		HttpListen: "127.0.0.1:8082",
+		HttpListen: "localhost:8082",
 		NodeID:     1,
 		NodePort:   20002,
-		Remotes:    "127.0.0.1:20002",
+		Remotes:    "localhost:20002",
 	}
 	node1 := newTestClusterNode(t, nodeConfig1)
 	a.NotNil(node1)
 
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: "127.0.0.1:8083",
+		HttpListen: "localhost:8083",
 		NodeID:     2,
 		NodePort:   20003,
-		Remotes:    "127.0.0.1:20002",
+		Remotes:    "localhost:20002",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
@@ -114,23 +115,24 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 }
 
 func Test_Independent_Receiving(t *testing.T) {
+	testutil.SkipIfDisabled(t)
 	testutil.SkipIfShort(t)
 	a := assert.New(t)
 
 	node1 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: "127.0.0.1:8084",
+		HttpListen: "localhost:8084",
 		NodeID:     1,
 		NodePort:   20004,
-		Remotes:    "127.0.0.1:20004",
+		Remotes:    "localhost:20004",
 	})
 	a.NotNil(node1)
 	defer node1.cleanup(true)
 
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: "127.0.0.1:8085",
+		HttpListen: "localhost:8085",
 		NodeID:     2,
 		NodePort:   20005,
-		Remotes:    "127.0.0.1:20004",
+		Remotes:    "localhost:20004",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
@@ -167,23 +169,24 @@ func Test_Independent_Receiving(t *testing.T) {
 }
 
 func Test_NoReceiving_After_Unsubscribe(t *testing.T) {
+	testutil.SkipIfDisabled(t)
 	testutil.SkipIfShort(t)
 	a := assert.New(t)
 
 	node1 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: "127.0.0.1:8086",
+		HttpListen: "localhost:8086",
 		NodeID:     1,
 		NodePort:   20006,
-		Remotes:    "127.0.0.1:20006",
+		Remotes:    "localhost:20006",
 	})
 	a.NotNil(node1)
 	defer node1.cleanup(true)
 
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: "127.0.0.1:8087",
+		HttpListen: "localhost:8087",
 		NodeID:     2,
 		NodePort:   20007,
-		Remotes:    "127.0.0.1:20006",
+		Remotes:    "localhost:20006",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
