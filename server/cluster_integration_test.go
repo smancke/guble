@@ -67,8 +67,8 @@ func Test_Cluster_Integration(t *testing.T) {
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
 		HttpListen: ":8093",
 		NodeID:     2,
-		NodePort:   11002,
-		Remotes:    "localhost:11003",
+		NodePort:   11003,
+		Remotes:    "localhost:11002",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
