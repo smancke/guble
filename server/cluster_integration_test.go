@@ -56,7 +56,7 @@ func Test_Cluster_Integration(t *testing.T) {
 	a := assert.New(t)
 
 	node1 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: ":8092",
+		HttpListen: "localhost:8092",
 		NodeID:     1,
 		NodePort:   11002,
 		Remotes:    "localhost:11002",
@@ -65,7 +65,7 @@ func Test_Cluster_Integration(t *testing.T) {
 	defer node1.cleanup(true)
 
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: ":8093",
+		HttpListen: "localhost:8093",
 		NodeID:     2,
 		NodePort:   11003,
 		Remotes:    "localhost:11002",
@@ -158,7 +158,7 @@ func TestSynchronizerIntegration(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: ":8095",
+		HttpListen: "localhost:8095",
 		NodeID:     2,
 		NodePort:   11005,
 		Remotes:    "localhost:11004",
