@@ -53,12 +53,13 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	testutil.SkipIfShort(t)
 	a := assert.New(t)
 
-	node1 := newTestClusterNode(t, testClusterNodeConfig{
+	nodeConfig1 := testClusterNodeConfig{
 		HttpListen: "localhost:8082",
 		NodeID:     1,
 		NodePort:   20002,
 		Remotes:    "localhost:20002",
-	})
+	}
+	node1 := newTestClusterNode(t, nodeConfig1)
 	a.NotNil(node1)
 
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
@@ -92,13 +93,7 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	time.Sleep(time.Millisecond * 150)
 
 	// restart the service
-	restartedNode1 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen:  ":8082",
-		StoragePath: node1.StoragePath,
-		NodeID:      1,
-		NodePort:    20002,
-		Remotes:     "localhost:20002",
-	})
+	restartedNode1 := newTestClusterNode(t, nodeConfig1)
 	a.NotNil(restartedNode1)
 	defer restartedNode1.cleanup(true)
 
