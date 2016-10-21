@@ -7,13 +7,14 @@ import (
 type Queue struct {
 	client         Pusher
 	notificationsC chan *apns2.Notification
-	responsesC     chan *ResponseAndError
+	responsesC     chan *FullResponse
 }
 
-// ResponseAndError after sending a notification.
-type ResponseAndError struct {
-	Response *apns2.Response
-	Err      error
+// FullResponse after sending a notification.
+type FullResponse struct {
+	Notification *apns2.Notification
+	Response     *apns2.Response
+	Err          error
 }
 
 // NewQueue returns a pointer to a Queue using a client and a fixed number of workers / goroutines.
@@ -22,7 +23,7 @@ func NewQueue(client Pusher, nWorkers uint) *Queue {
 	q := &Queue{
 		client:         client,
 		notificationsC: make(chan *apns2.Notification),
-		responsesC:     make(chan *ResponseAndError),
+		responsesC:     make(chan *FullResponse),
 	}
 	for i := uint(0); i < nWorkers; i++ {
 		go worker(q)
@@ -46,9 +47,10 @@ func (q *Queue) Close() {
 func worker(q *Queue) {
 	for n := range q.notificationsC {
 		response, err := q.client.Push(n)
-		q.responsesC <- &ResponseAndError{
-			Response: response,
-			Err:      err,
+		q.responsesC <- &FullResponse{
+			Notification: n,
+			Response:     response,
+			Err:          err,
 		}
 	}
 }
