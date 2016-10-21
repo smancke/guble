@@ -69,7 +69,7 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		i, err := w.Write(resp)
 		log.WithField("noOfBytes", i).WithField("topic", topic).Debug("Wrote as response for GetSubscribersForTopic")
 		if err != nil {
-			log.WithField("Err", err).Error("Writing to byte stream failed")
+			log.WithField("error", err.Error()).Error("Writing to byte stream failed")
 			http.Error(w, "Server error.", http.StatusInternalServerError)
 			return
 		}
