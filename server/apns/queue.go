@@ -2,28 +2,38 @@ package apns
 
 import (
 	"github.com/sideshow/apns2"
+	"github.com/smancke/guble/protocol"
+	"sync"
 )
 
-type Queue struct {
-	client         Pusher
-	notificationsC chan *apns2.Notification
-	responsesC     chan *FullResponse
+type queue struct {
+	client     Pusher
+	requestsC  chan *fullRequest
+	responsesC chan *fullResponse
+	wg         sync.WaitGroup
 }
 
-// FullResponse after sending a notification.
-type FullResponse struct {
-	Notification *apns2.Notification
-	Response     *apns2.Response
-	Err          error
+// fullReqquest after sending a notification.
+type fullRequest struct {
+	notification *apns2.Notification
+	message      *protocol.Message
+	sub          *sub
+}
+
+// fullResponse after sending a notification.
+type fullResponse struct {
+	fullRequest *fullRequest
+	response    *apns2.Response
+	err         error
 }
 
 // NewQueue returns a pointer to a Queue using a client and a fixed number of workers / goroutines.
-func NewQueue(client Pusher, nWorkers uint) *Queue {
+func NewQueue(client Pusher, nWorkers uint) *queue {
 	// unbuffered channels
-	q := &Queue{
-		client:         client,
-		notificationsC: make(chan *apns2.Notification),
-		responsesC:     make(chan *FullResponse),
+	q := &queue{
+		client:     client,
+		requestsC:  make(chan *fullRequest),
+		responsesC: make(chan *fullResponse),
 	}
 	for i := uint(0); i < nWorkers; i++ {
 		go worker(q)
@@ -32,25 +42,27 @@ func NewQueue(client Pusher, nWorkers uint) *Queue {
 }
 
 // Push queues a notification to the APNS.
-func (q *Queue) Push(n *apns2.Notification) {
-	q.notificationsC <- n
+func (q *queue) push(n *apns2.Notification, m *protocol.Message, s *sub) {
+	q.requestsC <- &fullRequest{n, m, s}
 }
 
-// Close the channels for notifications and responses and shutdown workers. Should be called after all responses have been received.
-func (q *Queue) Close() {
-	// Stop accepting new notifications and shutdown workers after existing notifications are processed
-	close(q.notificationsC)
-	// Close responses channel
+// Close the channels for notifications and responses and shutdown workers.
+// Waits until all responses are consumed from the channel.
+func (q *queue) Close() {
+	close(q.requestsC)
+	q.wg.Wait()
 	close(q.responsesC)
 }
 
-func worker(q *Queue) {
-	for n := range q.notificationsC {
-		response, err := q.client.Push(n)
-		q.responsesC <- &FullResponse{
-			Notification: n,
-			Response:     response,
-			Err:          err,
+func worker(q *queue) {
+	for fullReq := range q.requestsC {
+		q.wg.Add(1)
+		response, err := q.client.Push(fullReq.notification)
+		q.responsesC <- &fullResponse{
+			fullRequest: fullReq,
+			response:    response,
+			err:         err,
 		}
+		q.wg.Done()
 	}
 }
