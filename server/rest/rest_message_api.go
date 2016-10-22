@@ -56,7 +56,7 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		topic, err := api.extractTopic(r.URL.Path, subscribersPrefix)
 		log.WithField("topic", topic).WithField("err", err).Debug("Extract")
 		if err != nil {
-			log.WithField("err", err).Error("Extracting topic failed")
+			log.WithError(err).Error("Extracting topic failed")
 			if err == errNotFound {
 				http.NotFound(w, r)
 				return
