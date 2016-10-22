@@ -15,10 +15,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-const (
-	defaultQueueCap = 50
-)
-
 var (
 	errEmptyQueue = errors.New("Empty queue")
 	errTimeout    = errors.New("Channel sending timeout")
