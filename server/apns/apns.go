@@ -3,14 +3,15 @@ package apns
 import (
 	"crypto/tls"
 	"errors"
+	"net/http"
+	"os"
+	"sync"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/certificate"
 	"github.com/sideshow/apns2/payload"
 	"github.com/smancke/guble/server/router"
-	"net/http"
-	"os"
-	"sync"
 )
 
 const (
