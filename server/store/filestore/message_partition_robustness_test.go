@@ -1,21 +1,20 @@
 package filestore
 
 import (
+	log "github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/server/store"
+	"github.com/smancke/guble/testutil"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
+	"math"
 	"os"
+	"strconv"
 	"testing"
 	"time"
-
-	"github.com/smancke/guble/server/store"
-	"github.com/stretchr/testify/assert"
-
-	"math"
-	"strconv"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 func Test_MessagePartition_forConcurrentWriteAndReads(t *testing.T) {
+	testutil.SkipIfShort(t)
 	// testutil.PprofDebug()
 	a := assert.New(t)
 	dir, _ := ioutil.TempDir("", "guble_partition_store_test")

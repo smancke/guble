@@ -273,7 +273,7 @@ func (conn *Connector) deleteSubscription(w http.ResponseWriter, topic, userID, 
 		logger.WithFields(log.Fields{
 			"subscriptionKey": subscriptionKey,
 			"subscriptions":   conn.subscriptions,
-		}).Info("subscription not found")
+		}).Error("subscription not found")
 		http.Error(w, `{"error":"subscription not found"}`, http.StatusNotFound)
 		return
 	}

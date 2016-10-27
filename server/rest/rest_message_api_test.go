@@ -186,9 +186,9 @@ func TestRestMessageAPI_setFilters(t *testing.T) {
 }
 
 func TestRestMessageAPI_SetFiltersWhenServing(t *testing.T) {
+	testutil.SkipIfDisabled(t)
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
-
 	a := assert.New(t)
 
 	body := bytes.NewBufferString("")
