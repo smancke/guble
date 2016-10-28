@@ -1,4 +1,4 @@
-package service
+package connector
 
 import (
 	"context"
@@ -17,6 +17,7 @@ var (
 type Subscriber interface {
 	Key() string
 	Route() *router.Route
+	HandleResponse(interface{}) error
 	Loop(context.Context, chan *protocol.Message) error
 }
 
