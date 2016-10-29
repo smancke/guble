@@ -1,9 +1,10 @@
-package fcm
+package apns
 
 import (
 	"errors"
-	"github.com/Bogh/gcm"
 	log "github.com/Sirupsen/logrus"
+	"github.com/sideshow/apns2"
+	"github.com/sideshow/apns2/payload"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/store"
@@ -24,13 +25,11 @@ const (
 )
 
 var (
-	errIgnoreMessage        = errors.New("Message ignored")
-	errSubscriptionExists   = errors.New("Subscription exists")
-	errSubscriptionReplaced = errors.New("Subscription replaced")
+	errSubscriptionExists = errors.New("Subscription exists")
 )
 
-// subscription represents a FCM subscription
-type subscription struct {
+// subscription represents a APNS subscription
+type sub struct {
 	connector *Connector
 	route     *router.Route
 	lastID    uint64 // Last sent message id
@@ -39,9 +38,9 @@ type subscription struct {
 }
 
 // initSubscription creates a subscription and adds it in router/kvstore then starts listening for messages
-func initSubscription(connector *Connector, topic, userID, fcmID string, lastID uint64, store bool) (*subscription, error) {
+func initSubscription(connector *Connector, topic, userID, apnsDeviceID string, lastID uint64, store bool) (*sub, error) {
 	route := router.NewRoute(router.RouteConfig{
-		RouteParams: router.RouteParams{userIDKey: userID, applicationIDKey: fcmID},
+		RouteParams: router.RouteParams{userIDKey: userID, applicationIDKey: apnsDeviceID},
 		Path:        protocol.Path(topic),
 		ChannelSize: subBufferSize,
 		Matcher:     subscriptionMatcher,
@@ -53,7 +52,7 @@ func initSubscription(connector *Connector, topic, userID, fcmID string, lastID 
 	}
 
 	// add subscription to map
-	s.connector.subscriptions[s.Key()] = s
+	s.connector.subs[s.Key()] = s
 
 	s.logger.Debug("New subscription")
 	if store {
@@ -70,18 +69,15 @@ func subscriptionMatcher(route, other router.RouteConfig, keys ...string) bool {
 }
 
 // newSubscription creates a subscription and returns the pointer
-func newSubscription(connector *Connector, route *router.Route, lastID uint64) *subscription {
+func newSubscription(connector *Connector, route *router.Route, lastID uint64) *sub {
 	subLogger := logger.WithFields(log.Fields{
 		"fcmID":  route.Get(applicationIDKey),
 		"userID": route.Get(userIDKey),
 		"topic":  string(route.Path),
 		"lastID": lastID,
 	})
-	if connector.cluster != nil {
-		subLogger = subLogger.WithField("nodeID", connector.cluster.Config.ID)
-	}
 
-	return &subscription{
+	return &sub{
 		connector: connector,
 		route:     route,
 		lastID:    lastID,
@@ -90,13 +86,13 @@ func newSubscription(connector *Connector, route *router.Route, lastID uint64) *
 }
 
 // exists returns true if the subscription is present with the same key in subscriptions map
-func (s *subscription) exists() bool {
-	_, ok := s.connector.subscriptions[s.Key()]
+func (s *sub) exists() bool {
+	_, ok := s.connector.subs[s.Key()]
 	return ok
 }
 
 // restart recreates the route and resubscribes
-func (s *subscription) restart() error {
+func (s *sub) restart() error {
 	s.route = router.NewRoute(router.RouteConfig{
 		RouteParams: s.route.RouteParams,
 		Path:        s.route.Path,
@@ -108,7 +104,7 @@ func (s *subscription) restart() error {
 }
 
 // start loop to receive messages from route
-func (s *subscription) start() error {
+func (s *sub) start() error {
 	s.route.FetchRequest = s.createFetchRequest()
 	go s.subscriptionLoop()
 	if err := s.route.Provide(s.connector.router, true); err != nil {
@@ -117,7 +113,7 @@ func (s *subscription) start() error {
 	return nil
 }
 
-func (s *subscription) createFetchRequest() *store.FetchRequest {
+func (s *sub) createFetchRequest() *store.FetchRequest {
 	if s.lastID <= 0 {
 		return nil
 	}
@@ -126,7 +122,7 @@ func (s *subscription) createFetchRequest() *store.FetchRequest {
 
 // subscriptionLoop that will run in a goroutine and pipe messages from route to fcm
 // Attention: in order for this loop to finish the route channel must stop sending messages
-func (s *subscription) subscriptionLoop() {
+func (s *sub) subscriptionLoop() {
 	s.logger.Debug("Starting subscription loop")
 
 	s.connector.wg.Add(1)
@@ -155,19 +151,8 @@ func (s *subscription) subscriptionLoop() {
 				continue
 			}
 
-			if err := s.pipe(m); err != nil {
-				// abandon route if the following 2 errors are met
-				// the subscription has been replaced
-				if err == errSubscriptionReplaced {
-					return
-				}
-				// the subscription is not registered with FCM anymore
-				if _, ok := err.(*jsonError); ok {
-					return
-				}
+			s.push(m)
 
-				s.logger.WithError(err).Error("Error pipelining message")
-			}
 		case <-s.connector.stopC:
 			return
 		}
@@ -188,7 +173,7 @@ func (s *subscription) subscriptionLoop() {
 }
 
 // isStopping returns true if we are actually stopping the service
-func (s *subscription) isStopping() bool {
+func (s *sub) isStopping() bool {
 	select {
 	case <-s.connector.stopC:
 		return true
@@ -198,95 +183,44 @@ func (s *subscription) isStopping() bool {
 }
 
 // Key returns a string that uniquely identifies this subscription
-func (s *subscription) Key() string {
+func (s *sub) Key() string {
 	return s.route.Key()
 }
 
-// pipe sends a message into the pipeline and waits for response saving the last id in the kvstore
-func (s *subscription) pipe(m *protocol.Message) error {
-	subscriptionMessage := newSubscriptionMessage(s, m)
-	defer subscriptionMessage.closeChannels()
+// push a message into the queue
+func (s *sub) push(m *protocol.Message) {
 
-	s.connector.pipelineC <- subscriptionMessage
+	//TODO Cosmin: Samsa should generate the Payload or the whole Notification, and JSON-serialize it into the guble-message Body.
 
-	// wait for response
-	select {
-	case response := <-subscriptionMessage.resultC:
-		s.logger.WithField("messageID", m.ID).Debug("Delivered message to FCM")
-		if err := s.setLastID(subscriptionMessage.message.ID); err != nil {
-			return err
-		}
-		if response.Ok() {
-			return nil
-		}
+	//n := &apns2.Notification{
+	//	Priority:    apns2.PriorityHigh,
+	//	Topic:       strings.TrimPrefix(string(s.route.Path), "/"),
+	//	DeviceToken: s.route.Get(applicationIDKey),
+	//	Payload:     m.Body,
+	//}
 
-		s.logger.WithField("count", response.Success).Debug("Handling FCM Error")
-		if err := s.handleJSONError(response); err != nil {
-			return err
-		}
-
-		if response.CanonicalIDs != 0 {
-			// we only send to one receiver,
-			// so we know that we can replace the old id with the first registration id (=canonical id)
-			return s.replaceCanonical(response.Results[0].RegistrationID)
-		}
-		return nil
-
-	case err := <-subscriptionMessage.errC:
-		if err == errIgnoreMessage {
-			s.logger.WithField("message", m).Info("Ignoring message")
-			return nil
-		}
-		s.logger.WithField("error", err.Error()).Error("Error sending message to FCM")
-		return err
+	n := &apns2.Notification{
+		Priority:    apns2.PriorityHigh,
+		Topic:       strings.TrimPrefix(string(s.route.Path), "/"),
+		DeviceToken: s.route.Get(applicationIDKey),
+		Payload: payload.NewPayload().
+			AlertTitle("Title").
+			AlertBody("Text").
+			Badge(1).
+			ContentAvailable(),
 	}
+
+	s.connector.queue.push(n, m, s)
 }
 
-func (s *subscription) handleJSONError(response *gcm.Response) error {
-	err := response.Error
-	errText := err.Error()
-
-	if errText != "" {
-		if errText == "NotRegistered" {
-			s.logger.Debug("Removing not registered GCM subscription")
-			s.remove()
-			return &jsonError{errText}
-		} else if errText == "InvalidRegistration" {
-			s.logger.WithField("jsonError", errText).Error("Subscription is not registered")
-		} else {
-			s.logger.WithField("jsonError", errText).Error("Unexpected error while sending to GCM")
-		}
-	}
-	return nil
-}
-
-// replaceCanonical replaces subscription with canonical id,
-// creates a new subscription but alters the route to have the new ApplicationID
-func (s *subscription) replaceCanonical(newFCMID string) error {
-	s.logger.WithField("newFCMID", newFCMID).Info("Replacing with FCM canonicalID")
-	// delete current route from kvstore
-	s.remove()
-
-	// reuse the route but change the ApplicationID
-	route := s.route
-	route.Set(applicationIDKey, newFCMID)
-	newSub := newSubscription(s.connector, route, s.lastID)
-
-	if err := newSub.store(); err != nil {
-		return err
-	}
-	newSub.start()
-	return errSubscriptionReplaced
-}
-
-func (s *subscription) setLastID(ID uint64) error {
+func (s *sub) setLastID(ID uint64) error {
 	s.lastID = ID
 	// update KV when last id is set
 	return s.store()
 }
 
 // store data in kvstore
-func (s *subscription) store() error {
+func (s *sub) store() error {
 	s.logger.WithField("lastID", s.lastID).Debug("Storing subscription")
 	applicationID := s.route.Get(applicationIDKey)
 	err := s.connector.kvStore.Put(schema, applicationID, s.bytes())
@@ -297,7 +231,7 @@ func (s *subscription) store() error {
 }
 
 // bytes returns the data to store in kvStore
-func (s *subscription) bytes() []byte {
+func (s *sub) bytes() []byte {
 	return []byte(strings.Join([]string{
 		s.route.Get(userIDKey),
 		string(s.route.Path),
@@ -306,10 +240,10 @@ func (s *subscription) bytes() []byte {
 }
 
 // remove unsubscribes from router, delete from connector's subscriptions, and remove from KVStore
-func (s *subscription) remove() *subscription {
+func (s *sub) remove() *sub {
 	s.logger.Debug("Removing subscription")
 	s.connector.router.Unsubscribe(s.route)
-	delete(s.connector.subscriptions, s.Key())
+	delete(s.connector.subs, s.Key())
 	s.connector.kvStore.Delete(schema, s.Key())
 	return s
 }

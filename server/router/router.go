@@ -193,25 +193,18 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 }
 
 func (router *router) GetSubscribersForTopic(topicPath string) ([]byte, error) {
-
 	subscribers := make([]RouteParams, 0)
-
 	routes, present := router.routes[protocol.Path(topicPath)]
 	if present {
 		for index, currRoute := range routes {
 			logger.WithFields(log.Fields{
-				"index":      index,
-				"routeParam": currRoute.RouteParams,
-			}).Info("Added route to slice")
+				"index":       index,
+				"routeParams": currRoute.RouteParams,
+			}).Debug("Added route to slice")
 			subscribers = append(subscribers, currRoute.RouteParams)
 		}
 	}
-
-	serialized, err := json.Marshal(subscribers)
-	if err != nil {
-		return nil, err
-	}
-	return serialized, nil
+	return json.Marshal(subscribers)
 }
 
 // Subscribe adds a route to the subscribers. If there is already a route with same Application Id and Path, it will be replaced.

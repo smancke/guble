@@ -37,8 +37,6 @@ const (
 	syncPath = protocol.Path("/fcm/sync")
 )
 
-var logger = log.WithField("module", "fcm")
-
 // Config is used for configuring the Firebase Cloud Messaging component.
 type Config struct {
 	Enabled              *bool
@@ -56,7 +54,7 @@ type Connector struct {
 	cluster              *cluster.Cluster
 	kvStore              kvstore.KVStore
 	prefix               string
-	pipelineC            chan *pipeMessage
+	pipelineC            chan *subscriptionMessage
 	stopC                chan bool
 	nWorkers             int
 	wg                   sync.WaitGroup
@@ -81,7 +79,7 @@ func New(router router.Router, prefix string, config Config) (*Connector, error)
 		cluster:              router.Cluster(),
 		kvStore:              kvStore,
 		prefix:               prefix,
-		pipelineC:            make(chan *pipeMessage, bufferSize),
+		pipelineC:            make(chan *subscriptionMessage, bufferSize),
 		stopC:                make(chan bool),
 		subscriptions:        make(map[string]*subscription),
 		nWorkers:             *config.Workers,
@@ -101,14 +99,13 @@ func (conn *Connector) Start() error {
 		}
 	}
 
-	// blocking until current subs are loaded
-	go conn.loadSubscriptions()
+	// blocking until current subscriptions are loaded
+	conn.loadSubscriptions()
 
-	go func() {
-		for id := 1; id <= conn.nWorkers; id++ {
-			go conn.loopPipeline(id)
-		}
-	}()
+	for id := 1; id <= conn.nWorkers; id++ {
+		go conn.loopPipeline(id)
+	}
+
 	return nil
 }
 
@@ -168,7 +165,7 @@ func (conn *Connector) loopPipeline(id int) {
 	}
 }
 
-func (conn *Connector) sendMessage(pm *pipeMessage) {
+func (conn *Connector) sendMessage(pm *subscriptionMessage) {
 	fcmID := pm.subscription.route.Get(applicationIDKey)
 
 	fcmMessage := pm.fcmMessage()
@@ -182,7 +179,7 @@ func (conn *Connector) sendMessage(pm *pipeMessage) {
 	response, err := conn.Sender.Send(fcmMessage)
 	latencyDuration := time.Now().Sub(beforeSend)
 
-	if err != nil && !pm.subscription.isValidResponseError(err) {
+	if err != nil && !isValidResponseError(err) {
 		// Even if we receive an error we could still have a valid response
 		pm.errC <- err
 		mTotalSentMessageErrors.Add(1)
@@ -241,10 +238,10 @@ func (conn *Connector) retrieveSubscription(w http.ResponseWriter, userID, fcmID
 	topics := make([]string, 0)
 
 	for k, v := range conn.subscriptions {
-		logger.WithField("key", k).Info("retrieveSubscription")
+		logger.WithField("key", k).Debug("retrieveSubscription")
 		if v.route.Get(applicationIDKey) == fcmID && v.route.Get(userIDKey) == userID {
-			logger.WithField("path", v.route.Path).Info("retriveAllSubscription path")
-			topics = append(topics, trimPrefixSlash(string(v.route.Path)))
+			logger.WithField("path", v.route.Path).Debug("retrieveSubscription path")
+			topics = append(topics, strings.TrimPrefix(string(v.route.Path), "/"))
 		}
 	}
 
@@ -276,7 +273,7 @@ func (conn *Connector) deleteSubscription(w http.ResponseWriter, topic, userID, 
 		logger.WithFields(log.Fields{
 			"subscriptionKey": subscriptionKey,
 			"subscriptions":   conn.subscriptions,
-		}).Info("subscription not found")
+		}).Error("subscription not found")
 		http.Error(w, `{"error":"subscription not found"}`, http.StatusNotFound)
 		return
 	}
@@ -307,7 +304,7 @@ func (conn *Connector) parseUserIDAndDeviceId(path string) (userID, fcmID, unpar
 	return
 }
 
-// parseParams will parse the HTTP URL with format /fcm/:userid/:fcmid/subscribe/*topic
+// parseTopic will parse the HTTP URL with format /fcm/:userid/:fcmid/subscribe/*topic
 // returning the parsed Params, or error if the request is not in the correct format
 func (conn *Connector) parseTopic(unparsedPath string) (topic string, err error) {
 	if !strings.HasPrefix(unparsedPath, subscribePrefixPath+"/") {
@@ -348,7 +345,7 @@ func (conn *Connector) loadSubscription(entry [2]string) {
 	}).Debug("loaded a FCM subscription")
 }
 
-// Creates a route and listens for subscription synchronization
+// syncLoop creates a route and listens for subscription synchronization
 func (conn *Connector) syncLoop() error {
 	r := router.NewRoute(router.RouteConfig{
 		Path:        syncPath,
@@ -439,16 +436,15 @@ func removeTrailingSlash(path string) string {
 	return path
 }
 
-func trimPrefixSlash(topic string) string {
-	if strings.HasPrefix(topic, "/") {
-		return strings.TrimPrefix(topic, "/")
-	}
-	return topic
-}
-
 func composeSubscriptionKey(topic, userID, fcmID string) string {
 	return fmt.Sprintf("%s %s:%s %s:%s",
 		topic,
 		applicationIDKey, fcmID,
 		userIDKey, userID)
+}
+
+// isValidResponseError returns True if the error is accepted as a valid response
+// cases are InvalidRegistration and NotRegistered
+func isValidResponseError(err error) bool {
+	return err.Error() == "InvalidRegistration" || err.Error() == "NotRegistered"
 }

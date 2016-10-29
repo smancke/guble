@@ -26,7 +26,7 @@ func TestPipeMessage_fcmMessage(t *testing.T) {
 		Body: []byte(fullFCMMessage),
 	}
 	s := &subscription{logger: log.WithField("test", "on")}
-	pm := newPipeMessage(nil, m)
+	pm := newSubscriptionMessage(nil, m)
 	fcmMessage := pm.fcmMessage()
 
 	a.NotNil(fcmMessage.Notification)
@@ -46,7 +46,7 @@ func TestPipeMessage_fcmMessage(t *testing.T) {
 	m = &protocol.Message{
 		Body: []byte(`{"field1": "value1", "field2": "value2"}`),
 	}
-	pm = newPipeMessage(s, m)
+	pm = newSubscriptionMessage(s, m)
 	fcmMessage = pm.fcmMessage()
 	a.Nil(fcmMessage.Notification)
 	a.IsType(map[string]interface{}{}, fcmMessage.Data)
@@ -60,7 +60,7 @@ func TestPipeMessage_fcmMessage(t *testing.T) {
 	m = &protocol.Message{
 		Body: []byte(`plain body message`),
 	}
-	pm = newPipeMessage(s, m)
+	pm = newSubscriptionMessage(s, m)
 	fcmMessage = pm.fcmMessage()
 	a.Nil(fcmMessage.Notification)
 	a.IsType(map[string]interface{}{}, fcmMessage.Data)

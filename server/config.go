@@ -138,7 +138,7 @@ var (
 			APIKey: kingpin.Flag("fcm-api-key", "The Google API Key for Google Firebase Cloud Messaging").
 				Envar("GUBLE_FCM_API_KEY").
 				String(),
-			Workers: kingpin.Flag("fcm-workers", "The number of workers handling traffic with Google Firebase Cloud Messaging (default: number of CPUs)").
+			Workers: kingpin.Flag("fcm-workers", "The number of workers handling traffic with Firebase Cloud Messaging (default: number of CPUs)").
 				Default(strconv.Itoa(runtime.NumCPU())).
 				Envar("GUBLE_FCM_WORKERS").
 				Int(),
@@ -163,6 +163,10 @@ var (
 			CertificatePassword: kingpin.Flag("apns-cert-password", "The APNS certificate password").
 				Envar("GUBLE_APNS_CERT_PASSWORD").
 				String(),
+			Workers: kingpin.Flag("apns-workers", "The number of workers handling traffic with APNS (default: number of CPUs)").
+				Default(strconv.Itoa(runtime.NumCPU())).
+				Envar("GUBLE_APNS_WORKERS").
+				Uint(),
 		},
 		Cluster: ClusterConfig{
 			NodeID: kingpin.Flag("node-id", "(cluster mode) This guble node's own ID: a strictly positive integer number which must be unique in cluster").
