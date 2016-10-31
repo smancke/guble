@@ -6,7 +6,7 @@ import (
 	"github.com/smancke/guble/server/kvstore"
 )
 
-type SubscriptionManager interface {
+type Manager interface {
 	List() []Subscriber
 	Add(Subscriber) error
 	Update(Subscriber) error
@@ -14,15 +14,15 @@ type SubscriptionManager interface {
 	Exists(Subscriber) bool
 }
 
-type subscriptionManager struct {
+type manager struct {
 	sync.RWMutex
 	schema      string
 	kvstore     kvstore.KVStore
 	subscribers map[string]Subscriber
 }
 
-func NewSubscriptionManager(schema string, kvstore kvstore.KVStore) (SubscriptionManager, error) {
-	sm := &subscriptionManager{
+func NewManager(schema string, kvstore kvstore.KVStore) (Manager, error) {
+	sm := &manager{
 		schema:      schema,
 		kvstore:     kvstore,
 		subscribers: make(map[string]Subscriber, 0),
@@ -35,8 +35,8 @@ func NewSubscriptionManager(schema string, kvstore kvstore.KVStore) (Subscriptio
 	return sm, nil
 }
 
-func (sm *subscriptionManager) load() error {
-	// try to load subscriptions from kvstore
+func (sm *manager) load() error {
+	// try to load s from kvstore
 	entries := sm.kvstore.Iterate(sm.schema, "")
 	for e := range entries {
 		subscriber, err := NewSubscriberFromJSON([]byte(e[1]))
@@ -48,7 +48,7 @@ func (sm *subscriptionManager) load() error {
 	return nil
 }
 
-func (sm *subscriptionManager) List() []Subscriber {
+func (sm *manager) List() []Subscriber {
 	sm.Lock()
 	defer sm.Unlock()
 
@@ -59,7 +59,7 @@ func (sm *subscriptionManager) List() []Subscriber {
 	return l
 }
 
-func (sm *subscriptionManager) Add(s Subscriber) error {
+func (sm *manager) Add(s Subscriber) error {
 	sm.Lock()
 	defer sm.Unlock()
 
@@ -70,7 +70,7 @@ func (sm *subscriptionManager) Add(s Subscriber) error {
 	return nil
 }
 
-func (sm *subscriptionManager) Update(s Subscriber) error {
+func (sm *manager) Update(s Subscriber) error {
 	sm.Lock()
 	defer sm.Unlock()
 	if _, found := sm.subscribers[s.Key()]; !found {
@@ -81,7 +81,7 @@ func (sm *subscriptionManager) Update(s Subscriber) error {
 	return nil
 }
 
-func (sm *subscriptionManager) Exists(s Subscriber) bool {
+func (sm *manager) Exists(s Subscriber) bool {
 	sm.RLock()
 	defer sm.RUnlock()
 
@@ -89,7 +89,7 @@ func (sm *subscriptionManager) Exists(s Subscriber) bool {
 	return found
 }
 
-func (sm *subscriptionManager) Remove(s Subscriber) error {
+func (sm *manager) Remove(s Subscriber) error {
 	sm.Lock()
 	defer sm.Unlock()
 
