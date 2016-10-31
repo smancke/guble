@@ -1,21 +1,21 @@
 package apns
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"sort"
-	"strconv"
-	"strings"
-	"sync"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/certificate"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
+	"net/http"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
 )
 
 const (
@@ -39,13 +39,14 @@ type Config struct {
 
 // Connector is the structure for handling the communication with APNS
 type Connector struct {
-	queue   *queue
-	router  router.Router
-	kvStore kvstore.KVStore
-	prefix  string
-	stopC   chan bool
-	subs    map[string]*sub
-	wg      sync.WaitGroup
+	queue      *queue
+	router     router.Router
+	kvStore    kvstore.KVStore
+	prefix     string
+	subs       map[string]*sub
+	context    context.Context
+	cancelFunc context.CancelFunc
+	wg         sync.WaitGroup
 }
 
 // New creates a new *Connector without starting it
@@ -75,6 +76,8 @@ func (conn *Connector) Start() error {
 		return errors.New("internal queue should have been already created")
 	}
 
+	conn.context, conn.cancelFunc = context.WithCancel(context.Background())
+
 	// start the response-receiving loop in a goroutine
 	go conn.loopReceiveResponses()
 
@@ -82,7 +85,6 @@ func (conn *Connector) Start() error {
 }
 
 func (conn *Connector) reset() {
-	conn.stopC = make(chan bool)
 	conn.subs = make(map[string]*sub)
 }
 
@@ -111,7 +113,11 @@ func (conn *Connector) loopReceiveResponses() {
 // Stop the APNS Connector
 func (conn *Connector) Stop() error {
 	logger.Debug("stopping")
-	close(conn.stopC)
+	// first cancel all subs-goroutines
+	conn.cancelFunc()
+	// then close the queue:
+	// - first the requests channel because push() will not be called anymore
+	// - then the responses channel, after all the responses are received from the APNS service
 	conn.queue.Close()
 	logger.Debug("stopped")
 	return nil
