@@ -13,7 +13,7 @@ type queue struct {
 	wg         sync.WaitGroup
 }
 
-// fullReqquest after sending a notification.
+// fullRequest after sending a notification.
 type fullRequest struct {
 	notification *apns2.Notification
 	message      *protocol.Message
