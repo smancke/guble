@@ -1,25 +1,10 @@
 package connector
 
 import (
-	"context"
-	"errors"
 	"sync"
 
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/router"
+	"github.com/smancke/guble/server/kvstore"
 )
-
-var (
-	ErrSubscriberExists       = errors.New("Subscriber exists.")
-	ErrSubscriberDoesntExists = errors.New("Subscribers doesn't exist.")
-)
-
-type Subscriber interface {
-	Key() string
-	Route() *router.Route
-	HandleResponse(interface{}) error
-	Loop(context.Context, chan *protocol.Message) error
-}
 
 type SubscriptionManager interface {
 	List() []Subscriber
@@ -31,13 +16,36 @@ type SubscriptionManager interface {
 
 type subscriptionManager struct {
 	sync.RWMutex
+	schema      string
+	kvstore     kvstore.KVStore
 	subscribers map[string]Subscriber
 }
 
-func NewSubscriptionManager() SubscriptionManager {
-	return &subscriptionManager{
+func NewSubscriptionManager(schema string, kvstore kvstore.KVStore) (SubscriptionManager, error) {
+	sm := &subscriptionManager{
+		schema:      schema,
+		kvstore:     kvstore,
 		subscribers: make(map[string]Subscriber, 0),
 	}
+
+	if err := sm.load(); err != nil {
+		return nil, err
+	}
+
+	return sm, nil
+}
+
+func (sm *subscriptionManager) load() error {
+	// try to load subscriptions from kvstore
+	entries := sm.kvstore.Iterate(sm.schema, "")
+	for e := range entries {
+		subscriber, err := NewSubscriberFromJSON([]byte(e[1]))
+		if err != nil {
+			return err
+		}
+		sm.subscribers[subscriber.Key()] = subscriber
+	}
+	return nil
 }
 
 func (sm *subscriptionManager) List() []Subscriber {
