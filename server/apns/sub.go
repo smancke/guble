@@ -1,6 +1,7 @@
 package apns
 
 import (
+	"context"
 	"errors"
 	log "github.com/Sirupsen/logrus"
 	"github.com/sideshow/apns2"
@@ -10,7 +11,6 @@ import (
 	"github.com/smancke/guble/server/store"
 	"strconv"
 	"strings"
-	"time"
 )
 
 const (
@@ -61,7 +61,7 @@ func initSubscription(connector *Connector, topic, userID, apnsDeviceID string, 
 		}
 	}
 
-	return s, s.restart()
+	return s, s.restart(connector.context)
 }
 
 func subscriptionMatcher(route, other router.RouteConfig, keys ...string) bool {
@@ -92,7 +92,7 @@ func (s *sub) exists() bool {
 }
 
 // restart recreates the route and resubscribes
-func (s *sub) restart() error {
+func (s *sub) restart(ctx context.Context) error {
 	s.route = router.NewRoute(router.RouteConfig{
 		RouteParams: s.route.RouteParams,
 		Path:        s.route.Path,
@@ -100,13 +100,13 @@ func (s *sub) restart() error {
 	})
 
 	// subscribe to the router and start the loop
-	return s.start()
+	return s.start(ctx)
 }
 
 // start loop to receive messages from route
-func (s *sub) start() error {
+func (s *sub) start(ctx context.Context) error {
 	s.route.FetchRequest = s.createFetchRequest()
-	go s.subscriptionLoop()
+	go s.Loop(ctx)
 	if err := s.route.Provide(s.connector.router, true); err != nil {
 		return err
 	}
@@ -122,14 +122,8 @@ func (s *sub) createFetchRequest() *store.FetchRequest {
 
 // subscriptionLoop that will run in a goroutine and pipe messages from route to fcm
 // Attention: in order for this loop to finish the route channel must stop sending messages
-func (s *sub) subscriptionLoop() {
-	s.logger.Debug("Starting subscription loop")
-
-	s.connector.wg.Add(1)
-	defer func() {
-		s.logger.Debug("Stopped subscription loop")
-		s.connector.wg.Done()
-	}()
+func (s *sub) Loop(ctx context.Context) {
+	s.logger.Debug("Starting APNS subscription loop")
 
 	var (
 		m      *protocol.Message
@@ -137,49 +131,20 @@ func (s *sub) subscriptionLoop() {
 	)
 	for opened {
 		select {
-		case m, opened = <-s.route.MessagesChannel():
-			// TODO Bogdan This needs to be remade and we should gracefully shutdown
-			// and wait for this channel to empty before stopping the loop
-			select {
-			case <-s.connector.stopC:
-				return
-			case <-time.After(5 * time.Millisecond):
-			}
-
-			if !opened {
-				s.logger.Error("Route channel is closed")
-				continue
-			}
-
-			s.push(m)
-
-		case <-s.connector.stopC:
+		case <-ctx.Done():
 			return
+		case m, opened = <-s.route.MessagesChannel():
+			s.push(m)
 		}
-	}
-
-	// if route is closed and we are actually stopping then return
-	if s.isStopping() {
-		return
 	}
 
 	// assume that the route channel has been closed because of slow processing
 	// try restarting, by fetching from lastId and then subscribing again
-	if err := s.restart(); err != nil {
+	if err := s.restart(ctx); err != nil {
 		if stoppingErr, ok := err.(*router.ModuleStoppingError); ok {
 			s.logger.WithField("error", stoppingErr).Debug("Error restarting subscription")
 		}
 	}
-}
-
-// isStopping returns true if we are actually stopping the service
-func (s *sub) isStopping() bool {
-	select {
-	case <-s.connector.stopC:
-		return true
-	default:
-	}
-	return false
 }
 
 // Key returns a string that uniquely identifies this subscription
