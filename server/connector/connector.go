@@ -26,7 +26,6 @@ type ResponseHandler interface {
 type Connector interface {
 	health.Checker
 	SubscriptionManager
-	ResponseHandler
 
 	http.Handler
 
