@@ -74,7 +74,7 @@ func (sm *subscriptionManager) Update(s Subscriber) error {
 	sm.Lock()
 	defer sm.Unlock()
 	if _, found := sm.subscribers[s.Key()]; !found {
-		return ErrSubscriberDoesntExists
+		return ErrSubscriberDoesntExist
 	}
 
 	sm.subscribers[s.Key()] = s
@@ -94,7 +94,7 @@ func (sm *subscriptionManager) Remove(s Subscriber) error {
 	defer sm.Unlock()
 
 	if _, found := sm.subscribers[s.Key()]; !found {
-		return ErrSubscriberDoesntExists
+		return ErrSubscriberDoesntExist
 	}
 	delete(sm.subscribers, s.Key())
 	return nil

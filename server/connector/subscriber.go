@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	ErrSubscriberExists       = errors.New("Subscriber exists.")
-	ErrSubscriberDoesntExists = errors.New("Subscribers doesn't exist.")
+	ErrSubscriberExists      = errors.New("Subscriber exists.")
+	ErrSubscriberDoesntExist = errors.New("Subscriber doesn't exist.")
 
 	ErrRouteChannelClosed = errors.New("Subscriber route channel has been closed.")
 )
@@ -46,21 +46,21 @@ func NewSubscriber(topic protocol.Path, params router.RouteParams, fetchRequest 
 }
 
 func NewSubscriberFromJSON(data []byte) (Subscriber, error) {
-	sData := subscriberData{}
-	err := json.Unmarshal(data, &sData)
+	sd := subscriberData{}
+	err := json.Unmarshal(data, &sd)
 	if err != nil {
 		return nil, err
 	}
 
 	var fr *store.FetchRequest
-	if sData.LastID > 0 {
-		fr = store.NewFetchRequest(sData.Topic.Partition(), sData.LastID, 0, store.DirectionForward, -1)
+	if sd.LastID > 0 {
+		fr = store.NewFetchRequest(sd.Topic.Partition(), sd.LastID, 0, store.DirectionForward, -1)
 	}
 
-	return NewSubscriber(sData.Topic, sData.Params, fr), nil
+	return NewSubscriber(sd.Topic, sd.Params, fr), nil
 }
 
-// TODO Bogdan Implemenet unique key generation from params
+// TODO Bogdan Implement unique key generation from params
 func (s *subscriber) Key() string {
 	return "DUMMY KEY"
 }
