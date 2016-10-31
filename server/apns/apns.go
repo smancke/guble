@@ -5,16 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/sideshow/apns2"
-	"github.com/sideshow/apns2/certificate"
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/server/router"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/sideshow/apns2"
+	"github.com/sideshow/apns2/certificate"
+	"github.com/smancke/guble/server/kvstore"
+	"github.com/smancke/guble/server/router"
 )
 
 const (
