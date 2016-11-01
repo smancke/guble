@@ -30,7 +30,7 @@ var (
 
 // subscription represents a APNS subscription
 type sub struct {
-	connector *Connector
+	connector *conn
 	route     *router.Route
 	lastID    uint64 // Last sent message id
 
@@ -38,7 +38,7 @@ type sub struct {
 }
 
 // initSubscription creates a subscription and adds it in router/kvstore then starts listening for messages
-func initSubscription(connector *Connector, topic, userID, apnsDeviceID string, lastID uint64, store bool) (*sub, error) {
+func initSubscription(c *conn, topic, userID, apnsDeviceID string, lastID uint64, store bool) (*sub, error) {
 	route := router.NewRoute(router.RouteConfig{
 		RouteParams: router.RouteParams{userIDKey: userID, applicationIDKey: apnsDeviceID},
 		Path:        protocol.Path(topic),
@@ -46,7 +46,7 @@ func initSubscription(connector *Connector, topic, userID, apnsDeviceID string, 
 		Matcher:     subscriptionMatcher,
 	})
 
-	s := newSubscription(connector, route, lastID)
+	s := newSubscription(c, route, lastID)
 	if s.exists() {
 		return nil, errSubscriptionExists
 	}
@@ -61,7 +61,7 @@ func initSubscription(connector *Connector, topic, userID, apnsDeviceID string, 
 		}
 	}
 
-	return s, s.restart(connector.context)
+	return s, s.restart(c.context)
 }
 
 func subscriptionMatcher(route, other router.RouteConfig, keys ...string) bool {
@@ -69,7 +69,7 @@ func subscriptionMatcher(route, other router.RouteConfig, keys ...string) bool {
 }
 
 // newSubscription creates a subscription and returns the pointer
-func newSubscription(connector *Connector, route *router.Route, lastID uint64) *sub {
+func newSubscription(c *conn, route *router.Route, lastID uint64) *sub {
 	subLogger := logger.WithFields(log.Fields{
 		"fcmID":  route.Get(applicationIDKey),
 		"userID": route.Get(userIDKey),
@@ -78,7 +78,7 @@ func newSubscription(connector *Connector, route *router.Route, lastID uint64) *
 	})
 
 	return &sub{
-		connector: connector,
+		connector: c,
 		route:     route,
 		lastID:    lastID,
 		logger:    subLogger,
