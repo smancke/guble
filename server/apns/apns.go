@@ -1,20 +1,17 @@
 package apns
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/sideshow/apns2"
 	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 const (
@@ -36,80 +33,51 @@ type Config struct {
 	Workers             *int
 }
 
-// conn is the structure for handling the communication with APNS
+// conn is the private struct for handling the communication with APNS
 type conn struct {
-	queue      connector.Queue
-	router     router.Router
-	kvStore    kvstore.KVStore
-	prefix     string
-	subs       map[string]*sub
-	context    context.Context
-	cancelFunc context.CancelFunc
-	wg         sync.WaitGroup
+	connector.Conn
+	subs map[string]*sub
 }
 
-// New creates a new *Connector without starting it
+// New creates a new Connector without starting it
 func New(router router.Router, prefix string, config Config) (connector.Connector, error) {
-	kvStore, err := router.KVStore()
-	if err != nil {
-		log.WithError(err).Error("APNS KVStore error")
-		return nil, err
-	}
 	sender, err := newSender(config)
 	if err != nil {
 		log.WithError(err).Error("APNS Sender error")
 		return nil, err
 	}
-	newConn := &conn{
-		router:  router,
-		kvStore: kvStore,
-		prefix:  prefix,
+	connectorConfig := connector.Config{
+		Name:   "apns",
+		Schema: schema,
+		Prefix: prefix,
+		Url:    "subscribe",
 	}
-	newConn.queue = connector.NewQueue(sender, newConn, *config.Workers)
+	baseConn, err := connector.NewConnector(router, sender, connectorConfig)
+	if err != nil {
+		log.WithError(err).Error("Base connector error")
+		return nil, err
+	}
+	newConn := &conn{
+		Conn: baseConn,
+		subs: make(map[string]*sub),
+	}
+
+	// queue is created here since it uses as a param (ResponseHandler) the new connector itself (newConn)
+	newConn.Queue = connector.NewQueue(sender, newConn, *config.Workers)
 	return newConn, nil
 }
 
-func (c *conn) Start() error {
-	c.reset()
-
-	c.context, c.cancelFunc = context.WithCancel(context.Background())
-
-	if c.queue == nil {
-		return errors.New("internal queue should have been already created")
-	}
-	c.queue.Start()
-
-	return nil
-}
-
-func (c *conn) reset() {
-	c.subs = make(map[string]*sub)
-}
-
-// Stop the APNS Connector
-func (c *conn) Stop() error {
-	logger.Debug("stopping")
-	// first cancel all subs-goroutines
-	c.cancelFunc()
-	// then close the queue:
-	// - first the requests channel because push() will not be called anymore
-	// - then the responses channel, after all the responses are received from the APNS service
-	c.queue.Stop()
-	logger.Debug("stopped")
-	return nil
-}
-
-func (c *conn) HandleResponse(request connector.Request, responseIface interface{}, errSend error) error {
+func (c conn) HandleResponse(request connector.Request, responseIface interface{}, errSend error) error {
 	log.Debug("HandleResponse")
 	if errSend != nil {
 		logger.WithError(errSend).Error("APNS error when trying to send notification")
 		return errSend
 	}
-	if rsp, ok := responseIface.(*apns2.Response); ok {
-		if !rsp.Sent() {
-			log.WithField("id", rsp.ApnsID).WithField("reason", rsp.Reason).Error(errNotSentMsg)
+	if r, ok := responseIface.(*apns2.Response); ok {
+		if !r.Sent() {
+			log.WithField("id", r.ApnsID).WithField("reason", r.Reason).Error(errNotSentMsg)
 		} else {
-			log.WithField("id", rsp.ApnsID).Debug("APNS notification was successfully sent")
+			log.WithField("id", r.ApnsID).Debug("APNS notification was successfully sent")
 		}
 		messageID := request.Message().ID
 		if err := request.Subscriber().SetLastID(messageID); err != nil {
@@ -119,11 +87,6 @@ func (c *conn) HandleResponse(request connector.Request, responseIface interface
 		//TODO Cosmin Bogdan: extra-APNS-handling
 	}
 	return nil
-}
-
-// GetPrefix complies with the service.Endpoint interface.
-func (c *conn) GetPrefix() string {
-	return c.prefix
 }
 
 // ServeHTTP handles the subscription-related processes in APNS.
@@ -212,11 +175,11 @@ func (c *conn) deleteSubscription(w http.ResponseWriter, topic, userID, apnsID s
 func (c *conn) parseUserIDAndDeviceID(path string) (userID, apnsID, unparsedPath string, err error) {
 	currentURLPath := removeTrailingSlash(path)
 
-	if !strings.HasPrefix(currentURLPath, c.prefix) {
+	if !strings.HasPrefix(currentURLPath, c.Config.Prefix) {
 		err = errors.New("APNS request is not starting with correct prefix")
 		return
 	}
-	pathAfterPrefix := strings.TrimPrefix(currentURLPath, c.prefix)
+	pathAfterPrefix := strings.TrimPrefix(currentURLPath, c.Config.Prefix)
 
 	splitParams := strings.SplitN(pathAfterPrefix, "/", 3)
 	if len(splitParams) != 3 {
@@ -242,7 +205,7 @@ func (c *conn) parseTopic(unparsedPath string) (topic string, err error) {
 
 func (c *conn) loadSubscriptions() {
 	count := 0
-	for entry := range c.kvStore.Iterate(schema, "") {
+	for entry := range c.KVStore.Iterate(schema, "") {
 		c.loadSubscription(entry)
 		count++
 	}
