@@ -95,12 +95,17 @@ func (s *subscriber) Loop(ctx context.Context, q Queue) error {
 	)
 	for opened {
 		select {
-		case m, opened = <-s.route.MessagesChannel():
-			q.Push(NewRequest(s, m))
 		case <-ctx.Done():
 			return nil
+		case m, opened = <-s.route.MessagesChannel():
+			if !opened {
+				break
+			}
+			q.Push(NewRequest(s, m))
 		}
 	}
+
+	//TODO Cosmin Bogdan returning this error can mean 2 things: overflow of route's channel, or intentional stopping of router / gubled.
 	return ErrRouteChannelClosed
 }
 
