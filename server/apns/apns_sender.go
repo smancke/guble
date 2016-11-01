@@ -9,19 +9,19 @@ import (
 	"strings"
 )
 
-type Sender struct {
+type sender struct {
 	client *apns2.Client
 }
 
-func newSender(c Config) (*Sender, error) {
+func newSender(c Config) (*sender, error) {
 	client, err := newClient(c)
 	if err != nil {
 		return nil, err
 	}
-	return &Sender{client: client}, nil
+	return &sender{client: client}, nil
 }
 
-func (s Sender) Send(request connector.Request) (interface{}, error) {
+func (s sender) Send(request connector.Request) (interface{}, error) {
 	r := request.Subscriber().Route()
 
 	//TODO Cosmin: Samsa should generate the Payload or the whole Notification, and JSON-serialize it into the guble-message Body.
