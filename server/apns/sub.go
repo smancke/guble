@@ -120,7 +120,7 @@ func (s *sub) createFetchRequest() *store.FetchRequest {
 }
 
 func (s sub) Loop(ctx context.Context, q connector.Queue) error {
-	//TODO Cosmin use goLoop() as inspiration for the implementation
+	//TODO Cosmin use subscriber.goLoop() in `connector` as inspiration for the implementation
 	return nil
 }
 
@@ -138,6 +138,9 @@ func (s sub) goLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case m, opened = <-s.route.MessagesChannel():
+			if !opened {
+				break
+			}
 			r := connector.NewRequest(s, m)
 			s.connector.Queue.Push(r)
 		}
