@@ -21,6 +21,7 @@ type Subscriber interface {
 	Key() string
 	Route() *router.Route
 	Loop(context.Context, chan *protocol.Message) error
+	SetLastID(ID uint64) error
 }
 
 type subscriberData struct {
@@ -83,4 +84,9 @@ func (s *subscriber) Loop(ctx context.Context, pipeline chan *protocol.Message) 
 		}
 	}
 	return ErrRouteChannelClosed
+}
+
+func (s *subscriber) SetLastID(ID uint64) error {
+	//TODO Cosmin Bogdan
+	return nil
 }

@@ -178,7 +178,7 @@ func (s sub) Route() *router.Route {
 	return s.route
 }
 
-func (s *sub) setLastID(ID uint64) error {
+func (s sub) SetLastID(ID uint64) error {
 	s.lastID = ID
 	// update KV when last id is set
 	return s.store()

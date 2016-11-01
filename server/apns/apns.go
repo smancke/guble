@@ -2,14 +2,11 @@ package apns
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/sideshow/apns2"
-	"github.com/sideshow/apns2/certificate"
-	"github.com/sideshow/apns2/payload"
 	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
@@ -41,7 +38,7 @@ type Config struct {
 
 // Connector is the structure for handling the communication with APNS
 type Connector struct {
-	queue      *Queue
+	queue      connector.Queue
 	router     router.Router
 	kvStore    kvstore.KVStore
 	prefix     string
@@ -68,7 +65,7 @@ func New(router router.Router, prefix string, config Config) (*Connector, error)
 		kvStore: kvStore,
 		prefix:  prefix,
 	}
-	newConn.queue = NewQueue(sender, newConn, *config.Workers)
+	newConn.queue = connector.NewQueue(sender, newConn, *config.Workers)
 	return newConn, nil
 }
 
@@ -81,41 +78,11 @@ func (conn *Connector) Start() error {
 
 	conn.context, conn.cancelFunc = context.WithCancel(context.Background())
 
-	// start the response-receiving loop in a goroutine
-	go conn.loopReceiveResponses()
-
 	return nil
 }
 
 func (conn *Connector) reset() {
 	conn.subs = make(map[string]*sub)
-}
-
-func (conn *Connector) HandleResponse(s connector.Subscriber, r interface{}) error {
-	//TODO Cosmin
-	return nil
-}
-
-func (conn *Connector) loopReceiveResponses() {
-	for r := range conn.queue.responsesC {
-		if r.err != nil {
-			log.WithError(r.err).Error("APNS error when trying to push notification")
-		} else {
-			rsp := r.response
-			if !rsp.Sent() {
-				log.WithField("id", rsp.ApnsID).WithField("reason", rsp.Reason).Error(errNotSentMsg)
-			} else {
-				log.WithField("id", rsp.ApnsID).Debug("APNS notification was successfully sent")
-			}
-			subscription := r.fullRequest.sub
-			messageID := r.fullRequest.message.ID
-			if err := subscription.setLastID(messageID); err != nil {
-				//TODO Cosmin Bogdan: error-handling
-			}
-
-			//TODO Cosmin Bogdan: extra-APNS-handling
-		}
-	}
 }
 
 // Stop the APNS Connector
@@ -128,6 +95,28 @@ func (conn *Connector) Stop() error {
 	// - then the responses channel, after all the responses are received from the APNS service
 	conn.queue.Close()
 	logger.Debug("stopped")
+	return nil
+}
+
+func (conn *Connector) HandleResponse(request connector.Request, responseIface interface{}, errSend error) error {
+	log.Debug("HandleResponse")
+	if errSend != nil {
+		logger.WithError(errSend).Error("APNS error when trying to send notification")
+		return errSend
+	}
+	if rsp, ok := responseIface.(apns2.Response); ok {
+		if !rsp.Sent() {
+			log.WithField("id", rsp.ApnsID).WithField("reason", rsp.Reason).Error(errNotSentMsg)
+		} else {
+			log.WithField("id", rsp.ApnsID).Debug("APNS notification was successfully sent")
+		}
+		messageID := request.Message().ID
+		if err := request.Subscriber().SetLastID(messageID); err != nil {
+			//TODO Cosmin Bogdan: error-handling
+		}
+
+		//TODO Cosmin Bogdan: extra-APNS-handling
+	}
 	return nil
 }
 
@@ -287,63 +276,6 @@ func (conn *Connector) Check() error {
 func (conn *Connector) synchronizeSubscription(topic, userID, apnsID string, remove bool) error {
 	//TODO implement
 	return nil
-}
-
-type Sender struct {
-	client *apns2.Client
-}
-
-func newSender(c Config) (*Sender, error) {
-	client, err := newClient(c)
-	if err != nil {
-		return nil, err
-	}
-	return &Sender{client: client}, nil
-}
-
-func (s Sender) Send(request connector.Request) (interface{}, error) {
-	r := request.Subscriber().Route()
-
-	//TODO Cosmin: Samsa should generate the Payload or the whole Notification, and JSON-serialize it into the guble-message Body.
-
-	//m := request.Message()
-	//n := &apns2.Notification{
-	//	Priority:    apns2.PriorityHigh,
-	//	Topic:       strings.TrimPrefix(string(s.route.Path), "/"),
-	//	DeviceToken: s.route.Get(applicationIDKey),
-	//	Payload:     m.Body,
-	//}
-
-	n := &apns2.Notification{
-		Priority:    apns2.PriorityHigh,
-		Topic:       strings.TrimPrefix(string(r.Path), "/"),
-		DeviceToken: r.Get(applicationIDKey),
-		Payload: payload.NewPayload().
-			AlertTitle("Title").
-			AlertBody("Text").
-			Badge(1).
-			ContentAvailable(),
-	}
-	return s.client.Push(n)
-}
-
-func newClient(c Config) (*apns2.Client, error) {
-	var (
-		cert    tls.Certificate
-		errCert error
-	)
-	if c.CertificateFileName != nil && *c.CertificateFileName != "" {
-		cert, errCert = certificate.FromP12File(*c.CertificateFileName, *c.CertificatePassword)
-	} else {
-		cert, errCert = certificate.FromP12Bytes(*c.CertificateBytes, *c.CertificatePassword)
-	}
-	if errCert != nil {
-		return nil, errCert
-	}
-	if *c.Production {
-		return apns2.NewClient(cert).Production(), nil
-	}
-	return apns2.NewClient(cert).Development(), nil
 }
 
 func removeTrailingSlash(path string) string {
