@@ -1,12 +1,11 @@
 package connector
 
 import (
-	"net/http"
-
 	"github.com/docker/distribution/health"
 	"github.com/gorilla/mux"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
+	"net/http"
 )
 
 type Request interface {
@@ -15,12 +14,13 @@ type Request interface {
 }
 
 type Sender interface {
-	// Send take a Request and returns the response or error
+	// Send takes a Request and returns the response or an error
 	Send(Request) (interface{}, error)
 }
 
 type ResponseHandler interface {
-	HandleResponse(Subscriber, interface{}) error
+	// HandleResponse is used to pass the results from send: response + error
+	HandleResponse(request Request, response interface{}, errSend error) error
 }
 
 type Connector interface {
