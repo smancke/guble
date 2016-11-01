@@ -15,7 +15,7 @@ type Sender interface {
 
 type ResponseHandler interface {
 	// HandleResponse handles the response returned by the Sender
-	HandleResponse(Subscriber, interface{}, error) error
+	HandleResponse(Request, interface{}, error) error
 }
 
 type Connector interface {

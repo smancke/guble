@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	ErrSubscriberExists      = errors.New("Subscriber exists.")
-	ErrSubscriberDoesntExist = errors.New("Subscriber doesn't exist.")
+	ErrSubscriberExists       = errors.New("Subscriber exists.")
+	ErrSubscriberDoesNotExist = errors.New("Subscriber does not exist.")
 
 	ErrRouteChannelClosed = errors.New("Subscriber route channel has been closed.")
 )
@@ -25,6 +25,7 @@ type Subscriber interface {
 	Key() string
 	Route() *router.Route
 	Loop(context.Context, Queue) error
+	SetLastID(ID uint64) error
 }
 
 type subscriberData struct {
@@ -100,4 +101,9 @@ func (s *subscriber) Loop(ctx context.Context, q Queue) error {
 		}
 	}
 	return ErrRouteChannelClosed
+}
+
+func (s *subscriber) SetLastID(ID uint64) error {
+	//TODO Cosmin Bogdan
+	return nil
 }
