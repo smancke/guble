@@ -2,8 +2,12 @@ package connector
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
@@ -20,7 +24,7 @@ var (
 type Subscriber interface {
 	Key() string
 	Route() *router.Route
-	Loop(context.Context, chan *protocol.Message) error
+	Loop(context.Context, Queue) error
 }
 
 type subscriberData struct {
@@ -32,12 +36,13 @@ type subscriberData struct {
 type subscriber struct {
 	params router.RouteParams
 	route  *router.Route
+	key    string
 }
 
 func NewSubscriber(topic protocol.Path, params router.RouteParams, fetchRequest *store.FetchRequest) Subscriber {
 	return &subscriber{
-		params,
-		router.NewRoute(router.RouteConfig{
+		params: params,
+		route: router.NewRoute(router.RouteConfig{
 			Path:         topic,
 			RouteParams:  params,
 			FetchRequest: fetchRequest,
@@ -60,16 +65,28 @@ func NewSubscriberFromJSON(data []byte) (Subscriber, error) {
 	return NewSubscriber(sd.Topic, sd.Params, fr), nil
 }
 
-// TODO Bogdan Implement unique key generation from params
+func (s *subscriber) String() string {
+	return s.Key()
+}
+
 func (s *subscriber) Key() string {
-	return "DUMMY KEY"
+	if s.key == "" {
+		// compute the key from params
+		h := sha1.New()
+		for k, v := range s.params {
+			io.WriteString(h, fmt.Sprintf("%s:%s", k, v))
+		}
+		sum := h.Sum(nil)
+		s.key = hex.EncodeToString(sum[:])
+	}
+	return s.key
 }
 
 func (s *subscriber) Route() *router.Route {
 	return s.route
 }
 
-func (s *subscriber) Loop(ctx context.Context, pipeline chan *protocol.Message) error {
+func (s *subscriber) Loop(ctx context.Context, q Queue) error {
 	var (
 		opened bool = true
 		m      *protocol.Message
@@ -77,7 +94,7 @@ func (s *subscriber) Loop(ctx context.Context, pipeline chan *protocol.Message) 
 	for opened {
 		select {
 		case m, opened = <-s.route.MessagesChannel():
-			pipeline <- m
+			q.Push(NewRequest(s, m))
 		case <-ctx.Done():
 			return nil
 		}

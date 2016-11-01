@@ -5,14 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
 )
-
-type Request interface {
-	Subscriber() Subscriber
-	Message() *protocol.Message
-}
 
 type Sender interface {
 	// Send take a Request and returns the response or error
@@ -20,7 +14,8 @@ type Sender interface {
 }
 
 type ResponseHandler interface {
-	HandleResponse(Subscriber, interface{}) error
+	// HandleResponse handles the response returned by the Sender
+	HandleResponse(Subscriber, interface{}, error) error
 }
 
 type Connector interface {
@@ -104,10 +99,10 @@ func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 
 // Start will run start all current subscriptions and workers to process the messages
 func (c *connector) Start() error {
-
+	return nil
 }
 
 // Stop stops the context
 func (c *connector) Stop() error {
-
+	return nil
 }

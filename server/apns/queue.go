@@ -1,9 +1,10 @@
 package apns
 
 import (
+	"sync"
+
 	"github.com/sideshow/apns2"
 	"github.com/smancke/guble/protocol"
-	"sync"
 )
 
 type queue struct {
