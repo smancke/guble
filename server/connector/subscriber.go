@@ -73,13 +73,7 @@ func (s *subscriber) String() string {
 // TODO Bogdan extract the generation of the key as an external method to be reused
 func (s *subscriber) Key() string {
 	if s.key == "" {
-		// compute the key from params
-		h := sha1.New()
-		for k, v := range s.params {
-			io.WriteString(h, fmt.Sprintf("%s:%s", k, v))
-		}
-		sum := h.Sum(nil)
-		s.key = hex.EncodeToString(sum[:])
+		s.key = GenerateKey(s.params)
 	}
 	return s.key
 }
@@ -107,4 +101,14 @@ func (s *subscriber) Loop(ctx context.Context, q Queue) error {
 func (s *subscriber) SetLastID(ID uint64) error {
 	//TODO Cosmin Bogdan
 	return nil
+}
+
+func GenerateKey(params map[string]string) string {
+	// compute the key from params
+	h := sha1.New()
+	for k, v := range params {
+		io.WriteString(h, fmt.Sprintf("%s:%s", k, v))
+	}
+	sum := h.Sum(nil)
+	return hex.EncodeToString(sum[:])
 }
