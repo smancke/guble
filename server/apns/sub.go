@@ -139,10 +139,7 @@ func (s sub) goLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case m, opened = <-s.route.MessagesChannel():
-			r := &request{
-				message:      m,
-				subscription: s,
-			}
+			r := connector.NewRequest(s, m)
 			s.connector.queue.Push(r)
 		}
 	}

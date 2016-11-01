@@ -70,6 +70,7 @@ func (s *subscriber) String() string {
 	return s.Key()
 }
 
+// TODO Bogdan extract the generation of the key as an external method to be reused
 func (s *subscriber) Key() string {
 	if s.key == "" {
 		// compute the key from params
