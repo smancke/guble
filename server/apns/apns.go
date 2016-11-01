@@ -104,7 +104,7 @@ func (conn *Connector) HandleResponse(request connector.Request, responseIface i
 		logger.WithError(errSend).Error("APNS error when trying to send notification")
 		return errSend
 	}
-	if rsp, ok := responseIface.(apns2.Response); ok {
+	if rsp, ok := responseIface.(*apns2.Response); ok {
 		if !rsp.Sent() {
 			log.WithField("id", rsp.ApnsID).WithField("reason", rsp.Reason).Error(errNotSentMsg)
 		} else {

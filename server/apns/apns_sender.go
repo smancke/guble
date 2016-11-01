@@ -44,6 +44,7 @@ func (s Sender) Send(request connector.Request) (interface{}, error) {
 			Badge(1).
 			ContentAvailable(),
 	}
+	logger.Debug("Trying to push a message to APNS")
 	return s.client.Push(n)
 }
 
