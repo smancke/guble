@@ -1,34 +1,27 @@
 package connector
 
 import (
-	"github.com/docker/distribution/health"
-	"github.com/gorilla/mux"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/router"
+	"context"
 	"net/http"
+
+	"github.com/gorilla/mux"
+	"github.com/smancke/guble/server/router"
 )
 
-type Request interface {
-	Subscriber() Subscriber
-	Message() *protocol.Message
-}
-
 type Sender interface {
-	// Send takes a Request and returns the response or an error
+	// Send take a Request and returns the response or error
 	Send(Request) (interface{}, error)
 }
 
 type ResponseHandler interface {
-	// HandleResponse is used to pass the results from send: response + error
-	HandleResponse(request Request, response interface{}, errSend error) error
+	// HandleResponse handles the response returned by the Sender
+	HandleResponse(Request, interface{}, error) error
 }
 
 type Connector interface {
-	health.Checker
-	SubscriptionManager
-	ResponseHandler
-
 	http.Handler
+	ResponseHandler
+	Sender
 
 	Prefix() string
 	Start() error
@@ -42,11 +35,13 @@ type ConnectorConfig struct {
 }
 
 type connector struct {
-	SubscriptionManager
+	manager Manager
 
 	config ConnectorConfig
 	router router.Router
 	sender Sender
+
+	ctx context.Context
 }
 
 func NewConnector(router router.Router, sender Sender, config ConnectorConfig) (*connector, error) {
@@ -55,16 +50,17 @@ func NewConnector(router router.Router, sender Sender, config ConnectorConfig) (
 		return nil, err
 	}
 
-	manager, err := NewSubscriptionManager(config.Name, kvstore)
+	manager, err := NewManager(config.Name, kvstore)
 	if err != nil {
 		return nil, err
 	}
 
 	return &connector{
-		SubscriptionManager: manager,
-		config:              config,
-		router:              router,
-		sender:              sender,
+		manager: manager,
+		config:  config,
+		router:  router,
+		sender:  sender,
+		ctx:     context.Background(),
 	}, nil
 }
 
@@ -75,29 +71,38 @@ func (c *connector) Prefix() string {
 // TODO Bogdan Refactor this so the router is built one time
 func (c *connector) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r := mux.NewRouter()
-	s := r.PathPrefix(c.Prefix()).Path(c.config.Url).Subrouter()
 
-	s.Methods("GET").HandlerFunc(c.Get)
+	base := r.PathPrefix(c.Prefix()).Subrouter()
+	base.Methods("GET").HandlerFunc(c.GetList)
+
+	s := base.Path(c.config.Url).Subrouter()
 	s.Methods("POST").HandlerFunc(c.Post)
-	s.Methods("PUT").HandlerFunc(c.Put)
 	s.Methods("DELETE").HandlerFunc(c.Delete)
 
 	r.ServeHTTP(w, req)
 }
 
-// Returns list of subscriptions
-func (c *connector) Get(w http.ResponseWriter, req *http.Request) {
+// GetList returns list of subscribers
+func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
 
 }
 
+// Post creates a new subscriber
 func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
-
+	// vars := mux.Vars(req)
 }
 
-func (c *connector) Put(w http.ResponseWriter, req *http.Request) {
-
-}
-
+// Delete removes a subscriber
 func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 
+}
+
+// Start will run start all current subscriptions and workers to process the messages
+func (c *connector) Start() error {
+	return nil
+}
+
+// Stop stops the context
+func (c *connector) Stop() error {
+	return nil
 }

@@ -2,51 +2,60 @@ package connector
 
 import (
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 type Queue interface {
-	Push(request Request)
+	Push(request Request) error
 	Close()
 }
 
 type queue struct {
-	sender          Sender
-	responseHandler ResponseHandler
-	requestsC       chan Request
-	wg              sync.WaitGroup
+	sender    Sender
+	handler   ResponseHandler
+	requestsC chan Request
+	wg        sync.WaitGroup
 }
 
-// NewQueue returns a pointer to a Queue using a client and a fixed number of workers / goroutines.
-func NewQueue(sender Sender, responseHandler ResponseHandler, nWorkers uint) Queue {
-	// unbuffered channels
+func NewQueue(sender Sender, handler ResponseHandler, nWorkers int) Queue {
 	q := &queue{
-		sender:          sender,
-		responseHandler: responseHandler,
-		requestsC:       make(chan Request),
+		sender:    sender,
+		handler:   handler,
+		requestsC: make(chan Request),
 	}
-	for i := uint(0); i < nWorkers; i++ {
-		go worker(q)
-	}
+	q.start(nWorkers)
 	return q
 }
 
-// Push queues a notification to the APNS.
-func (q *queue) Push(request Request) {
-	q.requestsC <- request
+func (q *queue) start(nWorkers int) {
+	for i := 1; i < nWorkers; i++ {
+		go q.worker()
+	}
 }
 
-// Close the channels for notifications and responses and shutdown workers.
-// Waits until all responses are consumed from the channel.
+func (q *queue) Push(request Request) error {
+	q.requestsC <- request
+	return nil
+}
+
+func (q *queue) worker() {
+	for request := range q.requestsC {
+		q.wg.Add(1)
+		response, err := q.sender.Send(request)
+		err = q.handler.HandleResponse(request, response, err)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error":      err.Error(),
+				"subscriber": request.Subscriber(),
+				"message":    request.Message(),
+			}).Error("Error handling connector response")
+		}
+		q.wg.Done()
+	}
+}
+
 func (q *queue) Close() {
 	close(q.requestsC)
 	q.wg.Wait()
-}
-
-func worker(q *queue) {
-	for request := range q.requestsC {
-		q.wg.Add(1)
-		response, errSend := q.sender.Send(request)
-		q.responseHandler.HandleResponse(request, response, errSend)
-		q.wg.Done()
-	}
 }

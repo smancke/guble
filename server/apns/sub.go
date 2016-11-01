@@ -3,13 +3,14 @@ package apns
 import (
 	"context"
 	"errors"
+	"strconv"
+	"strings"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/store"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -119,20 +120,7 @@ func (s *sub) createFetchRequest() *store.FetchRequest {
 	return store.NewFetchRequest("", s.lastID+1, 0, store.DirectionForward, -1)
 }
 
-type request struct {
-	message      *protocol.Message
-	subscription sub
-}
-
-func (r request) Subscriber() connector.Subscriber {
-	return r.subscription
-}
-
-func (r request) Message() *protocol.Message {
-	return r.message
-}
-
-func (s sub) Loop(ctx context.Context, pipeline chan *protocol.Message) error {
+func (s sub) Loop(ctx context.Context, q connector.Queue) error {
 	//TODO Cosmin use goLoop() as inspiration for the implementation
 	return nil
 }
@@ -151,10 +139,7 @@ func (s sub) goLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case m, opened = <-s.route.MessagesChannel():
-			r := &request{
-				message:      m,
-				subscription: s,
-			}
+			r := connector.NewRequest(s, m)
 			s.connector.queue.Push(r)
 		}
 	}
