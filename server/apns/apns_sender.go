@@ -21,6 +21,25 @@ func newSender(c Config) (*sender, error) {
 	return &sender{client: client}, nil
 }
 
+func newClient(c Config) (*apns2.Client, error) {
+	var (
+		cert    tls.Certificate
+		errCert error
+	)
+	if c.CertificateFileName != nil && *c.CertificateFileName != "" {
+		cert, errCert = certificate.FromP12File(*c.CertificateFileName, *c.CertificatePassword)
+	} else {
+		cert, errCert = certificate.FromP12Bytes(*c.CertificateBytes, *c.CertificatePassword)
+	}
+	if errCert != nil {
+		return nil, errCert
+	}
+	if *c.Production {
+		return apns2.NewClient(cert).Production(), nil
+	}
+	return apns2.NewClient(cert).Development(), nil
+}
+
 func (s sender) Send(request connector.Request) (interface{}, error) {
 	r := request.Subscriber().Route()
 
@@ -46,23 +65,4 @@ func (s sender) Send(request connector.Request) (interface{}, error) {
 	}
 	logger.Debug("Trying to push a message to APNS")
 	return s.client.Push(n)
-}
-
-func newClient(c Config) (*apns2.Client, error) {
-	var (
-		cert    tls.Certificate
-		errCert error
-	)
-	if c.CertificateFileName != nil && *c.CertificateFileName != "" {
-		cert, errCert = certificate.FromP12File(*c.CertificateFileName, *c.CertificatePassword)
-	} else {
-		cert, errCert = certificate.FromP12Bytes(*c.CertificateBytes, *c.CertificatePassword)
-	}
-	if errCert != nil {
-		return nil, errCert
-	}
-	if *c.Production {
-		return apns2.NewClient(cert).Production(), nil
-	}
-	return apns2.NewClient(cert).Development(), nil
 }

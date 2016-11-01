@@ -9,12 +9,12 @@ import (
 )
 
 type Sender interface {
-	// Send take a Request and returns the response or error
+	// Send takes a Request and returns the response or error
 	Send(Request) (interface{}, error)
 }
 
 type ResponseHandler interface {
-	// HandleResponse handles the response returned by the Sender
+	// HandleResponse handles the response+error returned by the Sender
 	HandleResponse(Request, interface{}, error) error
 }
 
@@ -36,12 +36,10 @@ type ConnectorConfig struct {
 
 type connector struct {
 	manager Manager
-
-	config ConnectorConfig
-	router router.Router
-	sender Sender
-
-	ctx context.Context
+	config  ConnectorConfig
+	router  router.Router
+	sender  Sender
+	ctx     context.Context
 }
 
 func NewConnector(router router.Router, sender Sender, config ConnectorConfig) (*connector, error) {
