@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/smancke/guble/server/router"
+	"github.com/smancke/guble/server/service"
 )
 
 type Sender interface {
@@ -19,13 +20,17 @@ type ResponseHandler interface {
 }
 
 type Connector interface {
-	http.Handler
-	ResponseHandler
-	Sender
+	service.Startable
+	service.Stopable
+	service.Endpoint
+}
 
-	Prefix() string
-	Start() error
-	Stop() error
+type connector struct {
+	config  ConnectorConfig
+	sender  Sender
+	manager Manager
+	router  router.Router
+	ctx     context.Context
 }
 
 type ConnectorConfig struct {
@@ -34,15 +39,7 @@ type ConnectorConfig struct {
 	Url    string
 }
 
-type connector struct {
-	manager Manager
-	config  ConnectorConfig
-	router  router.Router
-	sender  Sender
-	ctx     context.Context
-}
-
-func NewConnector(router router.Router, sender Sender, config ConnectorConfig) (*connector, error) {
+func NewConnector(router router.Router, sender Sender, config ConnectorConfig) (Connector, error) {
 	kvstore, err := router.KVStore()
 	if err != nil {
 		return nil, err
@@ -62,7 +59,7 @@ func NewConnector(router router.Router, sender Sender, config ConnectorConfig) (
 	}, nil
 }
 
-func (c *connector) Prefix() string {
+func (c *connector) GetPrefix() string {
 	return c.config.Prefix
 }
 
@@ -70,7 +67,7 @@ func (c *connector) Prefix() string {
 func (c *connector) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r := mux.NewRouter()
 
-	base := r.PathPrefix(c.Prefix()).Subrouter()
+	base := r.PathPrefix(c.GetPrefix()).Subrouter()
 	base.Methods("GET").HandlerFunc(c.GetList)
 
 	s := base.Path(c.config.Url).Subrouter()

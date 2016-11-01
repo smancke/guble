@@ -9,7 +9,7 @@ import (
 type Queue interface {
 	Start() error
 	Push(request Request) error
-	Close() error
+	Stop() error
 }
 
 type queue struct {
@@ -31,7 +31,7 @@ func NewQueue(sender Sender, handler ResponseHandler, nWorkers int) Queue {
 }
 
 func (q *queue) Start() error {
-	for i := 1; i < q.nWorkers; i++ {
+	for i := 1; i <= q.nWorkers; i++ {
 		go q.worker()
 	}
 	return nil
@@ -58,7 +58,7 @@ func (q *queue) Push(request Request) error {
 	return nil
 }
 
-func (q *queue) Close() error {
+func (q *queue) Stop() error {
 	close(q.requestsC)
 	q.wg.Wait()
 	return nil
