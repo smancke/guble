@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	ErrSubscriberExists      = errors.New("Subscriber exists.")
-	ErrSubscriberDoesntExist = errors.New("Subscriber doesn't exist.")
+	ErrSubscriberExists       = errors.New("Subscriber exists.")
+	ErrSubscriberDoesNotExist = errors.New("Subscriber does not exist.")
 
 	ErrRouteChannelClosed = errors.New("Subscriber route channel has been closed.")
 )

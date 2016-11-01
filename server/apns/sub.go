@@ -4,9 +4,8 @@ import (
 	"context"
 	"errors"
 	log "github.com/Sirupsen/logrus"
-	"github.com/sideshow/apns2"
-	"github.com/sideshow/apns2/payload"
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/store"
 	"strconv"
@@ -106,7 +105,7 @@ func (s *sub) restart(ctx context.Context) error {
 // start loop to receive messages from route
 func (s *sub) start(ctx context.Context) error {
 	s.route.FetchRequest = s.createFetchRequest()
-	go s.Loop(ctx)
+	go s.goLoop(ctx)
 	if err := s.route.Provide(s.connector.router, true); err != nil {
 		return err
 	}
@@ -120,9 +119,27 @@ func (s *sub) createFetchRequest() *store.FetchRequest {
 	return store.NewFetchRequest("", s.lastID+1, 0, store.DirectionForward, -1)
 }
 
+type request struct {
+	message      *protocol.Message
+	subscription sub
+}
+
+func (r request) Subscriber() connector.Subscriber {
+	return r.subscription
+}
+
+func (r request) Message() *protocol.Message {
+	return r.message
+}
+
+func (s sub) Loop(ctx context.Context, pipeline chan *protocol.Message) error {
+	//TODO Cosmin use goLoop() as inspiration for the implementation
+	return nil
+}
+
 // subscriptionLoop that will run in a goroutine and pipe messages from route to fcm
 // Attention: in order for this loop to finish the route channel must stop sending messages
-func (s *sub) Loop(ctx context.Context) {
+func (s sub) goLoop(ctx context.Context) {
 	s.logger.Debug("Starting APNS subscription loop")
 
 	var (
@@ -134,7 +151,11 @@ func (s *sub) Loop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case m, opened = <-s.route.MessagesChannel():
-			s.push(m)
+			r := &request{
+				message:      m,
+				subscription: s,
+			}
+			s.connector.queue.Push(r)
 		}
 	}
 
@@ -148,34 +169,13 @@ func (s *sub) Loop(ctx context.Context) {
 }
 
 // Key returns a string that uniquely identifies this subscription
-func (s *sub) Key() string {
+func (s sub) Key() string {
 	return s.route.Key()
 }
 
-// push a message into the queue
-func (s *sub) push(m *protocol.Message) {
-
-	//TODO Cosmin: Samsa should generate the Payload or the whole Notification, and JSON-serialize it into the guble-message Body.
-
-	//n := &apns2.Notification{
-	//	Priority:    apns2.PriorityHigh,
-	//	Topic:       strings.TrimPrefix(string(s.route.Path), "/"),
-	//	DeviceToken: s.route.Get(applicationIDKey),
-	//	Payload:     m.Body,
-	//}
-
-	n := &apns2.Notification{
-		Priority:    apns2.PriorityHigh,
-		Topic:       strings.TrimPrefix(string(s.route.Path), "/"),
-		DeviceToken: s.route.Get(applicationIDKey),
-		Payload: payload.NewPayload().
-			AlertTitle("Title").
-			AlertBody("Text").
-			Badge(1).
-			ContentAvailable(),
-	}
-
-	s.connector.queue.push(n, m, s)
+// Route returns the route of the subscription
+func (s sub) Route() *router.Route {
+	return s.route
 }
 
 func (s *sub) setLastID(ID uint64) error {

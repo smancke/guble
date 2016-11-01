@@ -9,6 +9,8 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/certificate"
+	"github.com/sideshow/apns2/payload"
+	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
 	"net/http"
@@ -39,7 +41,7 @@ type Config struct {
 
 // Connector is the structure for handling the communication with APNS
 type Connector struct {
-	queue      *queue
+	queue      *Queue
 	router     router.Router
 	kvStore    kvstore.KVStore
 	prefix     string
@@ -56,17 +58,18 @@ func New(router router.Router, prefix string, config Config) (*Connector, error)
 		log.WithError(err).Error("APNS KVStore error")
 		return nil, err
 	}
-	c, err := getClient(config)
+	sender, err := newSender(config)
 	if err != nil {
-		log.WithError(err).Error("APNS client error")
+		log.WithError(err).Error("APNS Sender error")
 		return nil, err
 	}
-	return &Connector{
-		queue:   NewQueue(c, *config.Workers),
+	newConn := &Connector{
 		router:  router,
 		kvStore: kvStore,
 		prefix:  prefix,
-	}, nil
+	}
+	newConn.queue = NewQueue(sender, newConn, *config.Workers)
+	return newConn, nil
 }
 
 func (conn *Connector) Start() error {
@@ -86,6 +89,11 @@ func (conn *Connector) Start() error {
 
 func (conn *Connector) reset() {
 	conn.subs = make(map[string]*sub)
+}
+
+func (conn *Connector) HandleResponse(s connector.Subscriber, r interface{}) error {
+	//TODO Cosmin
+	return nil
 }
 
 func (conn *Connector) loopReceiveResponses() {
@@ -281,7 +289,45 @@ func (conn *Connector) synchronizeSubscription(topic, userID, apnsID string, rem
 	return nil
 }
 
-func getClient(c Config) (*apns2.Client, error) {
+type Sender struct {
+	client *apns2.Client
+}
+
+func newSender(c Config) (*Sender, error) {
+	client, err := newClient(c)
+	if err != nil {
+		return nil, err
+	}
+	return &Sender{client: client}, nil
+}
+
+func (s Sender) Send(request connector.Request) (interface{}, error) {
+	r := request.Subscriber().Route()
+
+	//TODO Cosmin: Samsa should generate the Payload or the whole Notification, and JSON-serialize it into the guble-message Body.
+
+	//m := request.Message()
+	//n := &apns2.Notification{
+	//	Priority:    apns2.PriorityHigh,
+	//	Topic:       strings.TrimPrefix(string(s.route.Path), "/"),
+	//	DeviceToken: s.route.Get(applicationIDKey),
+	//	Payload:     m.Body,
+	//}
+
+	n := &apns2.Notification{
+		Priority:    apns2.PriorityHigh,
+		Topic:       strings.TrimPrefix(string(r.Path), "/"),
+		DeviceToken: r.Get(applicationIDKey),
+		Payload: payload.NewPayload().
+			AlertTitle("Title").
+			AlertBody("Text").
+			Badge(1).
+			ContentAvailable(),
+	}
+	return s.client.Push(n)
+}
+
+func newClient(c Config) (*apns2.Client, error) {
 	var (
 		cert    tls.Certificate
 		errCert error
