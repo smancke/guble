@@ -5,17 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"sort"
-	"strconv"
-	"strings"
-	"sync"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/sideshow/apns2"
 	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
+	"net/http"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
 )
 
 const (
@@ -73,11 +72,12 @@ func New(router router.Router, prefix string, config Config) (*Connector, error)
 func (conn *Connector) Start() error {
 	conn.reset()
 
+	conn.context, conn.cancelFunc = context.WithCancel(context.Background())
+
 	if conn.queue == nil {
 		return errors.New("internal queue should have been already created")
 	}
-
-	conn.context, conn.cancelFunc = context.WithCancel(context.Background())
+	conn.queue.Start()
 
 	return nil
 }
