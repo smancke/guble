@@ -7,14 +7,16 @@ import (
 )
 
 type Queue interface {
+	Start() error
 	Push(request Request) error
-	Close()
+	Stop() error
 }
 
 type queue struct {
 	sender    Sender
 	handler   ResponseHandler
 	requestsC chan Request
+	nWorkers  int
 	wg        sync.WaitGroup
 }
 
@@ -23,19 +25,15 @@ func NewQueue(sender Sender, handler ResponseHandler, nWorkers int) Queue {
 		sender:    sender,
 		handler:   handler,
 		requestsC: make(chan Request),
+		nWorkers:  nWorkers,
 	}
-	q.start(nWorkers)
 	return q
 }
 
-func (q *queue) start(nWorkers int) {
-	for i := 1; i < nWorkers; i++ {
+func (q *queue) Start() error {
+	for i := 1; i <= q.nWorkers; i++ {
 		go q.worker()
 	}
-}
-
-func (q *queue) Push(request Request) error {
-	q.requestsC <- request
 	return nil
 }
 
@@ -55,7 +53,13 @@ func (q *queue) worker() {
 	}
 }
 
-func (q *queue) Close() {
+func (q *queue) Push(request Request) error {
+	q.requestsC <- request
+	return nil
+}
+
+func (q *queue) Stop() error {
 	close(q.requestsC)
 	q.wg.Wait()
+	return nil
 }

@@ -5,18 +5,18 @@ import (
 	"sort"
 )
 
-// startable interface for modules which provide a start mechanism
-type startable interface {
+// Startable interface for modules which provide a start mechanism
+type Startable interface {
 	Start() error
 }
 
-// stopable interface for modules which provide a stop mechanism
-type stopable interface {
+// Stopable interface for modules which provide a stop mechanism
+type Stopable interface {
 	Stop() error
 }
 
-// endpoint adds a HTTP handler for the `GetPrefix()` to the webserver
-type endpoint interface {
+// Endpoint adds a HTTP handler for the `GetPrefix()` to the webserver
+type Endpoint interface {
 	http.Handler
 	GetPrefix() string
 }

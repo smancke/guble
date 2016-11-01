@@ -9,19 +9,38 @@ import (
 	"strings"
 )
 
-type Sender struct {
+type sender struct {
 	client *apns2.Client
 }
 
-func newSender(c Config) (*Sender, error) {
+func newSender(c Config) (*sender, error) {
 	client, err := newClient(c)
 	if err != nil {
 		return nil, err
 	}
-	return &Sender{client: client}, nil
+	return &sender{client: client}, nil
 }
 
-func (s Sender) Send(request connector.Request) (interface{}, error) {
+func newClient(c Config) (*apns2.Client, error) {
+	var (
+		cert    tls.Certificate
+		errCert error
+	)
+	if c.CertificateFileName != nil && *c.CertificateFileName != "" {
+		cert, errCert = certificate.FromP12File(*c.CertificateFileName, *c.CertificatePassword)
+	} else {
+		cert, errCert = certificate.FromP12Bytes(*c.CertificateBytes, *c.CertificatePassword)
+	}
+	if errCert != nil {
+		return nil, errCert
+	}
+	if *c.Production {
+		return apns2.NewClient(cert).Production(), nil
+	}
+	return apns2.NewClient(cert).Development(), nil
+}
+
+func (s sender) Send(request connector.Request) (interface{}, error) {
 	r := request.Subscriber().Route()
 
 	//TODO Cosmin: Samsa should generate the Payload or the whole Notification, and JSON-serialize it into the guble-message Body.
@@ -46,23 +65,4 @@ func (s Sender) Send(request connector.Request) (interface{}, error) {
 	}
 	logger.Debug("Trying to push a message to APNS")
 	return s.client.Push(n)
-}
-
-func newClient(c Config) (*apns2.Client, error) {
-	var (
-		cert    tls.Certificate
-		errCert error
-	)
-	if c.CertificateFileName != nil && *c.CertificateFileName != "" {
-		cert, errCert = certificate.FromP12File(*c.CertificateFileName, *c.CertificatePassword)
-	} else {
-		cert, errCert = certificate.FromP12Bytes(*c.CertificateBytes, *c.CertificatePassword)
-	}
-	if errCert != nil {
-		return nil, errCert
-	}
-	if *c.Production {
-		return apns2.NewClient(cert).Production(), nil
-	}
-	return apns2.NewClient(cert).Development(), nil
 }

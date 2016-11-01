@@ -3,14 +3,13 @@ package apns
 import (
 	"context"
 	"errors"
-	"strconv"
-	"strings"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/store"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -30,7 +29,7 @@ var (
 
 // subscription represents a APNS subscription
 type sub struct {
-	connector *Connector
+	connector *conn
 	route     *router.Route
 	lastID    uint64 // Last sent message id
 
@@ -38,7 +37,7 @@ type sub struct {
 }
 
 // initSubscription creates a subscription and adds it in router/kvstore then starts listening for messages
-func initSubscription(connector *Connector, topic, userID, apnsDeviceID string, lastID uint64, store bool) (*sub, error) {
+func initSubscription(c *conn, topic, userID, apnsDeviceID string, lastID uint64, store bool) (*sub, error) {
 	route := router.NewRoute(router.RouteConfig{
 		RouteParams: router.RouteParams{userIDKey: userID, applicationIDKey: apnsDeviceID},
 		Path:        protocol.Path(topic),
@@ -46,7 +45,7 @@ func initSubscription(connector *Connector, topic, userID, apnsDeviceID string, 
 		Matcher:     subscriptionMatcher,
 	})
 
-	s := newSubscription(connector, route, lastID)
+	s := newSubscription(c, route, lastID)
 	if s.exists() {
 		return nil, errSubscriptionExists
 	}
@@ -61,7 +60,7 @@ func initSubscription(connector *Connector, topic, userID, apnsDeviceID string, 
 		}
 	}
 
-	return s, s.restart(connector.context)
+	return s, s.restart(c.Ctx)
 }
 
 func subscriptionMatcher(route, other router.RouteConfig, keys ...string) bool {
@@ -69,7 +68,7 @@ func subscriptionMatcher(route, other router.RouteConfig, keys ...string) bool {
 }
 
 // newSubscription creates a subscription and returns the pointer
-func newSubscription(connector *Connector, route *router.Route, lastID uint64) *sub {
+func newSubscription(c *conn, route *router.Route, lastID uint64) *sub {
 	subLogger := logger.WithFields(log.Fields{
 		"fcmID":  route.Get(applicationIDKey),
 		"userID": route.Get(userIDKey),
@@ -78,7 +77,7 @@ func newSubscription(connector *Connector, route *router.Route, lastID uint64) *
 	})
 
 	return &sub{
-		connector: connector,
+		connector: c,
 		route:     route,
 		lastID:    lastID,
 		logger:    subLogger,
@@ -107,7 +106,7 @@ func (s *sub) restart(ctx context.Context) error {
 func (s *sub) start(ctx context.Context) error {
 	s.route.FetchRequest = s.createFetchRequest()
 	go s.goLoop(ctx)
-	if err := s.route.Provide(s.connector.router, true); err != nil {
+	if err := s.route.Provide(s.connector.Router, true); err != nil {
 		return err
 	}
 	return nil
@@ -121,7 +120,7 @@ func (s *sub) createFetchRequest() *store.FetchRequest {
 }
 
 func (s sub) Loop(ctx context.Context, q connector.Queue) error {
-	//TODO Cosmin use goLoop() as inspiration for the implementation
+	//TODO Cosmin use subscriber.goLoop() in `connector` as inspiration for the implementation
 	return nil
 }
 
@@ -139,8 +138,11 @@ func (s sub) goLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case m, opened = <-s.route.MessagesChannel():
+			if !opened {
+				break
+			}
 			r := connector.NewRequest(s, m)
-			s.connector.queue.Push(r)
+			s.connector.Queue.Push(r)
 		}
 	}
 
@@ -173,7 +175,7 @@ func (s sub) SetLastID(ID uint64) error {
 func (s *sub) store() error {
 	s.logger.WithField("lastID", s.lastID).Debug("Storing subscription")
 	applicationID := s.route.Get(applicationIDKey)
-	err := s.connector.kvStore.Put(schema, applicationID, s.bytes())
+	err := s.connector.KVStore.Put(schema, applicationID, s.bytes())
 	if err != nil {
 		s.logger.WithError(err).Error("Error storing in KVStore")
 	}
@@ -192,8 +194,8 @@ func (s *sub) bytes() []byte {
 // remove unsubscribes from router, delete from connector's subscriptions, and remove from KVStore
 func (s *sub) remove() *sub {
 	s.logger.Debug("Removing subscription")
-	s.connector.router.Unsubscribe(s.route)
+	s.connector.Router.Unsubscribe(s.route)
 	delete(s.connector.subs, s.Key())
-	s.connector.kvStore.Delete(schema, s.Key())
+	s.connector.KVStore.Delete(schema, s.Key())
 	return s
 }
