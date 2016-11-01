@@ -6,12 +6,13 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	"fmt"
-	"github.com/smancke/guble/server/apns"
-	"github.com/smancke/guble/server/fcm"
 	"net"
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/smancke/guble/server/apns"
+	"github.com/smancke/guble/server/fcm"
 )
 
 const (
@@ -166,7 +167,7 @@ var (
 			Workers: kingpin.Flag("apns-workers", "The number of workers handling traffic with APNS (default: number of CPUs)").
 				Default(strconv.Itoa(runtime.NumCPU())).
 				Envar("GUBLE_APNS_WORKERS").
-				Uint(),
+				Int(),
 		},
 		Cluster: ClusterConfig{
 			NodeID: kingpin.Flag("node-id", "(cluster mode) This guble node's own ID: a strictly positive integer number which must be unique in cluster").
