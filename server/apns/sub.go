@@ -3,14 +3,13 @@ package apns
 import (
 	"context"
 	"errors"
-	"strconv"
-	"strings"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/store"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -61,7 +60,7 @@ func initSubscription(c *conn, topic, userID, apnsDeviceID string, lastID uint64
 		}
 	}
 
-	return s, s.restart(c.context)
+	return s, s.restart(c.Ctx)
 }
 
 func subscriptionMatcher(route, other router.RouteConfig, keys ...string) bool {
@@ -107,7 +106,7 @@ func (s *sub) restart(ctx context.Context) error {
 func (s *sub) start(ctx context.Context) error {
 	s.route.FetchRequest = s.createFetchRequest()
 	go s.goLoop(ctx)
-	if err := s.route.Provide(s.connector.router, true); err != nil {
+	if err := s.route.Provide(s.connector.Router, true); err != nil {
 		return err
 	}
 	return nil
@@ -140,7 +139,7 @@ func (s sub) goLoop(ctx context.Context) {
 			return
 		case m, opened = <-s.route.MessagesChannel():
 			r := connector.NewRequest(s, m)
-			s.connector.queue.Push(r)
+			s.connector.Queue.Push(r)
 		}
 	}
 
@@ -173,7 +172,7 @@ func (s sub) SetLastID(ID uint64) error {
 func (s *sub) store() error {
 	s.logger.WithField("lastID", s.lastID).Debug("Storing subscription")
 	applicationID := s.route.Get(applicationIDKey)
-	err := s.connector.kvStore.Put(schema, applicationID, s.bytes())
+	err := s.connector.KVStore.Put(schema, applicationID, s.bytes())
 	if err != nil {
 		s.logger.WithError(err).Error("Error storing in KVStore")
 	}
@@ -192,8 +191,8 @@ func (s *sub) bytes() []byte {
 // remove unsubscribes from router, delete from connector's subscriptions, and remove from KVStore
 func (s *sub) remove() *sub {
 	s.logger.Debug("Removing subscription")
-	s.connector.router.Unsubscribe(s.route)
+	s.connector.Router.Unsubscribe(s.route)
 	delete(s.connector.subs, s.Key())
-	s.connector.kvStore.Delete(schema, s.Key())
+	s.connector.KVStore.Delete(schema, s.Key())
 	return s
 }
