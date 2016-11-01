@@ -120,19 +120,6 @@ func (s *sub) createFetchRequest() *store.FetchRequest {
 	return store.NewFetchRequest("", s.lastID+1, 0, store.DirectionForward, -1)
 }
 
-type request struct {
-	message      *protocol.Message
-	subscription sub
-}
-
-func (r request) Subscriber() connector.Subscriber {
-	return r.subscription
-}
-
-func (r request) Message() *protocol.Message {
-	return r.message
-}
-
 func (s sub) Loop(ctx context.Context, q connector.Queue) error {
 	//TODO Cosmin use goLoop() as inspiration for the implementation
 	return nil
