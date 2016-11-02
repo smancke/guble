@@ -70,20 +70,28 @@ func New(router router.Router, prefix string, config Config) (connector.Connecto
 func (c conn) HandleResponse(request connector.Request, responseIface interface{}, errSend error) error {
 	log.Debug("HandleResponse")
 	if errSend != nil {
-		logger.WithError(errSend).Error("APNS error when trying to send notification")
+		logger.WithError(errSend).Error("error when trying to send APNS notification")
 		return errSend
 	}
 	if r, ok := responseIface.(*apns2.Response); ok {
-		if !r.Sent() {
-			log.WithField("id", r.ApnsID).WithField("reason", r.Reason).Error(errNotSentMsg)
-		} else {
-			log.WithField("id", r.ApnsID).Debug("APNS notification was successfully sent")
-		}
 		messageID := request.Message().ID
 		if err := request.Subscriber().SetLastID(messageID); err != nil {
-			//TODO Cosmin Bogdan: error-handling
+			logger.WithError(errSend).Error("error when setting the last-id for the subscriber")
+			return err
 		}
-
+		if r.Sent() {
+			log.WithField("id", r.ApnsID).Debug("APNS notification was successfully sent")
+			return nil
+		}
+		log.WithField("id", r.ApnsID).WithField("reason", r.Reason).Error(errNotSentMsg)
+		switch r.Reason {
+		case
+			apns2.ReasonMissingDeviceToken,
+			apns2.ReasonBadDeviceToken,
+			apns2.ReasonDeviceTokenNotForTopic,
+			apns2.ReasonUnregistered:
+			// TODO Cosmin Bogdan remove subscription (+Unsubscribe and stop subscription loop) ?
+		}
 		//TODO Cosmin Bogdan: extra-APNS-handling
 	}
 	return nil
