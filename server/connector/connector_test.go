@@ -1,17 +1,16 @@
 package connector
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
-	"time"
-
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
 )
 
 type connectorMocks struct {
@@ -24,7 +23,7 @@ type connectorMocks struct {
 }
 
 // Ensure the subscription is started when posting
-func TestConnector_PostSubscrition(t *testing.T) {
+func TestConnector_PostSubscription(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 

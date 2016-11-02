@@ -1,11 +1,10 @@
 package connector
 
 import (
-	"sync"
-
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
+	"sync"
 )
 
 type Manager interface {

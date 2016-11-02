@@ -52,7 +52,7 @@ func New(router router.Router, prefix string, config Config) (connector.Connecto
 		Name:       "apns",
 		Schema:     schema,
 		Prefix:     prefix,
-		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
+		URLPattern: fmt.Sprintf("/{device_token}/{user_id}/{%s:.*}", connector.TopicParam),
 	}
 	newConn := &conn{
 		subs: make(map[string]*sub),
