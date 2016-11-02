@@ -114,6 +114,25 @@ replace "server/auth/mocks_auth_gen_test.go" \
       "auth \"github.com\/smancke\/guble\/server\/auth\"" \
       "auth\."
 
+# server/connector mocks
+$MOCKGEN -self_package connector -package connector \
+      -destination server/connector/mocks_connector_gen_test.go \
+      github.com/smancke/guble/server/connector \
+      Connector,Sender,ResponseHandler,Manager,Queue,Request,Subscriber
+replace "server/connector/mocks_connector_gen_test.go" \
+      "connector \"github.com\/smancke\/guble\/server\/connector\"" \
+      "connector\."
+
+$MOCKGEN -self_package connector -package connector \
+      -destination server/connector/mocks_router_gen_test.go \
+      github.com/smancke/guble/server/router \
+      Router
+
+$MOCKGEN -self_package connector -package connector \
+      -destination server/connector/mocks_kvstore_gen_test.go \
+      github.com/smancke/guble/server/kvstore \
+      KVStore
+
 # server/websocket mocks
 $MOCKGEN  -self_package websocket -package websocket \
       -destination server/websocket/mocks_websocket_gen_test.go \

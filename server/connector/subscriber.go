@@ -26,6 +26,8 @@ type Subscriber interface {
 	Route() *router.Route
 	Loop(context.Context, Queue) error
 	SetLastID(ID uint64) error
+	Cancel()
+	Encode() ([]byte, error)
 }
 
 type subscriberData struct {
@@ -35,14 +37,20 @@ type subscriberData struct {
 }
 
 type subscriber struct {
-	params router.RouteParams
+	data subscriberData
+
 	route  *router.Route
 	key    string
+	cancel context.CancelFunc
 }
 
 func NewSubscriber(topic protocol.Path, params router.RouteParams, fetchRequest *store.FetchRequest) Subscriber {
+	data := subscriberData{
+		Topic:  topic,
+		Params: params,
+	}
 	return &subscriber{
-		params: params,
+		data: data,
 		route: router.NewRoute(router.RouteConfig{
 			Path:         topic,
 			RouteParams:  params,
@@ -73,13 +81,7 @@ func (s *subscriber) String() string {
 // TODO Bogdan extract the generation of the key as an external method to be reused
 func (s *subscriber) Key() string {
 	if s.key == "" {
-		// compute the key from params
-		h := sha1.New()
-		for k, v := range s.params {
-			io.WriteString(h, fmt.Sprintf("%s:%s", k, v))
-		}
-		sum := h.Sum(nil)
-		s.key = hex.EncodeToString(sum[:])
+		s.key = GenerateKey(string(s.data.Topic), s.data.Params)
 	}
 	return s.key
 }
@@ -93,15 +95,20 @@ func (s *subscriber) Loop(ctx context.Context, q Queue) error {
 		opened bool = true
 		m      *protocol.Message
 	)
+
+	sCtx, cancel := context.WithCancel(ctx)
+	s.cancel = cancel
+	defer func() { s.cancel = nil }()
+
 	for opened {
 		select {
-		case <-ctx.Done():
-			return nil
 		case m, opened = <-s.route.MessagesChannel():
 			if !opened {
 				break
 			}
 			q.Push(NewRequest(s, m))
+		case <-sCtx.Done():
+			return nil
 		}
 	}
 
@@ -112,4 +119,25 @@ func (s *subscriber) Loop(ctx context.Context, q Queue) error {
 func (s *subscriber) SetLastID(ID uint64) error {
 	//TODO Cosmin Bogdan
 	return nil
+}
+
+func (s *subscriber) Cancel() {
+	if s.cancel != nil {
+		s.cancel()
+	}
+}
+
+func (s *subscriber) Encode() ([]byte, error) {
+	return json.Marshal(s.data)
+}
+
+func GenerateKey(topic string, params map[string]string) string {
+	// compute the key from params
+	h := sha1.New()
+	io.WriteString(h, topic)
+	for k, v := range params {
+		io.WriteString(h, fmt.Sprintf("%s:%s", k, v))
+	}
+	sum := h.Sum(nil)
+	return hex.EncodeToString(sum[:])
 }

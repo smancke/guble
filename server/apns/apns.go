@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/sideshow/apns2"
-	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/server/router"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/sideshow/apns2"
+	"github.com/smancke/guble/server/connector"
+	"github.com/smancke/guble/server/router"
 )
 
 const (
@@ -36,7 +37,7 @@ type Config struct {
 
 // conn is the private struct for handling the communication with APNS
 type conn struct {
-	connector.Conn
+	*connector.Conn
 	subs map[string]*sub
 }
 
@@ -53,15 +54,15 @@ func New(router router.Router, prefix string, config Config) (connector.Connecto
 		Prefix:     prefix,
 		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
 	}
-	baseConn, err := connector.NewConnector(router, sender, connectorConfig)
+	newConn := &conn{
+		subs: make(map[string]*sub),
+	}
+	baseConn, err := connector.NewConnector(router, sender, newConn, connectorConfig)
 	if err != nil {
 		log.WithError(err).Error("Base connector error")
 		return nil, err
 	}
-	newConn := &conn{
-		Conn: baseConn,
-		subs: make(map[string]*sub),
-	}
+	newConn.Conn = baseConn
 
 	// queue is created here since it uses as a param (ResponseHandler) the new connector itself (newConn)
 	newConn.Queue = connector.NewQueue(sender, newConn, *config.Workers)
