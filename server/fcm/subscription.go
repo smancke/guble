@@ -2,7 +2,6 @@ package fcm
 
 import (
 	"errors"
-	"github.com/Bogh/gcm"
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
@@ -220,14 +219,21 @@ func (s *subscription) pipe(m *protocol.Message) error {
 			return nil
 		}
 
-		s.logger.WithField("count", response.Success).Debug("Handling FCM Error")
-		if err := s.handleJSONError(response); err != nil {
-			return err
+		s.logger.WithField("success", response.Success).Debug("Handling FCM Error")
+
+		switch errText := response.Error.Error(); errText {
+		case "NotRegistered":
+			s.logger.Debug("Removing not registered FCM subscription")
+			s.remove()
+			return &jsonError{errText}
+		case "InvalidRegistration":
+			s.logger.WithField("jsonError", errText).Error("InvalidRegistration of FCM subscription")
+		default:
+			s.logger.WithField("jsonError", errText).Error("Unexpected error while sending to FCM")
 		}
 
 		if response.CanonicalIDs != 0 {
-			// we only send to one receiver,
-			// so we know that we can replace the old id with the first registration id (=canonical id)
+			// we only send to one receiver, so we know that we can replace the old id with the first registration id (=canonical id)
 			return s.replaceCanonical(response.Results[0].RegistrationID)
 		}
 		return nil
@@ -239,21 +245,6 @@ func (s *subscription) pipe(m *protocol.Message) error {
 		}
 		s.logger.WithField("error", err.Error()).Error("Error sending message to FCM")
 		return err
-	}
-}
-
-func (s *subscription) handleJSONError(response *gcm.Response) error {
-	switch errText := response.Error.Error(); errText {
-	case "NotRegistered":
-		s.logger.Debug("Removing not registered FCM subscription")
-		s.remove()
-		return &jsonError{errText}
-	case "InvalidRegistration":
-		s.logger.WithField("jsonError", errText).Error("Subscription is not registered")
-		return nil
-	default:
-		s.logger.WithField("jsonError", errText).Error("Unexpected error while sending to FCM")
-		return nil
 	}
 }
 
