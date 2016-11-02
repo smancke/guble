@@ -127,7 +127,7 @@ func (s sub) Loop(ctx context.Context, q connector.Queue) error {
 // subscriptionLoop that will run in a goroutine and pipe messages from route to fcm
 // Attention: in order for this loop to finish the route channel must stop sending messages
 func (s sub) goLoop(ctx context.Context) {
-	s.logger.Debug("Starting APNS subscription loop")
+	s.logger.Debug("Starting a subscription loop for APNS")
 
 	var (
 		m      *protocol.Message
@@ -141,8 +141,7 @@ func (s sub) goLoop(ctx context.Context) {
 			if !opened {
 				break
 			}
-			r := connector.NewRequest(s, m)
-			s.connector.Queue.Push(r)
+			s.connector.Queue.Push(connector.NewRequest(s, m))
 		}
 	}
 
