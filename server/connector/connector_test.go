@@ -1,11 +1,146 @@
 package connector
 
 import (
+	"net/http"
 	"net/http/httptest"
-
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/router"
+	"github.com/smancke/guble/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
+type connectorMocks struct {
+	router  *MockRouter
+	sender  *MockSender
+	handler *MockResponseHandler
+	queue   *MockQueue
+	manager *MockManager
+	kvstore *MockKVStore
+}
+
+// Ensure the subscription is started when posting
 func TestConnector_PostSubscrition(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
+	a := assert.New(t)
+
 	recorder := httptest.NewRecorder()
+	conn, mocks := getTestConnector(t, Config{
+		Name:   "test",
+		Schema: "test",
+		Prefix: "/connector/",
+		Url:    "/{device_token}/{user_id}/{topic:.*}",
+	}, true, false)
+
+	mocks.manager.EXPECT().Load().Return(nil)
+	mocks.manager.EXPECT().List().Return(make([]Subscriber, 0))
+	err := conn.Start()
+	a.NoError(err)
+	defer conn.Stop()
+
+	subscriber := NewMockSubscriber(testutil.MockCtrl)
+	mocks.manager.EXPECT().Create(gomock.Eq(protocol.Path("topic1")), gomock.Eq(router.RouteParams{
+		"device_token": "device1",
+		"user_id":      "user1",
+	})).Return(subscriber, nil)
+
+	subscriber.EXPECT().Loop(gomock.Any(), gomock.Any())
+	r := router.NewRoute(router.RouteConfig{
+		Path: protocol.Path("topic1"),
+		RouteParams: router.RouteParams{
+			"device_token": "device1",
+			"user_id":      "user1",
+		},
+	})
+	subscriber.EXPECT().Route().Return(r)
+	mocks.router.EXPECT().Subscribe(gomock.Eq(r)).Return(r, nil)
+
+	req, err := http.NewRequest(http.MethodPost, "/connector/device1/user1/topic1", strings.NewReader(""))
+	a.NoError(err)
+	conn.ServeHTTP(recorder, req)
+	a.Equal(`{"subscribed":"topic1"}`, recorder.Body.String())
+	time.Sleep(50 * time.Millisecond)
+}
+
+func TestConnector_PostSubscriptionNoMocks(t *testing.T) {
+	// _, finish := testutil.NewMockCtrl(t)
+	// defer finish()
+
+	// a := assert.New(t)
+
+	// recorder := httptest.NewRecorder()
+	// conn, mocks := getTestConnector(t, Config{
+	// 	Name:   "test",
+	// 	Schema: "test",
+	// 	Prefix: "/connector/",
+	// 	Url:    "/{device_token}/{user_id}/{topic:.*}",
+	// }, true, false)
+
+	// err := conn.Start()
+	// a.NoError(err)
+	// defer conn.Stop()
+}
+
+func TestConnector_DeleteSubscription(t *testing.T) {
+	// _, finish := testutil.NewMockCtrl(t)
+	// defer finish()
+
+	// a := assert.New(t)
+
+	// recorder := httptest.NewRecorder()
+	// conn, mocks := getTestConnector(t, Config{
+	// 	Name:   "test",
+	// 	Schema: "test",
+	// 	Prefix: "/connector/",
+	// 	Url:    "/{device_token}/{user_id}/{topic:.*}",
+	// }, true, false)
+
+	// mocks.manager.EXPECT().Load().Return(nil)
+	// mocks.manager.EXPECT().List().Return(make([]Subscriber, 0))
+	// err := conn.Start()
+	// a.NoError(err)
+	// defer conn.Stop()
+
+}
+
+func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue bool) (Connector, *connectorMocks) {
+	a := assert.New(t)
+
+	var (
+		manager *MockManager
+		queue   *MockQueue
+	)
+
+	router := NewMockRouter(testutil.MockCtrl)
+	kvstore := NewMockKVStore(testutil.MockCtrl)
+	handler := NewMockResponseHandler(testutil.MockCtrl)
+	router.EXPECT().KVStore().Return(kvstore, nil).AnyTimes()
+	sender := NewMockSender(testutil.MockCtrl)
+
+	connector, err := NewConnector(router, sender, handler, config)
+	a.NoError(err)
+
+	if mockManager {
+		manager = NewMockManager(testutil.MockCtrl)
+		connector.Manager = manager
+	}
+	if mockQueue {
+		queue := NewMockQueue(testutil.MockCtrl)
+		connector.Queue = queue
+	}
+
+	return connector, &connectorMocks{
+		router,
+		sender,
+		handler,
+		queue,
+		manager,
+		kvstore,
+	}
 }

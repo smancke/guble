@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/sideshow/apns2"
-	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/server/router"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/sideshow/apns2"
+	"github.com/smancke/guble/server/connector"
+	"github.com/smancke/guble/server/router"
 )
 
 const (
@@ -35,7 +36,7 @@ type Config struct {
 
 // conn is the private struct for handling the communication with APNS
 type conn struct {
-	connector.Conn
+	*connector.Conn
 	subs map[string]*sub
 }
 

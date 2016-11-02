@@ -33,35 +33,14 @@ func (_m *MockConnector) EXPECT() *_MockConnectorRecorder {
 	return _m.recorder
 }
 
-func (_m *MockConnector) HandleResponse(_param0 Request, _param1 interface{}, _param2 error) error {
-	ret := _m.ctrl.Call(_m, "HandleResponse", _param0, _param1, _param2)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockConnectorRecorder) HandleResponse(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "HandleResponse", arg0, arg1, arg2)
-}
-
-func (_m *MockConnector) Prefix() string {
-	ret := _m.ctrl.Call(_m, "Prefix")
+func (_m *MockConnector) GetPrefix() string {
+	ret := _m.ctrl.Call(_m, "GetPrefix")
 	ret0, _ := ret[0].(string)
 	return ret0
 }
 
-func (_mr *_MockConnectorRecorder) Prefix() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Prefix")
-}
-
-func (_m *MockConnector) Send(_param0 Request) (interface{}, error) {
-	ret := _m.ctrl.Call(_m, "Send", _param0)
-	ret0, _ := ret[0].(interface{})
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockConnectorRecorder) Send(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Send", arg0)
+func (_mr *_MockConnectorRecorder) GetPrefix() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetPrefix")
 }
 
 func (_m *MockConnector) ServeHTTP(_param0 http.ResponseWriter, _param1 *http.Request) {
@@ -186,7 +165,18 @@ func (_mr *_MockManagerRecorder) Add(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Add", arg0)
 }
 
-func (_m *MockManager) Exists(_param0 Subscriber) bool {
+func (_m *MockManager) Create(_param0 protocol.Path, _param1 router.RouteParams) (Subscriber, error) {
+	ret := _m.ctrl.Call(_m, "Create", _param0, _param1)
+	ret0, _ := ret[0].(Subscriber)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockManagerRecorder) Create(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Create", arg0, arg1)
+}
+
+func (_m *MockManager) Exists(_param0 string) bool {
 	ret := _m.ctrl.Call(_m, "Exists", _param0)
 	ret0, _ := ret[0].(bool)
 	return ret0
@@ -194,6 +184,16 @@ func (_m *MockManager) Exists(_param0 Subscriber) bool {
 
 func (_mr *_MockManagerRecorder) Exists(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Exists", arg0)
+}
+
+func (_m *MockManager) Find(_param0 string) Subscriber {
+	ret := _m.ctrl.Call(_m, "Find", _param0)
+	ret0, _ := ret[0].(Subscriber)
+	return ret0
+}
+
+func (_mr *_MockManagerRecorder) Find(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Find", arg0)
 }
 
 func (_m *MockManager) List() []Subscriber {
@@ -204,6 +204,16 @@ func (_m *MockManager) List() []Subscriber {
 
 func (_mr *_MockManagerRecorder) List() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "List")
+}
+
+func (_m *MockManager) Load() error {
+	ret := _m.ctrl.Call(_m, "Load")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockManagerRecorder) Load() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Load")
 }
 
 func (_m *MockManager) Remove(_param0 Subscriber) error {
@@ -247,14 +257,6 @@ func (_m *MockQueue) EXPECT() *_MockQueueRecorder {
 	return _m.recorder
 }
 
-func (_m *MockQueue) Close() {
-	_m.ctrl.Call(_m, "Close")
-}
-
-func (_mr *_MockQueueRecorder) Close() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Close")
-}
-
 func (_m *MockQueue) Push(_param0 Request) error {
 	ret := _m.ctrl.Call(_m, "Push", _param0)
 	ret0, _ := ret[0].(error)
@@ -263,6 +265,26 @@ func (_m *MockQueue) Push(_param0 Request) error {
 
 func (_mr *_MockQueueRecorder) Push(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Push", arg0)
+}
+
+func (_m *MockQueue) Start() error {
+	ret := _m.ctrl.Call(_m, "Start")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockQueueRecorder) Start() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Start")
+}
+
+func (_m *MockQueue) Stop() error {
+	ret := _m.ctrl.Call(_m, "Stop")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockQueueRecorder) Stop() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Stop")
 }
 
 // Mock of Request interface
@@ -325,6 +347,25 @@ func NewMockSubscriber(ctrl *gomock.Controller) *MockSubscriber {
 
 func (_m *MockSubscriber) EXPECT() *_MockSubscriberRecorder {
 	return _m.recorder
+}
+
+func (_m *MockSubscriber) Cancel() {
+	_m.ctrl.Call(_m, "Cancel")
+}
+
+func (_mr *_MockSubscriberRecorder) Cancel() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Cancel")
+}
+
+func (_m *MockSubscriber) Encode() ([]byte, error) {
+	ret := _m.ctrl.Call(_m, "Encode")
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockSubscriberRecorder) Encode() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Encode")
 }
 
 func (_m *MockSubscriber) Key() string {

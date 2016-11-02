@@ -128,6 +128,10 @@ $MOCKGEN -self_package connector -package connector \
       github.com/smancke/guble/server/router \
       Router
 
+$MOCKGEN -self_package connector -package connector \
+      -destination server/connector/mocks_kvstore_gen_test.go \
+      github.com/smancke/guble/server/kvstore \
+      KVStore
 
 # server/websocket mocks
 $MOCKGEN  -self_package websocket -package websocket \
