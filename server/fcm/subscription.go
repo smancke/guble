@@ -243,23 +243,18 @@ func (s *subscription) pipe(m *protocol.Message) error {
 }
 
 func (s *subscription) handleJSONError(response *gcm.Response) error {
-	err := response.Error
-	errText := err.Error()
-
-	if errText == "" {
-		return nil
-	}
-	if errText == "NotRegistered" {
+	switch errText := response.Error.Error(); errText {
+	case "NotRegistered":
 		s.logger.Debug("Removing not registered FCM subscription")
 		s.remove()
 		return &jsonError{errText}
-	}
-	if errText == "InvalidRegistration" {
+	case "InvalidRegistration":
 		s.logger.WithField("jsonError", errText).Error("Subscription is not registered")
-	} else {
+		return nil
+	default:
 		s.logger.WithField("jsonError", errText).Error("Unexpected error while sending to FCM")
+		return nil
 	}
-	return nil
 }
 
 // replaceCanonical replaces subscription with canonical id,
