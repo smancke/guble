@@ -69,22 +69,39 @@ func TestConnector_PostSubscrition(t *testing.T) {
 }
 
 func TestConnector_PostSubscriptionNoMocks(t *testing.T) {
-	// _, finish := testutil.NewMockCtrl(t)
-	// defer finish()
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
-	// a := assert.New(t)
+	a := assert.New(t)
 
-	// recorder := httptest.NewRecorder()
-	// conn, mocks := getTestConnector(t, Config{
-	// 	Name:   "test",
-	// 	Schema: "test",
-	// 	Prefix: "/connector/",
-	// 	Url:    "/{device_token}/{user_id}/{topic:.*}",
-	// }, true, false)
+	recorder := httptest.NewRecorder()
+	conn, mocks := getTestConnector(t, Config{
+		Name:   "test",
+		Schema: "test",
+		Prefix: "/connector/",
+		Url:    "/{device_token}/{user_id}/{topic:.*}",
+	}, false, false)
 
-	// err := conn.Start()
-	// a.NoError(err)
-	// defer conn.Stop()
+	entriesC := make(chan [2]string)
+	mocks.kvstore.EXPECT().Iterate(gomock.Eq("test"), gomock.Eq("")).Return(entriesC)
+	close(entriesC)
+
+	mocks.kvstore.EXPECT().Put(gomock.Eq("test"), gomock.Eq(GenerateKey("topic1", map[string]string{
+		"device_token": "device1",
+		"user_id":      "user1",
+	})), gomock.Any())
+
+	mocks.router.EXPECT().Subscribe(gomock.Any())
+
+	err := conn.Start()
+	a.NoError(err)
+	defer conn.Stop()
+
+	req, err := http.NewRequest(http.MethodPost, "/connector/device1/user1/topic1", strings.NewReader(""))
+	a.NoError(err)
+	conn.ServeHTTP(recorder, req)
+	a.Equal(`{"subscribed":"topic1"}`, recorder.Body.String())
+	time.Sleep(50 * time.Millisecond)
 }
 
 func TestConnector_DeleteSubscription(t *testing.T) {
