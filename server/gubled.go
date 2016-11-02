@@ -250,7 +250,7 @@ func StartService() *service.Service {
 	if err = srv.Start(); err != nil {
 		logger.WithField("error", err.Error()).Error("errors occurred while starting service")
 		if err = srv.Stop(); err != nil {
-			logger.WithField("error", err.Error()).Error("errors occured when stopping service after it failed to start")
+			logger.WithField("error", err.Error()).Error("errors occurred when stopping service after it failed to start")
 		}
 		return nil
 	}
