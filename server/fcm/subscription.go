@@ -246,16 +246,18 @@ func (s *subscription) handleJSONError(response *gcm.Response) error {
 	err := response.Error
 	errText := err.Error()
 
-	if errText != "" {
-		if errText == "NotRegistered" {
-			s.logger.Debug("Removing not registered GCM subscription")
-			s.remove()
-			return &jsonError{errText}
-		} else if errText == "InvalidRegistration" {
-			s.logger.WithField("jsonError", errText).Error("Subscription is not registered")
-		} else {
-			s.logger.WithField("jsonError", errText).Error("Unexpected error while sending to GCM")
-		}
+	if errText == "" {
+		return nil
+	}
+	if errText == "NotRegistered" {
+		s.logger.Debug("Removing not registered FCM subscription")
+		s.remove()
+		return &jsonError{errText}
+	}
+	if errText == "InvalidRegistration" {
+		s.logger.WithField("jsonError", errText).Error("Subscription is not registered")
+	} else {
+		s.logger.WithField("jsonError", errText).Error("Unexpected error while sending to FCM")
 	}
 	return nil
 }
