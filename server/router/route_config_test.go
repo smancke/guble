@@ -118,7 +118,7 @@ func TestRouteConfig_Equal(t *testing.T) {
 				},
 			},
 			second: routeConfig{
-				path: "/differnt-path",
+				path: "/different-path",
 				fields: map[string]string{
 					"field1": "value1",
 					"field3": "value3",

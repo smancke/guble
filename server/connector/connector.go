@@ -42,10 +42,10 @@ type Conn struct {
 }
 
 type Config struct {
-	Name   string
-	Schema string
-	Prefix string
-	Url    string
+	Name       string
+	Schema     string
+	Prefix     string
+	URLPattern string
 }
 
 func NewConnector(router router.Router, sender Sender, config Config) (Conn, error) {
@@ -80,7 +80,7 @@ func (c *Conn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	baseRouter := r.PathPrefix(c.GetPrefix()).Subrouter()
 	baseRouter.Methods("GET").HandlerFunc(c.GetList)
 
-	subRouter := baseRouter.Path(c.Config.Url).Subrouter()
+	subRouter := baseRouter.Path(c.Config.URLPattern).Subrouter()
 	subRouter.Methods("POST").HandlerFunc(c.Post)
 	subRouter.Methods("DELETE").HandlerFunc(c.Delete)
 

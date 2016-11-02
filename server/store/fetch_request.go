@@ -61,7 +61,7 @@ type FetchRequest struct {
 	done bool
 }
 
-// Creates a new FetchRequest pointer initialized with provided values
+// NewFetchRequest creates a new FetchRequest pointer initialized with provided values
 // if `count` is negative will be set to MaxInt32
 func NewFetchRequest(partition string, start, end uint64, direction FetchDirection, count int) *FetchRequest {
 	if count < 0 {

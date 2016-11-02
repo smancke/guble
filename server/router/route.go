@@ -3,16 +3,13 @@ package router
 import (
 	"errors"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/store"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/smancke/guble/server/store"
-
-	"github.com/smancke/guble/protocol"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 var (
@@ -201,8 +198,6 @@ REFETCH:
 			return nil
 		}
 	}
-
-	return nil
 }
 
 func (r *Route) handleSubscribe(router Router) error {
