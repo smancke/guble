@@ -146,7 +146,7 @@ func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue b
 	router.EXPECT().KVStore().Return(kvstore, nil).AnyTimes()
 	sender := NewMockSender(testutil.MockCtrl)
 
-	connector, err := NewConnector(router, sender, handler, config)
+	connector, err := NewConnector(router, sender, config)
 	a.NoError(err)
 
 	if mockManager {
@@ -155,6 +155,7 @@ func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue b
 	}
 	if mockQueue {
 		queue := NewMockQueue(testutil.MockCtrl)
+		queue.EXPECT().ResponseHandler().Return(handler).AnyTimes()
 		connector.Queue = queue
 	}
 

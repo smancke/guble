@@ -9,16 +9,12 @@ import (
 	"strings"
 )
 
-type Pusher interface {
-	Push(*apns2.Notification) (*apns2.Response, error)
-}
-
 type sender struct {
-	client   Pusher
+	client   *apns2.Client
 	appTopic string
 }
 
-func newSender(config Config) (*sender, error) {
+func newSender(config Config) (connector.Sender, error) {
 	client, err := newClient(config)
 	if err != nil {
 		return nil, err
@@ -29,7 +25,7 @@ func newSender(config Config) (*sender, error) {
 	}, nil
 }
 
-func newClient(c Config) (Pusher, error) {
+func newClient(c Config) (*apns2.Client, error) {
 	var (
 		cert    tls.Certificate
 		errCert error

@@ -4,12 +4,12 @@
 package connector
 
 import (
-	context "context"
-	gomock "github.com/golang/mock/gomock"
-	protocol "github.com/smancke/guble/protocol"
-	
-	router "github.com/smancke/guble/server/router"
-	http "net/http"
+	"context"
+	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/protocol"
+
+	"github.com/smancke/guble/server/router"
+	"net/http"
 )
 
 // Mock of Connector interface
@@ -226,16 +226,6 @@ func (_mr *_MockManagerRecorder) Remove(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Remove", arg0)
 }
 
-func (_m *MockManager) RemoveKey(_param0 string) error {
-	ret := _m.ctrl.Call(_m, "RemoveKey", _param0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockManagerRecorder) RemoveKey(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "RemoveKey", arg0)
-}
-
 func (_m *MockManager) Update(_param0 Subscriber) error {
 	ret := _m.ctrl.Call(_m, "Update", _param0)
 	ret0, _ := ret[0].(error)
@@ -275,6 +265,24 @@ func (_m *MockQueue) Push(_param0 Request) error {
 
 func (_mr *_MockQueueRecorder) Push(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Push", arg0)
+}
+
+func (_m *MockQueue) ResponseHandler() ResponseHandler {
+	ret := _m.ctrl.Call(_m, "ResponseHandler")
+	ret0, _ := ret[0].(ResponseHandler)
+	return ret0
+}
+
+func (_mr *_MockQueueRecorder) ResponseHandler() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ResponseHandler")
+}
+
+func (_m *MockQueue) SetResponseHandler(_param0 ResponseHandler) {
+	_m.ctrl.Call(_m, "SetResponseHandler", _param0)
+}
+
+func (_mr *_MockQueueRecorder) SetResponseHandler(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetResponseHandler", arg0)
 }
 
 func (_m *MockQueue) Start() error {

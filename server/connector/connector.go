@@ -59,7 +59,7 @@ type Config struct {
 	Workers    int
 }
 
-func NewConnector(router router.Router, sender Sender, handler ResponseHandler, config Config) (*Conn, error) {
+func NewConnector(router router.Router, sender Sender, config Config) (*Conn, error) {
 	kvs, err := router.KVStore()
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func NewConnector(router router.Router, sender Sender, handler ResponseHandler, 
 		Config:  config,
 		Sender:  sender,
 		Manager: NewManager(config.Schema, kvs),
-		Queue:   NewQueue(sender, nil, config.Workers),
+		Queue:   NewQueue(sender, config.Workers),
 		Router:  router,
 		KVStore: kvs,
 	}, nil
@@ -188,7 +188,9 @@ func (c *Conn) run(s Subscriber) {
 	err := s.Loop(c.Ctx, c.Queue)
 	if err != nil {
 		log.WithField("error", err.Error()).Error("Error returned by subscriber loop")
+
 		// TODO Bogdan Handle different types of error eg. Closed route channel
+
 		// TODO Bogdan Try restarting the subscription if possible
 	}
 
