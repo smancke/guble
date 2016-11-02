@@ -32,10 +32,10 @@ func TestConnector_PostSubscrition(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	conn, mocks := getTestConnector(t, Config{
-		Name:   "test",
-		Schema: "test",
-		Prefix: "/connector/",
-		Url:    "/{device_token}/{user_id}/{topic:.*}",
+		Name:       "test",
+		Schema:     "test",
+		Prefix:     "/connector/",
+		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
 	}, true, false)
 
 	mocks.manager.EXPECT().Load().Return(nil)
@@ -76,10 +76,10 @@ func TestConnector_PostSubscriptionNoMocks(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	conn, mocks := getTestConnector(t, Config{
-		Name:   "test",
-		Schema: "test",
-		Prefix: "/connector/",
-		Url:    "/{device_token}/{user_id}/{topic:.*}",
+		Name:       "test",
+		Schema:     "test",
+		Prefix:     "/connector/",
+		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
 	}, false, false)
 
 	entriesC := make(chan [2]string)
@@ -105,25 +105,31 @@ func TestConnector_PostSubscriptionNoMocks(t *testing.T) {
 }
 
 func TestConnector_DeleteSubscription(t *testing.T) {
-	// _, finish := testutil.NewMockCtrl(t)
-	// defer finish()
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
-	// a := assert.New(t)
+	a := assert.New(t)
 
-	// recorder := httptest.NewRecorder()
-	// conn, mocks := getTestConnector(t, Config{
-	// 	Name:   "test",
-	// 	Schema: "test",
-	// 	Prefix: "/connector/",
-	// 	Url:    "/{device_token}/{user_id}/{topic:.*}",
-	// }, true, false)
+	recorder := httptest.NewRecorder()
+	conn, mocks := getTestConnector(t, Config{
+		Name:       "test",
+		Schema:     "test",
+		Prefix:     "/connector/",
+		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
+	}, true, false)
 
-	// mocks.manager.EXPECT().Load().Return(nil)
-	// mocks.manager.EXPECT().List().Return(make([]Subscriber, 0))
-	// err := conn.Start()
-	// a.NoError(err)
-	// defer conn.Stop()
+	subscriber := NewMockSubscriber(testutil.MockCtrl)
+	mocks.manager.EXPECT().Find(gomock.Eq(GenerateKey("topic1", map[string]string{
+		"device_token": "device1",
+		"user_id":      "user1",
+	}))).Return(subscriber)
+	mocks.manager.EXPECT().Remove(subscriber).Return(nil)
 
+	req, err := http.NewRequest(http.MethodDelete, "/connector/device1/user1/topic1", strings.NewReader(""))
+	a.NoError(err)
+	conn.ServeHTTP(recorder, req)
+	a.Equal(`{"unsubscribed":"topic1"}`, recorder.Body.String())
+	time.Sleep(50 * time.Millisecond)
 }
 
 func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue bool) (Connector, *connectorMocks) {

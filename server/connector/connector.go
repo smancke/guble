@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"sync"
 
@@ -104,7 +103,7 @@ func (c *Conn) Post(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
 	topic, ok := params["topic"]
 	if !ok {
-		io.WriteString(w, "Missing topic parameter.")
+		fmt.Fprintf(w, "Missing topic parameter.")
 		return
 	}
 	delete(params, "topic")
@@ -114,7 +113,7 @@ func (c *Conn) Post(w http.ResponseWriter, req *http.Request) {
 		if err == ErrSubscriberExists {
 			fmt.Fprintf(w, `{"error":"subscription already exists"}`)
 		} else {
-			fmt.Fprintf(w, `{"error":"unknown error: %s"}`, err.Error())
+			http.Error(w, fmt.Sprintf(`{"error":"unknown error: %s"}`, err.Error()), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -125,7 +124,27 @@ func (c *Conn) Post(w http.ResponseWriter, req *http.Request) {
 
 // Delete removes a subscriber
 func (c *Conn) Delete(w http.ResponseWriter, req *http.Request) {
+	params := mux.Vars(req)
+	topic, ok := params["topic"]
+	if !ok {
+		fmt.Fprintf(w, "Missing topic parameter.")
+		return
+	}
 
+	delete(params, "topic")
+	subscriber := c.Manager.Find(GenerateKey(topic, params))
+	if subscriber == nil {
+		http.Error(w, `{"error":"subscription not found"}`, http.StatusNotFound)
+		return
+	}
+
+	err := c.Manager.Remove(subscriber)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"unknown error: %s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintf(w, `{"unsubscribed":"%v"}`, topic)
 }
 
 // Start will run start all current subscriptions and workers to process the messages
