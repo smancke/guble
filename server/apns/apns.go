@@ -30,6 +30,7 @@ type Config struct {
 	CertificateFileName *string
 	CertificateBytes    *[]byte
 	CertificatePassword *string
+	AppTopic            *string
 	Workers             *int
 }
 

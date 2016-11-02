@@ -164,6 +164,9 @@ var (
 			CertificatePassword: kingpin.Flag("apns-cert-password", "The APNS certificate password").
 				Envar("GUBLE_APNS_CERT_PASSWORD").
 				String(),
+			AppTopic: kingpin.Flag("apns-app-topic", "The APNS topic (as used by the mobile application)").
+				Envar("GUBLE_APNS_APP_TOPIC").
+				String(),
 			Workers: kingpin.Flag("apns-workers", "The number of workers handling traffic with APNS (default: number of CPUs)").
 				Default(strconv.Itoa(runtime.NumCPU())).
 				Envar("GUBLE_APNS_WORKERS").

@@ -10,15 +10,19 @@ import (
 )
 
 type sender struct {
-	client *apns2.Client
+	client   *apns2.Client
+	appTopic string
 }
 
-func newSender(c Config) (*sender, error) {
-	client, err := newClient(c)
+func newSender(config Config) (*sender, error) {
+	client, err := newClient(config)
 	if err != nil {
 		return nil, err
 	}
-	return &sender{client: client}, nil
+	return &sender{
+		client:   client,
+		appTopic: *config.AppTopic,
+	}, nil
 }
 
 func newClient(c Config) (*apns2.Client, error) {
@@ -53,13 +57,15 @@ func (s sender) Send(request connector.Request) (interface{}, error) {
 	//	Payload:     m.Body,
 	//}
 
+	topic := strings.TrimPrefix(string(r.Path), "/")
 	n := &apns2.Notification{
 		Priority:    apns2.PriorityHigh,
-		Topic:       strings.TrimPrefix(string(r.Path), "/"),
+		Topic:       s.appTopic,
 		DeviceToken: r.Get(applicationIDKey),
 		Payload: payload.NewPayload().
 			AlertTitle("Title").
-			AlertBody("Text").
+			AlertBody("Body").
+			Custom("topic", topic).
 			Badge(1).
 			ContentAvailable(),
 	}
