@@ -6,6 +6,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+// Queue is an interface modeling a task-queue (it is started and more Requests can be pushed to it, an finally it is stopped).
 type Queue interface {
 	Start() error
 	Push(request Request) error
@@ -20,6 +21,7 @@ type queue struct {
 	wg        sync.WaitGroup
 }
 
+// NewQueue returns a new Queue (not started).
 func NewQueue(sender Sender, handler ResponseHandler, nWorkers int) Queue {
 	q := &queue{
 		sender:    sender,

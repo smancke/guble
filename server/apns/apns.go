@@ -31,6 +31,7 @@ type Config struct {
 	CertificateFileName *string
 	CertificateBytes    *[]byte
 	CertificatePassword *string
+	AppTopic            *string
 	Workers             *int
 }
 
@@ -48,10 +49,10 @@ func New(router router.Router, prefix string, config Config) (connector.Connecto
 		return nil, err
 	}
 	connectorConfig := connector.Config{
-		Name:   "apns",
-		Schema: schema,
-		Prefix: prefix,
-		Url:    "subscribe",
+		Name:       "apns",
+		Schema:     schema,
+		Prefix:     prefix,
+		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
 	}
 	newConn := &conn{
 		subs: make(map[string]*sub),

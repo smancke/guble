@@ -63,6 +63,9 @@ func TestParsingOfEnvironmentVariables(t *testing.T) {
 	os.Setenv("GUBLE_APNS_CERT_PASSWORD", "rotten")
 	defer os.Unsetenv("GUBLE_APNS_CERT_PASSWORD")
 
+	os.Setenv("GUBLE_APNS_APP_TOPIC", "com.myapp")
+	defer os.Unsetenv("GUBLE_APNS_APP_TOPIC")
+
 	os.Setenv("GUBLE_NODE_ID", "1")
 	defer os.Unsetenv("GUBLE_NODE_ID")
 
@@ -119,6 +122,7 @@ func TestParsingArgs(t *testing.T) {
 		"--apns-production",
 		"--apns-cert-bytes", "00ff",
 		"--apns-cert-password", "rotten",
+		"--apns-app-topic", "com.myapp",
 		"--node-id", "1",
 		"--node-port", "10000",
 		"--pg-host", "pg-host",
@@ -153,6 +157,7 @@ func assertArguments(a *assert.Assertions) {
 	a.Equal(true, *Config.APNS.Production)
 	a.Equal([]byte{0, 255}, *Config.APNS.CertificateBytes)
 	a.Equal("rotten", *Config.APNS.CertificatePassword)
+	a.Equal("com.myapp", *Config.APNS.AppTopic)
 
 	a.Equal(uint8(1), *Config.Cluster.NodeID)
 	a.Equal(10000, *Config.Cluster.NodePort)
