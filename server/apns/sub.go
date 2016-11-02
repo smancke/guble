@@ -3,13 +3,14 @@ package apns
 import (
 	"context"
 	"errors"
+	"strconv"
+	"strings"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/store"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -119,14 +120,14 @@ func (s *sub) createFetchRequest() *store.FetchRequest {
 	return store.NewFetchRequest("", s.lastID+1, 0, store.DirectionForward, -1)
 }
 
-func (s sub) Loop(ctx context.Context, q connector.Queue) error {
+func (s *sub) Loop(ctx context.Context, q connector.Queue) error {
 	//TODO Cosmin use subscriber.goLoop() in `connector` as inspiration for the implementation
 	return nil
 }
 
 // subscriptionLoop that will run in a goroutine and pipe messages from route to fcm
 // Attention: in order for this loop to finish the route channel must stop sending messages
-func (s sub) goLoop(ctx context.Context) {
+func (s *sub) goLoop(ctx context.Context) {
 	s.logger.Debug("Starting a subscription loop for APNS")
 
 	var (
@@ -155,16 +156,16 @@ func (s sub) goLoop(ctx context.Context) {
 }
 
 // Key returns a string that uniquely identifies this subscription
-func (s sub) Key() string {
+func (s *sub) Key() string {
 	return s.route.Key()
 }
 
 // Route returns the route of the subscription
-func (s sub) Route() *router.Route {
+func (s *sub) Route() *router.Route {
 	return s.route
 }
 
-func (s sub) SetLastID(ID uint64) error {
+func (s *sub) SetLastID(ID uint64) error {
 	s.lastID = ID
 	// update KV when last id is set
 	return s.store()
@@ -197,4 +198,12 @@ func (s *sub) remove() *sub {
 	delete(s.connector.subs, s.Key())
 	s.connector.KVStore.Delete(schema, s.Key())
 	return s
+}
+
+func (s *sub) Encode() ([]byte, error) {
+	return nil, nil
+}
+
+func (s *sub) Cancel() {
+
 }
