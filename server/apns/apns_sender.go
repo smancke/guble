@@ -14,7 +14,7 @@ type sender struct {
 	appTopic string
 }
 
-func newSender(config Config) (*sender, error) {
+func newSender(config Config) (connector.Sender, error) {
 	client, err := newClient(config)
 	if err != nil {
 		return nil, err

@@ -4,20 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
-	"sync"
-
 	log "github.com/Sirupsen/logrus"
-
 	"github.com/gorilla/mux"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/service"
+	"net/http"
+	"sync"
 )
 
 var (
 	ErrInternalQueue = errors.New("internal queue should have been already created")
+	TopicParam       = "topic"
 )
 
 type Sender interface {
@@ -59,7 +58,7 @@ type Config struct {
 	Workers    int
 }
 
-func NewConnector(router router.Router, sender Sender, handler ResponseHandler, config Config) (*Conn, error) {
+func NewConnector(router router.Router, sender Sender, config Config) (*Conn, error) {
 	kvs, err := router.KVStore()
 	if err != nil {
 		return nil, err
@@ -69,7 +68,7 @@ func NewConnector(router router.Router, sender Sender, handler ResponseHandler, 
 		Config:  config,
 		Sender:  sender,
 		Manager: NewManager(config.Schema, kvs),
-		Queue:   NewQueue(sender, nil, config.Workers),
+		Queue:   NewQueue(sender, config.Workers),
 		Router:  router,
 		KVStore: kvs,
 	}, nil
@@ -101,12 +100,12 @@ func (c *Conn) GetList(w http.ResponseWriter, req *http.Request) {
 // Post creates a new subscriber
 func (c *Conn) Post(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	topic, ok := params["topic"]
+	topic, ok := params[TopicParam]
 	if !ok {
 		fmt.Fprintf(w, "Missing topic parameter.")
 		return
 	}
-	delete(params, "topic")
+	delete(params, TopicParam)
 
 	subscriber, err := c.Manager.Create(protocol.Path(topic), params)
 	if err != nil {
@@ -125,13 +124,13 @@ func (c *Conn) Post(w http.ResponseWriter, req *http.Request) {
 // Delete removes a subscriber
 func (c *Conn) Delete(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	topic, ok := params["topic"]
+	topic, ok := params[TopicParam]
 	if !ok {
 		fmt.Fprintf(w, "Missing topic parameter.")
 		return
 	}
 
-	delete(params, "topic")
+	delete(params, TopicParam)
 	subscriber := c.Manager.Find(GenerateKey(topic, params))
 	if subscriber == nil {
 		http.Error(w, `{"error":"subscription not found"}`, http.StatusNotFound)
@@ -188,7 +187,9 @@ func (c *Conn) run(s Subscriber) {
 	err := s.Loop(c.Ctx, c.Queue)
 	if err != nil {
 		log.WithField("error", err.Error()).Error("Error returned by subscriber loop")
+
 		// TODO Bogdan Handle different types of error eg. Closed route channel
+
 		// TODO Bogdan Try restarting the subscription if possible
 	}
 

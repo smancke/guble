@@ -1,30 +1,29 @@
 package connector
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
-	"time"
-
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
 )
 
 type connectorMocks struct {
 	router  *MockRouter
 	sender  *MockSender
-	handler *MockResponseHandler
 	queue   *MockQueue
+	handler *MockResponseHandler
 	manager *MockManager
 	kvstore *MockKVStore
 }
 
 // Ensure the subscription is started when posting
-func TestConnector_PostSubscrition(t *testing.T) {
+func TestConnector_PostSubscription(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
@@ -65,7 +64,7 @@ func TestConnector_PostSubscrition(t *testing.T) {
 	a.NoError(err)
 	conn.ServeHTTP(recorder, req)
 	a.Equal(`{"subscribed":"topic1"}`, recorder.Body.String())
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(70 * time.Millisecond)
 }
 
 func TestConnector_PostSubscriptionNoMocks(t *testing.T) {
@@ -101,7 +100,7 @@ func TestConnector_PostSubscriptionNoMocks(t *testing.T) {
 	a.NoError(err)
 	conn.ServeHTTP(recorder, req)
 	a.Equal(`{"subscribed":"topic1"}`, recorder.Body.String())
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(70 * time.Millisecond)
 }
 
 func TestConnector_DeleteSubscription(t *testing.T) {
@@ -129,41 +128,43 @@ func TestConnector_DeleteSubscription(t *testing.T) {
 	a.NoError(err)
 	conn.ServeHTTP(recorder, req)
 	a.Equal(`{"unsubscribed":"topic1"}`, recorder.Body.String())
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(70 * time.Millisecond)
 }
 
 func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue bool) (Connector, *connectorMocks) {
 	a := assert.New(t)
 
 	var (
-		manager *MockManager
-		queue   *MockQueue
+		mManager *MockManager
+		mQueue   *MockQueue
+		mHandler *MockResponseHandler
 	)
 
-	router := NewMockRouter(testutil.MockCtrl)
-	kvstore := NewMockKVStore(testutil.MockCtrl)
-	handler := NewMockResponseHandler(testutil.MockCtrl)
-	router.EXPECT().KVStore().Return(kvstore, nil).AnyTimes()
-	sender := NewMockSender(testutil.MockCtrl)
+	mKVS := NewMockKVStore(testutil.MockCtrl)
+	mRouter := NewMockRouter(testutil.MockCtrl)
+	mRouter.EXPECT().KVStore().Return(mKVS, nil).AnyTimes()
+	mSender := NewMockSender(testutil.MockCtrl)
 
-	connector, err := NewConnector(router, sender, handler, config)
+	connector, err := NewConnector(mRouter, mSender, config)
 	a.NoError(err)
 
 	if mockManager {
-		manager = NewMockManager(testutil.MockCtrl)
-		connector.Manager = manager
+		mManager = NewMockManager(testutil.MockCtrl)
+		connector.Manager = mManager
 	}
 	if mockQueue {
-		queue := NewMockQueue(testutil.MockCtrl)
-		connector.Queue = queue
+		mHandler = NewMockResponseHandler(testutil.MockCtrl)
+		mQueue = NewMockQueue(testutil.MockCtrl)
+		mQueue.EXPECT().ResponseHandler().Return(mHandler).AnyTimes()
+		connector.Queue = mQueue
 	}
 
 	return connector, &connectorMocks{
-		router,
-		sender,
-		handler,
-		queue,
-		manager,
-		kvstore,
+		mRouter,
+		mSender,
+		mQueue,
+		mHandler,
+		mManager,
+		mKVS,
 	}
 }
