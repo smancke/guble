@@ -43,12 +43,30 @@ func (_mr *_MockConnectorRecorder) GetPrefix() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetPrefix")
 }
 
+func (_m *MockConnector) ResponseHandler() ResponseHandler {
+	ret := _m.ctrl.Call(_m, "ResponseHandler")
+	ret0, _ := ret[0].(ResponseHandler)
+	return ret0
+}
+
+func (_mr *_MockConnectorRecorder) ResponseHandler() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ResponseHandler")
+}
+
 func (_m *MockConnector) ServeHTTP(_param0 http.ResponseWriter, _param1 *http.Request) {
 	_m.ctrl.Call(_m, "ServeHTTP", _param0, _param1)
 }
 
 func (_mr *_MockConnectorRecorder) ServeHTTP(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ServeHTTP", arg0, arg1)
+}
+
+func (_m *MockConnector) SetResponseHandler(_param0 ResponseHandler) {
+	_m.ctrl.Call(_m, "SetResponseHandler", _param0)
+}
+
+func (_mr *_MockConnectorRecorder) SetResponseHandler(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetResponseHandler", arg0)
 }
 
 func (_m *MockConnector) Start() error {

@@ -2,7 +2,6 @@ package apns
 
 import (
 	"fmt"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/sideshow/apns2"
 	"github.com/smancke/guble/server/connector"
@@ -34,9 +33,14 @@ type conn struct {
 
 // New creates a new Connector without starting it
 func New(router router.Router, prefix string, config Config) (connector.Connector, error) {
-	sender, err := newSender(config)
+	pusher, err := newPusher(config)
 	if err != nil {
-		log.WithError(err).Error("APNS Sender error")
+		log.WithError(err).Error("APNS Pusher creation error")
+		return nil, err
+	}
+	sender, err := newSender(pusher, config)
+	if err != nil {
+		log.WithError(err).Error("APNS Sender creation error")
 		return nil, err
 	}
 	connectorConfig := connector.Config{

@@ -67,6 +67,20 @@ $MOCKGEN  -self_package client -package client \
 replace "client/mocks_client_gen_test.go" "client \"github.com\/smancke\/guble\/client\"" "client\."
 
 
+# server/apns mocks
+$MOCKGEN -package apns \
+      -destination server/apns/mocks_pusher_gen_test.go \
+      github.com/smancke/guble/server/apns \
+      Pusher
+$MOCKGEN -package apns \
+      -destination server/apns/mocks_request_gen_test.go \
+      github.com/smancke/guble/server/connector \
+      Request
+$MOCKGEN -package apns \
+      -destination server/apns/mocks_subscriber_gen_test.go \
+      github.com/smancke/guble/server/connector \
+      Subscriber
+
 # server/fcm mocks
 $MOCKGEN -package fcm \
       -destination server/fcm/mocks_router_gen_test.go \
