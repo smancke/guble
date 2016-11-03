@@ -29,10 +29,16 @@ type ResponseHandler interface {
 	HandleResponse(Request, interface{}, error) error
 }
 
+type ResponseHandleSetter interface {
+	ResponseHandler() ResponseHandler
+	SetResponseHandler(ResponseHandler)
+}
+
 type Connector interface {
 	service.Startable
 	service.Stopable
 	service.Endpoint
+	ResponseHandleSetter
 }
 
 type Conn struct {
@@ -209,4 +215,13 @@ func (c *Conn) Stop() error {
 	c.wg.Wait()
 	logger.WithField("name", c.Config.Name).Debug("Stopped connector")
 	return nil
+}
+
+func (c *Conn) ResponseHandler() ResponseHandler {
+	return c.Handler
+}
+
+func (c *Conn) SetResponseHandler(handler ResponseHandler) {
+	c.Handler = handler
+	c.Queue.SetResponseHandler(handler)
 }

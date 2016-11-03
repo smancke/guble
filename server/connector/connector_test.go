@@ -1,16 +1,17 @@
 package connector
 
 import (
-	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/testutil"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/router"
+	"github.com/smancke/guble/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 type connectorMocks struct {
@@ -155,7 +156,6 @@ func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue b
 	if mockQueue {
 		mHandler = NewMockResponseHandler(testutil.MockCtrl)
 		mQueue = NewMockQueue(testutil.MockCtrl)
-		mQueue.EXPECT().ResponseHandler().Return(mHandler).AnyTimes()
 		connector.Queue = mQueue
 	}
 

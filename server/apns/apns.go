@@ -64,7 +64,7 @@ func New(router router.Router, prefix string, config Config) (connector.Connecto
 		return nil, err
 	}
 	newConn.Conn = baseConn
-	newConn.Queue.SetResponseHandler(newConn)
+	newConn.SetResponseHandler(newConn)
 	return newConn, nil
 }
 
