@@ -52,21 +52,19 @@ func New(router router.Router, prefix string, config Config) (connector.Connecto
 		Name:       "apns",
 		Schema:     schema,
 		Prefix:     prefix,
-		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
+		URLPattern: fmt.Sprintf("/{device_token}/{user_id}/{%s:.*}", connector.TopicParam),
 	}
 
 	newConn := &conn{
 		subs: make(map[string]*sub),
 	}
-	baseConn, err := connector.NewConnector(router, sender, newConn, connectorConfig)
+	baseConn, err := connector.NewConnector(router, sender, connectorConfig)
 	if err != nil {
 		log.WithError(err).Error("Base connector error")
 		return nil, err
 	}
 	newConn.Conn = baseConn
-
-	// queue is created here since it uses as a param (ResponseHandler) the new connector itself (newConn)
-	newConn.Queue = connector.NewQueue(sender, newConn, *config.Workers)
+	newConn.Queue.SetResponseHandler(newConn)
 	return newConn, nil
 }
 
@@ -246,6 +244,7 @@ func (c *conn) loadSubscription(entry [2]string) {
 
 // Check returns nil if health-check succeeds, or an error if health-check fails
 func (c *conn) Check() error {
+	//TODO implement
 	return nil
 }
 

@@ -3,12 +3,19 @@ package connector
 import (
 	"sync"
 
+	"errors"
 	log "github.com/Sirupsen/logrus"
+)
+
+var (
+	ErrQueueResponseHandler = errors.New("Queue should have a ResponseHandler")
 )
 
 // Queue is an interface modeling a task-queue (it is started and more Requests can be pushed to it, an finally it is stopped).
 type Queue interface {
 	Start() error
+	SetResponseHandler(ResponseHandler)
+	ResponseHandler() ResponseHandler
 	Push(request Request) error
 	Stop() error
 }
@@ -22,17 +29,27 @@ type queue struct {
 }
 
 // NewQueue returns a new Queue (not started).
-func NewQueue(sender Sender, handler ResponseHandler, nWorkers int) Queue {
+func NewQueue(sender Sender, nWorkers int) Queue {
 	q := &queue{
 		sender:    sender,
-		handler:   handler,
 		requestsC: make(chan Request),
 		nWorkers:  nWorkers,
 	}
 	return q
 }
 
+func (q *queue) SetResponseHandler(rh ResponseHandler) {
+	q.handler = rh
+}
+
+func (q *queue) ResponseHandler() ResponseHandler {
+	return q.handler
+}
+
 func (q *queue) Start() error {
+	if q.ResponseHandler() == nil {
+		return ErrQueueResponseHandler
+	}
 	for i := 1; i <= q.nWorkers; i++ {
 		go q.worker()
 	}
