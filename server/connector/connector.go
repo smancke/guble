@@ -74,10 +74,6 @@ func NewConnector(router router.Router, sender Sender, config Config) (*Conn, er
 	}, nil
 }
 
-func (c *Conn) GetPrefix() string {
-	return c.Config.Prefix
-}
-
 // TODO Bogdan Refactor this so the router is built one time
 func (c *Conn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r := mux.NewRouter()
@@ -92,9 +88,13 @@ func (c *Conn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.ServeHTTP(w, req)
 }
 
+func (c *Conn) GetPrefix() string {
+	return c.Config.Prefix
+}
+
 // GetList returns list of subscribers
 func (c *Conn) GetList(w http.ResponseWriter, req *http.Request) {
-
+	//TODO implement
 }
 
 // Post creates a new subscriber
@@ -199,13 +199,10 @@ func (c *Conn) run(s Subscriber) {
 	}
 }
 
-// Stop stops the context
+// Stop stops the connector (the context, the queue, the subscription loops)
 func (c *Conn) Stop() error {
 	logger.WithField("name", c.Config.Name).Debug("Stopping connector")
-	// first cancel all subs-goroutines
 	c.Cancel()
-
-	// then close the queue:
 	c.Queue.Stop()
 	c.wg.Wait()
 	logger.WithField("name", c.Config.Name).Debug("Stopped connector")
