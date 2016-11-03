@@ -49,7 +49,12 @@ func (rc *RouteConfig) messageFilter(m *protocol.Message) bool {
 		return true
 	}
 
-	for key, value := range m.Filters {
+	return rc.Filter(m.Filters)
+}
+
+// Filter returns true if all filters are matched on the route
+func (rc *RouteConfig) Filter(filters map[string]string) bool {
+	for key, value := range filters {
 		if rc.Get(key) != value {
 			return false
 		}
