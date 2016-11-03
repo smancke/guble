@@ -30,18 +30,21 @@ func TestSender_Send(t *testing.T) {
 	mRequest.EXPECT().Subscriber().Return(mSubscriber)
 
 	mPusher := NewMockPusher(testutil.MockCtrl)
-	mPusher.EXPECT().Push(gomock.Any())
+	mPusher.EXPECT().Push(gomock.Any()).Return(nil, nil)
 
 	appTopic := "com.myapp"
 	cfg := Config{
 		AppTopic: &appTopic,
 	}
 
-	// when
+	// and
 	s, err := newSender(mPusher, cfg)
 	a.NoError(err)
 
+	// when
+	rsp, err := s.Send(mRequest)
+
 	// then
-	_, err = s.Send(mRequest)
 	a.NoError(err)
+	a.Nil(rsp)
 }

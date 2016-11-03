@@ -50,6 +50,16 @@ func (_mr *_MockSubscriberRecorder) Encode() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Encode")
 }
 
+func (_m *MockSubscriber) Filter(_param0 map[string]string) bool {
+	ret := _m.ctrl.Call(_m, "Filter", _param0)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+func (_mr *_MockSubscriberRecorder) Filter(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Filter", arg0)
+}
+
 func (_m *MockSubscriber) Key() string {
 	ret := _m.ctrl.Call(_m, "Key")
 	ret0, _ := ret[0].(string)
