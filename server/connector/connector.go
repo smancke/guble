@@ -164,7 +164,6 @@ func (c *connector) Start() error {
 	c.queue.Start()
 
 	logger.Debug("Starting connector")
-	c.Ctx, c.Cancel = context.WithCancel(context.Background())
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
 	c.logger.Debug("Loading subscriptions")
