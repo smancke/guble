@@ -4,12 +4,12 @@
 package connector
 
 import (
-	"context"
-	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/protocol"
-
-	"github.com/smancke/guble/server/router"
-	"net/http"
+	context "context"
+	gomock "github.com/golang/mock/gomock"
+	protocol "github.com/smancke/guble/protocol"
+	
+	router "github.com/smancke/guble/server/router"
+	http "net/http"
 )
 
 // Mock of Connector interface
@@ -43,12 +43,30 @@ func (_mr *_MockConnectorRecorder) GetPrefix() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetPrefix")
 }
 
+func (_m *MockConnector) ResponseHandler() ResponseHandler {
+	ret := _m.ctrl.Call(_m, "ResponseHandler")
+	ret0, _ := ret[0].(ResponseHandler)
+	return ret0
+}
+
+func (_mr *_MockConnectorRecorder) ResponseHandler() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ResponseHandler")
+}
+
 func (_m *MockConnector) ServeHTTP(_param0 http.ResponseWriter, _param1 *http.Request) {
 	_m.ctrl.Call(_m, "ServeHTTP", _param0, _param1)
 }
 
 func (_mr *_MockConnectorRecorder) ServeHTTP(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ServeHTTP", arg0, arg1)
+}
+
+func (_m *MockConnector) SetResponseHandler(_param0 ResponseHandler) {
+	_m.ctrl.Call(_m, "SetResponseHandler", _param0)
+}
+
+func (_mr *_MockConnectorRecorder) SetResponseHandler(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetResponseHandler", arg0)
 }
 
 func (_m *MockConnector) Start() error {
@@ -184,6 +202,16 @@ func (_m *MockManager) Exists(_param0 string) bool {
 
 func (_mr *_MockManagerRecorder) Exists(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Exists", arg0)
+}
+
+func (_m *MockManager) Filter(_param0 map[string]string) []Subscriber {
+	ret := _m.ctrl.Call(_m, "Filter", _param0)
+	ret0, _ := ret[0].([]Subscriber)
+	return ret0
+}
+
+func (_mr *_MockManagerRecorder) Filter(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Filter", arg0)
 }
 
 func (_m *MockManager) Find(_param0 string) Subscriber {
@@ -384,6 +412,16 @@ func (_m *MockSubscriber) Encode() ([]byte, error) {
 
 func (_mr *_MockSubscriberRecorder) Encode() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Encode")
+}
+
+func (_m *MockSubscriber) Filter(_param0 map[string]string) bool {
+	ret := _m.ctrl.Call(_m, "Filter", _param0)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+func (_mr *_MockSubscriberRecorder) Filter(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Filter", arg0)
 }
 
 func (_m *MockSubscriber) Key() string {

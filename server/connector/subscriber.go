@@ -24,6 +24,7 @@ var (
 type Subscriber interface {
 	Key() string
 	Route() *router.Route
+	Filter(map[string]string) bool
 	Loop(context.Context, Queue) error
 	SetLastID(ID uint64) error
 	Cancel()
@@ -84,6 +85,10 @@ func (s *subscriber) Key() string {
 		s.key = GenerateKey(string(s.data.Topic), s.data.Params)
 	}
 	return s.key
+}
+
+func (s *subscriber) Filter(filters map[string]string) bool {
+	return s.route.Filter(filters)
 }
 
 func (s *subscriber) Route() *router.Route {
