@@ -2,6 +2,7 @@ package connector
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -104,7 +105,29 @@ func (c *connector) GetPrefix() string {
 
 // GetList returns list of subscribers
 func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
-	//TODO implement
+	query := req.URL.Query()
+	filters := make(map[string]string, len(query))
+
+	for key, value := range query {
+		if len(value) == 0 {
+			continue
+		}
+		filters[key] = value[0]
+	}
+
+	subscribers := c.manager.Filter(filters)
+	topics := make([]string, 0, len(subscribers))
+	for _, s := range subscribers {
+		topics = append(topics, string(s.Route().Path))
+	}
+
+	encoder := json.NewEncoder(w)
+	err := encoder.Encode(topics)
+	if err != nil {
+		http.Error(w, "Error encoding data.", http.StatusInternalServerError)
+		c.logger.WithField("error", err.Error()).Error("Error encoding data.")
+		return
+	}
 }
 
 // Post creates a new subscriber

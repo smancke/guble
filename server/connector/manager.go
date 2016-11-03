@@ -1,15 +1,17 @@
 package connector
 
 import (
+	"sync"
+
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
-	"sync"
 )
 
 type Manager interface {
 	Load() error
 	List() []Subscriber
+	Filter(map[string]string) []Subscriber
 	Find(string) Subscriber
 	Exists(string) bool
 	Create(protocol.Path, router.RouteParams) (Subscriber, error)
@@ -76,6 +78,15 @@ func (m *manager) List() []Subscriber {
 		l = append(l, s)
 	}
 	return l
+}
+
+func (m *manager) Filter(filters map[string]string) (subscribers []Subscriber) {
+	for _, s := range m.subscribers {
+		if s.Filter(filters) {
+			subscribers = append(subscribers, s)
+		}
+	}
+	return
 }
 
 func (m *manager) Add(s Subscriber) error {

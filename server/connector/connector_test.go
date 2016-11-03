@@ -132,6 +132,38 @@ func TestConnector_DeleteSubscription(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 }
 
+func TestConnector_GetList(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
+	a := assert.New(t)
+
+	recorder := httptest.NewRecorder()
+	conn, mocks := getTestConnector(t, Config{
+		Name:       "test",
+		Schema:     "test",
+		Prefix:     "/connector/",
+		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
+	}, true, false)
+
+	subscriber1 := NewMockSubscriber(testutil.MockCtrl)
+	subscriber1.EXPECT().Route().Return(router.NewRoute(router.RouteConfig{
+		Path: "topic1",
+	}))
+	subscriber2 := NewMockSubscriber(testutil.MockCtrl)
+	subscriber2.EXPECT().Route().Return(router.NewRoute(router.RouteConfig{
+		Path: "topic2",
+	}))
+	mocks.manager.EXPECT().Filter(gomock.Any()).Return([]Subscriber{subscriber1, subscriber2})
+
+	req, err := http.NewRequest(http.MethodGet, "/connector/", strings.NewReader(""))
+	a.NoError(err)
+
+	conn.ServeHTTP(recorder, req)
+	expectedJSON := `["topic1","topic2"]`
+	a.JSONEq(expectedJSON, recorder.Body.String())
+}
+
 func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue bool) (Connector, *connectorMocks) {
 	a := assert.New(t)
 
