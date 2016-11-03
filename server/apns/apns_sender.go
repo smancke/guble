@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+const (
+	// deviceIDKey is the key name set on the route params to identify the application
+	deviceIDKey = "device_id"
+)
+
 type sender struct {
 	client   *apns2.Client
 	appTopic string
@@ -61,7 +66,7 @@ func (s sender) Send(request connector.Request) (interface{}, error) {
 	n := &apns2.Notification{
 		Priority:    apns2.PriorityHigh,
 		Topic:       s.appTopic,
-		DeviceToken: r.Get(applicationIDKey),
+		DeviceToken: r.Get(deviceIDKey),
 		Payload: payload.NewPayload().
 			AlertTitle("Title").
 			AlertBody("Body").
