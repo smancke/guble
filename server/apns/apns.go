@@ -54,6 +54,7 @@ func New(router router.Router, prefix string, config Config) (connector.Connecto
 		Prefix:     prefix,
 		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
 	}
+
 	newConn := &conn{
 		subs: make(map[string]*sub),
 	}

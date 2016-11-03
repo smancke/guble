@@ -45,7 +45,7 @@ func (q *queue) worker() {
 		response, err := q.sender.Send(request)
 		err = q.handler.HandleResponse(request, response, err)
 		if err != nil {
-			log.WithFields(log.Fields{
+			logger.WithFields(log.Fields{
 				"error":      err.Error(),
 				"subscriber": request.Subscriber(),
 				"message":    request.Message(),

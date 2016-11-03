@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
-
 	"github.com/gorilla/mux"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/kvstore"
@@ -187,14 +185,14 @@ func (c *Conn) run(s Subscriber) {
 
 	err := s.Loop(c.Ctx, c.Queue)
 	if err != nil {
-		log.WithField("error", err.Error()).Error("Error returned by subscriber loop")
+		logger.WithField("error", err.Error()).Error("Error returned by subscriber loop")
 		// TODO Bogdan Handle different types of error eg. Closed route channel
 		// TODO Bogdan Try restarting the subscription if possible
 	}
 
 	if provideErr != nil {
 		// TODO Bogdan Treat errors where a subscription provide fails
-		log.WithField("error", err.Error()).Error("Route provide error")
+		logger.WithField("error", err.Error()).Error("Route provide error")
 	}
 }
 
