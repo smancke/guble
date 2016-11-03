@@ -2,6 +2,7 @@ package apns
 
 import (
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/sideshow/apns2"
 	"github.com/smancke/guble/server/connector"
@@ -28,7 +29,7 @@ type Config struct {
 
 // conn is the private struct for handling the communication with APNS
 type conn struct {
-	*connector.Conn
+	connector.Connector
 }
 
 // New creates a new Connector without starting it
@@ -49,8 +50,8 @@ func New(router router.Router, prefix string, config Config) (connector.Connecto
 		log.WithError(err).Error("Base connector error")
 		return nil, err
 	}
-	newConn := &conn{Conn: baseConn}
-	newConn.Queue.SetResponseHandler(newConn)
+	newConn := &conn{baseConn}
+	newConn.SetResponseHandler(newConn)
 	return newConn, nil
 }
 

@@ -1,16 +1,17 @@
 package connector
 
 import (
-	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/testutil"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/router"
+	"github.com/smancke/guble/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 type connectorMocks struct {
@@ -64,7 +65,7 @@ func TestConnector_PostSubscription(t *testing.T) {
 	a.NoError(err)
 	conn.ServeHTTP(recorder, req)
 	a.Equal(`{"subscribed":"topic1"}`, recorder.Body.String())
-	time.Sleep(70 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 }
 
 func TestConnector_PostSubscriptionNoMocks(t *testing.T) {
@@ -100,7 +101,7 @@ func TestConnector_PostSubscriptionNoMocks(t *testing.T) {
 	a.NoError(err)
 	conn.ServeHTTP(recorder, req)
 	a.Equal(`{"subscribed":"topic1"}`, recorder.Body.String())
-	time.Sleep(70 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 }
 
 func TestConnector_DeleteSubscription(t *testing.T) {
@@ -128,7 +129,7 @@ func TestConnector_DeleteSubscription(t *testing.T) {
 	a.NoError(err)
 	conn.ServeHTTP(recorder, req)
 	a.Equal(`{"unsubscribed":"topic1"}`, recorder.Body.String())
-	time.Sleep(70 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 }
 
 func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue bool) (Connector, *connectorMocks) {
@@ -150,13 +151,12 @@ func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue b
 
 	if mockManager {
 		mManager = NewMockManager(testutil.MockCtrl)
-		connector.Manager = mManager
+		connector.manager = mManager
 	}
 	if mockQueue {
 		mHandler = NewMockResponseHandler(testutil.MockCtrl)
 		mQueue = NewMockQueue(testutil.MockCtrl)
-		mQueue.EXPECT().ResponseHandler().Return(mHandler).AnyTimes()
-		connector.Queue = mQueue
+		connector.queue = mQueue
 	}
 
 	return connector, &connectorMocks{

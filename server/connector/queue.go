@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"errors"
+
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -13,9 +14,9 @@ var (
 
 // Queue is an interface modeling a task-queue (it is started and more Requests can be pushed to it, an finally it is stopped).
 type Queue interface {
+	ResponseHandleSetter
+
 	Start() error
-	SetResponseHandler(ResponseHandler)
-	ResponseHandler() ResponseHandler
 	Push(request Request) error
 	Stop() error
 }
@@ -47,8 +48,8 @@ func (q *queue) ResponseHandler() ResponseHandler {
 }
 
 func (q *queue) Start() error {
-	if q.ResponseHandler() == nil {
-		return ErrQueueResponseHandler
+	if q.handler == nil {
+		logger.Warning("Not handler set for connector queue.")
 	}
 	for i := 1; i <= q.nWorkers; i++ {
 		go q.worker()
@@ -60,13 +61,15 @@ func (q *queue) worker() {
 	for request := range q.requestsC {
 		q.wg.Add(1)
 		response, err := q.sender.Send(request)
-		err = q.handler.HandleResponse(request, response, err)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"error":      err.Error(),
-				"subscriber": request.Subscriber(),
-				"message":    request.Message(),
-			}).Error("Error handling connector response")
+		if q.handler != nil {
+			err = q.handler.HandleResponse(request, response, err)
+			if err != nil {
+				logger.WithFields(log.Fields{
+					"error":      err.Error(),
+					"subscriber": request.Subscriber(),
+					"message":    request.Message(),
+				}).Error("Error handling connector response")
+			}
 		}
 		q.wg.Done()
 	}
