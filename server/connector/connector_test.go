@@ -151,12 +151,12 @@ func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue b
 
 	if mockManager {
 		mManager = NewMockManager(testutil.MockCtrl)
-		connector.Manager = mManager
+		connector.manager = mManager
 	}
 	if mockQueue {
 		mHandler = NewMockResponseHandler(testutil.MockCtrl)
 		mQueue = NewMockQueue(testutil.MockCtrl)
-		connector.Queue = mQueue
+		connector.queue = mQueue
 	}
 
 	return connector, &connectorMocks{

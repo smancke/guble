@@ -29,7 +29,7 @@ type Config struct {
 
 // conn is the private struct for handling the communication with APNS
 type conn struct {
-	*connector.Conn
+	connector.Connector
 }
 
 // New creates a new Connector without starting it

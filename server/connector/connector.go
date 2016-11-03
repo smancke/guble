@@ -41,17 +41,17 @@ type Connector interface {
 	ResponseHandleSetter
 }
 
-type Conn struct {
-	Config  Config
-	Sender  Sender
-	Handler ResponseHandler
-	Manager Manager
-	Queue   Queue
-	Router  router.Router
-	KVStore kvstore.KVStore
+type connector struct {
+	config  Config
+	sender  Sender
+	handler ResponseHandler
+	manager Manager
+	queue   Queue
+	router  router.Router
+	kvstore kvstore.KVStore
 
-	Ctx    context.Context
-	Cancel context.CancelFunc
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	wg sync.WaitGroup
 }
@@ -64,47 +64,47 @@ type Config struct {
 	Workers    int
 }
 
-func NewConnector(router router.Router, sender Sender, config Config) (*Conn, error) {
+func NewConnector(router router.Router, sender Sender, config Config) (*connector, error) {
 	kvs, err := router.KVStore()
 	if err != nil {
 		return nil, err
 	}
 
-	return &Conn{
-		Config:  config,
-		Sender:  sender,
-		Manager: NewManager(config.Schema, kvs),
-		Queue:   NewQueue(sender, config.Workers),
-		Router:  router,
-		KVStore: kvs,
+	return &connector{
+		config:  config,
+		sender:  sender,
+		manager: NewManager(config.Schema, kvs),
+		queue:   NewQueue(sender, config.Workers),
+		router:  router,
+		kvstore: kvs,
 	}, nil
 }
 
 // TODO Bogdan Refactor this so the router is built one time
-func (c *Conn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (c *connector) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r := mux.NewRouter()
 
 	baseRouter := r.PathPrefix(c.GetPrefix()).Subrouter()
 	baseRouter.Methods("GET").HandlerFunc(c.GetList)
 
-	subRouter := baseRouter.Path(c.Config.URLPattern).Subrouter()
+	subRouter := baseRouter.Path(c.config.URLPattern).Subrouter()
 	subRouter.Methods("POST").HandlerFunc(c.Post)
 	subRouter.Methods("DELETE").HandlerFunc(c.Delete)
 
 	r.ServeHTTP(w, req)
 }
 
-func (c *Conn) GetPrefix() string {
-	return c.Config.Prefix
+func (c *connector) GetPrefix() string {
+	return c.config.Prefix
 }
 
 // GetList returns list of subscribers
-func (c *Conn) GetList(w http.ResponseWriter, req *http.Request) {
+func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
 	//TODO implement
 }
 
 // Post creates a new subscriber
-func (c *Conn) Post(w http.ResponseWriter, req *http.Request) {
+func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
 	topic, ok := params[TopicParam]
 	if !ok {
@@ -113,7 +113,7 @@ func (c *Conn) Post(w http.ResponseWriter, req *http.Request) {
 	}
 	delete(params, TopicParam)
 
-	subscriber, err := c.Manager.Create(protocol.Path(topic), params)
+	subscriber, err := c.manager.Create(protocol.Path(topic), params)
 	if err != nil {
 		if err == ErrSubscriberExists {
 			fmt.Fprintf(w, `{"error":"subscription already exists"}`)
@@ -128,7 +128,7 @@ func (c *Conn) Post(w http.ResponseWriter, req *http.Request) {
 }
 
 // Delete removes a subscriber
-func (c *Conn) Delete(w http.ResponseWriter, req *http.Request) {
+func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
 	topic, ok := params[TopicParam]
 	if !ok {
@@ -137,13 +137,13 @@ func (c *Conn) Delete(w http.ResponseWriter, req *http.Request) {
 	}
 
 	delete(params, TopicParam)
-	subscriber := c.Manager.Find(GenerateKey(topic, params))
+	subscriber := c.manager.Find(GenerateKey(topic, params))
 	if subscriber == nil {
 		http.Error(w, `{"error":"subscription not found"}`, http.StatusNotFound)
 		return
 	}
 
-	err := c.Manager.Remove(subscriber)
+	err := c.manager.Remove(subscriber)
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"unknown error: %s"}`, err.Error()), http.StatusInternalServerError)
 		return
@@ -153,36 +153,36 @@ func (c *Conn) Delete(w http.ResponseWriter, req *http.Request) {
 }
 
 // Start will run start all current subscriptions and workers to process the messages
-func (c *Conn) Start() error {
-	if c.Queue == nil {
+func (c *connector) Start() error {
+	if c.queue == nil {
 		return ErrInternalQueue
 	}
-	c.Queue.Start()
+	c.queue.Start()
 
-	logger.WithField("name", c.Config.Name).Debug("Starting connector")
-	c.Ctx, c.Cancel = context.WithCancel(context.Background())
+	logger.WithField("name", c.config.Name).Debug("Starting connector")
+	c.ctx, c.cancel = context.WithCancel(context.Background())
 
 	// Load subscriptions when starting
-	err := c.Manager.Load()
+	err := c.manager.Load()
 	if err != nil {
 		return err
 	}
 
-	for _, s := range c.Manager.List() {
+	for _, s := range c.manager.List() {
 		go c.run(s)
 	}
 
-	logger.WithField("name", c.Config.Name).Debug("Started connector")
+	logger.WithField("name", c.config.Name).Debug("Started connector")
 	return nil
 }
 
-func (c *Conn) run(s Subscriber) {
+func (c *connector) run(s Subscriber) {
 	c.wg.Add(1)
 	defer c.wg.Done()
 
 	var provideErr error
 	go func() {
-		err := s.Route().Provide(c.Router, true)
+		err := s.Route().Provide(c.router, true)
 		if err != nil {
 			// cancel subscription loop if there is an error on the provider
 			s.Cancel()
@@ -190,7 +190,7 @@ func (c *Conn) run(s Subscriber) {
 		}
 	}()
 
-	err := s.Loop(c.Ctx, c.Queue)
+	err := s.Loop(c.ctx, c.queue)
 	if err != nil {
 		logger.WithField("error", err.Error()).Error("Error returned by subscriber loop")
 		// TODO Bogdan Handle different types of error eg. Closed route channel
@@ -205,20 +205,20 @@ func (c *Conn) run(s Subscriber) {
 }
 
 // Stop stops the connector (the context, the queue, the subscription loops)
-func (c *Conn) Stop() error {
-	logger.WithField("name", c.Config.Name).Debug("Stopping connector")
-	c.Cancel()
-	c.Queue.Stop()
+func (c *connector) Stop() error {
+	logger.WithField("name", c.config.Name).Debug("Stopping connector")
+	c.cancel()
+	c.queue.Stop()
 	c.wg.Wait()
-	logger.WithField("name", c.Config.Name).Debug("Stopped connector")
+	logger.WithField("name", c.config.Name).Debug("Stopped connector")
 	return nil
 }
 
-func (c *Conn) ResponseHandler() ResponseHandler {
-	return c.Handler
+func (c *connector) ResponseHandler() ResponseHandler {
+	return c.handler
 }
 
-func (c *Conn) SetResponseHandler(handler ResponseHandler) {
-	c.Handler = handler
-	c.Queue.SetResponseHandler(handler)
+func (c *connector) SetResponseHandler(handler ResponseHandler) {
+	c.handler = handler
+	c.queue.SetResponseHandler(handler)
 }
