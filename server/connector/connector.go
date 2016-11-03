@@ -47,7 +47,8 @@ type Conn struct {
 	Ctx    context.Context
 	Cancel context.CancelFunc
 
-	wg sync.WaitGroup
+	logger *log.Entry
+	wg     sync.WaitGroup
 }
 
 type Config struct {
@@ -71,6 +72,7 @@ func NewConnector(router router.Router, sender Sender, config Config) (*Conn, er
 		Queue:   NewQueue(sender, config.Workers),
 		Router:  router,
 		KVStore: kvs,
+		logger:  logger.WithField("name", config.Name),
 	}, nil
 }
 
@@ -153,20 +155,21 @@ func (c *Conn) Start() error {
 	}
 	c.Queue.Start()
 
-	logger.WithField("name", c.Config.Name).Debug("Starting connector")
+	c.logger.Debug("Starting connector")
 	c.Ctx, c.Cancel = context.WithCancel(context.Background())
 
-	// Load subscriptions when starting
+	c.logger.Debug("Loading subscriptions")
 	err := c.Manager.Load()
 	if err != nil {
 		return err
 	}
 
+	c.logger.Debug("Starting subscriptions")
 	for _, s := range c.Manager.List() {
 		go c.run(s)
 	}
 
-	logger.WithField("name", c.Config.Name).Debug("Started connector")
+	c.logger.Debug("Started connector")
 	return nil
 }
 
@@ -186,7 +189,7 @@ func (c *Conn) run(s Subscriber) {
 
 	err := s.Loop(c.Ctx, c.Queue)
 	if err != nil {
-		log.WithField("error", err.Error()).Error("Error returned by subscriber loop")
+		c.logger.WithField("error", err.Error()).Error("Error returned by subscriber loop")
 
 		// TODO Bogdan Handle different types of error eg. Closed route channel
 
@@ -195,16 +198,16 @@ func (c *Conn) run(s Subscriber) {
 
 	if provideErr != nil {
 		// TODO Bogdan Treat errors where a subscription provide fails
-		log.WithField("error", err.Error()).Error("Route provide error")
+		c.logger.WithField("error", err.Error()).Error("Route provide error")
 	}
 }
 
 // Stop stops the connector (the context, the queue, the subscription loops)
 func (c *Conn) Stop() error {
-	logger.WithField("name", c.Config.Name).Debug("Stopping connector")
+	c.logger.Debug("Stopping connector")
 	c.Cancel()
 	c.Queue.Stop()
 	c.wg.Wait()
-	logger.WithField("name", c.Config.Name).Debug("Stopped connector")
+	c.logger.Debug("Stopped connector")
 	return nil
 }
