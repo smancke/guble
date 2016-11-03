@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"sync"
 
+	log "github.com/Sirupsen/logrus"
+
 	"github.com/gorilla/mux"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/kvstore"
@@ -53,7 +55,8 @@ type connector struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	wg sync.WaitGroup
+	logger *log.Entry
+	wg     sync.WaitGroup
 }
 
 type Config struct {
@@ -77,6 +80,7 @@ func NewConnector(router router.Router, sender Sender, config Config) (*connecto
 		queue:   NewQueue(sender, config.Workers),
 		router:  router,
 		kvstore: kvs,
+		logger:  logger.WithField("name", config.Name),
 	}, nil
 }
 
@@ -159,20 +163,23 @@ func (c *connector) Start() error {
 	}
 	c.queue.Start()
 
-	logger.WithField("name", c.config.Name).Debug("Starting connector")
+	logger.Debug("Starting connector")
+	c.Ctx, c.Cancel = context.WithCancel(context.Background())
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
+	c.logger.Debug("Loading subscriptions")
 	// Load subscriptions when starting
 	err := c.manager.Load()
 	if err != nil {
 		return err
 	}
 
+	c.logger.Debug("Starting subscriptions")
 	for _, s := range c.manager.List() {
 		go c.run(s)
 	}
 
-	logger.WithField("name", c.config.Name).Debug("Started connector")
+	c.logger.Debug("Started connector")
 	return nil
 }
 
@@ -192,7 +199,7 @@ func (c *connector) run(s Subscriber) {
 
 	err := s.Loop(c.ctx, c.queue)
 	if err != nil {
-		logger.WithField("error", err.Error()).Error("Error returned by subscriber loop")
+		c.logger.WithField("error", err.Error()).Error("Error returned by subscriber loop")
 		// TODO Bogdan Handle different types of error eg. Closed route channel
 
 		// TODO Bogdan Try restarting the subscription if possible
@@ -200,17 +207,17 @@ func (c *connector) run(s Subscriber) {
 
 	if provideErr != nil {
 		// TODO Bogdan Treat errors where a subscription provide fails
-		logger.WithField("error", err.Error()).Error("Route provide error")
+		c.logger.WithField("error", err.Error()).Error("Route provide error")
 	}
 }
 
 // Stop stops the connector (the context, the queue, the subscription loops)
 func (c *connector) Stop() error {
-	logger.WithField("name", c.config.Name).Debug("Stopping connector")
+	c.logger.Debug("Stopping connector")
 	c.cancel()
 	c.queue.Stop()
 	c.wg.Wait()
-	logger.WithField("name", c.config.Name).Debug("Stopped connector")
+	c.logger.Debug("Stopped connector")
 	return nil
 }
 
