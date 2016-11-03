@@ -1,15 +1,8 @@
 package connector
 
 import (
-	"sync"
-
-	"errors"
-
 	log "github.com/Sirupsen/logrus"
-)
-
-var (
-	ErrQueueResponseHandler = errors.New("Queue should have a ResponseHandler")
+	"sync"
 )
 
 // Queue is an interface modeling a task-queue (it is started and more Requests can be pushed to it, an finally it is stopped).
@@ -22,11 +15,11 @@ type Queue interface {
 }
 
 type queue struct {
-	sender    Sender
-	handler   ResponseHandler
-	requestsC chan Request
-	nWorkers  int
-	wg        sync.WaitGroup
+	sender          Sender
+	responseHandler ResponseHandler
+	requestsC       chan Request
+	nWorkers        int
+	wg              sync.WaitGroup
 }
 
 // NewQueue returns a new Queue (not started).
@@ -40,16 +33,16 @@ func NewQueue(sender Sender, nWorkers int) Queue {
 }
 
 func (q *queue) SetResponseHandler(rh ResponseHandler) {
-	q.handler = rh
+	q.responseHandler = rh
 }
 
 func (q *queue) ResponseHandler() ResponseHandler {
-	return q.handler
+	return q.responseHandler
 }
 
 func (q *queue) Start() error {
-	if q.handler == nil {
-		logger.Warning("Not handler set for connector queue.")
+	if q.responseHandler == nil {
+		logger.Warning("No handler set for connector queue")
 	}
 	for i := 1; i <= q.nWorkers; i++ {
 		go q.worker()
@@ -61,8 +54,8 @@ func (q *queue) worker() {
 	for request := range q.requestsC {
 		q.wg.Add(1)
 		response, err := q.sender.Send(request)
-		if q.handler != nil {
-			err = q.handler.HandleResponse(request, response, err)
+		if q.responseHandler != nil {
+			err = q.responseHandler.HandleResponse(request, response, err)
 			if err != nil {
 				logger.WithFields(log.Fields{
 					"error":      err.Error(),

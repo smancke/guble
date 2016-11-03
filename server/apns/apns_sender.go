@@ -1,9 +1,7 @@
 package apns
 
 import (
-	"crypto/tls"
 	"github.com/sideshow/apns2"
-	"github.com/sideshow/apns2/certificate"
 	"github.com/sideshow/apns2/payload"
 	"github.com/smancke/guble/server/connector"
 	"strings"
@@ -15,42 +13,19 @@ const (
 )
 
 type sender struct {
-	client   *apns2.Client
+	client   Pusher
 	appTopic string
 }
 
-func newSender(config Config) (connector.Sender, error) {
-	client, err := newClient(config)
-	if err != nil {
-		return nil, err
-	}
+func newSender(pusher Pusher, config Config) (connector.Sender, error) {
 	return &sender{
-		client:   client,
+		client:   pusher,
 		appTopic: *config.AppTopic,
 	}, nil
 }
 
-func newClient(c Config) (*apns2.Client, error) {
-	var (
-		cert    tls.Certificate
-		errCert error
-	)
-	if c.CertificateFileName != nil && *c.CertificateFileName != "" {
-		cert, errCert = certificate.FromP12File(*c.CertificateFileName, *c.CertificatePassword)
-	} else {
-		cert, errCert = certificate.FromP12Bytes(*c.CertificateBytes, *c.CertificatePassword)
-	}
-	if errCert != nil {
-		return nil, errCert
-	}
-	if *c.Production {
-		return apns2.NewClient(cert).Production(), nil
-	}
-	return apns2.NewClient(cert).Development(), nil
-}
-
 func (s sender) Send(request connector.Request) (interface{}, error) {
-	r := request.Subscriber().Route()
+	route := request.Subscriber().Route()
 
 	//TODO Cosmin: Samsa should generate the Payload or the whole Notification, and JSON-serialize it into the guble-message Body.
 
@@ -62,11 +37,11 @@ func (s sender) Send(request connector.Request) (interface{}, error) {
 	//	Payload:     m.Body,
 	//}
 
-	topic := strings.TrimPrefix(string(r.Path), "/")
+	topic := strings.TrimPrefix(string(route.Path), "/")
 	n := &apns2.Notification{
 		Priority:    apns2.PriorityHigh,
 		Topic:       s.appTopic,
-		DeviceToken: r.Get(deviceIDKey),
+		DeviceToken: route.Get(deviceIDKey),
 		Payload: payload.NewPayload().
 			AlertTitle("Title").
 			AlertBody("Body").
