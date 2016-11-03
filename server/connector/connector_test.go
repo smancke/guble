@@ -164,6 +164,34 @@ func TestConnector_GetList(t *testing.T) {
 	a.JSONEq(expectedJSON, recorder.Body.String())
 }
 
+func TestConnector_GetListWithFilters(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
+	a := assert.New(t)
+
+	recorder := httptest.NewRecorder()
+	conn, mocks := getTestConnector(t, Config{
+		Name:       "test",
+		Schema:     "test",
+		Prefix:     "/connector/",
+		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
+	}, true, false)
+
+	mocks.manager.EXPECT().Filter(gomock.Eq(map[string]string{
+		"filter1": "value1",
+		"filter2": "value2",
+	})).Return([]Subscriber{})
+
+	req, err := http.NewRequest(
+		http.MethodGet,
+		"/connector/?filter1=value1&filter2=value2",
+		strings.NewReader(""))
+	a.NoError(err)
+
+	conn.ServeHTTP(recorder, req)
+}
+
 func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue bool) (Connector, *connectorMocks) {
 	a := assert.New(t)
 
