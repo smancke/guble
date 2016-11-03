@@ -138,7 +138,7 @@ func (ws *WebSocket) sendLoop() {
 }
 
 func (ws *WebSocket) checkAccess(raw []byte) bool {
-	if raw[0] == byte('/') {
+	if len(raw) > 0 && raw[0] == byte('/') {
 		path := getPathFromRawMessage(raw)
 
 		logger.WithFields(log.Fields{
