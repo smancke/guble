@@ -148,7 +148,7 @@ var CreateModules = func(router router.Router) []interface{} {
 			logger.Info("APNS: enabled in development mode")
 		}
 		logger.Info("APNS: enabled")
-		if (*Config.APNS.CertificateFileName == "" || *Config.APNS.AppTopic == "" && Config.APNS.CertificateBytes == nil) || *Config.APNS.CertificatePassword == "" {
+		if (*Config.APNS.CertificateFileName == "" && Config.APNS.CertificateBytes == nil) || *Config.APNS.AppTopic == "" || *Config.APNS.CertificatePassword == "" {
 			logger.Panic("The certificate (as filename or bytes), and a non-empty password, and a non-empty application topic have to be provided when APNS is enabled")
 		}
 		if apnsConn, err := apns.New(router, apnsPath, Config.APNS); err != nil {
