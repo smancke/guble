@@ -45,12 +45,13 @@ func (q *queue) Start() error {
 		logger.Warning("No handler set for connector queue")
 	}
 	for i := 1; i <= q.nWorkers; i++ {
-		go q.worker()
+		go q.worker(i)
 	}
 	return nil
 }
 
-func (q *queue) worker() {
+func (q *queue) worker(i int) {
+	logger.WithField("worker", i).Debug("starting queue worker")
 	for request := range q.requestsC {
 		q.wg.Add(1)
 		response, err := q.sender.Send(request)
