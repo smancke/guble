@@ -192,6 +192,26 @@ func TestConnector_GetListWithFilters(t *testing.T) {
 	conn.ServeHTTP(recorder, req)
 }
 
+// func TestConnector_StartWithSubscriptions(t *testing.T) {
+// 	_, finish := testutil.NewMockCtrl(t)
+// 	defer finish()
+
+// 	// a := assert.New(t)
+// 	conn, mocks := getTestConnector(t, Config{
+// 		Name:       "test",
+// 		Schema:     "test",
+// 		Prefix:     "/connector/",
+// 		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
+// 	}, false, false)
+
+// 	// create subscriptions
+// 	createSubscriptions(t, conn, 4)
+// }
+
+// func createSubscriptions(t *testing.T, conn Connector, count int) error {
+
+// }
+
 func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue bool) (Connector, *connectorMocks) {
 	a := assert.New(t)
 

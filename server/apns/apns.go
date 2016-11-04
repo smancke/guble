@@ -2,6 +2,7 @@ package apns
 
 import (
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/sideshow/apns2"
 	"github.com/smancke/guble/server/connector"
