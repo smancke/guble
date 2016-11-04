@@ -1,6 +1,9 @@
 #!/bin/bash -e
-# Run from directory above via ./scripts/cov.sh
-# Require installation of: `github.com/wadey/gocovmerge`
+# Run from parent directory via:
+#     ./scripts/cov.sh
+# Requires installation of:
+#     go get golang.org/x/tools/cmd/cover
+#     go get github.com/wadey/gocovmerge
 
 source scripts/generate_coverage.sh
 
