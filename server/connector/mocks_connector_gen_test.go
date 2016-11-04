@@ -474,10 +474,8 @@ func (_mr *_MockSubscriberRecorder) Route() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Route")
 }
 
-func (_m *MockSubscriber) SetLastID(_param0 uint64) error {
-	ret := _m.ctrl.Call(_m, "SetLastID", _param0)
-	ret0, _ := ret[0].(error)
-	return ret0
+func (_m *MockSubscriber) SetLastID(_param0 uint64) {
+	_m.ctrl.Call(_m, "SetLastID", _param0)
 }
 
 func (_mr *_MockSubscriberRecorder) SetLastID(arg0 interface{}) *gomock.Call {
