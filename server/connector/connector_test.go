@@ -132,7 +132,7 @@ func TestConnector_DeleteSubscription(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 }
 
-func TestConnector_GetList(t *testing.T) {
+func TestConnector_GetList_And_Getters(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
@@ -162,6 +162,10 @@ func TestConnector_GetList(t *testing.T) {
 	conn.ServeHTTP(recorder, req)
 	expectedJSON := `["topic1","topic2"]`
 	a.JSONEq(expectedJSON, recorder.Body.String())
+
+	a.Equal("/connector/", conn.GetPrefix())
+	a.Equal(mocks.manager, conn.Manager())
+	a.Equal(nil, conn.ResponseHandler())
 }
 
 func TestConnector_GetListWithFilters(t *testing.T) {
@@ -190,6 +194,29 @@ func TestConnector_GetListWithFilters(t *testing.T) {
 	a.NoError(err)
 
 	conn.ServeHTTP(recorder, req)
+}
+
+func TestConnector_StartAndStopWithoutSubscribers(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	a := assert.New(t)
+
+	conn, mocks := getTestConnector(t, Config{
+		Name:       "test",
+		Schema:     "test",
+		Prefix:     "/connector/",
+		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
+	}, true, true)
+	mocks.manager.EXPECT().Load().Return(nil)
+	mocks.manager.EXPECT().List().Return(nil)
+	mocks.queue.EXPECT().Start().Return(nil)
+	mocks.queue.EXPECT().Stop().Return(nil)
+
+	err := conn.Start()
+	a.NoError(err)
+
+	err = conn.Stop()
+	a.NoError(err)
 }
 
 func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue bool) (Connector, *connectorMocks) {
