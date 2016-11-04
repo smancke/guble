@@ -43,6 +43,16 @@ func (_mr *_MockConnectorRecorder) GetPrefix() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetPrefix")
 }
 
+func (_m *MockConnector) Manager() Manager {
+	ret := _m.ctrl.Call(_m, "Manager")
+	ret0, _ := ret[0].(Manager)
+	return ret0
+}
+
+func (_mr *_MockConnectorRecorder) Manager() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Manager")
+}
+
 func (_m *MockConnector) ResponseHandler() ResponseHandler {
 	ret := _m.ctrl.Call(_m, "ResponseHandler")
 	ret0, _ := ret[0].(ResponseHandler)
@@ -442,6 +452,16 @@ func (_m *MockSubscriber) Loop(_param0 context.Context, _param1 Queue) error {
 
 func (_mr *_MockSubscriberRecorder) Loop(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Loop", arg0, arg1)
+}
+
+func (_m *MockSubscriber) Reset() error {
+	ret := _m.ctrl.Call(_m, "Reset")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockSubscriberRecorder) Reset() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Reset")
 }
 
 func (_m *MockSubscriber) Route() *router.Route {
