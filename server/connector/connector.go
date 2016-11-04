@@ -147,7 +147,7 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	}
 	delete(params, TopicParam)
 
-	subscriber, err := c.manager.Create(protocol.Path(topic), params)
+	subscriber, err := c.manager.Create(protocol.Path("/"+topic), params)
 	if err != nil {
 		if err == ErrSubscriberExists {
 			fmt.Fprintf(w, `{"error":"subscription already exists"}`)
