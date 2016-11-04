@@ -2,6 +2,7 @@ package apns
 
 import (
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/sideshow/apns2"
 	"github.com/smancke/guble/server/connector"
@@ -68,10 +69,7 @@ func (c *conn) HandleResponse(request connector.Request, responseIface interface
 	if r, ok := responseIface.(*apns2.Response); ok {
 		messageID := request.Message().ID
 		subscriber := request.Subscriber()
-		if err := subscriber.SetLastID(messageID); err != nil {
-			logger.WithError(errSend).Error("error when setting the last-id for the subscriber")
-			return err
-		}
+		subscriber.SetLastID(messageID)
 		if r.Sent() {
 			log.WithField("id", r.ApnsID).Debug("APNS notification was successfully sent")
 			return nil
@@ -84,7 +82,6 @@ func (c *conn) HandleResponse(request connector.Request, responseIface interface
 			apns2.ReasonDeviceTokenNotForTopic,
 			apns2.ReasonUnregistered:
 			c.Manager().Remove(subscriber)
-			subscriber.Cancel()
 		}
 		//TODO Cosmin Bogdan: extra-APNS-handling
 	}
