@@ -18,7 +18,6 @@ type connectorMocks struct {
 	router  *MockRouter
 	sender  *MockSender
 	queue   *MockQueue
-	handler *MockResponseHandler
 	manager *MockManager
 	kvstore *MockKVStore
 }
@@ -225,7 +224,6 @@ func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue b
 	var (
 		mManager *MockManager
 		mQueue   *MockQueue
-		mHandler *MockResponseHandler
 	)
 
 	mKVS := NewMockKVStore(testutil.MockCtrl)
@@ -241,7 +239,6 @@ func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue b
 		connector.manager = mManager
 	}
 	if mockQueue {
-		mHandler = NewMockResponseHandler(testutil.MockCtrl)
 		mQueue = NewMockQueue(testutil.MockCtrl)
 		connector.queue = mQueue
 	}
@@ -250,7 +247,6 @@ func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue b
 		mRouter,
 		mSender,
 		mQueue,
-		mHandler,
 		mManager,
 		mKVS,
 	}
