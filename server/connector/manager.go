@@ -138,8 +138,8 @@ func (m *manager) Remove(s Subscriber) error {
 		return ErrSubscriberDoesNotExist
 	}
 	delete(m.subscribers, s.Key())
-	m.removeStore(s)
-	return nil
+	return m.removeStore(s)
+
 }
 
 func (m *manager) updateStore(s Subscriber) error {
