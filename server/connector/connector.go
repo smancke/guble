@@ -17,6 +17,8 @@ import (
 	"github.com/smancke/guble/server/service"
 )
 
+const DefaultWorkers = 4
+
 var (
 	ErrInternalQueue = errors.New("internal queue should have been already created")
 	TopicParam       = "topic"
@@ -75,6 +77,10 @@ func NewConnector(router router.Router, sender Sender, config Config) (*connecto
 	kvs, err := router.KVStore()
 	if err != nil {
 		return nil, err
+	}
+
+	if config.Workers == 0 {
+		config.Workers = DefaultWorkers
 	}
 
 	c := &connector{
