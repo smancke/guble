@@ -34,51 +34,54 @@ type Subscriber interface {
 	Encode() ([]byte, error)
 }
 
-type subscriberData struct {
+type SubscriberData struct {
 	Topic  protocol.Path
 	Params router.RouteParams
 	LastID uint64
 }
 
-type subscriber struct {
-	data subscriberData
+func (sd *SubscriberData) newRoute() *router.Route {
+	var fr *store.FetchRequest
+	if sd.LastID > 0 {
+		fr = store.NewFetchRequest(sd.Topic.Partition(), sd.LastID, 0, store.DirectionForward, -1)
+	}
+	return router.NewRoute(router.RouteConfig{
+		Path:         sd.Topic,
+		RouteParams:  sd.Params,
+		FetchRequest: fr,
+	})
+}
 
-	route  *router.Route
+type subscriber struct {
+	data SubscriberData
+
 	key    string
+	route  *router.Route
 	cancel context.CancelFunc
 }
 
 func NewSubscriber(topic protocol.Path, params router.RouteParams, lastID uint64) Subscriber {
-	return NewSubscriberFromData(subscriberData{
+	return NewSubscriberFromData(SubscriberData{
 		Topic:  topic,
 		Params: params,
 		LastID: lastID,
 	})
 }
 
-func NewSubscriberFromData(data subscriberData) Subscriber {
-	var fr *store.FetchRequest
-	if data.LastID > 0 {
-		fr = store.NewFetchRequest(data.Topic.Partition(), data.LastID, 0, store.DirectionForward, -1)
-	}
-
+func NewSubscriberFromData(data SubscriberData) Subscriber {
 	return &subscriber{
-		data: data,
-		route: router.NewRoute(router.RouteConfig{
-			Path:         data.Topic,
-			RouteParams:  data.Params,
-			FetchRequest: fr,
-		}),
+		data:  data,
+		route: data.newRoute(),
 	}
 }
 
 func NewSubscriberFromJSON(data []byte) (Subscriber, error) {
-	sd := subscriberData{}
+	sd := SubscriberData{}
 	err := json.Unmarshal(data, &sd)
 	if err != nil {
 		return nil, err
 	}
-	return NewSubscriber(sd.Topic, sd.Params, sd.LastID), nil
+	return NewSubscriberFromData(sd), nil
 }
 
 func (s *subscriber) String() string {
@@ -86,10 +89,11 @@ func (s *subscriber) String() string {
 }
 
 func (s *subscriber) Reset() error {
+	s.route = s.data.newRoute()
+	s.cancel = nil
 	return nil
 }
 
-// TODO Bogdan extract the generation of the key as an external method to be reused
 func (s *subscriber) Key() string {
 	if s.key == "" {
 		s.key = GenerateKey(string(s.data.Topic), s.data.Params)

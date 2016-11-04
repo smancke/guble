@@ -215,23 +215,46 @@ func (c *connector) run(s Subscriber) {
 		err := s.Route().Provide(c.router, true)
 		if err != nil {
 			// cancel subscription loop if there is an error on the provider
-			s.Cancel()
 			provideErr = err
+			s.Cancel()
 		}
 	}()
 
 	err := s.Loop(c.ctx, c.queue)
-	if err != nil {
+	if err != nil && provideErr == nil {
 		c.logger.WithField("error", err.Error()).Error("Error returned by subscriber loop")
-		// TODO Bogdan Handle different types of error eg. Closed route channel
-
-		// TODO Bogdan Try restarting the subscription if possible
+		// If Route channel closed try restarting
+		if err == ErrRouteChannelClosed {
+			c.restart(s)
+			return
+		}
 	}
 
 	if provideErr != nil {
 		// TODO Bogdan Treat errors where a subscription provide fails
 		c.logger.WithField("error", err.Error()).Error("Route provide error")
+
+		// Router closed the route, try restart
+		if provideErr == router.ErrInvalidRoute {
+			c.restart(s)
+			return
+		}
+		// Router module is stoping, exit the process
+		if _, ok := provideErr.(*router.ModuleStoppingError); ok {
+			return
+		}
 	}
+}
+
+func (c *connector) restart(s Subscriber) error {
+	s.Cancel()
+	err := s.Reset()
+	if err != nil {
+		c.logger.WithField("err", err.Error()).Error("Error reseting subscriber")
+		return err
+	}
+	go c.run(s)
+	return nil
 }
 
 // Stop stops the connector (the context, the queue, the subscription loops)
