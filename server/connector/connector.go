@@ -52,6 +52,8 @@ type connector struct {
 	router  router.Router
 	kvstore kvstore.KVStore
 
+	mux *mux.Router
+
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -73,7 +75,7 @@ func NewConnector(router router.Router, sender Sender, config Config) (*connecto
 		return nil, err
 	}
 
-	return &connector{
+	c := &connector{
 		config:  config,
 		sender:  sender,
 		manager: NewManager(config.Schema, kvs),
@@ -81,21 +83,25 @@ func NewConnector(router router.Router, sender Sender, config Config) (*connecto
 		router:  router,
 		kvstore: kvs,
 		logger:  logger.WithField("name", config.Name),
-	}, nil
+	}
+	c.initMuxRouter()
+	return c, nil
 }
 
-// TODO Bogdan Refactor this so the router is built one time
-func (c *connector) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	r := mux.NewRouter()
+func (c *connector) initMuxRouter() {
+	mux := mux.NewRouter()
 
-	baseRouter := r.PathPrefix(c.GetPrefix()).Subrouter()
+	baseRouter := mux.PathPrefix(c.GetPrefix()).Subrouter()
 	baseRouter.Methods("GET").HandlerFunc(c.GetList)
 
 	subRouter := baseRouter.Path(c.config.URLPattern).Subrouter()
 	subRouter.Methods("POST").HandlerFunc(c.Post)
 	subRouter.Methods("DELETE").HandlerFunc(c.Delete)
+	c.mux = mux
+}
 
-	r.ServeHTTP(w, req)
+func (c *connector) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	c.mux.ServeHTTP(w, req)
 }
 
 func (c *connector) GetPrefix() string {
@@ -139,7 +145,7 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	}
 	delete(params, TopicParam)
 
-	subscriber, err := c.manager.Create(protocol.Path(topic), params)
+	subscriber, err := c.manager.Create(protocol.Path("/"+topic), params)
 	if err != nil {
 		if err == ErrSubscriberExists {
 			fmt.Fprintf(w, `{"error":"subscription already exists"}`)

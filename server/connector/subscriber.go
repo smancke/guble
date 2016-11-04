@@ -29,7 +29,7 @@ type Subscriber interface {
 	Route() *router.Route
 	Filter(map[string]string) bool
 	Loop(context.Context, Queue) error
-	SetLastID(ID uint64) error
+	SetLastID(ID uint64)
 	Cancel()
 	Encode() ([]byte, error)
 }
@@ -135,9 +135,8 @@ func (s *subscriber) Loop(ctx context.Context, q Queue) error {
 	return ErrRouteChannelClosed
 }
 
-func (s *subscriber) SetLastID(ID uint64) error {
+func (s *subscriber) SetLastID(ID uint64) {
 	s.data.LastID = ID
-	return nil
 }
 
 func (s *subscriber) Cancel() {
