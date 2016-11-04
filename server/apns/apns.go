@@ -49,6 +49,7 @@ func New(router router.Router, prefix string, config Config) (connector.Connecto
 		Schema:     schema,
 		Prefix:     prefix,
 		URLPattern: fmt.Sprintf("/{device_token}/{user_id}/{%s:.*}", connector.TopicParam),
+		Workers:    config.Workers,
 	}
 	baseConn, err := connector.NewConnector(router, sender, connectorConfig)
 	if err != nil {
