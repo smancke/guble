@@ -240,14 +240,21 @@ func (c *connector) run(s Subscriber) {
 			return
 		}
 		// Router module is stoping, exit the process
-		if _, ok := provideErr.(router.ModuleStoppingError); ok != nil {
+		if _, ok := provideErr.(*router.ModuleStoppingError); ok {
 			return
 		}
 	}
 }
 
-func (c *connector) restart(s Subscriber) {
+func (c *connector) restart(s Subscriber) error {
 	s.Cancel()
+	err := s.Reset()
+	if err != nil {
+		c.logger.WithField("err", err.Error()).Error("Error reseting subscriber")
+		return err
+	}
+	go c.run(s)
+	return nil
 }
 
 // Stop stops the connector (the context, the queue, the subscription loops)
