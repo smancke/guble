@@ -133,7 +133,7 @@ func (m *manager) Exists(key string) bool {
 func (m *manager) Remove(s Subscriber) error {
 	m.Lock()
 	defer m.Unlock()
-
+	s.Cancel()
 	if _, found := m.subscribers[s.Key()]; !found {
 		return ErrSubscriberDoesNotExist
 	}
