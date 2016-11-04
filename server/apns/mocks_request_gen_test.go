@@ -4,9 +4,9 @@
 package apns
 
 import (
-	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/connector"
+	gomock "github.com/golang/mock/gomock"
+	protocol "github.com/smancke/guble/protocol"
+	connector "github.com/smancke/guble/server/connector"
 )
 
 // Mock of Request interface

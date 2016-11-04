@@ -42,6 +42,7 @@ type Connector interface {
 	service.Stopable
 	service.Endpoint
 	ResponseHandleSetter
+	Manager() Manager
 }
 
 type connector struct {
@@ -241,6 +242,10 @@ func (c *connector) Stop() error {
 	c.wg.Wait()
 	c.logger.Debug("Stopped connector")
 	return nil
+}
+
+func (c *connector) Manager() Manager {
+	return c.manager
 }
 
 func (c *connector) ResponseHandler() ResponseHandler {

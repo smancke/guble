@@ -22,6 +22,9 @@ var (
 )
 
 type Subscriber interface {
+	// Reset will recreate the route inside the subscribe with the information stored
+	// in the subscriber data
+	Reset() error
 	Key() string
 	Route() *router.Route
 	Filter(map[string]string) bool
@@ -45,17 +48,26 @@ type subscriber struct {
 	cancel context.CancelFunc
 }
 
-func NewSubscriber(topic protocol.Path, params router.RouteParams, fetchRequest *store.FetchRequest) Subscriber {
-	data := subscriberData{
+func NewSubscriber(topic protocol.Path, params router.RouteParams, lastID uint64) Subscriber {
+	return NewSubscriberFromData(subscriberData{
 		Topic:  topic,
 		Params: params,
+		LastID: lastID,
+	})
+}
+
+func NewSubscriberFromData(data subscriberData) Subscriber {
+	var fr *store.FetchRequest
+	if data.LastID > 0 {
+		fr = store.NewFetchRequest(data.Topic.Partition(), data.LastID, 0, store.DirectionForward, -1)
 	}
+
 	return &subscriber{
 		data: data,
 		route: router.NewRoute(router.RouteConfig{
-			Path:         topic,
-			RouteParams:  params,
-			FetchRequest: fetchRequest,
+			Path:         data.Topic,
+			RouteParams:  data.Params,
+			FetchRequest: fr,
 		}),
 	}
 }
@@ -66,17 +78,15 @@ func NewSubscriberFromJSON(data []byte) (Subscriber, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	var fr *store.FetchRequest
-	if sd.LastID > 0 {
-		fr = store.NewFetchRequest(sd.Topic.Partition(), sd.LastID, 0, store.DirectionForward, -1)
-	}
-
-	return NewSubscriber(sd.Topic, sd.Params, fr), nil
+	return NewSubscriber(sd.Topic, sd.Params, sd.LastID), nil
 }
 
 func (s *subscriber) String() string {
 	return s.Key()
+}
+
+func (s *subscriber) Reset() error {
+	return nil
 }
 
 // TODO Bogdan extract the generation of the key as an external method to be reused
@@ -122,7 +132,7 @@ func (s *subscriber) Loop(ctx context.Context, q Queue) error {
 }
 
 func (s *subscriber) SetLastID(ID uint64) error {
-	//TODO Cosmin Bogdan
+	s.data.LastID = ID
 	return nil
 }
 

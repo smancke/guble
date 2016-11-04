@@ -4,10 +4,10 @@
 package apns
 
 import (
-	"context"
-	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/server/router"
+	context "context"
+	gomock "github.com/golang/mock/gomock"
+	connector "github.com/smancke/guble/server/connector"
+	router "github.com/smancke/guble/server/router"
 )
 
 // Mock of Subscriber interface
@@ -78,6 +78,16 @@ func (_m *MockSubscriber) Loop(_param0 context.Context, _param1 connector.Queue)
 
 func (_mr *_MockSubscriberRecorder) Loop(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Loop", arg0, arg1)
+}
+
+func (_m *MockSubscriber) Reset() error {
+	ret := _m.ctrl.Call(_m, "Reset")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockSubscriberRecorder) Reset() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Reset")
 }
 
 func (_m *MockSubscriber) Route() *router.Route {

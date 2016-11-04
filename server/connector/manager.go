@@ -61,7 +61,7 @@ func (m *manager) Create(topic protocol.Path, params router.RouteParams) (Subscr
 		return nil, ErrSubscriberExists
 	}
 
-	s := NewSubscriber(topic, params, nil)
+	s := NewSubscriber(topic, params, 0)
 	err := m.Add(s)
 	if err != nil {
 		return nil, err
