@@ -68,7 +68,8 @@ func (c *conn) HandleResponse(request connector.Request, responseIface interface
 	}
 	if r, ok := responseIface.(*apns2.Response); ok {
 		messageID := request.Message().ID
-		if err := request.Subscriber().SetLastID(messageID); err != nil {
+		subscriber := request.Subscriber()
+		if err := subscriber.SetLastID(messageID); err != nil {
 			logger.WithError(errSend).Error("error when setting the last-id for the subscriber")
 			return err
 		}
@@ -83,7 +84,8 @@ func (c *conn) HandleResponse(request connector.Request, responseIface interface
 			apns2.ReasonBadDeviceToken,
 			apns2.ReasonDeviceTokenNotForTopic,
 			apns2.ReasonUnregistered:
-			// TODO Cosmin Bogdan remove subscription (+Unsubscribe and stop subscription loop) ?
+			c.Manager().Remove(subscriber)
+			subscriber.Cancel()
 		}
 		//TODO Cosmin Bogdan: extra-APNS-handling
 	}
