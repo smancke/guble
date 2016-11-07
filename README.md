@@ -9,6 +9,7 @@ Guble is a simple user-facing messaging and data replication server written in G
 [![codebeat badge](https://codebeat.co/badges/7f317892-0a7b-4e31-97f4-a530cf779889)](https://codebeat.co/projects/github-com-smancke-guble)
 [![Coverage Status](https://coveralls.io/repos/smancke/guble/badge.svg?branch=master&service=github)](https://coveralls.io/github/smancke/guble?branch=master)
 [![GoDoc](https://godoc.org/github.com/smancke/guble?status.svg)](https://godoc.org/github.com/smancke/guble)
+[![Awesome-Go](https://camo.githubusercontent.com/13c4e50d88df7178ae1882a203ed57b641674f94/68747470733a2f2f63646e2e7261776769742e636f6d2f73696e647265736f726875732f617765736f6d652f643733303566333864323966656437386661383536353265336136336531353464643865383832392f6d656469612f62616467652e737667)](https://awesome-go.com)
 
 # Overview
 Guble is in an early state (release 0.2). 
