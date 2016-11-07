@@ -2,8 +2,6 @@ package apns
 
 import (
 	"fmt"
-
-	log "github.com/Sirupsen/logrus"
 	"github.com/sideshow/apns2"
 	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/router"
@@ -12,8 +10,6 @@ import (
 const (
 	// schema is the default database schema for APNS
 	schema = "apns_registration"
-
-	errNotSentMsg = "APNS notification was not sent"
 )
 
 // Config is used for configuring the APNS module.
@@ -25,43 +21,42 @@ type Config struct {
 	CertificatePassword *string
 	AppTopic            *string
 	Workers             *int
+	Prefix              *string
 }
 
 // conn is the private struct for handling the communication with APNS
 type conn struct {
+	Config
 	connector.Connector
 }
 
 // New creates a new Connector without starting it
-func New(router router.Router, prefix string, config Config) (connector.Connector, error) {
-	pusher, err := newPusher(config)
+func New(router router.Router, sender connector.Sender, config Config) (connector.ReactiveConnector, error) {
+	baseConn, err := connector.NewConnector(
+		router,
+		sender,
+		connector.Config{
+			Name:       "apns",
+			Schema:     schema,
+			Prefix:     *config.Prefix,
+			URLPattern: fmt.Sprintf("/{device_token}/{user_id}/{%s:.*}", connector.TopicParam),
+			Workers:    *config.Workers,
+		},
+	)
 	if err != nil {
-		log.WithError(err).Error("APNS Pusher creation error")
+		logger.WithError(err).Error("Base connector error")
 		return nil, err
 	}
-	sender, err := newSender(pusher, config)
-	if err != nil {
-		log.WithError(err).Error("APNS Sender creation error")
-		return nil, err
+	newConn := &conn{
+		Config:    config,
+		Connector: baseConn,
 	}
-	connectorConfig := connector.Config{
-		Name:       "apns",
-		Schema:     schema,
-		Prefix:     prefix,
-		URLPattern: fmt.Sprintf("/{device_token}/{user_id}/{%s:.*}", connector.TopicParam),
-	}
-	baseConn, err := connector.NewConnector(router, sender, connectorConfig)
-	if err != nil {
-		log.WithError(err).Error("Base connector error")
-		return nil, err
-	}
-	newConn := &conn{baseConn}
 	newConn.SetResponseHandler(newConn)
 	return newConn, nil
 }
 
 func (c *conn) HandleResponse(request connector.Request, responseIface interface{}, errSend error) error {
-	log.Debug("HandleResponse")
+	logger.Debug("HandleResponse")
 	if errSend != nil {
 		logger.WithError(errSend).Error("error when trying to send APNS notification")
 		return errSend
@@ -71,16 +66,18 @@ func (c *conn) HandleResponse(request connector.Request, responseIface interface
 		subscriber := request.Subscriber()
 		subscriber.SetLastID(messageID)
 		if r.Sent() {
-			log.WithField("id", r.ApnsID).Debug("APNS notification was successfully sent")
+			logger.WithField("id", r.ApnsID).Debug("APNS notification was successfully sent")
 			return nil
 		}
-		log.WithField("id", r.ApnsID).WithField("reason", r.Reason).Error(errNotSentMsg)
+		logger.WithField("id", r.ApnsID).WithField("reason", r.Reason).Error("APNS notification was not sent")
 		switch r.Reason {
 		case
 			apns2.ReasonMissingDeviceToken,
 			apns2.ReasonBadDeviceToken,
 			apns2.ReasonDeviceTokenNotForTopic,
 			apns2.ReasonUnregistered:
+
+			logger.WithField("id", r.ApnsID).Info("removing subscriber because a relevant error was received from APNS")
 			c.Manager().Remove(subscriber)
 		}
 		//TODO Cosmin Bogdan: extra-APNS-handling

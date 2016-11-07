@@ -9,6 +9,44 @@ import (
 	"testing"
 )
 
+func TestNewSender_ErrorBytes(t *testing.T) {
+	a := assert.New(t)
+
+	//given
+	emptyBytes := []byte("")
+	emptyPassword := ""
+	cfg := Config{
+		CertificateBytes:    &emptyBytes,
+		CertificatePassword: &emptyPassword,
+	}
+
+	//when
+	pusher, err := NewSender(cfg)
+
+	// then
+	a.Error(err)
+	a.Nil(pusher)
+}
+
+func TestNewSender_ErrorFile(t *testing.T) {
+	a := assert.New(t)
+
+	//given
+	wrongFilename := "."
+	emptyPassword := ""
+	cfg := Config{
+		CertificateFileName: &wrongFilename,
+		CertificatePassword: &emptyPassword,
+	}
+
+	//when
+	pusher, err := NewSender(cfg)
+
+	// then
+	a.Error(err)
+	a.Nil(pusher)
+}
+
 func TestSender_Send(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()

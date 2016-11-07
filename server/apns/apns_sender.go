@@ -17,6 +17,15 @@ type sender struct {
 	appTopic string
 }
 
+func NewSender(config Config) (connector.Sender, error) {
+	pusher, err := newPusher(config)
+	if err != nil {
+		logger.WithError(err).Error("APNS Pusher creation error")
+		return nil, err
+	}
+	return newSender(pusher, config)
+}
+
 func newSender(pusher Pusher, config Config) (connector.Sender, error) {
 	return &sender{
 		client:   pusher,

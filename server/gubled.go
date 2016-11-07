@@ -35,7 +35,6 @@ import (
 const (
 	fileOption = "file"
 	fcmPath    = "/fcm/"
-	apnsPath   = "/apns/"
 )
 
 var AfterMessageDelivery = func(m *protocol.Message) {
@@ -157,7 +156,11 @@ var CreateModules = func(router router.Router) []interface{} {
 		if *Config.APNS.CertificatePassword == "" {
 			logger.Panic("A non-empty password has to be provided when APNS is enabled")
 		}
-		if apnsConn, err := apns.New(router, apnsPath, Config.APNS); err != nil {
+		apnsSender, err := apns.NewSender(Config.APNS)
+		if err != nil {
+			logger.Panic("APNS Sender could not be created")
+		}
+		if apnsConn, err := apns.New(router, apnsSender, Config.APNS); err != nil {
 			logger.WithError(err).Error("Error creating APNS connector")
 		} else {
 			modules = append(modules, apnsConn)

@@ -3,25 +3,22 @@ package connector
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"net/http"
-	"sync"
-
 	log "github.com/Sirupsen/logrus"
-
+	"github.com/docker/distribution/health"
 	"github.com/gorilla/mux"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/service"
+	"net/http"
+	"sync"
 )
 
-const DefaultWorkers = 4
+const DefaultWorkers = 1
 
 var (
-	ErrInternalQueue = errors.New("internal queue should have been already created")
-	TopicParam       = "topic"
+	TopicParam = "topic"
 )
 
 type Sender interface {
@@ -45,6 +42,12 @@ type Connector interface {
 	service.Endpoint
 	ResponseHandleSetter
 	Manager() Manager
+}
+
+type ReactiveConnector interface {
+	Connector
+	ResponseHandler
+	health.Checker
 }
 
 type connector struct {
@@ -194,16 +197,12 @@ func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 
 // Start will run start all current subscriptions and workers to process the messages
 func (c *connector) Start() error {
-	if c.queue == nil {
-		return ErrInternalQueue
-	}
 	c.queue.Start()
 
-	logger.Debug("Starting connector")
+	c.logger.Debug("Starting connector")
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
 	c.logger.Debug("Loading subscriptions")
-	// Load subscriptions when starting
 	err := c.manager.Load()
 	if err != nil {
 		return err
@@ -251,7 +250,7 @@ func (c *connector) run(s Subscriber) {
 			c.restart(s)
 			return
 		}
-		// Router module is stoping, exit the process
+		// Router module is stopping, exit the process
 		if _, ok := provideErr.(*router.ModuleStoppingError); ok {
 			return
 		}
