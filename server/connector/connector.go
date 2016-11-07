@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"github.com/docker/distribution/health"
 	"github.com/gorilla/mux"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/kvstore"
@@ -41,6 +42,12 @@ type Connector interface {
 	service.Endpoint
 	ResponseHandleSetter
 	Manager() Manager
+}
+
+type ReactiveConnector interface {
+	Connector
+	ResponseHandler
+	health.Checker
 }
 
 type connector struct {

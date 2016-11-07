@@ -169,6 +169,10 @@ var (
 			AppTopic: kingpin.Flag("apns-app-topic", "The APNS topic (as used by the mobile application)").
 				Envar("GUBLE_APNS_APP_TOPIC").
 				String(),
+			Prefix: kingpin.Flag("apns-prefix", "The APNS prefix / endpoint").
+				Envar("GUBLE_APNS_PREFIX").
+				Default("/apns/").
+				String(),
 			Workers: kingpin.Flag("apns-workers", "The number of workers handling traffic with APNS (default: number of CPUs)").
 				Default(strconv.Itoa(runtime.NumCPU())).
 				Envar("GUBLE_APNS_WORKERS").
