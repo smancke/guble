@@ -39,7 +39,7 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 			Name:       "apns",
 			Schema:     schema,
 			Prefix:     *config.Prefix,
-			URLPattern: fmt.Sprintf("/{device_token}/{user_id}/{%s:.*}", connector.TopicParam),
+			URLPattern: fmt.Sprintf("/{%s}/{%s}/{%s:.*}", deviceIDKey, userIDKey, connector.TopicParam),
 			Workers:    *config.Workers,
 		},
 	)

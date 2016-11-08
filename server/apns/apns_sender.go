@@ -9,7 +9,8 @@ import (
 
 const (
 	// deviceIDKey is the key name set on the route params to identify the application
-	deviceIDKey = "device_id"
+	deviceIDKey = "device_token"
+	userIDKey   = "user_id"
 )
 
 type sender struct {
