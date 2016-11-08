@@ -129,7 +129,7 @@ func TestConnector_DeleteSubscription(t *testing.T) {
 	a.NoError(err)
 	conn.ServeHTTP(recorder, req)
 	a.Equal(`{"unsubscribed":"topic1"}`, recorder.Body.String())
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 }
 
 func TestConnector_GetList_And_Getters(t *testing.T) {
@@ -196,52 +196,52 @@ func TestConnector_GetListWithFilters(t *testing.T) {
 	conn.ServeHTTP(recorder, req)
 }
 
-// func TestConnector_StartWithSubscriptions(t *testing.T) {
-// 	_, finish := testutil.NewMockCtrl(t)
-// 	defer finish()
+func TestConnector_StartWithSubscriptions(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
 
-// 	a := assert.New(t)
-// 	conn, mocks := getTestConnector(t, Config{
-// 		Name:       "test",
-// 		Schema:     "test",
-// 		Prefix:     "/connector/",
-// 		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
-// 	}, false, false)
+	a := assert.New(t)
+	conn, mocks := getTestConnector(t, Config{
+		Name:       "test",
+		Schema:     "test",
+		Prefix:     "/connector/",
+		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
+	}, false, false)
 
-// 	entriesC := make(chan [2]string)
-// 	mocks.kvstore.EXPECT().Iterate(gomock.Eq("test"), gomock.Eq("")).Return(entriesC)
-// 	close(entriesC)
-// 	mocks.kvstore.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Times(4)
+	entriesC := make(chan [2]string)
+	mocks.kvstore.EXPECT().Iterate(gomock.Eq("test"), gomock.Eq("")).Return(entriesC)
+	close(entriesC)
+	mocks.kvstore.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Times(4)
 
-// 	err := conn.Start()
-// 	a.NoError(err)
+	err := conn.Start()
+	a.NoError(err)
 
-// 	routes := make([]*router.Route, 0, 4)
-// 	mocks.router.EXPECT().Subscribe(gomock.Any()).Do(func(r *router.Route) (*router.Route, error) {
-// 		routes = append(routes, r)
-// 		return r, nil
-// 	}).Times(4)
+	routes := make([]*router.Route, 0, 4)
+	mocks.router.EXPECT().Subscribe(gomock.Any()).Do(func(r *router.Route) (*router.Route, error) {
+		routes = append(routes, r)
+		return r, nil
+	}).Times(4)
 
-// 	// create subscriptions
-// 	createSubscriptions(t, conn, 4)
-// 	time.Sleep(100 * time.Millisecond)
+	// create subscriptions
+	createSubscriptions(t, conn, 4)
+	time.Sleep(100 * time.Millisecond)
 
-// 	mocks.sender.EXPECT().Send(gomock.Any()).Return(nil, nil)
+	mocks.sender.EXPECT().Send(gomock.Any()).Return(nil, nil).Times(4)
 
-// 	// send message in route channel
-// 	for i, r := range routes {
-// 		r.Deliver(&protocol.Message{
-// 			ID:   uint64(i),
-// 			Path: protocol.Path("/topic"),
-// 			Body: []byte("test body"),
-// 		})
-// 	}
-// 	runtime.Gosched()
-// 	time.Sleep(2 * time.Second)
+	// send message in route channel
+	for i, r := range routes {
+		r.Deliver(&protocol.Message{
+			ID:   uint64(i),
+			Path: protocol.Path("/topic"),
+			Body: []byte("test body"),
+		})
+	}
 
-// 	// err = conn.Stop()
-// 	// a.NoError(err)
-// }
+	time.Sleep(100 * time.Millisecond)
+
+	err = conn.Stop()
+	a.NoError(err)
+}
 
 func createSubscriptions(t *testing.T, conn Connector, count int) {
 	a := assert.New(t)
