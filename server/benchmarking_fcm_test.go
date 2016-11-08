@@ -154,7 +154,9 @@ func (params *benchParams) throughputFCM() {
 			break
 		}
 	}
-	a.True(ok, "There should be a module of type: FCM Connector")
+	if fcmConn == nil {
+		a.FailNow("There should be a module of type: FCM Connector")
+	}
 
 	params.receiveC = make(chan bool)
 	fcmConn.Sender = testutil.CreateFcmSender(
