@@ -1,15 +1,6 @@
 package fcm
 
 import (
-	"github.com/Bogh/gcm"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/testutil"
-
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
-
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -20,6 +11,14 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Bogh/gcm"
+	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/kvstore"
+	"github.com/smancke/guble/server/router"
+	"github.com/smancke/guble/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestConnector_ServeHTTPSuccess(t *testing.T) {
@@ -593,4 +592,11 @@ func deleteSubscription(t *testing.T, fcmConn *Connector, userID, gcmID, topic s
 	fcmConn.ServeHTTP(w, req)
 
 	a.Equal(fmt.Sprintf(`{"unsubscribed":"/%s"}`, topic), string(w.Body.Bytes()))
+}
+
+func removeTrailingSlash(path string) string {
+	if len(path) > 1 && path[len(path)-1] == '/' {
+		return path[:len(path)-1]
+	}
+	return path
 }
