@@ -23,9 +23,9 @@ func sendMessageSample(c client.Client) error {
 
 type benchParams struct {
 	*testing.B
-	workers       int           // number of fcm workers
+	workers       int           // number of workers
 	subscriptions int           // number of subscriptions listening on the topic
-	timeout       time.Duration // fcm timeout response
+	timeout       time.Duration // timeout response
 	clients       int           // number of clients
 	sender        sender        // the function that will send the messages
 	sent          int           // sent messages
