@@ -101,7 +101,7 @@ func TestConnector_PostSubscriptionNoMocks(t *testing.T) {
 	a.NoError(err)
 	conn.ServeHTTP(recorder, req)
 	a.Equal(`{"subscribed":"topic1"}`, recorder.Body.String())
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 }
 
 func TestConnector_DeleteSubscription(t *testing.T) {
