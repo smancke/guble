@@ -11,6 +11,7 @@ import (
 
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -184,6 +185,13 @@ func responseBuilder(statusCode int, body string) *http.Response {
 func SkipIfShort(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
+	}
+}
+
+//SkipIfDisabled skips a test if the GO_TEST_DISABLED environment variable is set to any value (when `go test` runs)
+func SkipIfDisabled(t *testing.T) {
+	if os.Getenv("GO_TEST_DISABLED") != "" {
+		t.Skip("skipping disabled test.")
 	}
 }
 

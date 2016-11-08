@@ -3,20 +3,13 @@ package router
 import (
 	"errors"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/store"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/smancke/guble/server/store"
-
-	"github.com/smancke/guble/protocol"
-
-	log "github.com/Sirupsen/logrus"
-)
-
-const (
-	defaultQueueCap = 50
 )
 
 var (
@@ -80,7 +73,7 @@ func (r *Route) String() string {
 	return fmt.Sprintf("Path: %s , Params: %s", r.Path, r.RouteParams)
 }
 
-// Deliver takes a messages and adds it to the queue to be delivered in to the channel
+// Deliver takes a messages and adds it to the queue to be delivered into the channel
 func (r *Route) Deliver(msg *protocol.Message) error {
 	loggerMessage := r.logger.WithField("message", msg)
 
@@ -110,7 +103,7 @@ func (r *Route) Deliver(msg *protocol.Message) error {
 	}
 
 	r.queue.push(msg)
-	loggerMessage.WithField("size", r.queue.size()).Debug("Deliver: queue size")
+	loggerMessage.WithField("queue_size", r.queue.size()).Debug("Deliver")
 
 	r.consume()
 	return nil
@@ -205,8 +198,6 @@ REFETCH:
 			return nil
 		}
 	}
-
-	return nil
 }
 
 func (r *Route) handleSubscribe(router Router) error {

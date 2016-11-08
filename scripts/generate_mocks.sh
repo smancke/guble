@@ -67,6 +67,40 @@ $MOCKGEN  -self_package client -package client \
 replace "client/mocks_client_gen_test.go" "client \"github.com\/smancke\/guble\/client\"" "client\."
 
 
+# server/apns mocks
+$MOCKGEN -package apns \
+      -destination server/apns/mocks_router_gen_test.go \
+      github.com/smancke/guble/server/router \
+      Router
+$MOCKGEN -package apns \
+      -destination server/apns/mocks_kvstore_gen_test.go \
+      github.com/smancke/guble/server/kvstore \
+      KVStore
+$MOCKGEN -package apns \
+      -destination server/apns/mocks_sender_gen_test.go \
+      github.com/smancke/guble/server/connector \
+      Sender
+$MOCKGEN -package apns \
+      -destination server/apns/mocks_request_gen_test.go \
+      github.com/smancke/guble/server/connector \
+      Request
+$MOCKGEN -package apns \
+      -destination server/apns/mocks_subscriber_gen_test.go \
+      github.com/smancke/guble/server/connector \
+      Subscriber
+$MOCKGEN -package apns \
+      -destination server/apns/mocks_sender_gen_test.go \
+      github.com/smancke/guble/server/connector \
+      Sender
+$MOCKGEN -package apns \
+      -destination server/apns/mocks_subscriber_gen_test.go \
+      github.com/smancke/guble/server/connector \
+      Subscriber
+$MOCKGEN -package apns \
+      -destination server/apns/mocks_pusher_gen_test.go \
+      github.com/smancke/guble/server/apns \
+      Pusher
+
 # server/fcm mocks
 $MOCKGEN -package fcm \
       -destination server/fcm/mocks_router_gen_test.go \
@@ -113,6 +147,25 @@ $MOCKGEN -self_package auth -package auth \
 replace "server/auth/mocks_auth_gen_test.go" \
       "auth \"github.com\/smancke\/guble\/server\/auth\"" \
       "auth\."
+
+# server/connector mocks
+$MOCKGEN -self_package connector -package connector \
+      -destination server/connector/mocks_connector_gen_test.go \
+      github.com/smancke/guble/server/connector \
+      Connector,Sender,ResponseHandler,Manager,Queue,Request,Subscriber
+replace "server/connector/mocks_connector_gen_test.go" \
+      "connector \"github.com\/smancke\/guble\/server\/connector\"" \
+      "connector\."
+
+$MOCKGEN -self_package connector -package connector \
+      -destination server/connector/mocks_router_gen_test.go \
+      github.com/smancke/guble/server/router \
+      Router
+
+$MOCKGEN -self_package connector -package connector \
+      -destination server/connector/mocks_kvstore_gen_test.go \
+      github.com/smancke/guble/server/kvstore \
+      KVStore
 
 # server/websocket mocks
 $MOCKGEN  -self_package websocket -package websocket \

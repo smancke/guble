@@ -35,7 +35,6 @@ import (
 const (
 	fileOption = "file"
 	fcmPath    = "/fcm/"
-	apnsPath   = "/apns/"
 )
 
 var AfterMessageDelivery = func(m *protocol.Message) {
@@ -148,10 +147,20 @@ var CreateModules = func(router router.Router) []interface{} {
 			logger.Info("APNS: enabled in development mode")
 		}
 		logger.Info("APNS: enabled")
-		if (*Config.APNS.CertificateFileName == "" && Config.APNS.CertificateBytes == nil) || *Config.APNS.CertificatePassword == "" {
-			logger.Panic("The certificate (as filename or bytes), and a non-empty password have to be provided when APNS is enabled")
+		if *Config.APNS.CertificateFileName == "" && Config.APNS.CertificateBytes == nil {
+			logger.Panic("The certificate (as filename or bytes) has to be provided when APNS is enabled")
 		}
-		if apnsConn, err := apns.New(router, apnsPath, Config.APNS); err != nil {
+		if *Config.APNS.AppTopic == "" {
+			logger.Panic("The Mobile App Topic (usually the bundle-id) has to be provided when APNS is enabled")
+		}
+		if *Config.APNS.CertificatePassword == "" {
+			logger.Panic("A non-empty password has to be provided when APNS is enabled")
+		}
+		apnsSender, err := apns.NewSender(Config.APNS)
+		if err != nil {
+			logger.Panic("APNS Sender could not be created")
+		}
+		if apnsConn, err := apns.New(router, apnsSender, Config.APNS); err != nil {
 			logger.WithError(err).Error("Error creating APNS connector")
 		} else {
 			modules = append(modules, apnsConn)
@@ -250,7 +259,7 @@ func StartService() *service.Service {
 	if err = srv.Start(); err != nil {
 		logger.WithField("error", err.Error()).Error("errors occurred while starting service")
 		if err = srv.Stop(); err != nil {
-			logger.WithField("error", err.Error()).Error("errors occured when stopping service after it failed to start")
+			logger.WithField("error", err.Error()).Error("errors occurred when stopping service after it failed to start")
 		}
 		return nil
 	}

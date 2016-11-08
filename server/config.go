@@ -6,12 +6,13 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	"fmt"
-	"github.com/smancke/guble/server/apns"
-	"github.com/smancke/guble/server/fcm"
 	"net"
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/smancke/guble/server/apns"
+	"github.com/smancke/guble/server/fcm"
 )
 
 const (
@@ -51,7 +52,7 @@ type (
 		NodePort *int
 		Remotes  *tcpAddrList
 	}
-	// Config is used for configuring Guble (including its components).
+	// GubleConfig is used for configuring Guble server (including its modules / connectors).
 	GubleConfig struct {
 		Log             *string
 		EnvName         *string
@@ -71,6 +72,8 @@ type (
 
 var (
 	parsed = false
+
+	// Config is the active configuration of guble (used when starting-up the server)
 	Config = &GubleConfig{
 		Log: kingpin.Flag("log", "Log level").
 			Default(log.ErrorLevel.String()).
@@ -138,7 +141,7 @@ var (
 			APIKey: kingpin.Flag("fcm-api-key", "The Google API Key for Google Firebase Cloud Messaging").
 				Envar("GUBLE_FCM_API_KEY").
 				String(),
-			Workers: kingpin.Flag("fcm-workers", "The number of workers handling traffic with Google Firebase Cloud Messaging (default: number of CPUs)").
+			Workers: kingpin.Flag("fcm-workers", "The number of workers handling traffic with Firebase Cloud Messaging (default: number of CPUs)").
 				Default(strconv.Itoa(runtime.NumCPU())).
 				Envar("GUBLE_FCM_WORKERS").
 				Int(),
@@ -163,6 +166,17 @@ var (
 			CertificatePassword: kingpin.Flag("apns-cert-password", "The APNS certificate password").
 				Envar("GUBLE_APNS_CERT_PASSWORD").
 				String(),
+			AppTopic: kingpin.Flag("apns-app-topic", "The APNS topic (as used by the mobile application)").
+				Envar("GUBLE_APNS_APP_TOPIC").
+				String(),
+			Prefix: kingpin.Flag("apns-prefix", "The APNS prefix / endpoint").
+				Envar("GUBLE_APNS_PREFIX").
+				Default("/apns/").
+				String(),
+			Workers: kingpin.Flag("apns-workers", "The number of workers handling traffic with APNS (default: number of CPUs)").
+				Default(strconv.Itoa(runtime.NumCPU())).
+				Envar("GUBLE_APNS_WORKERS").
+				Int(),
 		},
 		Cluster: ClusterConfig{
 			NodeID: kingpin.Flag("node-id", "(cluster mode) This guble node's own ID: a strictly positive integer number which must be unique in cluster").

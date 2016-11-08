@@ -46,7 +46,7 @@ func TestConnector_ServeHTTPWithErrorCases(t *testing.T) {
 	a := assert.New(t)
 	g, _, _ := testFCMResponse(t, testutil.SuccessFCMResponse)
 
-	u, _ := url.Parse("http://localhost/gcm/marvin/fcmId123/subscribe/notifications")
+	u, _ := url.Parse("http://localhost/fcm/marvin/fcmId123/subscribe/notifications")
 	// and a http context
 	req := &http.Request{URL: u, Method: "HEAD"}
 	w := httptest.NewRecorder()
@@ -60,7 +60,7 @@ func TestConnector_ServeHTTPWithErrorCases(t *testing.T) {
 
 	// send a new request with wrong parameters encoding
 	req.Method = "POST"
-	req.URL, _ = u.Parse("http://localhost/gcm/marvin/fcmId123/subscribe3/notifications")
+	req.URL, _ = u.Parse("http://localhost/fcm/marvin/fcmId123/subscribe3/notifications")
 
 	w2 := httptest.NewRecorder()
 	g.ServeHTTP(w2, req)
@@ -145,11 +145,11 @@ func TestConnector_parseParams(t *testing.T) {
 	testCases := []struct {
 		urlPath, userID, fcmID, topic, err string
 	}{
-		{"/gcm/marvin/fcmId123/subscribe/notifications", "marvin", "fcmId123", "/notifications", ""},
-		{"/gcm2/marvin/fcmId123/subscribe/notifications", "", "", "", "FCM request is not starting with correct prefix"},
-		{"/gcm/marvin/fcmId123/subscrib2e/notifications", "", "", "", "FCM request third param is not subscribe"},
-		{"/gcm/marvin/fcmId123subscribenotifications", "", "", "", "FCM request has wrong number of params"},
-		{"/gcm/marvin/fcmId123/subscribe/notifications/alert/", "marvin", "fcmId123", "/notifications/alert", ""},
+		{"/fcm/marvin/fcmId123/subscribe/notifications", "marvin", "fcmId123", "/notifications", ""},
+		{"/fcm2/marvin/fcmId123/subscribe/notifications", "", "", "", "FCM request is not starting with correct prefix"},
+		{"/fcm/marvin/fcmId123/subscrib2e/notifications", "", "", "", "FCM request third param is not subscribe"},
+		{"/fcm/marvin/fcmId123subscribenotifications", "", "", "", "FCM request has wrong number of params"},
+		{"/fcm/marvin/fcmId123/subscribe/notifications/alert/", "marvin", "fcmId123", "/notifications/alert", ""},
 	}
 
 	for i, c := range testCases {
@@ -180,7 +180,7 @@ func TestConnector_GetPrefix(t *testing.T) {
 	a := assert.New(t)
 	g, _, _ := testFCMResponse(t, testutil.SuccessFCMResponse)
 
-	a.Equal(g.GetPrefix(), "/gcm/")
+	a.Equal(g.GetPrefix(), "/fcm/")
 }
 
 func TestConnector_Stop(t *testing.T) {
@@ -216,11 +216,11 @@ func TestConnector_StartWithMessageSending(t *testing.T) {
 	}
 	s := newSubscription(g, route, 0)
 
-	msgWithNoRecipients := newPipeMessage(s, &protocol.Message{
+	msgWithNoRecipients := newSubscriptionMessage(s, &protocol.Message{
 		ID:   uint64(4),
 		Body: []byte("{id:id}"),
 		Time: 1405544146,
-		Path: "/gcm/marvin/fcm124/subscribe/stuff"})
+		Path: "/fcm/marvin/fcm124/subscribe/stuff"})
 
 	g.pipelineC <- msgWithNoRecipients
 	// expect that the Http Server to give us a malformed message
@@ -274,7 +274,7 @@ func TestConnector_GetErrorMessageFromFCM(t *testing.T) {
 		ID:   uint64(4),
 		Body: []byte("{id:id}"),
 		Time: 1405544146,
-		Path: "/gcm/marvin/fcm124/subscribe/stuff",
+		Path: "/fcm/marvin/fcm124/subscribe/stuff",
 	}
 
 	// send the message into the subscription route channel
@@ -326,7 +326,7 @@ func TestConnector_RetrieveNoSubscriptions(t *testing.T) {
 	g, _, _ := testSimpleFCM(t, true)
 
 	w := httptest.NewRecorder()
-	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/", "user01", "fcm01")
+	u := fmt.Sprintf("http://localhost/fcm/%s/%s/subscribe/", "user01", "fcm01")
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	a.NoError(err)
 
@@ -349,7 +349,7 @@ func TestConnector_RetrieveSubscriptions(t *testing.T) {
 	routerMock.EXPECT().Subscribe(gomock.Any())
 
 	w := httptest.NewRecorder()
-	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", "user01", "fcm01", "test")
+	u := fmt.Sprintf("http://localhost/fcm/%s/%s/subscribe/%s", "user01", "fcm01", "test")
 
 	//subscribe first user
 	req, err := http.NewRequest(http.MethodPost, u, nil)
@@ -358,7 +358,7 @@ func TestConnector_RetrieveSubscriptions(t *testing.T) {
 
 	//subscribe second user
 	w = httptest.NewRecorder()
-	u2 := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", "user01", "fcm01", "test2")
+	u2 := fmt.Sprintf("http://localhost/fcm/%s/%s/subscribe/%s", "user01", "fcm01", "test2")
 	req, err = http.NewRequest(http.MethodPost, u2, nil)
 	a.NoError(err)
 	g.ServeHTTP(w, req)
@@ -366,7 +366,7 @@ func TestConnector_RetrieveSubscriptions(t *testing.T) {
 
 	// retrieve all subscriptions
 	w = httptest.NewRecorder()
-	u3 := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/", "user01", "fcm01")
+	u3 := fmt.Sprintf("http://localhost/fcm/%s/%s/subscribe/", "user01", "fcm01")
 	req, err = http.NewRequest(http.MethodGet, u3, nil)
 	a.NoError(err)
 	g.ServeHTTP(w, req)
@@ -430,7 +430,7 @@ func TestConnector_SubscriptionExists(t *testing.T) {
 	routerMock.EXPECT().Subscribe(gomock.Any())
 
 	w := httptest.NewRecorder()
-	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", "user01", "fcm01", "/test")
+	u := fmt.Sprintf("http://localhost/fcm/%s/%s/subscribe/%s", "user01", "fcm01", "/test")
 
 	req, err := http.NewRequest(http.MethodPost, u, nil)
 	a.NoError(err)
@@ -553,7 +553,7 @@ func testSimpleFCM(t *testing.T, mockStore bool) (*Connector, *MockRouter, *Mock
 	endpoint := ""
 	g, err := New(
 		routerMock,
-		"/gcm/",
+		"/fcm/",
 		Config{
 			APIKey:   &key,
 			Workers:  &nWorkers,
@@ -572,7 +572,7 @@ func testSimpleFCM(t *testing.T, mockStore bool) (*Connector, *MockRouter, *Mock
 
 func postSubscription(t *testing.T, fcmConn *Connector, userID, gcmID, topic string) {
 	a := assert.New(t)
-	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
+	u := fmt.Sprintf("http://localhost/fcm/%s/%s/subscribe/%s", userID, gcmID, topic)
 	req, err := http.NewRequest(http.MethodPost, u, nil)
 	a.NoError(err)
 	w := httptest.NewRecorder()
@@ -584,7 +584,7 @@ func postSubscription(t *testing.T, fcmConn *Connector, userID, gcmID, topic str
 
 func deleteSubscription(t *testing.T, fcmConn *Connector, userID, gcmID, topic string) {
 	a := assert.New(t)
-	u := fmt.Sprintf("http://localhost/gcm/%s/%s/subscribe/%s", userID, gcmID, topic)
+	u := fmt.Sprintf("http://localhost/fcm/%s/%s/subscribe/%s", userID, gcmID, topic)
 	req, err := http.NewRequest(http.MethodDelete, u, nil)
 	a.NoError(err)
 	w := httptest.NewRecorder()

@@ -100,7 +100,7 @@ func (s *Service) Start() error {
 	}
 	for order, iface := range s.ModulesSortedByStartOrder() {
 		name := reflect.TypeOf(iface).String()
-		if s, ok := iface.(startable); ok {
+		if s, ok := iface.(Startable); ok {
 			logger.WithFields(log.Fields{"name": name, "order": order}).Info("Starting module")
 			if err := s.Start(); err != nil {
 				logger.WithError(err).WithField("name", name).Error("Error while starting module")
@@ -113,7 +113,7 @@ func (s *Service) Start() error {
 			logger.WithField("name", name).Info("Registering module as Health-Checker")
 			health.RegisterPeriodicThresholdFunc(name, s.healthFrequency, s.healthThreshold, health.CheckFunc(c.Check))
 		}
-		if e, ok := iface.(endpoint); ok {
+		if e, ok := iface.(Endpoint); ok {
 			prefix := e.GetPrefix()
 			logger.WithFields(log.Fields{"name": name, "prefix": prefix}).Info("Registering module as Endpoint")
 			s.webserver.Handle(prefix, e)
@@ -127,7 +127,7 @@ func (s *Service) Stop() error {
 	var multierr *multierror.Error
 	for order, iface := range s.modulesSortedBy(ascendingStopOrder) {
 		name := reflect.TypeOf(iface).String()
-		if s, ok := iface.(stopable); ok {
+		if s, ok := iface.(Stopable); ok {
 			logger.WithFields(log.Fields{"name": name, "order": order}).Info("Stopping module")
 			if err := s.Stop(); err != nil {
 				multierr = multierror.Append(multierr, err)

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	syncParititonsProcessBuffer = 100
+	syncPartitionsProcessBuffer = 100
 )
 
 var (
@@ -109,7 +109,7 @@ func (s *synchronizer) addNode(nodeID uint8, partitions partitions) {
 				localStartMaxID: localMaxID,
 				nodes:           make(map[uint8]partition, 1),
 				lastID:          localMaxID,
-				processC:        make(chan *syncMessage, syncParititonsProcessBuffer),
+				processC:        make(chan *syncMessage, syncPartitionsProcessBuffer),
 			}
 		}
 
@@ -198,7 +198,7 @@ func (s *synchronizer) requestLoop(nodeID uint8, smr *syncMessageRequest) {
 
 // syncMessage received data from another node after we made a request for a set
 // of messages  it will decode the data into a *syncMessage and send it into the
-// appropiate syncPartition processC channel
+// appropriate syncPartition processC channel
 func (s *synchronizer) syncMessage(nodeID uint8, data []byte) error {
 	if !s.inSyncID(nodeID) {
 		return ErrNodeNotInSync

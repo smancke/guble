@@ -1,27 +1,15 @@
 package apns
 
 import (
-	"crypto/tls"
-	"errors"
-	log "github.com/Sirupsen/logrus"
+	"fmt"
 	"github.com/sideshow/apns2"
-	"github.com/sideshow/apns2/certificate"
-	"github.com/sideshow/apns2/payload"
+	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/router"
-	"net/http"
-	"os"
-	"sync"
 )
 
 const (
 	// schema is the default database schema for APNS
 	schema = "apns_registration"
-
-	msgNotSent = "APNS notification was not sent"
-)
-
-var (
-	ErrAPNSNotSent = errors.New(msgNotSent)
 )
 
 // Config is used for configuring the APNS module.
@@ -31,104 +19,74 @@ type Config struct {
 	CertificateFileName *string
 	CertificateBytes    *[]byte
 	CertificatePassword *string
+	AppTopic            *string
+	Workers             *int
+	Prefix              *string
 }
 
-// Connector is the structure for handling the communication with APNS
-type Connector struct {
-	client *apns2.Client
-	router router.Router
-	prefix string
-	stopC  chan bool
-	wg     sync.WaitGroup
+// conn is the private struct for handling the communication with APNS
+type conn struct {
+	Config
+	connector.Connector
 }
 
-// New creates a new *Connector without starting it
-func New(router router.Router, prefix string, config Config) (*Connector, error) {
-	return &Connector{
-		client: getClient(config),
-		router: router,
-		prefix: prefix,
-		stopC:  make(chan bool),
-	}, nil
+// New creates a new Connector without starting it
+func New(router router.Router, sender connector.Sender, config Config) (connector.ReactiveConnector, error) {
+	baseConn, err := connector.NewConnector(
+		router,
+		sender,
+		connector.Config{
+			Name:       "apns",
+			Schema:     schema,
+			Prefix:     *config.Prefix,
+			URLPattern: fmt.Sprintf("/{device_token}/{user_id}/{%s:.*}", connector.TopicParam),
+			Workers:    *config.Workers,
+		},
+	)
+	if err != nil {
+		logger.WithError(err).Error("Base connector error")
+		return nil, err
+	}
+	newConn := &conn{
+		Config:    config,
+		Connector: baseConn,
+	}
+	newConn.SetResponseHandler(newConn)
+	return newConn, nil
 }
 
-func (conn *Connector) Start() error {
-	conn.reset()
+func (c *conn) HandleResponse(request connector.Request, responseIface interface{}, errSend error) error {
+	logger.Debug("HandleResponse")
+	if errSend != nil {
+		logger.WithError(errSend).Error("error when trying to send APNS notification")
+		return errSend
+	}
+	if r, ok := responseIface.(*apns2.Response); ok {
+		messageID := request.Message().ID
+		subscriber := request.Subscriber()
+		subscriber.SetLastID(messageID)
+		if r.Sent() {
+			logger.WithField("id", r.ApnsID).Debug("APNS notification was successfully sent")
+			return nil
+		}
+		logger.WithField("id", r.ApnsID).WithField("reason", r.Reason).Error("APNS notification was not sent")
+		switch r.Reason {
+		case
+			apns2.ReasonMissingDeviceToken,
+			apns2.ReasonBadDeviceToken,
+			apns2.ReasonDeviceTokenNotForTopic,
+			apns2.ReasonUnregistered:
 
-	// temporarily: send a notification when connector is starting
-	// topic + device are given using environment variables
-	if conn.client != nil {
-		conn.sendAlert(&apns2.Notification{
-			Priority:    apns2.PriorityHigh,
-			Topic:       os.Getenv("APNS_TOPIC"),
-			DeviceToken: os.Getenv("APNS_DEVICE_TOKEN"),
-			Payload: payload.NewPayload().
-				AlertTitle("REWE").
-				AlertBody("Guble APNS connector just started").
-				Badge(1).
-				ContentAvailable(),
-		})
+			logger.WithField("id", r.ApnsID).Info("removing subscriber because a relevant error was received from APNS")
+			c.Manager().Remove(subscriber)
+		}
+		//TODO Cosmin Bogdan: extra-APNS-handling
 	}
 	return nil
-}
-
-func (conn *Connector) reset() {
-	conn.stopC = make(chan bool)
-}
-
-// Stop the APNS Connector
-func (conn *Connector) Stop() error {
-	logger.Debug("stopping")
-	close(conn.stopC)
-	conn.wg.Wait()
-	logger.Debug("stopped")
-	return nil
-}
-
-// GetPrefix is used to satisfy the HTTP handler interface
-func (conn *Connector) GetPrefix() string {
-	return conn.prefix
-}
-
-// ServeHTTP handles the subscription-related processes in APNS
-func (conn *Connector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Check returns nil if health-check succeeds, or an error if health-check fails
-func (conn *Connector) Check() error {
-	return nil
-}
-
-func getClient(c Config) *apns2.Client {
-	var (
-		cert    tls.Certificate
-		errCert error
-	)
-	if c.CertificateFileName != nil && *c.CertificateFileName != "" {
-		cert, errCert = certificate.FromP12File(*c.CertificateFileName, *c.CertificatePassword)
-	} else {
-		cert, errCert = certificate.FromP12Bytes(*c.CertificateBytes, *c.CertificatePassword)
-	}
-	if errCert != nil {
-		log.WithError(errCert).Error("APNS certificate error")
-		return nil
-	}
-	if *c.Production {
-		return apns2.NewClient(cert).Production()
-	}
-	return apns2.NewClient(cert).Development()
-}
-
-func (conn *Connector) sendAlert(n *apns2.Notification) error {
-	response, errPush := conn.client.Push(n)
-	if errPush != nil {
-		log.WithError(errPush).Error("APNS error when trying to push notification")
-		return errPush
-	}
-	if !response.Sent() {
-		log.WithField("id", response.ApnsID).WithField("reason", response.Reason).Error(msgNotSent)
-		return ErrAPNSNotSent
-	}
-	log.WithField("id", response.ApnsID).Debug("APNS notification was successfully sent")
+func (c *conn) Check() error {
+	//TODO implement
 	return nil
 }

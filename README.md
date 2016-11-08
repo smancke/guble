@@ -9,10 +9,13 @@ Guble is a simple user-facing messaging and data replication server written in G
 [![codebeat badge](https://codebeat.co/badges/7f317892-0a7b-4e31-97f4-a530cf779889)](https://codebeat.co/projects/github-com-smancke-guble)
 [![Coverage Status](https://coveralls.io/repos/smancke/guble/badge.svg?branch=master&service=github)](https://coveralls.io/github/smancke/guble?branch=master)
 [![GoDoc](https://godoc.org/github.com/smancke/guble?status.svg)](https://godoc.org/github.com/smancke/guble)
+[![Awesome-Go](https://camo.githubusercontent.com/13c4e50d88df7178ae1882a203ed57b641674f94/68747470733a2f2f63646e2e7261776769742e636f6d2f73696e647265736f726875732f617765736f6d652f643733303566333864323966656437386661383536353265336136336531353464643865383832392f6d656469612f62616467652e737667)](https://awesome-go.com)
 
 # Overview
-Guble is in an early state. It is already working well and is very useful, but the protocol, API and storage formats may
-change without further announcement (until reaching 0.5). If you intend to already use guble, please get in contact with us.
+Guble is in an early state (release 0.2). 
+It is already working well and is very useful, but the protocol, API and storage formats 
+may still change (until reaching 0.5). 
+If you intend to use guble, please get in contact with us.
 
 The goal of guble is to be a simple and fast message bus for user interaction and replication of data between multiple devices:
 * Very easy consumption of messages with web and mobile clients
@@ -28,8 +31,8 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 * Persistent message store with transparent live and offline fetching
 * WebSocket and REST APIs for message publishing
 * Commandline client and Go client library
-* Google Firebase Cloud Messaging adapter: delivery of messages as FCM push notifications
-* Docker image for client and server
+* Firebase Cloud Messaging (FCM) adapter: delivery of messages as FCM push notifications
+* Docker images for server and client
 * Simple Authentication and Access-Management
 * Clean shutdown
 * Improved logging using [logrus](https://github.com/Sirupsen/logrus) and logstash formatter
@@ -74,25 +77,26 @@ During the tests, the memory consumption of the server was around ~25 MB.
 This is the current (and fast changing) roadmap and todo list:
 
 ## Roadmap Release 0.3
-* Replication across multiple servers
-* Stable JavaScript client: https://github.com/smancke/guble-js
+* Replication across multiple servers (in a Guble cluster)
 * Add Postgresql as KV Backend
-* Add Consul as KV Backend
-* Storing the sequence-Id of topics in KV store, if we turn off persistence
-* Upgrade, Cleanup, documentation, and test coverage of the FCM connector
-* Make notification messages optional by client configuration
+* Upgrade, cleanup, abstraction, documentation, and test coverage of the FCM connector
 * Load testing with 5000 connections per instance
-* Improved authentication and access-management
 
 ## Roadmap Release 0.4
-* Change KV backend from sqlite to bolt
-* (TBD) Index-based search of messages using [GoLucene](https://github.com/balzaczyy/golucene)
-* (TBD) Acknowledgement of message delivery
-* Correct behaviour of receive command with `maxCount` on subtopics
-* Configuration of different persistence strategies for topics
+* Support for Apple Push Notification services (a new connector alongside Firebase)
+* Support for SMS-sending: a new connector
+* Make notification messages optional by client configuration
+* Storing the sequence-Id of topics in KV store, if we turn off persistence
 
 ## Roadmap Release 0.5
+* (TBD) Acknowledgement of message delivery
+* Stable JavaScript client: https://github.com/smancke/guble-js
+* (TBD) Add Consul as KV Backend
+* (TBD) Index-based search of messages using [GoLucene](https://github.com/balzaczyy/golucene)
+* Correct behaviour of receive command with `maxCount` on subtopics
+* Configuration of different persistence strategies for topics
 * Delivery semantics: user must read on one device, deliver only to one device, notify if not connected, etc.
+* Improved authentication and access-management
 * HTTPS support in the service
 * Cancel of fetch in the message store and multiple concurrent fetch commands for the same topic
 * Minimal example: chat application

@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 )
 
 var testBytes = []byte("test")
@@ -185,9 +186,9 @@ func TestRestMessageAPI_setFilters(t *testing.T) {
 }
 
 func TestRestMessageAPI_SetFiltersWhenServing(t *testing.T) {
+	testutil.SkipIfDisabled(t)
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
-
 	a := assert.New(t)
 
 	body := bytes.NewBufferString("")
@@ -217,4 +218,6 @@ func TestRestMessageAPI_SetFiltersWhenServing(t *testing.T) {
 	})
 
 	api.ServeHTTP(recorder, req)
+
+	time.Sleep(10 * time.Millisecond)
 }

@@ -6,6 +6,10 @@ import (
 	"sync"
 )
 
+const (
+	defaultQueueCap = 50
+)
+
 type queue struct {
 	mu    sync.Mutex
 	queue []*protocol.Message

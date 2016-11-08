@@ -1,10 +1,8 @@
 package kvstore
 
 import (
-	"testing"
-
-	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func BenchmarkPostgresKVStore_PutGet(b *testing.B) {
@@ -50,24 +48,6 @@ func TestPostgresKVStore_Open(t *testing.T) {
 	kvs := NewPostgresKVStore(invalidPostgresConfig())
 	err := kvs.Open()
 	assert.NotNil(t, err)
-}
-
-func TestPostgresKVStore_ParallelUsage(t *testing.T) {
-	// test cant run because we cannot ensure the data has been written
-	testutil.SkipIfShort(t)
-	a := assert.New(t)
-
-	kvs1 := NewPostgresKVStore(aPostgresConfig())
-	err := kvs1.Open()
-	a.NoError(err)
-
-	kvs2 := NewPostgresKVStore(aPostgresConfig())
-	err = kvs2.Open()
-	a.NoError(err)
-
-	CommonTestPutGetDelete(t, kvs1, kvs2)
-	CommonTestIterate(t, kvs1, kvs2)
-	CommonTestIterateKeys(t, kvs1, kvs2)
 }
 
 // This config assumes a postgresql running locally

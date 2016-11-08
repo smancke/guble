@@ -1,12 +1,10 @@
 package server
 
 import (
-	"time"
-
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
-
 	"testing"
+	"time"
 )
 
 func Test_Subscribe_on_random_node(t *testing.T) {
@@ -14,19 +12,19 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 	a := assert.New(t)
 
 	node1 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: "0.0.0.0:8080",
+		HttpListen: "localhost:8080",
 		NodeID:     1,
-		NodePort:   10000,
-		Remotes:    "0.0.0.0:10000",
+		NodePort:   20000,
+		Remotes:    "localhost:20000",
 	})
 	a.NotNil(node1)
 	defer node1.cleanup(true)
 
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: "0.0.0.0:8081",
+		HttpListen: "localhost:8081",
 		NodeID:     2,
-		NodePort:   10001,
-		Remotes:    "0.0.0.0:10000",
+		NodePort:   20001,
+		Remotes:    "localhost:20000",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
@@ -52,22 +50,24 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 
 func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	// defer testutil.EnableDebugForMethod()()
+	testutil.SkipIfDisabled(t)
 	testutil.SkipIfShort(t)
 	a := assert.New(t)
 
-	node1 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: "0.0.0.0:8082",
+	nodeConfig1 := testClusterNodeConfig{
+		HttpListen: "localhost:8082",
 		NodeID:     1,
-		NodePort:   10000,
-		Remotes:    "0.0.0.0:10000",
-	})
+		NodePort:   20002,
+		Remotes:    "localhost:20002",
+	}
+	node1 := newTestClusterNode(t, nodeConfig1)
 	a.NotNil(node1)
 
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: "0.0.0.0:8083",
+		HttpListen: "localhost:8083",
 		NodeID:     2,
-		NodePort:   10001,
-		Remotes:    "0.0.0.0:10000",
+		NodePort:   20003,
+		Remotes:    "localhost:20002",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
@@ -94,13 +94,7 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	time.Sleep(time.Millisecond * 150)
 
 	// restart the service
-	restartedNode1 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen:  ":8082",
-		StoragePath: node1.StoragePath,
-		NodeID:      1,
-		NodePort:    10000,
-		Remotes:     "0.0.0.0:10000",
-	})
+	restartedNode1 := newTestClusterNode(t, nodeConfig1)
 	a.NotNil(restartedNode1)
 	defer restartedNode1.cleanup(true)
 
@@ -121,23 +115,24 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 }
 
 func Test_Independent_Receiving(t *testing.T) {
+	testutil.SkipIfDisabled(t)
 	testutil.SkipIfShort(t)
 	a := assert.New(t)
 
 	node1 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: "0.0.0.0:8084",
+		HttpListen: "localhost:8084",
 		NodeID:     1,
-		NodePort:   10000,
-		Remotes:    "0.0.0.0:10000",
+		NodePort:   20004,
+		Remotes:    "localhost:20004",
 	})
 	a.NotNil(node1)
 	defer node1.cleanup(true)
 
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: "0.0.0.0:8085",
+		HttpListen: "localhost:8085",
 		NodeID:     2,
-		NodePort:   10001,
-		Remotes:    "0.0.0.0:10000",
+		NodePort:   20005,
+		Remotes:    "localhost:20004",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
@@ -148,7 +143,7 @@ func Test_Independent_Receiving(t *testing.T) {
 	// subscribe on first node
 	node1.Subscribe(fcmTopic, "1")
 
-	// connect a clinet and send a message
+	// connect a client and send a message
 	client1, err := node1.client("user1", 1000, true)
 	err = client1.Send(fcmTopic, "body", "{jsonHeader:1}")
 	a.NoError(err)
@@ -174,23 +169,24 @@ func Test_Independent_Receiving(t *testing.T) {
 }
 
 func Test_NoReceiving_After_Unsubscribe(t *testing.T) {
+	testutil.SkipIfDisabled(t)
 	testutil.SkipIfShort(t)
 	a := assert.New(t)
 
 	node1 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: "0.0.0.0:8086",
+		HttpListen: "localhost:8086",
 		NodeID:     1,
-		NodePort:   10000,
-		Remotes:    "0.0.0.0:10000",
+		NodePort:   20006,
+		Remotes:    "localhost:20006",
 	})
 	a.NotNil(node1)
 	defer node1.cleanup(true)
 
 	node2 := newTestClusterNode(t, testClusterNodeConfig{
-		HttpListen: "0.0.0.0:8087",
+		HttpListen: "localhost:8087",
 		NodeID:     2,
-		NodePort:   10001,
-		Remotes:    "0.0.0.0:10000",
+		NodePort:   20007,
+		Remotes:    "localhost:20006",
 	})
 	a.NotNil(node2)
 	defer node2.cleanup(true)
