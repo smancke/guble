@@ -104,17 +104,17 @@ func BenchmarkFCM_16Workers100MilliTimeout(b *testing.B) {
 	fmt.Println(params)
 }
 
+type sender func(c client.Client) error
+
 func sendMessageSample(c client.Client) error {
 	return c.Send(fcmTopic, "test-body", "{id:id}")
 }
-
-type sender func(c client.Client) error
 
 type benchParams struct {
 	*testing.B
 	workers       int           // number of fcm workers
 	subscriptions int           // number of subscriptions listening on the topic
-	timeout       time.Duration // gcm timeout response
+	timeout       time.Duration // fcm timeout response
 	clients       int           // number of clients
 	sender        sender        // the function that will send the messages
 	sent          int           // sent messages
@@ -130,56 +130,12 @@ type benchParams struct {
 	end   time.Time
 }
 
-func (params *benchParams) String() string {
-	return fmt.Sprintf(`
-		Throughput %.2f messages/second using:
-			%d workers
-			%d gcm subscriptions
-			%s gcm response timeout
-			%d clients
-	`, params.mps(), params.workers, params.subscriptions, params.timeout, params.clients)
-}
-
-func (params *benchParams) expectedMessagesCount() int {
-	return params.N * params.clients * params.subscriptions
-}
-
-func (params *benchParams) send(c client.Client) error {
-	err := params.sender(c)
-	if err != nil {
-		return err
-	}
-	params.sent++
-	return nil
-}
-
-func (params *benchParams) receiveLoop() {
-	for i := 0; i <= params.workers; i++ {
-		go func() {
-			for {
-				select {
-				case <-params.receiveC:
-					params.received++
-					logger.WithField("received", params.received).Info("Received gcm call")
-					params.wg.Done()
-				case <-params.doneC:
-					return
-				}
-			}
-		}()
-	}
-}
-
-// start the service
-func (params *benchParams) setUp() {
-	params.doneC = make(chan struct{})
-	params.receiveC = make(chan bool)
-
+func (params *benchParams) throughputSend() {
+	defer testutil.ResetDefaultRegistryHealthCheck()
 	a := assert.New(params)
 
-	dir, errTempDir := ioutil.TempDir("", "guble_benchmarking_gcm_test")
+	dir, errTempDir := ioutil.TempDir("", "guble_benchmarking_fcm_test")
 	a.NoError(errTempDir)
-
 	params.dir = dir
 
 	*Config.HttpListen = "localhost:0"
@@ -202,12 +158,13 @@ func (params *benchParams) setUp() {
 	}
 	a.True(ok, "There should be a module of type: FCM Connector")
 
+	params.receiveC = make(chan bool)
 	fcmConn.Sender = testutil.CreateFcmSender(
 		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, testutil.SuccessFCMResponse, params.receiveC, params.timeout))
 
 	urlFormat := fmt.Sprintf("http://%s/fcm/%%d/gcmId%%d/subscribe/%%s", params.service.WebServer().GetAddr())
 	for i := 1; i <= params.subscriptions; i++ {
-		// create GCM subscription with topic: gcmTopic
+		// create FCM subscription
 		response, errPost := http.Post(
 			fmt.Sprintf(urlFormat, i, i, strings.TrimPrefix(fcmTopic, "/")),
 			"text/plain",
@@ -220,66 +177,92 @@ func (params *benchParams) setUp() {
 		a.NoError(errReadAll)
 		a.Equal("{\"subscribed\":\"/topic\"}", string(body))
 	}
-}
 
-func (params *benchParams) tearDown() {
-	assert.NoError(params, params.service.Stop())
-	params.service = nil
-	errRemove := os.RemoveAll(params.dir)
-	if errRemove != nil {
-		logger.WithError(errRemove).WithField("module", "testing").Error("Could not remove directory")
-	}
-
-}
-
-func (params *benchParams) createClients() []client.Client {
-	wsURL := "ws://" + params.service.WebServer().GetAddr() + "/stream/user/"
-
-	clients := make([]client.Client, 0, params.clients)
-	for clientID := 0; clientID < params.clients; clientID++ {
-		location := wsURL + strconv.Itoa(clientID)
-		c, err := client.Open(location, "http://localhost/", 1000, true)
-		assert.NoError(params, err)
-		clients = append(clients, c)
-	}
-	return clients
-}
-
-func (params *benchParams) throughputSend() {
-	defer testutil.ResetDefaultRegistryHealthCheck()
-	params.setUp()
-
-	a := assert.New(params)
 	clients := params.createClients()
 
 	// Report allocations also
 	params.ReportAllocs()
-	logger.WithFields(log.Fields{
-		"count": params.expectedMessagesCount(),
-		"N":     params.N,
-	}).Info("Expecting messages")
-	params.wg.Add(params.expectedMessagesCount())
 
-	// Reset timer to start the actual timing
+	expectedMessagesNumber := params.N * params.clients * params.subscriptions
+	logger.WithFields(log.Fields{
+		"expectedMessagesNumber": expectedMessagesNumber,
+		"N": params.N,
+	}).Info("Expecting messages")
+	params.wg.Add(expectedMessagesNumber)
+
+	// start the receive loop (a select on receiveC and doneC)
+	params.doneC = make(chan struct{})
 	params.receiveLoop()
+
 	params.ResetTimer()
 
-	// wait until all messages are sent
-	for _, c := range clients {
-		go func(c client.Client) {
+	// send all messages, or fail on any error
+	for _, cl := range clients {
+		go func(cl client.Client) {
 			for i := 0; i < params.N; i++ {
-				a.NoError(params.send(c))
+				err := params.sender(cl)
+				if err != nil {
+					a.FailNow("Message could not be sent")
+				}
+				params.sent++
 			}
-		}(c)
+		}(cl)
 	}
+
+	// wait to receive all messages
 	params.wg.Wait()
-	close(params.doneC)
 
 	// stop timer after the actual test
 	params.StopTimer()
 
-	// stop service (and wait for all the messages to be processed during the given grace period)
-	params.tearDown()
+	close(params.doneC)
+	a.NoError(params.service.Stop())
+	params.service = nil
+	close(params.receiveC)
+	errRemove := os.RemoveAll(params.dir)
+	if errRemove != nil {
+		logger.WithError(errRemove).WithField("module", "testing").Error("Could not remove directory")
+	}
+}
+
+func (params *benchParams) createClients() (clients []client.Client) {
+	wsURL := "ws://" + params.service.WebServer().GetAddr() + "/stream/user/"
+	for clientID := 0; clientID < params.clients; clientID++ {
+		location := wsURL + strconv.Itoa(clientID)
+		c, err := client.Open(location, "http://localhost/", 1000, true)
+		if err != nil {
+			assert.FailNow(params, "guble client could not connect to server")
+		}
+		clients = append(clients, c)
+	}
+	return
+}
+
+func (params *benchParams) receiveLoop() {
+	for i := 0; i <= params.workers; i++ {
+		go func() {
+			for {
+				select {
+				case <-params.receiveC:
+					params.received++
+					logger.WithField("received", params.received).Debug("Received fcm call")
+					params.wg.Done()
+				case <-params.doneC:
+					return
+				}
+			}
+		}()
+	}
+}
+
+func (params *benchParams) String() string {
+	return fmt.Sprintf(`
+		Throughput %.2f messages/second using:
+			%d workers
+			%d fcm subscriptions
+			%s fcm response timeout
+			%d clients
+	`, params.messagesPerSecond(), params.workers, params.subscriptions, params.timeout, params.clients)
 }
 
 func (params *benchParams) ResetTimer() {
@@ -296,7 +279,6 @@ func (params *benchParams) duration() time.Duration {
 	return params.end.Sub(params.start)
 }
 
-// messages per second
-func (params *benchParams) mps() float64 {
+func (params *benchParams) messagesPerSecond() float64 {
 	return float64(params.received) / params.duration().Seconds()
 }
