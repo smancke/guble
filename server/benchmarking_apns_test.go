@@ -106,9 +106,7 @@ func (params *benchParams) throughputAPNS() {
 	*Config.KVS = "memory"
 	*Config.MS = "file"
 	*Config.StoragePath = dir
-	*Config.FCM.Enabled = true
-	*Config.FCM.APIKey = "WILL BE OVERWRITTEN"
-	*Config.FCM.Workers = params.workers
+	*Config.APNS.Enabled = true
 
 	params.service = StartService()
 
@@ -120,7 +118,9 @@ func (params *benchParams) throughputAPNS() {
 			break
 		}
 	}
-	a.True(ok, "There should be a module of type: APNS Connector")
+	if apnsConn == nil {
+		a.FailNow("There should be a module of type: APNS Connector")
+	}
 
 	params.receiveC = make(chan bool)
 
