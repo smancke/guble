@@ -33,13 +33,13 @@ func Test_Subscribe_on_random_node(t *testing.T) {
 	node2.FCM.setupRoundTripper(20*time.Millisecond, 10, testutil.SuccessFCMResponse)
 
 	// subscribe on first node
-	node1.Subscribe(fcmTopic, "1")
+	node1.Subscribe(testTopic, "1")
 
 	// connect a client and send a message
 	client1, err := node1.client("user1", 1000, true)
 	a.NoError(err)
 
-	err = client1.Send(fcmTopic, "body", "{jsonHeader:1}")
+	err = client1.Send(testTopic, "body", "{jsonHeader:1}")
 	a.NoError(err)
 
 	// only one message should be received but only on the first node.
@@ -76,12 +76,12 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	node2.FCM.setupRoundTripper(20*time.Millisecond, 10, testutil.SuccessFCMResponse)
 
 	// subscribe on first node
-	node1.Subscribe(fcmTopic, "1")
+	node1.Subscribe(testTopic, "1")
 
 	// connect a clinet and send a message
 	client1, err := node1.client("user1", 1000, true)
 	a.NoError(err)
-	err = client1.Send(fcmTopic, "body", "{jsonHeader:1}")
+	err = client1.Send(testTopic, "body", "{jsonHeader:1}")
 	a.NoError(err)
 
 	// one message should be received but only on the first node.
@@ -105,7 +105,7 @@ func Test_Subscribe_working_After_Node_Restart(t *testing.T) {
 	a.NoError(err)
 	time.Sleep(time.Second)
 
-	err = client1.Send(fcmTopic, "body", "{jsonHeader:1}")
+	err = client1.Send(testTopic, "body", "{jsonHeader:1}")
 	a.NoError(err, "Subscription should work even after node restart")
 
 	// only one message should be received but only on the first node.
@@ -141,11 +141,11 @@ func Test_Independent_Receiving(t *testing.T) {
 	node2.FCM.setupRoundTripper(20*time.Millisecond, 10, testutil.SuccessFCMResponse)
 
 	// subscribe on first node
-	node1.Subscribe(fcmTopic, "1")
+	node1.Subscribe(testTopic, "1")
 
 	// connect a client and send a message
 	client1, err := node1.client("user1", 1000, true)
-	err = client1.Send(fcmTopic, "body", "{jsonHeader:1}")
+	err = client1.Send(testTopic, "body", "{jsonHeader:1}")
 	a.NoError(err)
 
 	// only one message should be received but only on the first node.
@@ -159,7 +159,7 @@ func Test_Independent_Receiving(t *testing.T) {
 	// NOW connect to second node
 	client2, err := node2.client("user2", 1000, true)
 	a.NoError(err)
-	err = client2.Send(fcmTopic, "body", "{jsonHeader:1}")
+	err = client2.Send(testTopic, "body", "{jsonHeader:1}")
 	a.NoError(err)
 
 	// only one message should be received but only on the second node.
@@ -195,12 +195,12 @@ func Test_NoReceiving_After_Unsubscribe(t *testing.T) {
 	node2.FCM.setupRoundTripper(20*time.Millisecond, 10, testutil.SuccessFCMResponse)
 
 	// subscribe on first node
-	node1.Subscribe(fcmTopic, "1")
+	node1.Subscribe(testTopic, "1")
 	time.Sleep(50 * time.Millisecond)
 
 	// connect a client and send a message
 	client1, err := node1.client("user1", 1000, true)
-	err = client1.Send(fcmTopic, "body", "{jsonHeader:1}")
+	err = client1.Send(testTopic, "body", "{jsonHeader:1}")
 	a.NoError(err)
 
 	// only one message should be received but only on the first node.
@@ -209,14 +209,14 @@ func Test_NoReceiving_After_Unsubscribe(t *testing.T) {
 	node2.FCM.checkReceived(0)
 
 	// Unsubscribe
-	node2.Unsubscribe(fcmTopic, "1")
+	node2.Unsubscribe(testTopic, "1")
 	time.Sleep(50 * time.Millisecond)
 
 	// reset the counter
 	node1.FCM.reset()
 
 	// and send a message again. No one should receive it
-	err = client1.Send(fcmTopic, "body", "{jsonHeader:1}")
+	err = client1.Send(testTopic, "body", "{jsonHeader:1}")
 	a.NoError(err)
 
 	// only one message should be received but only on the second node.
