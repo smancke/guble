@@ -5,28 +5,19 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/server/fcm"
-	"github.com/smancke/guble/server/service"
+	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 )
 
-const (
-	testTopic = "/topic"
-)
-
-// FCM benchmarks
-// Default number of clients and subscriptions are 8, for tests that do not
-// specify this in their name
-func BenchmarkFCM_1Workers50MilliTimeout(b *testing.B) {
+// APNS benchmarks
+func BenchmarkAPNS_1Workers50MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       1,
@@ -35,11 +26,11 @@ func BenchmarkFCM_1Workers50MilliTimeout(b *testing.B) {
 		clients:       8,
 		sender:        sendMessageSample,
 	}
-	params.throughputFCM()
+	params.throughputAPNS()
 	fmt.Println(params)
 }
 
-func BenchmarkFCM_8Workers50MilliTimeout(b *testing.B) {
+func BenchmarkAPNS_8Workers50MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       8,
@@ -48,11 +39,11 @@ func BenchmarkFCM_8Workers50MilliTimeout(b *testing.B) {
 		clients:       8,
 		sender:        sendMessageSample,
 	}
-	params.throughputFCM()
+	params.throughputAPNS()
 	fmt.Println(params)
 }
 
-func BenchmarkFCM_16Workers50MilliTimeout(b *testing.B) {
+func BenchmarkAPNS_16Workers50MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       16,
@@ -61,11 +52,11 @@ func BenchmarkFCM_16Workers50MilliTimeout(b *testing.B) {
 		clients:       8,
 		sender:        sendMessageSample,
 	}
-	params.throughputFCM()
+	params.throughputAPNS()
 	fmt.Println(params)
 }
 
-func BenchmarkFCM_1Workers100MilliTimeout(b *testing.B) {
+func BenchmarkAPNS_1Workers100MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       1,
@@ -74,11 +65,11 @@ func BenchmarkFCM_1Workers100MilliTimeout(b *testing.B) {
 		clients:       8,
 		sender:        sendMessageSample,
 	}
-	params.throughputFCM()
+	params.throughputAPNS()
 	fmt.Println(params)
 }
 
-func BenchmarkFCM_8Workers100MilliTimeout(b *testing.B) {
+func BenchmarkAPNS_8Workers100MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       8,
@@ -87,11 +78,11 @@ func BenchmarkFCM_8Workers100MilliTimeout(b *testing.B) {
 		clients:       8,
 		sender:        sendMessageSample,
 	}
-	params.throughputFCM()
+	params.throughputAPNS()
 	fmt.Println(params)
 }
 
-func BenchmarkFCM_16Workers100MilliTimeout(b *testing.B) {
+func BenchmarkAPNS_16Workers100MilliTimeout(b *testing.B) {
 	params := &benchParams{
 		B:             b,
 		workers:       16,
@@ -100,40 +91,15 @@ func BenchmarkFCM_16Workers100MilliTimeout(b *testing.B) {
 		clients:       8,
 		sender:        sendMessageSample,
 	}
-	params.throughputFCM()
+	params.throughputAPNS()
 	fmt.Println(params)
 }
 
-type sender func(c client.Client) error
-
-func sendMessageSample(c client.Client) error {
-	return c.Send(testTopic, "test-body", "{id:id}")
-}
-
-type benchParams struct {
-	*testing.B
-	workers       int           // number of fcm workers
-	subscriptions int           // number of subscriptions listening on the topic
-	timeout       time.Duration // fcm timeout response
-	clients       int           // number of clients
-	sender        sender        // the function that will send the messages
-	sent          int           // sent messages
-	received      int           // received messages
-
-	service  *service.Service
-	receiveC chan bool
-	doneC    chan struct{}
-
-	wg    sync.WaitGroup
-	start time.Time
-	end   time.Time
-}
-
-func (params *benchParams) throughputFCM() {
+func (params *benchParams) throughputAPNS() {
 	defer testutil.ResetDefaultRegistryHealthCheck()
 	a := assert.New(params)
 
-	dir, errTempDir := ioutil.TempDir("", "guble_benchmarking_fcm_test")
+	dir, errTempDir := ioutil.TempDir("", "guble_benchmarking_apns_test")
 	a.NoError(errTempDir)
 
 	*Config.HttpListen = "localhost:0"
@@ -146,21 +112,24 @@ func (params *benchParams) throughputFCM() {
 
 	params.service = StartService()
 
-	var fcmConn *fcm.Connector
+	var apnsConn connector.ReactiveConnector
 	var ok bool
 	for _, iface := range params.service.ModulesSortedByStartOrder() {
-		fcmConn, ok = iface.(*fcm.Connector)
+		apnsConn, ok = iface.(connector.ReactiveConnector)
 		if ok {
 			break
 		}
 	}
-	a.True(ok, "There should be a module of type: FCM Connector")
+	a.True(ok, "There should be a module of type: APNS Connector")
 
 	params.receiveC = make(chan bool)
-	fcmConn.Sender = testutil.CreateFcmSender(
-		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, testutil.SuccessFCMResponse, params.receiveC, params.timeout))
 
-	urlFormat := fmt.Sprintf("http://%s/fcm/%%d/gcmId%%d/subscribe/%%s", params.service.WebServer().GetAddr())
+	//TODO Cosmin replace with: setting the sender
+	apnsConn.Check()
+	//apnsConn.Sender = testutil.CreateFcmSender(
+	//	testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, testutil.SuccessFCMResponse, params.receiveC, params.timeout))
+
+	urlFormat := fmt.Sprintf("http://%s/apns/%%d/gcmId%%d/subscribe/%%s", params.service.WebServer().GetAddr())
 	for i := 1; i <= params.subscriptions; i++ {
 		// create FCM subscription
 		response, errPost := http.Post(
@@ -221,62 +190,4 @@ func (params *benchParams) throughputFCM() {
 	if errRemove != nil {
 		logger.WithError(errRemove).WithField("module", "testing").Error("Could not remove directory")
 	}
-}
-
-func (params *benchParams) createClients() (clients []client.Client) {
-	wsURL := "ws://" + params.service.WebServer().GetAddr() + "/stream/user/"
-	for clientID := 0; clientID < params.clients; clientID++ {
-		location := wsURL + strconv.Itoa(clientID)
-		c, err := client.Open(location, "http://localhost/", 1000, true)
-		if err != nil {
-			assert.FailNow(params, "guble client could not connect to server")
-		}
-		clients = append(clients, c)
-	}
-	return
-}
-
-func (params *benchParams) receiveLoop() {
-	for i := 0; i <= params.workers; i++ {
-		go func() {
-			for {
-				select {
-				case <-params.receiveC:
-					params.received++
-					logger.WithField("received", params.received).Debug("Received a call")
-					params.wg.Done()
-				case <-params.doneC:
-					return
-				}
-			}
-		}()
-	}
-}
-
-func (params *benchParams) String() string {
-	return fmt.Sprintf(`
-		Throughput %.2f messages/second using:
-			%d workers
-			%d subscriptions
-			%s response timeout
-			%d clients
-	`, params.messagesPerSecond(), params.workers, params.subscriptions, params.timeout, params.clients)
-}
-
-func (params *benchParams) ResetTimer() {
-	params.start = time.Now()
-	params.B.ResetTimer()
-}
-
-func (params *benchParams) StopTimer() {
-	params.end = time.Now()
-	params.B.StopTimer()
-}
-
-func (params *benchParams) duration() time.Duration {
-	return params.end.Sub(params.start)
-}
-
-func (params *benchParams) messagesPerSecond() float64 {
-	return float64(params.received) / params.duration().Seconds()
 }
