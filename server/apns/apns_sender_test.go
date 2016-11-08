@@ -70,13 +70,8 @@ func TestSender_Send(t *testing.T) {
 	mPusher := NewMockPusher(testutil.MockCtrl)
 	mPusher.EXPECT().Push(gomock.Any()).Return(nil, nil)
 
-	appTopic := "com.myapp"
-	cfg := Config{
-		AppTopic: &appTopic,
-	}
-
 	// and
-	s, err := newSender(mPusher, cfg)
+	s, err := NewSenderUsingPusher(mPusher, "com.myapp")
 	a.NoError(err)
 
 	// when
