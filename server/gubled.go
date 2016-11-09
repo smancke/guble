@@ -131,7 +131,7 @@ var CreateModules = func(router router.Router) []interface{} {
 			logger.Panic("The API Key has to be provided when Firebase Cloud Messaging is enabled")
 		}
 		Config.FCM.AfterMessageDelivery = AfterMessageDelivery
-		if fcmConn, err := fcm.New(router, fcmPath, Config.FCM); err != nil {
+		if fcmConn, err := fcm.New(router, Config.FCM); err != nil {
 			logger.WithError(err).Error("Error creating FCM connector")
 		} else {
 			modules = append(modules, fcmConn)

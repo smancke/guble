@@ -75,3 +75,11 @@ func (rp *RouteParams) Get(key string) string {
 func (rp *RouteParams) Set(key, value string) {
 	(*rp)[key] = value
 }
+
+func (rp *RouteParams) Copy() RouteParams {
+	nrp := make(RouteParams, len(*rp))
+	for k, v := range *rp {
+		nrp[k] = v
+	}
+	return nrp
+}

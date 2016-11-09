@@ -2,6 +2,7 @@ package apns
 
 import (
 	"fmt"
+
 	"github.com/sideshow/apns2"
 	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/router"
@@ -65,6 +66,11 @@ func (c *conn) HandleResponse(request connector.Request, responseIface interface
 		messageID := request.Message().ID
 		subscriber := request.Subscriber()
 		subscriber.SetLastID(messageID)
+
+		if err := c.Manager().Update(subscriber); err != nil {
+			return err
+		}
+
 		if r.Sent() {
 			logger.WithField("id", r.ApnsID).Debug("APNS notification was successfully sent")
 			return nil

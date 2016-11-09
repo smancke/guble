@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"sync"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/health"
 	"github.com/gorilla/mux"
@@ -11,8 +14,6 @@ import (
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/service"
-	"net/http"
-	"sync"
 )
 
 const DefaultWorkers = 1
@@ -31,6 +32,10 @@ type ResponseHandler interface {
 	HandleResponse(Request, interface{}, error) error
 }
 
+type Runner interface {
+	Run(Subscriber)
+}
+
 type ResponseHandleSetter interface {
 	ResponseHandler() ResponseHandler
 	SetResponseHandler(ResponseHandler)
@@ -41,6 +46,7 @@ type Connector interface {
 	service.Stopable
 	service.Endpoint
 	ResponseHandleSetter
+	Runner
 	Manager() Manager
 }
 
@@ -76,7 +82,7 @@ type Config struct {
 	Workers    int
 }
 
-func NewConnector(router router.Router, sender Sender, config Config) (*connector, error) {
+func NewConnector(router router.Router, sender Sender, config Config) (Connector, error) {
 	kvs, err := router.KVStore()
 	if err != nil {
 		return nil, err
@@ -166,8 +172,8 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	go c.run(subscriber)
-	fmt.Fprintf(w, `{"subscribed":"%v"}`, topic)
+	go c.Run(subscriber)
+	fmt.Fprintf(w, `{"subscribed":"/%v"}`, topic)
 }
 
 // Delete removes a subscriber
@@ -210,14 +216,14 @@ func (c *connector) Start() error {
 
 	c.logger.Debug("Starting subscriptions")
 	for _, s := range c.manager.List() {
-		go c.run(s)
+		go c.Run(s)
 	}
 
 	c.logger.Debug("Started connector")
 	return nil
 }
 
-func (c *connector) run(s Subscriber) {
+func (c *connector) Run(s Subscriber) {
 	c.wg.Add(1)
 	defer c.wg.Done()
 
@@ -234,6 +240,13 @@ func (c *connector) run(s Subscriber) {
 	err := s.Loop(c.ctx, c.queue)
 	if err != nil && provideErr == nil {
 		c.logger.WithField("error", err.Error()).Error("Error returned by subscriber loop")
+		// if context cancelled loop then unsubscribe the route from router
+		// in case it's been subscribed
+		if err == context.Canceled {
+			c.router.Unsubscribe(s.Route())
+			return
+		}
+
 		// If Route channel closed try restarting
 		if err == ErrRouteChannelClosed {
 			c.restart(s)
@@ -264,7 +277,7 @@ func (c *connector) restart(s Subscriber) error {
 		c.logger.WithField("err", err.Error()).Error("Error reseting subscriber")
 		return err
 	}
-	go c.run(s)
+	go c.Run(s)
 	return nil
 }
 

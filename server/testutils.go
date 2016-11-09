@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/fcm"
 	"github.com/smancke/guble/testutil"
 
@@ -152,7 +153,7 @@ func (tcn *testClusterNode) cleanup(removeDir bool) {
 type TestFCM struct {
 	sync.RWMutex
 	t         *testing.T
-	Connector *fcm.Connector
+	Connector connector.ReactiveConnector
 	Received  int // received messages
 	receiveC  chan bool
 	timeout   time.Duration

@@ -44,7 +44,7 @@ func TestConnector_PostSubscription(t *testing.T) {
 	defer conn.Stop()
 
 	subscriber := NewMockSubscriber(testutil.MockCtrl)
-	mocks.manager.EXPECT().Create(gomock.Eq(protocol.Path("topic1")), gomock.Eq(router.RouteParams{
+	mocks.manager.EXPECT().Create(gomock.Eq(protocol.Path("/topic1")), gomock.Eq(router.RouteParams{
 		"device_token": "device1",
 		"user_id":      "user1",
 	})).Return(subscriber, nil)
@@ -63,7 +63,7 @@ func TestConnector_PostSubscription(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPost, "/connector/device1/user1/topic1", strings.NewReader(""))
 	a.NoError(err)
 	conn.ServeHTTP(recorder, req)
-	a.Equal(`{"subscribed":"topic1"}`, recorder.Body.String())
+	a.Equal(`{"subscribed":"/topic1"}`, recorder.Body.String())
 	time.Sleep(100 * time.Millisecond)
 }
 
@@ -85,7 +85,7 @@ func TestConnector_PostSubscriptionNoMocks(t *testing.T) {
 	mocks.kvstore.EXPECT().Iterate(gomock.Eq("test"), gomock.Eq("")).Return(entriesC)
 	close(entriesC)
 
-	mocks.kvstore.EXPECT().Put(gomock.Eq("test"), gomock.Eq(GenerateKey("topic1", map[string]string{
+	mocks.kvstore.EXPECT().Put(gomock.Eq("test"), gomock.Eq(GenerateKey("/topic1", map[string]string{
 		"device_token": "device1",
 		"user_id":      "user1",
 	})), gomock.Any())
@@ -99,7 +99,7 @@ func TestConnector_PostSubscriptionNoMocks(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPost, "/connector/device1/user1/topic1", strings.NewReader(""))
 	a.NoError(err)
 	conn.ServeHTTP(recorder, req)
-	a.Equal(`{"subscribed":"topic1"}`, recorder.Body.String())
+	a.Equal(`{"subscribed":"/topic1"}`, recorder.Body.String())
 	time.Sleep(100 * time.Millisecond)
 }
 
@@ -251,19 +251,19 @@ func getTestConnector(t *testing.T, config Config, mockManager bool, mockQueue b
 	mRouter.EXPECT().KVStore().Return(mKVS, nil).AnyTimes()
 	mSender := NewMockSender(testutil.MockCtrl)
 
-	connector, err := NewConnector(mRouter, mSender, config)
+	conn, err := NewConnector(mRouter, mSender, config)
 	a.NoError(err)
 
 	if mockManager {
 		mManager = NewMockManager(testutil.MockCtrl)
-		connector.manager = mManager
+		conn.(*connector).manager = mManager
 	}
 	if mockQueue {
 		mQueue = NewMockQueue(testutil.MockCtrl)
-		connector.queue = mQueue
+		conn.(*connector).queue = mQueue
 	}
 
-	return connector, &connectorMocks{
+	return conn, &connectorMocks{
 		mRouter,
 		mSender,
 		mQueue,

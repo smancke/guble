@@ -1,8 +1,9 @@
 package connector
 
 import (
-	log "github.com/Sirupsen/logrus"
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // Queue is an interface modeling a task-queue (it is started and more Requests can be pushed to it, an finally it is stopped).

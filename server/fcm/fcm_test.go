@@ -1,469 +1,143 @@
 package fcm
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
-	"sort"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/Bogh/gcm"
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestConnector_ServeHTTPSuccess(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
+var fullFCMMessage = `{
+	"notification": {
+		"title": "TEST",
+		"body": "notification body",
+		"icon": "ic_notification_test_icon",
+		"click_action": "estimated_arrival"
+	},
+	"data": {"field1": "value1", "field2": "value2"}
+}`
 
-	a := assert.New(t)
-	g, routerMock, _ := testFCMResponse(t, testutil.SuccessFCMResponse)
-
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
-		a.Equal("/notifications", string(route.Path))
-		a.Equal("marvin", route.Get(userIDKey))
-		a.Equal("fcmId123", route.Get(applicationIDKey))
-	})
-
-	time.Sleep(100 * time.Millisecond)
-
-	postSubscription(t, g, "marvin", "fcmId123", "notifications")
-}
-
-func TestConnector_ServeHTTPWithErrorCases(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
-
-	a := assert.New(t)
-	g, _, _ := testFCMResponse(t, testutil.SuccessFCMResponse)
-
-	u, _ := url.Parse("http://localhost/fcm/marvin/fcmId123/subscribe/notifications")
-	// and a http context
-	req := &http.Request{URL: u, Method: "HEAD"}
-	w := httptest.NewRecorder()
-
-	// do a GET instead of POST
-	g.ServeHTTP(w, req)
-
-	// check the result
-	a.Equal("{\"error\":\"method not allowed\"}\n", string(w.Body.Bytes()))
-	a.Equal(w.Code, http.StatusMethodNotAllowed)
-
-	// send a new request with wrong parameters encoding
-	req.Method = "POST"
-	req.URL, _ = u.Parse("http://localhost/fcm/marvin/fcmId123/subscribe3/notifications")
-
-	w2 := httptest.NewRecorder()
-	g.ServeHTTP(w2, req)
-
-	a.Equal("{\"error\":\"invalid parameters in request\"}\n", string(w2.Body.Bytes()))
-	a.Equal(w2.Code, http.StatusBadRequest)
+type mocks struct {
+	router    *MockRouter
+	store     *MockMessageStore
+	gcmSender *MockSender
 }
 
 //TODO Cosmin Bogdan test should be re-enabled after Check() works and is a public func
-//func TestConnector_Check(t *testing.T) {
-//	_, finish := testutil.NewMockCtrl(t)
-//	defer finish()
-//
-//	a := assert.New(t)
-//	gcm, _, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
-//
-//	done := make(chan bool)
-//	mockSender := testutil.CreateGcmSender(
-//		testutil.CreateRoundTripperWithJsonResponse(
-//			http.StatusOK, testutil.SuccessGCMResponse, done))
-//	gcm.Sender = mockSender
-//	err := gcm.check()
-//	a.NoError(err)
-//
-//	done2 := make(chan bool)
-//	mockSender2 := testutil.CreateGcmSender(
-//		testutil.CreateRoundTripperWithJsonResponse(
-//			http.StatusUnauthorized, "", done2))
-//	gcm.Sender = mockSender2
-//	a.Error(gcm.check())
-//}
+// func TestConnector_Check(t *testing.T) {
+// 	_, finish := testutil.NewMockCtrl(t)
+// 	defer finish()
 
-func TestFCM_SaveAndLoadSubs(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
+// 	a := assert.New(t)
+// 	gcm, _, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
 
-	a := assert.New(t)
-	g, routerMock, _ := testFCMResponse(t, testutil.SuccessFCMResponse)
+// 	done := make(chan bool)
+// 	mockSender := testutil.CreateGcmSender(
+// 		testutil.CreateRoundTripperWithJsonResponse(
+// 			http.StatusOK, testutil.SuccessGCMResponse, done))
+// 	gcm.Sender = mockSender
+// 	err := gcm.check()
+// 	a.NoError(err)
 
-	// given: some test routes
-	testRoutes := map[string]bool{
-		"marvin:/foo:1234": true,
-		"zappod:/bar:1212": true,
-		"athur:/erde:42":   true,
-	}
-
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
-		// delete the route from the map, if we got it in the test
-		delete(testRoutes, fmt.Sprintf("%v:%v:%v", route.Get(userIDKey), route.Path, route.Get(applicationIDKey)))
-	}).AnyTimes()
-
-	// when: we save the routes
-	for k := range testRoutes {
-		splitKey := strings.SplitN(k, ":", 3)
-		userID := splitKey[0]
-		topic := splitKey[1]
-		fcmID := splitKey[2]
-		initSubscription(g, topic, userID, fcmID, 0, true)
-	}
-
-	// and reload the routes
-	g.loadSubscriptions()
-
-	time.Sleep(50 * time.Millisecond)
-
-	// then: all expected subscriptions were called
-	a.Equal(0, len(testRoutes))
-}
-
-func TestRemoveTrailingSlash(t *testing.T) {
-	assert.Equal(t, "/foo", removeTrailingSlash("/foo/"))
-	assert.Equal(t, "/foo", removeTrailingSlash("/foo"))
-}
-
-func TestConnector_parseParams(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
-
-	a := assert.New(t)
-	g, _, _ := testFCMResponse(t, testutil.SuccessFCMResponse)
-
-	testCases := []struct {
-		urlPath, userID, fcmID, topic, err string
-	}{
-		{"/fcm/marvin/fcmId123/subscribe/notifications", "marvin", "fcmId123", "/notifications", ""},
-		{"/fcm2/marvin/fcmId123/subscribe/notifications", "", "", "", "FCM request is not starting with correct prefix"},
-		{"/fcm/marvin/fcmId123/subscrib2e/notifications", "", "", "", "FCM request third param is not subscribe"},
-		{"/fcm/marvin/fcmId123subscribenotifications", "", "", "", "FCM request has wrong number of params"},
-		{"/fcm/marvin/fcmId123/subscribe/notifications/alert/", "marvin", "fcmId123", "/notifications/alert", ""},
-	}
-
-	for i, c := range testCases {
-		userID, fcmID, unparsed, err := g.parseUserIDAndDeviceId(c.urlPath)
-		var topic string
-		if err == nil {
-			topic, err = g.parseTopic(unparsed)
-		}
-		//if error message is present check only the error
-		if c.err != "" {
-			a.NotNil(err)
-			a.EqualError(err, c.err, fmt.Sprintf("Failed on testcase no=%d", i))
-		} else {
-			a.Equal(userID, c.userID, fmt.Sprintf("Failed on testcase no=%d", i))
-			a.Equal(fcmID, c.fcmID, fmt.Sprintf("Failed on testcase no=%d", i))
-			a.Equal(topic, c.topic, fmt.Sprintf("Failed on testcase no=%d", i))
-			a.Nil(err, fmt.Sprintf("Failed on testcase no=%d", i))
-		}
-	}
-	err := g.Stop()
-	a.Nil(err)
-}
-
-func TestConnector_GetPrefix(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
-
-	a := assert.New(t)
-	g, _, _ := testFCMResponse(t, testutil.SuccessFCMResponse)
-
-	a.Equal(g.GetPrefix(), "/fcm/")
-}
-
-func TestConnector_Stop(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
-
-	a := assert.New(t)
-	g, _, _ := testFCMResponse(t, testutil.SuccessFCMResponse)
-
-	err := g.Stop()
-	a.Nil(err)
-	a.Equal(len(g.stopC), 0, "The Stop Channel should be empty")
-	select {
-	case _, opened := <-g.stopC:
-		a.False(opened, "The Stop Channel should be closed")
-	default:
-		a.Fail("Reading from the Stop Channel should not block")
-	}
-}
-
-func TestConnector_StartWithMessageSending(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
-
-	a := assert.New(t)
-	g, _, done := testFCMResponse(t, testutil.SuccessFCMResponse)
-
-	// put a dummy FCM message with minimum information
-	route := &router.Route{
-		RouteConfig: router.RouteConfig{
-			RouteParams: router.RouteParams{applicationIDKey: "id"},
-		},
-	}
-	s := newSubscription(g, route, 0)
-
-	msgWithNoRecipients := newSubscriptionMessage(s, &protocol.Message{
-		ID:   uint64(4),
-		Body: []byte("{id:id}"),
-		Time: 1405544146,
-		Path: "/fcm/marvin/fcm124/subscribe/stuff"})
-
-	g.pipelineC <- msgWithNoRecipients
-	// expect that the Http Server to give us a malformed message
-	<-done
-
-	//wait a little to Stop the FCM Connector
-	time.Sleep(50 * time.Millisecond)
-	err := g.Stop()
-	a.NoError(err)
-}
+// 	done2 := make(chan bool)
+// 	mockSender2 := testutil.CreateGcmSender(
+// 		testutil.CreateRoundTripperWithJsonResponse(
+// 			http.StatusUnauthorized, "", done2))
+// 	gcm.Sender = mockSender2
+// 	a.Error(gcm.check())
+// }
 
 func TestConnector_GetErrorMessageFromFCM(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
 	a := assert.New(t)
-	g, routerMock, done := testFCMResponse(t, testutil.ErrorFCMResponse)
+	fcm, mocks := testFCM(t, true)
 
-	// expect the route unsubscribed from removeSubscription
-	routerMock.EXPECT().Unsubscribe(gomock.Any()).Do(func(route *router.Route) {
-		a.Equal("/path", string(route.Path))
-		a.Equal("id", route.Get(applicationIDKey))
+	err := fcm.Start()
+	a.NoError(err)
+
+	var route *router.Route
+
+	mocks.router.EXPECT().Subscribe(gomock.Any()).Do(func(r *router.Route) (*router.Route, error) {
+		a.Equal("/topic", string(r.Path))
+		a.Equal("user01", r.Get("user_id"))
+		a.Equal("device01", r.Get("device_token"))
+		route = r
+		return r, nil
 	})
-
-	// expect the route subscribe with the new canonicalId from replaceSubscriptionWithCanonicalID
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
-		a.Equal("/path", string(route.Path))
-		a.Equal("marvin", route.Get(userIDKey))
-		a.Equal("id", route.Get(applicationIDKey))
-	})
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
-		a.Equal("/path", string(route.Path))
-		a.Equal("marvin", route.Get(userIDKey))
-		appid := route.Get(applicationIDKey)
-		a.Equal("fcmCanonicalID", appid)
-	})
-	msMock := NewMockMessageStore(testutil.MockCtrl)
-
-	routerMock.EXPECT().MessageStore().Return(msMock, nil)
-	msMock.EXPECT().MaxMessageID(gomock.Any()).Return(uint64(4), nil)
-
-	// Wait for subscriptions to finish loading
-	time.Sleep(100 * time.Millisecond)
 
 	// put a dummy FCM message with minimum information
-	s, err := initSubscription(g, "/path", "marvin", "id", 0, true)
-	a.NoError(err)
+	postSubscription(t, fcm, "user01", "device01", "topic")
 	time.Sleep(100 * time.Millisecond)
+	a.NoError(err)
+	a.NotNil(route)
 
-	message := &protocol.Message{
-		ID:   uint64(4),
-		Body: []byte("{id:id}"),
-		Time: 1405544146,
-		Path: "/fcm/marvin/fcm124/subscribe/stuff",
-	}
+	// expect the route unsubscribed
+	mocks.router.EXPECT().Unsubscribe(gomock.Any()).Do(func(route *router.Route) {
+		a.Equal("/topic", string(route.Path))
+		a.Equal("device01", route.Get("device_token"))
+	})
+
+	// expect the route subscribe with the new canonicalID from replaceSubscriptionWithCanonicalID
+	mocks.router.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
+		a.Equal("/topic", string(route.Path))
+		a.Equal("user01", route.Get("user_id"))
+		appid := route.Get("device_token")
+		a.Equal("fcmCanonicalID", appid)
+	})
+	// mocks.store.EXPECT().MaxMessageID(gomock.Any()).Return(uint64(4), nil)
+
+	response := new(gcm.Response)
+	err = json.Unmarshal([]byte(testutil.ErrorFCMResponse), response)
+	a.NoError(err)
+	mocks.gcmSender.EXPECT().Send(gomock.Any()).Return(response, nil)
 
 	// send the message into the subscription route channel
-	s.route.Deliver(message)
-	// expect that the Http Server gives us a malformed message
-	<-done
-
-	//wait before closing the FCM connector
-	time.Sleep(500 * time.Millisecond)
-
-	// stop the channel of the subscription
-	// s.route.Close()
-
-	err = g.Stop()
-	a.NoError(err)
-}
-
-func TestConnector_Subscribe(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
-
-	a := assert.New(t)
-	g, routerMock, _ := testSimpleFCM(t, true)
-
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
-		a.Equal("/baskets", string(route.Path))
-		a.Equal("user1", route.Get(userIDKey))
-		a.Equal("fcm1", route.Get(applicationIDKey))
+	route.Deliver(&protocol.Message{
+		ID:   uint64(4),
+		Path: "/topic",
+		Body: []byte("{id:id}"),
 	})
 
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
-		a.Equal("/baskets", string(route.Path))
-		a.Equal("user2", route.Get(userIDKey))
-		a.Equal("fcm2", route.Get(applicationIDKey))
-	})
+	// wait before closing the FCM connector
+	time.Sleep(100 * time.Millisecond)
 
-	postSubscription(t, g, "user1", "fcm1", "baskets")
-	a.Equal(len(g.subscriptions), 1)
-
-	postSubscription(t, g, "user2", "fcm2", "baskets")
-	a.Equal(len(g.subscriptions), 2)
-}
-
-func TestConnector_RetrieveNoSubscriptions(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
-	a := assert.New(t)
-
-	g, _, _ := testSimpleFCM(t, true)
-
-	w := httptest.NewRecorder()
-	u := fmt.Sprintf("http://localhost/fcm/%s/%s/subscribe/", "user01", "fcm01")
-	req, err := http.NewRequest(http.MethodGet, u, nil)
+	err = fcm.Stop()
 	a.NoError(err)
-
-	g.ServeHTTP(w, req)
-	a.Equal(http.StatusOK, w.Code)
-	var b bytes.Buffer
-	err = json.NewEncoder(&b).Encode([]string{})
-	a.NoError(err)
-	a.Equal(b.String(), w.Body.String())
-}
-
-func TestConnector_RetrieveSubscriptions(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
-	a := assert.New(t)
-
-	g, routerMock, _ := testSimpleFCM(t, true)
-
-	routerMock.EXPECT().Subscribe(gomock.Any())
-	routerMock.EXPECT().Subscribe(gomock.Any())
-
-	w := httptest.NewRecorder()
-	u := fmt.Sprintf("http://localhost/fcm/%s/%s/subscribe/%s", "user01", "fcm01", "test")
-
-	//subscribe first user
-	req, err := http.NewRequest(http.MethodPost, u, nil)
-	a.NoError(err)
-	g.ServeHTTP(w, req)
-
-	//subscribe second user
-	w = httptest.NewRecorder()
-	u2 := fmt.Sprintf("http://localhost/fcm/%s/%s/subscribe/%s", "user01", "fcm01", "test2")
-	req, err = http.NewRequest(http.MethodPost, u2, nil)
-	a.NoError(err)
-	g.ServeHTTP(w, req)
-	a.Equal(http.StatusOK, w.Code)
-
-	// retrieve all subscriptions
-	w = httptest.NewRecorder()
-	u3 := fmt.Sprintf("http://localhost/fcm/%s/%s/subscribe/", "user01", "fcm01")
-	req, err = http.NewRequest(http.MethodGet, u3, nil)
-	a.NoError(err)
-	g.ServeHTTP(w, req)
-	a.Equal(http.StatusOK, w.Code)
-
-	var b bytes.Buffer
-	expTopics := []string{"test2", "test"}
-	sort.Strings(expTopics)
-	err = json.NewEncoder(&b).Encode(expTopics)
-	a.NoError(err)
-	a.JSONEq(b.String(), w.Body.String())
-}
-
-func TestConnector_Unsubscribe(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
-
-	a := assert.New(t)
-	g, routerMock, _ := testSimpleFCM(t, true)
-	var deletedRoute *router.Route
-
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
-		deletedRoute = route
-		a.Equal("/baskets", string(route.Path))
-		a.Equal("user1", route.Get(userIDKey))
-		a.Equal("fcm1", route.Get(applicationIDKey))
-
-	})
-
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
-		a.Equal("/baskets", string(route.Path))
-		a.Equal("user2", route.Get(userIDKey))
-		a.Equal("fcm2", route.Get(applicationIDKey))
-	})
-
-	postSubscription(t, g, "user1", "fcm1", "baskets")
-	a.Equal(len(g.subscriptions), 1)
-
-	postSubscription(t, g, "user2", "fcm2", "baskets")
-	a.Equal(len(g.subscriptions), 2)
-
-	routerMock.EXPECT().Unsubscribe(deletedRoute)
-
-	deleteSubscription(t, g, "user1", "fcm1", "baskets")
-	a.Equal(len(g.subscriptions), 1)
-
-	remainingKey := composeSubscriptionKey("/baskets", "user2", "fcm2")
-
-	a.Equal("user2", g.subscriptions[remainingKey].route.Get(userIDKey))
-	a.Equal("fcm2", g.subscriptions[remainingKey].route.Get(applicationIDKey))
-	a.Equal("/baskets", string(g.subscriptions[remainingKey].route.Path))
-}
-
-func TestConnector_SubscriptionExists(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
-	a := assert.New(t)
-
-	g, routerMock, _ := testSimpleFCM(t, true)
-
-	routerMock.EXPECT().Subscribe(gomock.Any())
-
-	w := httptest.NewRecorder()
-	u := fmt.Sprintf("http://localhost/fcm/%s/%s/subscribe/%s", "user01", "fcm01", "/test")
-
-	req, err := http.NewRequest(http.MethodPost, u, nil)
-	a.NoError(err)
-
-	g.ServeHTTP(w, req)
-	w = httptest.NewRecorder()
-	g.ServeHTTP(w, req)
-
-	a.Equal(http.StatusOK, w.Code)
-	a.Equal("{\"error\":\"subscription already exists\"}", w.Body.String())
 }
 
 func TestFCMFormatMessage(t *testing.T) {
-	mockCtrl, finish := testutil.NewMockCtrl(t)
+	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
 	a := assert.New(t)
 
 	var subRoute *router.Route
 
-	connector, routerMock, _ := testSimpleFCM(t, false)
-	fcmSenderMock := NewMockSender(mockCtrl)
-	connector.Sender = fcmSenderMock
-	connector.Start()
-	defer connector.Stop()
+	fcm, mocks := testFCM(t, false)
+	fcm.Start()
+	defer fcm.Stop()
 	time.Sleep(50 * time.Millisecond)
 
-	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) (*router.Route, error) {
+	mocks.router.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) (*router.Route, error) {
 		subRoute = route
 		return route, nil
 	})
 
-	postSubscription(t, connector, "user01", "device01", "topic")
+	postSubscription(t, fcm, "user01", "device01", "topic")
+	time.Sleep(100 * time.Millisecond)
 
 	// send a fully formated GCM message
 	m := &protocol.Message{
@@ -478,7 +152,7 @@ func TestFCMFormatMessage(t *testing.T) {
 
 	doneC := make(chan bool)
 
-	fcmSenderMock.EXPECT().Send(gomock.Any()).Do(func(m *gcm.Message) (*gcm.Response, error) {
+	mocks.gcmSender.EXPECT().Send(gomock.Any()).Do(func(m *gcm.Message) (*gcm.Response, error) {
 		a.NotNil(m.Notification)
 		a.Equal("TEST", m.Notification.Title)
 		a.Equal("notification body", m.Notification.Body)
@@ -510,7 +184,7 @@ func TestFCMFormatMessage(t *testing.T) {
 		Body: []byte(`plain body`),
 	}
 
-	fcmSenderMock.EXPECT().Send(gomock.Any()).Do(func(m *gcm.Message) (*gcm.Response, error) {
+	mocks.gcmSender.EXPECT().Send(gomock.Any()).Do(func(m *gcm.Message) (*gcm.Response, error) {
 		a.Nil(m.Notification)
 
 		a.NotNil(m.Data)
@@ -528,51 +202,41 @@ func TestFCMFormatMessage(t *testing.T) {
 	}
 }
 
-func testFCMResponse(t *testing.T, jsonResponse string) (*Connector, *MockRouter, chan bool) {
-	g, routerMock, _ := testSimpleFCM(t, false)
+func testFCM(t *testing.T, mockStore bool) (connector.ReactiveConnector, *mocks) {
+	mcks := new(mocks)
 
-	err := g.Start()
-	assert.NoError(t, err)
+	mcks.router = NewMockRouter(testutil.MockCtrl)
+	mcks.router.EXPECT().Cluster().Return(nil).AnyTimes()
 
-	done := make(chan bool)
-	// return err
-	mockSender := testutil.CreateFcmSender(
-		testutil.CreateRoundTripperWithJsonResponse(http.StatusOK, jsonResponse, done))
-	g.Sender = mockSender
-	return g, routerMock, done
-}
+	kvstore := kvstore.NewMemoryKVStore()
+	mcks.router.EXPECT().KVStore().Return(kvstore, nil).AnyTimes()
 
-func testSimpleFCM(t *testing.T, mockStore bool) (*Connector, *MockRouter, *MockMessageStore) {
-	routerMock := NewMockRouter(testutil.MockCtrl)
-	routerMock.EXPECT().Cluster().Return(nil)
-	kvStore := kvstore.NewMemoryKVStore()
-	routerMock.EXPECT().KVStore().Return(kvStore, nil)
-
-	key := "testApi"
+	key := "TEST-API-KEY"
 	nWorkers := 1
 	endpoint := ""
-	g, err := New(
-		routerMock,
-		"/fcm/",
-		Config{
-			APIKey:   &key,
-			Workers:  &nWorkers,
-			Endpoint: &endpoint,
-		})
+	prefix := "/fcm/"
+	conn, err := New(mcks.router, Config{
+		APIKey:   &key,
+		Workers:  &nWorkers,
+		Endpoint: &endpoint,
+		Prefix:   &prefix,
+	})
 	assert.NoError(t, err)
 
-	var storeMock *MockMessageStore
+	mcks.gcmSender = NewMockSender(testutil.MockCtrl)
+	conn.(*fcm).sender.gcmSender = mcks.gcmSender
+
 	if mockStore {
-		storeMock = NewMockMessageStore(testutil.MockCtrl)
-		routerMock.EXPECT().MessageStore().Return(storeMock, nil).AnyTimes()
+		mcks.store = NewMockMessageStore(testutil.MockCtrl)
+		mcks.router.EXPECT().MessageStore().Return(mcks.store, nil).AnyTimes()
 	}
 
-	return g, routerMock, storeMock
+	return conn, mcks
 }
 
-func postSubscription(t *testing.T, fcmConn *Connector, userID, gcmID, topic string) {
+func postSubscription(t *testing.T, fcmConn connector.ReactiveConnector, userID, gcmID, topic string) {
 	a := assert.New(t)
-	u := fmt.Sprintf("http://localhost/fcm/%s/%s/subscribe/%s", userID, gcmID, topic)
+	u := fmt.Sprintf("http://localhost/fcm/%s/%s/%s", gcmID, userID, topic)
 	req, err := http.NewRequest(http.MethodPost, u, nil)
 	a.NoError(err)
 	w := httptest.NewRecorder()
@@ -582,9 +246,9 @@ func postSubscription(t *testing.T, fcmConn *Connector, userID, gcmID, topic str
 	a.Equal(fmt.Sprintf(`{"subscribed":"/%s"}`, topic), string(w.Body.Bytes()))
 }
 
-func deleteSubscription(t *testing.T, fcmConn *Connector, userID, gcmID, topic string) {
+func deleteSubscription(t *testing.T, fcmConn connector.ReactiveConnector, userID, gcmID, topic string) {
 	a := assert.New(t)
-	u := fmt.Sprintf("http://localhost/fcm/%s/%s/subscribe/%s", userID, gcmID, topic)
+	u := fmt.Sprintf("http://localhost/fcm/%s/%s/%s", gcmID, userID, topic)
 	req, err := http.NewRequest(http.MethodDelete, u, nil)
 	a.NoError(err)
 	w := httptest.NewRecorder()

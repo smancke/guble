@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
@@ -114,7 +115,6 @@ func (s *subscriber) Loop(ctx context.Context, q Queue) error {
 		opened bool = true
 		m      *protocol.Message
 	)
-
 	sCtx, cancel := context.WithCancel(ctx)
 	s.cancel = cancel
 	defer func() { s.cancel = nil }()
@@ -127,6 +127,11 @@ func (s *subscriber) Loop(ctx context.Context, q Queue) error {
 			}
 			q.Push(NewRequest(s, m))
 		case <-sCtx.Done():
+			// If the parent context is still running then only this subscriber context
+			// has been cancelled
+			if ctx.Err() == nil {
+				return sCtx.Err()
+			}
 			return nil
 		}
 	}
@@ -153,8 +158,12 @@ func GenerateKey(topic string, params map[string]string) string {
 	// compute the key from params
 	h := sha1.New()
 	io.WriteString(h, topic)
-	for k, v := range params {
-		io.WriteString(h, fmt.Sprintf("%s:%s", k, v))
+	// compute the hash with ordered params keys
+	keys := make([]string, 0, len(params))
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		io.WriteString(h, fmt.Sprintf("%s:%s", k, params[k]))
 	}
 	sum := h.Sum(nil)
 	return hex.EncodeToString(sum[:])

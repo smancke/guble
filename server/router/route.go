@@ -3,13 +3,14 @@ package router
 import (
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/store"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/store"
 )
 
 var (
