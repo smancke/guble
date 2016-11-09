@@ -20,7 +20,6 @@ import (
 )
 
 var (
-	testTopic            = "/path"
 	testHttpPort         = 11000
 	timeoutForOneMessage = 50 * time.Millisecond
 )

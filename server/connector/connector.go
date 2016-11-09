@@ -88,7 +88,7 @@ func NewConnector(router router.Router, sender Sender, config Config) (Connector
 		return nil, err
 	}
 
-	if config.Workers == 0 {
+	if config.Workers <= 0 {
 		config.Workers = DefaultWorkers
 	}
 
@@ -106,15 +106,15 @@ func NewConnector(router router.Router, sender Sender, config Config) (Connector
 }
 
 func (c *connector) initMuxRouter() {
-	mux := mux.NewRouter()
+	muxRouter := mux.NewRouter()
 
-	baseRouter := mux.PathPrefix(c.GetPrefix()).Subrouter()
+	baseRouter := muxRouter.PathPrefix(c.GetPrefix()).Subrouter()
 	baseRouter.Methods("GET").HandlerFunc(c.GetList)
 
 	subRouter := baseRouter.Path(c.config.URLPattern).Subrouter()
 	subRouter.Methods("POST").HandlerFunc(c.Post)
 	subRouter.Methods("DELETE").HandlerFunc(c.Delete)
-	c.mux = mux
+	c.mux = muxRouter
 }
 
 func (c *connector) ServeHTTP(w http.ResponseWriter, req *http.Request) {
