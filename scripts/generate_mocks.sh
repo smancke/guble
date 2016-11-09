@@ -138,6 +138,10 @@ $MOCKGEN -self_package server -package server \
       github.com/smancke/guble/server/store \
       MessageStore
 
+$MOCKGEN -package server \
+      -destination server/mocks_apns_pusher_gen_test.go \
+      github.com/smancke/guble/server/apns \
+      Pusher
 
 # server/auth mocks
 $MOCKGEN -self_package auth -package auth \

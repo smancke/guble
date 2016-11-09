@@ -42,7 +42,7 @@ func TestConn_HandleResponseOnSendError(t *testing.T) {
 	a := assert.New(t)
 
 	//given
-	c := newAPNSConnector(t)
+	c, _ := newAPNSConnector(t)
 	mRequest := NewMockRequest(testutil.MockCtrl)
 	e := errors.New("A Sender error")
 
@@ -59,10 +59,15 @@ func TestConn_HandleResponse(t *testing.T) {
 	a := assert.New(t)
 
 	//given
-	c := newAPNSConnector(t)
+	c, mKVS := newAPNSConnector(t)
 
 	mSubscriber := NewMockSubscriber(testutil.MockCtrl)
 	mSubscriber.EXPECT().SetLastID(gomock.Any())
+	mSubscriber.EXPECT().Key().Return("key").AnyTimes()
+	mSubscriber.EXPECT().Encode().Return([]byte("{}"), nil).AnyTimes()
+	mKVS.EXPECT().Put(schema, "key", []byte("{}")).Times(2)
+
+	c.Manager().Add(mSubscriber)
 
 	message := &protocol.Message{
 		ID: 42,
@@ -89,7 +94,7 @@ func TestNew_HandleResponseHandleSubscriber(t *testing.T) {
 	a := assert.New(t)
 
 	//given
-	c := newAPNSConnector(t)
+	c, mKVS := newAPNSConnector(t)
 
 	removeForReasons := []string{
 		apns2.ReasonMissingDeviceToken,
@@ -104,7 +109,12 @@ func TestNew_HandleResponseHandleSubscriber(t *testing.T) {
 		mSubscriber := NewMockSubscriber(testutil.MockCtrl)
 		mSubscriber.EXPECT().SetLastID(gomock.Any())
 		mSubscriber.EXPECT().Cancel()
-		mSubscriber.EXPECT().Key().Return("key")
+		mSubscriber.EXPECT().Key().Return("key").AnyTimes()
+		mSubscriber.EXPECT().Encode().Return([]byte("{}"), nil).AnyTimes()
+		mKVS.EXPECT().Put(schema, "key", []byte("{}")).Times(2)
+		mKVS.EXPECT().Delete(schema, "key")
+
+		c.Manager().Add(mSubscriber)
 
 		mRequest := NewMockRequest(testutil.MockCtrl)
 		mRequest.EXPECT().Message().Return(message).AnyTimes()
@@ -130,7 +140,7 @@ func TestNew_HandleResponseDoNotHandleSubscriber(t *testing.T) {
 	a := assert.New(t)
 
 	//given
-	c := newAPNSConnector(t)
+	c, mKVS := newAPNSConnector(t)
 
 	noActionForReasons := []string{
 		apns2.ReasonPayloadEmpty,
@@ -158,8 +168,16 @@ func TestNew_HandleResponseDoNotHandleSubscriber(t *testing.T) {
 		message := &protocol.Message{
 			ID: 42,
 		}
+
 		mSubscriber := NewMockSubscriber(testutil.MockCtrl)
 		mSubscriber.EXPECT().SetLastID(gomock.Any())
+		mSubscriber.EXPECT().Key().Return("key").AnyTimes()
+		mSubscriber.EXPECT().Encode().Return([]byte("{}"), nil).AnyTimes()
+		mSubscriber.EXPECT().Cancel()
+		mKVS.EXPECT().Put(schema, "key", []byte("{}")).Times(2)
+		mKVS.EXPECT().Delete(schema, "key")
+
+		c.Manager().Add(mSubscriber)
 
 		mRequest := NewMockRequest(testutil.MockCtrl)
 		mRequest.EXPECT().Message().Return(message).AnyTimes()
@@ -176,19 +194,21 @@ func TestNew_HandleResponseDoNotHandleSubscriber(t *testing.T) {
 
 		//then
 		a.NoError(err)
+
+		c.Manager().Remove(mSubscriber)
 	}
 }
 
 func TestConn_Check(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
-	c := newAPNSConnector(t)
+	c, _ := newAPNSConnector(t)
 	assert.Nil(t, c.Check())
 }
 
-func newAPNSConnector(t *testing.T) connector.ReactiveConnector {
+func newAPNSConnector(t *testing.T) (c connector.ReactiveConnector, mKVS *MockKVStore) {
+	mKVS = NewMockKVStore(testutil.MockCtrl)
 	mRouter := NewMockRouter(testutil.MockCtrl)
-	mKVS := NewMockKVStore(testutil.MockCtrl)
 	mRouter.EXPECT().KVStore().Return(mKVS, nil).AnyTimes()
 	mSender := NewMockSender(testutil.MockCtrl)
 
@@ -202,5 +222,5 @@ func newAPNSConnector(t *testing.T) connector.ReactiveConnector {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, c)
-	return c
+	return
 }

@@ -1,6 +1,7 @@
 package apns
 
 import (
+	"errors"
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/payload"
 	"github.com/smancke/guble/server/connector"
@@ -9,7 +10,12 @@ import (
 
 const (
 	// deviceIDKey is the key name set on the route params to identify the application
-	deviceIDKey = "device_id"
+	deviceIDKey = "device_token"
+	userIDKey   = "user_id"
+)
+
+var (
+	errPusherInvalidParams = errors.New("Invalid parameters of APNS Pusher")
 )
 
 type sender struct {
@@ -23,13 +29,16 @@ func NewSender(config Config) (connector.Sender, error) {
 		logger.WithError(err).Error("APNS Pusher creation error")
 		return nil, err
 	}
-	return newSender(pusher, config)
+	return NewSenderUsingPusher(pusher, *config.AppTopic)
 }
 
-func newSender(pusher Pusher, config Config) (connector.Sender, error) {
+func NewSenderUsingPusher(pusher Pusher, appTopic string) (connector.Sender, error) {
+	if pusher == nil || appTopic == "" {
+		return nil, errPusherInvalidParams
+	}
 	return &sender{
 		client:   pusher,
-		appTopic: *config.AppTopic,
+		appTopic: appTopic,
 	}, nil
 }
 
