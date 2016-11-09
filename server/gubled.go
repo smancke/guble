@@ -150,11 +150,11 @@ var CreateModules = func(router router.Router) []interface{} {
 		if *Config.APNS.CertificateFileName == "" && Config.APNS.CertificateBytes == nil {
 			logger.Panic("The certificate (as filename or bytes) has to be provided when APNS is enabled")
 		}
-		if *Config.APNS.AppTopic == "" {
-			logger.Panic("The Mobile App Topic (usually the bundle-id) has to be provided when APNS is enabled")
-		}
 		if *Config.APNS.CertificatePassword == "" {
 			logger.Panic("A non-empty password has to be provided when APNS is enabled")
+		}
+		if *Config.APNS.AppTopic == "" {
+			logger.Panic("The Mobile App Topic (usually the bundle-id) has to be provided when APNS is enabled")
 		}
 		apnsSender, err := apns.NewSender(Config.APNS)
 		if err != nil {

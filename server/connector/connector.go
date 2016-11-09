@@ -256,7 +256,7 @@ func (c *connector) Run(s Subscriber) {
 
 	if provideErr != nil {
 		// TODO Bogdan Treat errors where a subscription provide fails
-		c.logger.WithField("error", err.Error()).Error("Route provide error")
+		c.logger.WithField("error", provideErr.Error()).Error("Route provide error")
 
 		// Router closed the route, try restart
 		if provideErr == router.ErrInvalidRoute {
