@@ -40,7 +40,7 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 			Name:       "apns",
 			Schema:     schema,
 			Prefix:     *config.Prefix,
-			URLPattern: fmt.Sprintf("/{device_token}/{user_id}/{%s:.*}", connector.TopicParam),
+			URLPattern: fmt.Sprintf("/{%s}/{%s}/{%s:.*}", deviceIDKey, userIDKey, connector.TopicParam),
 			Workers:    *config.Workers,
 		},
 	)
@@ -66,11 +66,10 @@ func (c *conn) HandleResponse(request connector.Request, responseIface interface
 		messageID := request.Message().ID
 		subscriber := request.Subscriber()
 		subscriber.SetLastID(messageID)
-
 		if err := c.Manager().Update(subscriber); err != nil {
+			logger.WithField("error", err.Error()).Error("Manager could not update subscription")
 			return err
 		}
-
 		if r.Sent() {
 			logger.WithField("id", r.ApnsID).Debug("APNS notification was successfully sent")
 			return nil

@@ -37,6 +37,11 @@ func NewMockCtrl(t *testing.T) (*gomock.Controller, func()) {
 	return MockCtrl, func() { MockCtrl.Finish() }
 }
 
+func NewMockBenchmarkCtrl(b *testing.B) (*gomock.Controller, func()) {
+	MockCtrl = gomock.NewController(b)
+	return MockCtrl, func() { MockCtrl.Finish() }
+}
+
 // EnableDebugForMethod enables debug-level output through the current test
 // Usage:
 //		testutil.EnableDebugForMethod()()
