@@ -27,6 +27,11 @@ type Sender interface {
 	Send(Request) (interface{}, error)
 }
 
+type SenderSetter interface {
+	Sender() Sender
+	SetSender(Sender)
+}
+
 type ResponseHandler interface {
 	// HandleResponse handles the response+error returned by the Sender
 	HandleResponse(Request, interface{}, error) error
@@ -46,6 +51,7 @@ type Connector interface {
 	service.Stopable
 	service.Endpoint
 	ResponseHandleSetter
+	SenderSetter
 	Runner
 	Manager() Manager
 }
@@ -302,4 +308,13 @@ func (c *connector) ResponseHandler() ResponseHandler {
 func (c *connector) SetResponseHandler(handler ResponseHandler) {
 	c.handler = handler
 	c.queue.SetResponseHandler(handler)
+}
+
+func (c *connector) Sender() Sender {
+	return c.sender
+}
+
+func (c *connector) SetSender(s Sender) {
+	c.sender = s
+	c.queue.SetSender(s)
 }

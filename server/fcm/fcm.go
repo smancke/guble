@@ -1,6 +1,7 @@
 package fcm
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/Bogh/gcm"
@@ -12,6 +13,10 @@ import (
 const (
 	// schema is the default database schema for FCM
 	schema = "fcm_registration"
+)
+
+var (
+	ErrInvalidSender = errors.New("Invalid FCM Sender.")
 )
 
 // Config is used for configuring the Firebase Cloud Messaging component.
@@ -28,13 +33,11 @@ type Config struct {
 type fcm struct {
 	Config
 	connector.Connector
-
-	sender *sender
+	// sender connector.Sender
 }
 
 // New creates a new *fcm and returns it as an connector.ReactiveConnector
-func New(router router.Router, config Config) (connector.ReactiveConnector, error) {
-	sender := newSender(*config.APIKey)
+func New(router router.Router, sender connector.Sender, config Config) (connector.ReactiveConnector, error) {
 	baseConn, err := connector.NewConnector(router, sender, connector.Config{
 		Name:       "fcm",
 		Schema:     schema,
@@ -47,7 +50,7 @@ func New(router router.Router, config Config) (connector.ReactiveConnector, erro
 		return nil, err
 	}
 
-	newConn := &fcm{config, baseConn, sender}
+	newConn := &fcm{config, baseConn}
 	newConn.SetResponseHandler(newConn)
 	return newConn, nil
 }
@@ -59,7 +62,11 @@ func (f *fcm) Check() error {
 	message := &gcm.Message{
 		To: "ABC",
 	}
-	_, err := f.sender.gcmSender.Send(message)
+	sender, ok := f.Sender().(*sender)
+	if !ok {
+		return ErrInvalidSender
+	}
+	_, err := sender.gcmSender.Send(message)
 	if err != nil {
 		logger.WithField("error", err.Error()).Error("error checking FCM connection")
 		return err

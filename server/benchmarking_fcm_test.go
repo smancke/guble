@@ -3,17 +3,18 @@ package server
 import (
 	"bytes"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/server/fcm"
-	"github.com/smancke/guble/testutil"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/client"
+	"github.com/smancke/guble/server/connector"
+	"github.com/smancke/guble/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 // FCM benchmarks
@@ -114,10 +115,10 @@ func (params *benchParams) throughputFCM() {
 
 	params.service = StartService()
 
-	var fcmConn *fcm.Connector
+	var fcmConn connector.ReactiveConnector
 	var ok bool
 	for _, iface := range params.service.ModulesSortedByStartOrder() {
-		fcmConn, ok = iface.(*fcm.Connector)
+		fcmConn, ok = iface.(connector.ReactiveConnector)
 		if ok {
 			break
 		}
@@ -127,8 +128,9 @@ func (params *benchParams) throughputFCM() {
 	}
 
 	params.receiveC = make(chan bool)
-	fcmConn.Sender = testutil.CreateFcmSender(
-		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, testutil.SuccessFCMResponse, params.receiveC, params.timeout))
+	sender, err := testutil.CreateFcmSender(testutil.SuccessFCMResponse, params.receiveC, params.timeout)
+	a.NoError(err)
+	fcmConn.SetSender(sender)
 
 	urlFormat := fmt.Sprintf("http://%s/fcm/%%d/gcmId%%d/subscribe/%%s", params.service.WebServer().GetAddr())
 	for i := 1; i <= params.subscriptions; i++ {

@@ -215,17 +215,18 @@ func testFCM(t *testing.T, mockStore bool) (connector.ReactiveConnector, *mocks)
 	nWorkers := 1
 	endpoint := ""
 	prefix := "/fcm/"
-	conn, err := New(mcks.router, Config{
+
+	mcks.gcmSender = NewMockSender(testutil.MockCtrl)
+	sender := NewSender(key)
+	sender.gcmSender = mcks.gcmSender
+
+	conn, err := New(mcks.router, sender, Config{
 		APIKey:   &key,
 		Workers:  &nWorkers,
 		Endpoint: &endpoint,
 		Prefix:   &prefix,
 	})
 	assert.NoError(t, err)
-
-	mcks.gcmSender = NewMockSender(testutil.MockCtrl)
-	conn.(*fcm).sender.gcmSender = mcks.gcmSender
-
 	if mockStore {
 		mcks.store = NewMockMessageStore(testutil.MockCtrl)
 		mcks.router.EXPECT().MessageStore().Return(mcks.store, nil).AnyTimes()

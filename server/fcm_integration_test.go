@@ -13,7 +13,7 @@ import (
 	"encoding/json"
 
 	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/server/fcm"
+	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
@@ -64,10 +64,10 @@ func TestFCMRestart(t *testing.T) {
 
 	assertMetrics(a, s, expectedValues{true, 0, 0, 0})
 
-	var fcmConn *fcm.Connector
+	var fcmConn connector.ReactiveConnector
 	var ok bool
 	for _, iface := range s.ModulesSortedByStartOrder() {
-		fcmConn, ok = iface.(*fcm.Connector)
+		fcmConn, ok = iface.(connector.ReactiveConnector)
 		if ok {
 			break
 		}
@@ -75,9 +75,9 @@ func TestFCMRestart(t *testing.T) {
 	a.True(ok, "There should be a module of type FCMConnector")
 
 	// add a high timeout so the messages are processed slow
-	fcmConn.Sender = testutil.CreateFcmSender(
-		testutil.CreateRoundTripperWithCountAndTimeout(
-			http.StatusOK, testutil.SuccessFCMResponse, receiveC, 10*time.Millisecond))
+	sender, err := testutil.CreateFcmSender(testutil.SuccessFCMResponse, receiveC, 10*time.Millisecond)
+	a.NoError(err)
+	fcmConn.SetSender(sender)
 
 	// create subscription on topic
 	subscriptionSetUp(t, s)
@@ -99,7 +99,6 @@ func TestFCMRestart(t *testing.T) {
 	}
 
 	assertMetrics(a, s, expectedValues{false, 1, 1, 1})
-
 	// restart the service
 	a.NoError(s.Stop())
 
@@ -130,6 +129,7 @@ func serviceSetUp(t *testing.T) (*service.Service, func()) {
 	*Config.MetricsEndpoint = "/admin/metrics"
 	*Config.FCM.Enabled = true
 	*Config.FCM.APIKey = "WILL BE OVERWRITTEN"
+	*Config.FCM.Prefix = "/fcm/"
 	*Config.FCM.Workers = 1 // use only one worker so we can control the number of messages that go to FCM
 	*Config.APNS.Enabled = false
 
@@ -158,7 +158,7 @@ func clientSetUp(t *testing.T, service *service.Service) client.Client {
 func subscriptionSetUp(t *testing.T, service *service.Service) {
 	a := assert.New(t)
 
-	urlFormat := fmt.Sprintf("http://%s/fcm/%%d/gcmId%%d/subscribe/%%s", service.WebServer().GetAddr())
+	urlFormat := fmt.Sprintf("http://%s/fcm/%%d/gcmId%%d/%%s", service.WebServer().GetAddr())
 	// create GCM subscription
 	response, errPost := http.Post(
 		fmt.Sprintf(urlFormat, 1, 1, strings.TrimPrefix(testTopic, "/")),

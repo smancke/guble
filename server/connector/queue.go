@@ -9,6 +9,7 @@ import (
 // Queue is an interface modeling a task-queue (it is started and more Requests can be pushed to it, an finally it is stopped).
 type Queue interface {
 	ResponseHandleSetter
+	SenderSetter
 
 	Start() error
 	Push(request Request) error
@@ -41,6 +42,14 @@ func (q *queue) ResponseHandler() ResponseHandler {
 	return q.responseHandler
 }
 
+func (q *queue) Sender() Sender {
+	return q.sender
+}
+
+func (q *queue) SetSender(s Sender) {
+	q.sender = s
+}
+
 func (q *queue) Start() error {
 	for i := 1; i <= q.nWorkers; i++ {
 		go q.worker(i)
@@ -50,8 +59,9 @@ func (q *queue) Start() error {
 
 func (q *queue) worker(i int) {
 	logger.WithField("worker", i).Debug("starting queue worker")
+	q.wg.Add(1)
+	defer q.wg.Done()
 	for request := range q.requestsC {
-		q.wg.Add(1)
 		response, err := q.sender.Send(request)
 		if q.responseHandler != nil {
 			err = q.responseHandler.HandleResponse(request, response, err)
@@ -63,11 +73,22 @@ func (q *queue) worker(i int) {
 				}).Error("Error handling connector response")
 			}
 		}
-		q.wg.Done()
 	}
 }
 
 func (q *queue) Push(request Request) error {
+	// recover if the channel been closed
+	defer func() {
+		if r := recover(); r != nil {
+			switch x := r.(type) {
+			case error:
+				logger.WithError(x).Error("Recovered error")
+			default:
+				panic(r)
+			}
+		}
+	}()
+
 	q.requestsC <- request
 	return nil
 }

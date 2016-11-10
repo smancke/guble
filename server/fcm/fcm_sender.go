@@ -24,7 +24,7 @@ type sender struct {
 	gcmSender gcm.Sender
 }
 
-func newSender(apiKey string) *sender {
+func NewSender(apiKey string) *sender {
 	return &sender{
 		gcmSender: gcm.NewSender(apiKey, sendRetries, sendTimeout),
 	}
