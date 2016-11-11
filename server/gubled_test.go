@@ -67,7 +67,7 @@ func TestFCMOnlyStartedIfEnabled(t *testing.T) {
 
 func containsFCMModule(modules []interface{}) bool {
 	for _, module := range modules {
-		if reflect.TypeOf(module).String() == "*fcm.Connector" {
+		if reflect.TypeOf(module).String() == "*fcm.fcm" {
 			return true
 		}
 	}
