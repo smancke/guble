@@ -3,9 +3,7 @@ package apns
 import (
 	"errors"
 	"github.com/sideshow/apns2"
-	"github.com/sideshow/apns2/payload"
 	"github.com/smancke/guble/server/connector"
-	"strings"
 )
 
 const (
@@ -45,28 +43,28 @@ func NewSenderUsingPusher(pusher Pusher, appTopic string) (connector.Sender, err
 func (s sender) Send(request connector.Request) (interface{}, error) {
 	route := request.Subscriber().Route()
 
-	//TODO Cosmin: Samsa should generate the Payload or the whole Notification, and JSON-serialize it into the guble-message Body.
-
-	//m := request.Message()
-	//n := &apns2.Notification{
-	//	Priority:    apns2.PriorityHigh,
-	//	Topic:       strings.TrimPrefix(string(s.route.Path), "/"),
-	//	DeviceToken: s.route.Get(applicationIDKey),
-	//	Payload:     m.Body,
-	//}
-
-	topic := strings.TrimPrefix(string(route.Path), "/")
 	n := &apns2.Notification{
 		Priority:    apns2.PriorityHigh,
 		Topic:       s.appTopic,
 		DeviceToken: route.Get(deviceIDKey),
-		Payload: payload.NewPayload().
-			AlertTitle("Title").
-			AlertBody("Body").
-			Custom("topic", topic).
-			Badge(1).
-			ContentAvailable(),
+		Payload:     request.Message().Body,
 	}
+
+	//TODO Cosmin: remove old code below
+
+	//topic := strings.TrimPrefix(string(route.Path), "/")
+	//n := &apns2.Notification{
+	//	Priority:    apns2.PriorityHigh,
+	//	Topic:       s.appTopic,
+	//	DeviceToken: route.Get(deviceIDKey),
+	//	Payload: payload.NewPayload().
+	//		AlertTitle("Title").
+	//		AlertBody("Body").
+	//		Custom("topic", topic).
+	//		Badge(1).
+	//		ContentAvailable(),
+	//}
+
 	logger.Debug("Trying to push a message to APNS")
 	return s.client.Push(n)
 }
