@@ -254,7 +254,7 @@ func createSubscriptions(t *testing.T, conn Connector, count int) {
 		a.NoError(err)
 		conn.ServeHTTP(recorder, r)
 		a.Equal(200, recorder.Code)
-		a.Equal(`{"subscribed":"topic"}`, recorder.Body.String())
+		a.Equal(`{"subscribed":"/topic"}`, recorder.Body.String())
 	}
 }
 
