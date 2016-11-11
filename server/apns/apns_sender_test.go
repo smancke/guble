@@ -61,11 +61,16 @@ func TestSender_Send(t *testing.T) {
 	}
 	route := router.NewRoute(routeConfig)
 
+	msg := &protocol.Message{
+		Body: []byte("{}"),
+	}
+
 	mSubscriber := NewMockSubscriber(testutil.MockCtrl)
 	mSubscriber.EXPECT().Route().Return(route)
 
 	mRequest := NewMockRequest(testutil.MockCtrl)
 	mRequest.EXPECT().Subscriber().Return(mSubscriber)
+	mRequest.EXPECT().Message().Return(msg)
 
 	mPusher := NewMockPusher(testutil.MockCtrl)
 	mPusher.EXPECT().Push(gomock.Any()).Return(nil, nil)
