@@ -41,30 +41,11 @@ func NewSenderUsingPusher(pusher Pusher, appTopic string) (connector.Sender, err
 }
 
 func (s sender) Send(request connector.Request) (interface{}, error) {
-	route := request.Subscriber().Route()
-
-	n := &apns2.Notification{
+	logger.Debug("Trying to push a message to APNS")
+	return s.client.Push(&apns2.Notification{
 		Priority:    apns2.PriorityHigh,
 		Topic:       s.appTopic,
-		DeviceToken: route.Get(deviceIDKey),
+		DeviceToken: request.Subscriber().Route().Get(deviceIDKey),
 		Payload:     request.Message().Body,
-	}
-
-	//TODO Cosmin: remove old code below
-
-	//topic := strings.TrimPrefix(string(route.Path), "/")
-	//n := &apns2.Notification{
-	//	Priority:    apns2.PriorityHigh,
-	//	Topic:       s.appTopic,
-	//	DeviceToken: route.Get(deviceIDKey),
-	//	Payload: payload.NewPayload().
-	//		AlertTitle("Title").
-	//		AlertBody("Body").
-	//		Custom("topic", topic).
-	//		Badge(1).
-	//		ContentAvailable(),
-	//}
-
-	logger.Debug("Trying to push a message to APNS")
-	return s.client.Push(n)
+	})
 }
