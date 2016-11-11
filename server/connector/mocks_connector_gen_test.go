@@ -63,6 +63,24 @@ func (_mr *_MockConnectorRecorder) ResponseHandler() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ResponseHandler")
 }
 
+func (_m *MockConnector) Run(_param0 Subscriber) {
+	_m.ctrl.Call(_m, "Run", _param0)
+}
+
+func (_mr *_MockConnectorRecorder) Run(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Run", arg0)
+}
+
+func (_m *MockConnector) Sender() Sender {
+	ret := _m.ctrl.Call(_m, "Sender")
+	ret0, _ := ret[0].(Sender)
+	return ret0
+}
+
+func (_mr *_MockConnectorRecorder) Sender() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Sender")
+}
+
 func (_m *MockConnector) ServeHTTP(_param0 http.ResponseWriter, _param1 *http.Request) {
 	_m.ctrl.Call(_m, "ServeHTTP", _param0, _param1)
 }
@@ -77,6 +95,14 @@ func (_m *MockConnector) SetResponseHandler(_param0 ResponseHandler) {
 
 func (_mr *_MockConnectorRecorder) SetResponseHandler(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetResponseHandler", arg0)
+}
+
+func (_m *MockConnector) SetSender(_param0 Sender) {
+	_m.ctrl.Call(_m, "SetSender", _param0)
+}
+
+func (_mr *_MockConnectorRecorder) SetSender(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetSender", arg0)
 }
 
 func (_m *MockConnector) Start() error {
@@ -315,12 +341,30 @@ func (_mr *_MockQueueRecorder) ResponseHandler() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ResponseHandler")
 }
 
+func (_m *MockQueue) Sender() Sender {
+	ret := _m.ctrl.Call(_m, "Sender")
+	ret0, _ := ret[0].(Sender)
+	return ret0
+}
+
+func (_mr *_MockQueueRecorder) Sender() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Sender")
+}
+
 func (_m *MockQueue) SetResponseHandler(_param0 ResponseHandler) {
 	_m.ctrl.Call(_m, "SetResponseHandler", _param0)
 }
 
 func (_mr *_MockQueueRecorder) SetResponseHandler(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetResponseHandler", arg0)
+}
+
+func (_m *MockQueue) SetSender(_param0 Sender) {
+	_m.ctrl.Call(_m, "SetSender", _param0)
+}
+
+func (_mr *_MockQueueRecorder) SetSender(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetSender", arg0)
 }
 
 func (_m *MockQueue) Start() error {

@@ -100,7 +100,7 @@ func TestConnector_GetErrorMessageFromFCM(t *testing.T) {
 	// mocks.store.EXPECT().MaxMessageID(gomock.Any()).Return(uint64(4), nil)
 
 	response := new(gcm.Response)
-	err = json.Unmarshal([]byte(testutil.ErrorFCMResponse), response)
+	err = json.Unmarshal([]byte(ErrorFCMResponse), response)
 	a.NoError(err)
 	mocks.gcmSender.EXPECT().Send(gomock.Any()).Return(response, nil)
 

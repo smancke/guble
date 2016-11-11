@@ -53,8 +53,8 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodGet {
 		log.WithField("url", r.URL.Path).Debug("GET")
+
 		topic, err := api.extractTopic(r.URL.Path, subscribersPrefix)
-		log.WithField("topic", topic).WithField("err", err).Debug("Extract")
 		if err != nil {
 			log.WithError(err).Error("Extracting topic failed")
 			if err == errNotFound {
@@ -64,10 +64,11 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Server error.", http.StatusInternalServerError)
 			return
 		}
+
 		resp, err := api.router.GetSubscribersForTopic(topic)
 		w.Header().Set("Content-Type", "application/json")
-		i, err := w.Write(resp)
-		log.WithField("noOfBytes", i).WithField("topic", topic).Debug("Wrote as response for GetSubscribersForTopic")
+
+		_, err = w.Write(resp)
 		if err != nil {
 			log.WithField("error", err.Error()).Error("Writing to byte stream failed")
 			http.Error(w, "Server error.", http.StatusInternalServerError)
@@ -80,11 +81,13 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Can not read body", http.StatusBadRequest)
 		return
 	}
+
 	topic, err := api.extractTopic(r.URL.Path, "/message")
 	if err != nil {
 		if err == errNotFound {
@@ -94,6 +97,7 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Server error.", http.StatusInternalServerError)
 		return
 	}
+
 	msg := &protocol.Message{
 		Path:          protocol.Path(topic),
 		Body:          body,

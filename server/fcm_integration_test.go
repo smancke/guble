@@ -14,6 +14,7 @@ import (
 
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/server/connector"
+	"github.com/smancke/guble/server/fcm"
 	"github.com/smancke/guble/server/service"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
@@ -54,6 +55,7 @@ type expectedValues struct {
 // Test that restarting the service continues to fetch messages from store
 // for a subscription from lastID
 func TestFCMRestart(t *testing.T) {
+	// defer testutil.EnableDebugForMethod()()
 	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	a := assert.New(t)
@@ -75,7 +77,7 @@ func TestFCMRestart(t *testing.T) {
 	a.True(ok, "There should be a module of type FCMConnector")
 
 	// add a high timeout so the messages are processed slow
-	sender, err := testutil.CreateFcmSender(testutil.SuccessFCMResponse, receiveC, 10*time.Millisecond)
+	sender, err := fcm.CreateFcmSender(fcm.SuccessFCMResponse, receiveC, 10*time.Millisecond)
 	a.NoError(err)
 	fcmConn.SetSender(sender)
 
@@ -99,8 +101,15 @@ func TestFCMRestart(t *testing.T) {
 	}
 
 	assertMetrics(a, s, expectedValues{false, 1, 1, 1})
+	close(receiveC)
 	// restart the service
 	a.NoError(s.Stop())
+
+	// remake the sender
+	receiveC = make(chan bool)
+	sender, err = fcm.CreateFcmSender(fcm.SuccessFCMResponse, receiveC, 10*time.Millisecond)
+	a.NoError(err)
+	fcmConn.SetSender(sender)
 
 	time.Sleep(50 * time.Millisecond)
 	testutil.ResetDefaultRegistryHealthCheck()
@@ -109,7 +118,7 @@ func TestFCMRestart(t *testing.T) {
 	//TODO Cosmin Bogdan add 2 calls to assertMetrics before and after the next block
 
 	// read the other 2 messages
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 1; i++ {
 		select {
 		case <-receiveC:
 		case <-time.After(2 * timeoutForOneMessage):

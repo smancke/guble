@@ -4,13 +4,13 @@
 package apns
 
 import (
-	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/auth"
-	"github.com/smancke/guble/server/cluster"
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/server/store"
+	gomock "github.com/golang/mock/gomock"
+	protocol "github.com/smancke/guble/protocol"
+	auth "github.com/smancke/guble/server/auth"
+	cluster "github.com/smancke/guble/server/cluster"
+	kvstore "github.com/smancke/guble/server/kvstore"
+	router "github.com/smancke/guble/server/router"
+	store "github.com/smancke/guble/server/store"
 )
 
 // Mock of Router interface

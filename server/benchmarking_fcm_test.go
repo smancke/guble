@@ -13,6 +13,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/client"
 	"github.com/smancke/guble/server/connector"
+	"github.com/smancke/guble/server/fcm"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -128,7 +129,7 @@ func (params *benchParams) throughputFCM() {
 	}
 
 	params.receiveC = make(chan bool)
-	sender, err := testutil.CreateFcmSender(testutil.SuccessFCMResponse, params.receiveC, params.timeout)
+	sender, err := fcm.CreateFcmSender(fcm.SuccessFCMResponse, params.receiveC, params.timeout)
 	a.NoError(err)
 	fcmConn.SetSender(sender)
 

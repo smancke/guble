@@ -27,9 +27,8 @@ type queue struct {
 // NewQueue returns a new Queue (not started).
 func NewQueue(sender Sender, nWorkers int) Queue {
 	q := &queue{
-		sender:    sender,
-		requestsC: make(chan Request),
-		nWorkers:  nWorkers,
+		sender:   sender,
+		nWorkers: nWorkers,
 	}
 	return q
 }
@@ -51,6 +50,8 @@ func (q *queue) SetSender(s Sender) {
 }
 
 func (q *queue) Start() error {
+	// make sure the channel opened on start
+	q.requestsC = make(chan Request)
 	for i := 1; i <= q.nWorkers; i++ {
 		go q.worker(i)
 	}
@@ -59,9 +60,8 @@ func (q *queue) Start() error {
 
 func (q *queue) worker(i int) {
 	logger.WithField("worker", i).Debug("starting queue worker")
-	q.wg.Add(1)
-	defer q.wg.Done()
 	for request := range q.requestsC {
+		q.wg.Add(1)
 		response, err := q.sender.Send(request)
 		if q.responseHandler != nil {
 			err = q.responseHandler.HandleResponse(request, response, err)
@@ -73,6 +73,7 @@ func (q *queue) worker(i int) {
 				}).Error("Error handling connector response")
 			}
 		}
+		defer q.wg.Done()
 	}
 }
 

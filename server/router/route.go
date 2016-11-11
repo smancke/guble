@@ -31,8 +31,7 @@ type Route struct {
 	// queue that will store the messages in correct order.
 	// The queue can have a settable size;
 	// if it reaches the capacity the route is closed.
-	queue         *queue
-	prevQueueSize int
+	queue *queue
 
 	closeC chan struct{}
 

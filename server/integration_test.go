@@ -10,42 +10,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/smancke/guble/restclient"
-	"github.com/smancke/guble/testutil"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/smancke/guble/restclient"
+	"github.com/smancke/guble/testutil"
 )
-
-// func TestSimplePingPong(t *testing.T) {
-// 	defer testutil.ResetDefaultRegistryHealthCheck()
-// 	testutil.ResetDefaultRegistryHealthCheck()
-
-// 	_, client1, client2, tearDown := initServerAndClients(t)
-// 	defer tearDown()
-
-// 	client1.Subscribe("/foo")
-// 	expectStatusMessage(t, client1, protocol.SUCCESS_SUBSCRIBED_TO, "/foo")
-
-// 	client2.Send("/foo 42", "Hello", `{"key": "value"}`)
-// 	expectStatusMessage(t, client2, protocol.SUCCESS_SEND, "42")
-
-// 	select {
-// 	case msg := <-client1.Messages():
-// 		assert.Equal(t, "Hello", msg.BodyAsString())
-// 		assert.Equal(t, "user2", msg.UserID)
-// 		assert.Equal(t, `{"key": "value"}`, msg.HeaderJSON)
-// 		assert.Equal(t, uint64(1), msg.ID)
-// 	case msg := <-client1.Errors():
-// 		t.Logf("received error: %v", msg)
-// 		t.FailNow()
-// 	case <-time.After(time.Millisecond * 100):
-// 		t.Log("no message received")
-// 		t.FailNow()
-// 	}
-// }
 
 func initServerAndClients(t *testing.T) (*service.Service, client.Client, client.Client, func()) {
 	*Config.HttpListen = "localhost:0"
@@ -104,8 +77,8 @@ func checkConnectedNotificationJSON(t *testing.T, user string, connectedJSON str
 
 //Used only for test and unmarshal of the json response
 type Subscriber struct {
-	DeviceID string `json:"device_id"`
-	UserID   string `json:"user_id"`
+	DeviceToken string `json:"device_token"`
+	UserID      string `json:"user_id"`
 }
 
 func TestSubscribersIntegration(t *testing.T) {
@@ -128,8 +101,8 @@ func TestSubscribersIntegration(t *testing.T) {
 	err = json.Unmarshal(content, &routeParams)
 	a.Equal(4, len(routeParams), "Should have 4 subscribers")
 	for i, rp := range routeParams {
-		a.Equal(fmt.Sprintf("gcmId%d", i), rp.DeviceID)
-		a.Equal(fmt.Sprintf("%d", i), rp.UserID)
+		a.Equal(fmt.Sprintf("gcmId%d", i), rp.DeviceToken)
+		a.Equal(fmt.Sprintf("user%d", i), rp.UserID)
 	}
 	a.NoError(err)
 }
@@ -139,7 +112,7 @@ func subscribeMultipleClients(t *testing.T, service *service.Service, noOfClient
 
 	// create FCM subscription for topic
 	for i := 0; i < noOfClients; i++ {
-		urlFormat := fmt.Sprintf("http://%s/fcm/%%d/gcmId%%d/subscribe/%%s", service.WebServer().GetAddr())
+		urlFormat := fmt.Sprintf("http://%s/fcm/gcmId%%d/user%%d/%%s", service.WebServer().GetAddr())
 		url := fmt.Sprintf(urlFormat, i, i, strings.TrimPrefix(testTopic, "/"))
 		response, errPost := http.Post(
 			url,

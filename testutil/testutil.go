@@ -1,14 +1,11 @@
 package testutil
 
 import (
-	"encoding/json"
 	_ "net/http/pprof"
 
-	"github.com/Bogh/gcm"
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/health"
 	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/server/connector"
 	"github.com/stretchr/testify/assert"
 
 	"net/http"
@@ -81,60 +78,6 @@ func ExpectPanic(t *testing.T) {
 // ResetDefaultRegistryHealthCheck resets the existing registry containing health-checks
 func ResetDefaultRegistryHealthCheck() {
 	health.DefaultRegistry = health.NewRegistry()
-}
-
-const (
-	SuccessFCMResponse = `{
-	   "multicast_id":3,
-	   "success":1,
-	   "failure":0,
-	   "canonical_ids":0,
-	   "results":[
-	      {
-	         "message_id":"da",
-	         "registration_id":"rId",
-	         "error":""
-	      }
-	   ]
-	}`
-
-	ErrorFCMResponse = `{
-	   "multicast_id":3,
-	   "success":0,
-	   "failure":1,
-       "error":"InvalidRegistration",
-	   "canonical_ids":5,
-	   "results":[
-	      {
-	         "message_id":"err",
-	         "registration_id":"fcmCanonicalID",
-	         "error":"InvalidRegistration"
-	      }
-	   ]
-	}`
-)
-
-type FCMSender func(request connector.Request) (interface{}, error)
-
-func (fcms FCMSender) Send(request connector.Request) (interface{}, error) {
-	return fcms(request)
-}
-
-func CreateFcmSender(body string, doneC chan bool, to time.Duration) (connector.Sender, error) {
-	response := new(gcm.Response)
-
-	err := json.Unmarshal([]byte(body), response)
-	if err != nil {
-		return nil, err
-	}
-
-	return FCMSender(func(request connector.Request) (interface{}, error) {
-		defer func() {
-			doneC <- true
-		}()
-		<-time.After(to)
-		return response, nil
-	}), nil
 }
 
 //SkipIfShort skips a test if the `-short` flag is given to `go test`

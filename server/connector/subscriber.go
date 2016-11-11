@@ -125,6 +125,7 @@ func (s *subscriber) Loop(ctx context.Context, q Queue) error {
 			if !opened {
 				break
 			}
+
 			q.Push(NewRequest(s, m))
 		case <-sCtx.Done():
 			// If the parent context is still running then only this subscriber context
@@ -158,8 +159,12 @@ func GenerateKey(topic string, params map[string]string) string {
 	// compute the key from params
 	h := sha1.New()
 	io.WriteString(h, topic)
+
 	// compute the hash with ordered params keys
 	keys := make([]string, 0, len(params))
+	for k := range params {
+		keys = append(keys, k)
+	}
 	sort.Strings(keys)
 
 	for _, k := range keys {

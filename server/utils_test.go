@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/testutil"
+	"github.com/smancke/guble/server/fcm"
 
 	"errors"
 
@@ -161,7 +161,7 @@ type TestFCM struct {
 func (tfcm *TestFCM) setupRoundTripper(timeout time.Duration, bufferSize int, response string) {
 	tfcm.receiveC = make(chan bool, bufferSize)
 	tfcm.timeout = timeout
-	sender, err := testutil.CreateFcmSender(response, tfcm.receiveC, timeout)
+	sender, err := fcm.CreateFcmSender(response, tfcm.receiveC, timeout)
 	assert.NoError(tfcm.t, err)
 	tfcm.Connector.SetSender(sender)
 	// start counting the received messages to FCM
