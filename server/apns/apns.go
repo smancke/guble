@@ -2,7 +2,6 @@ package apns
 
 import (
 	"fmt"
-
 	"github.com/sideshow/apns2"
 	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/router"
