@@ -1,13 +1,15 @@
 package connector
 
 import (
-	log "github.com/Sirupsen/logrus"
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // Queue is an interface modeling a task-queue (it is started and more Requests can be pushed to it, an finally it is stopped).
 type Queue interface {
 	ResponseHandleSetter
+	SenderSetter
 
 	Start() error
 	Push(request Request) error
@@ -25,9 +27,8 @@ type queue struct {
 // NewQueue returns a new Queue (not started).
 func NewQueue(sender Sender, nWorkers int) Queue {
 	q := &queue{
-		sender:    sender,
-		requestsC: make(chan Request),
-		nWorkers:  nWorkers,
+		sender:   sender,
+		nWorkers: nWorkers,
 	}
 	return q
 }
@@ -40,7 +41,17 @@ func (q *queue) ResponseHandler() ResponseHandler {
 	return q.responseHandler
 }
 
+func (q *queue) Sender() Sender {
+	return q.sender
+}
+
+func (q *queue) SetSender(s Sender) {
+	q.sender = s
+}
+
 func (q *queue) Start() error {
+	// make sure the channel opened on start
+	q.requestsC = make(chan Request)
 	for i := 1; i <= q.nWorkers; i++ {
 		go q.worker(i)
 	}
@@ -67,6 +78,18 @@ func (q *queue) worker(i int) {
 }
 
 func (q *queue) Push(request Request) error {
+	// recover if the channel been closed
+	defer func() {
+		if r := recover(); r != nil {
+			switch x := r.(type) {
+			case error:
+				logger.WithError(x).Error("Recovered error")
+			default:
+				panic(r)
+			}
+		}
+	}()
+
 	q.requestsC <- request
 	return nil
 }

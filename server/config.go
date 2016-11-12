@@ -149,6 +149,10 @@ var (
 				Default(defaultFCMEndpoint).
 				Envar("GUBLE_FCM_ENDPOINT").
 				String(),
+			Prefix: kingpin.Flag("fcm-prefix", "The FCM prefix / endpoint").
+				Envar("GUBLE_FCM_PREFIX").
+				Default("/fcm/").
+				String(),
 		},
 		APNS: apns.Config{
 			Enabled: kingpin.Flag("apns", "Enable the APNS connector (by default, in Development mode)").

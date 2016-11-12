@@ -4,8 +4,8 @@
 package apns
 
 import (
-	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/server/connector"
+	gomock "github.com/golang/mock/gomock"
+	connector "github.com/smancke/guble/server/connector"
 )
 
 // Mock of Sender interface

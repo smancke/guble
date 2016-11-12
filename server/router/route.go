@@ -3,13 +3,14 @@ package router
 import (
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/store"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/store"
 )
 
 var (
@@ -30,8 +31,7 @@ type Route struct {
 	// queue that will store the messages in correct order.
 	// The queue can have a settable size;
 	// if it reaches the capacity the route is closed.
-	queue         *queue
-	prevQueueSize int
+	queue *queue
 
 	closeC chan struct{}
 

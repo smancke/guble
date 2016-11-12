@@ -3,16 +3,13 @@ package testutil
 import (
 	_ "net/http/pprof"
 
-	"github.com/Bogh/gcm"
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/health"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
-	"io/ioutil"
 	"net/http"
 	"os"
-	"strings"
 	"testing"
 	"time"
 )
@@ -81,109 +78,6 @@ func ExpectPanic(t *testing.T) {
 // ResetDefaultRegistryHealthCheck resets the existing registry containing health-checks
 func ResetDefaultRegistryHealthCheck() {
 	health.DefaultRegistry = health.NewRegistry()
-}
-
-const (
-	SuccessFCMResponse = `{
-	   "multicast_id":3,
-	   "success":1,
-	   "failure":0,
-	   "canonical_ids":0,
-	   "results":[
-	      {
-	         "message_id":"da",
-	         "registration_id":"rId",
-	         "error":""
-	      }
-	   ]
-	}`
-
-	ErrorFCMResponse = `{
-	   "multicast_id":3,
-	   "success":0,
-	   "failure":1,
-       "error":"InvalidRegistration",
-	   "canonical_ids":5,
-	   "results":[
-	      {
-	         "message_id":"err",
-	         "registration_id":"fcmCanonicalID",
-	         "error":"InvalidRegistration"
-	      }
-	   ]
-	}`
-)
-
-// RoundTripperFunc mocks/implements a http.RoundTripper in order to not send the test request to FCM.
-type RoundTripperFunc func(req *http.Request) *http.Response
-
-func (rt RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	log.WithFields(log.Fields{"module": "testing", "url_path": req.URL.Path}).Debug("Served request")
-	return rt(req), nil
-}
-
-func CreateFcmSender(rt RoundTripperFunc) gcm.Sender {
-	log.WithFields(log.Fields{
-		"module": "testing",
-	}).Debug("Create FCM sender")
-	httpClient := &http.Client{Transport: rt}
-
-	client := gcm.NewSender("1234", 0, 3*time.Second)
-	client.HTTPClient = httpClient
-
-	return client
-}
-
-func CreateRoundTripperWithJsonResponse(statusCode int, body string, doneC chan bool) RoundTripperFunc {
-	log.WithFields(log.Fields{"module": "testing"}).Debug("CreateRoundTripperWithJSONResponse")
-
-	return RoundTripperFunc(func(req *http.Request) *http.Response {
-		log.WithFields(log.Fields{"module": "testing", "url": req.URL.String()}).Debug("RoundTripperFunc")
-
-		if doneC != nil {
-			defer func() {
-				close(doneC)
-			}()
-		}
-		resp := responseBuilder(statusCode, body)
-		resp.Request = req
-		return resp
-	})
-}
-
-// CreateRoundTripperWithCountAndTimeout will mock the FCM API and will send each request as a count into a channel
-func CreateRoundTripperWithCountAndTimeout(statusCode int, body string, countC chan bool, to time.Duration) RoundTripperFunc {
-	log.WithFields(log.Fields{"module": "testing"}).Debug("CreateRoundTripperWithCount")
-	return RoundTripperFunc(func(req *http.Request) *http.Response {
-		defer func() {
-			select {
-			case countC <- true:
-			case <-time.After(10 * time.Millisecond):
-				return
-			}
-		}()
-		log.WithFields(log.Fields{"module": "testing", "url": req.URL.String()}).Debug("RoundTripperWithCountAndTimeout")
-
-		resp := responseBuilder(statusCode, body)
-		resp.Request = req
-		time.Sleep(to)
-		return resp
-	})
-}
-
-func responseBuilder(statusCode int, body string) *http.Response {
-	headers := make(http.Header)
-	headers.Add("Content-Type", "application/json")
-	log.WithFields(log.Fields{"status": statusCode}).Debug("Building GCM response")
-	return &http.Response{
-		Proto:      "HTTP/1.1",
-		ProtoMajor: 1,
-		ProtoMinor: 1,
-		Header:     headers,
-		Body:       ioutil.NopCloser(strings.NewReader(body)),
-		// Request:    req,
-		StatusCode: statusCode,
-	}
 }
 
 //SkipIfShort skips a test if the `-short` flag is given to `go test`

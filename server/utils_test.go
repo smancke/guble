@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/fcm"
-	"github.com/smancke/guble/testutil"
 
 	"errors"
 
@@ -99,11 +99,11 @@ func newTestClusterNode(t *testing.T, nodeConfig testClusterNodeConfig) *testClu
 	s := StartService()
 
 	var (
-		fcmConnector *fcm.Connector
+		fcmConnector connector.ReactiveConnector
 		ok           bool
 	)
 	for _, iface := range s.ModulesSortedByStartOrder() {
-		if fcmConnector, ok = iface.(*fcm.Connector); ok {
+		if fcmConnector, ok = iface.(connector.ReactiveConnector); ok {
 			break
 		}
 	}
@@ -152,7 +152,7 @@ func (tcn *testClusterNode) cleanup(removeDir bool) {
 type TestFCM struct {
 	sync.RWMutex
 	t         *testing.T
-	Connector *fcm.Connector
+	Connector connector.ReactiveConnector
 	Received  int // received messages
 	receiveC  chan bool
 	timeout   time.Duration
@@ -161,15 +161,15 @@ type TestFCM struct {
 func (tfcm *TestFCM) setupRoundTripper(timeout time.Duration, bufferSize int, response string) {
 	tfcm.receiveC = make(chan bool, bufferSize)
 	tfcm.timeout = timeout
-	tfcm.Connector.Sender = testutil.CreateFcmSender(
-		testutil.CreateRoundTripperWithCountAndTimeout(http.StatusOK, response, tfcm.receiveC, timeout))
-
+	sender, err := fcm.CreateFcmSender(response, tfcm.receiveC, timeout)
+	assert.NoError(tfcm.t, err)
+	tfcm.Connector.SetSender(sender)
 	// start counting the received messages to FCM
 	tfcm.receive()
 }
 
 func (tfcm *TestFCM) subscribe(addr, topic, id string) {
-	urlFormat := fmt.Sprintf("http://%s/fcm/user_%%s/gcm_%%s/subscribe/%%s", addr)
+	urlFormat := fmt.Sprintf("http://%s/fcm/user_%%s/gcm_%%s/%%s", addr)
 
 	a := assert.New(tfcm.t)
 
@@ -186,7 +186,7 @@ func (tfcm *TestFCM) subscribe(addr, topic, id string) {
 }
 
 func (tfcm *TestFCM) unsubscribe(addr, topic, id string) {
-	urlFormat := fmt.Sprintf("http://%s/fcm/user_%%s/gcm_%%s/subscribe/%%s", addr)
+	urlFormat := fmt.Sprintf("http://%s/fcm/user_%%s/gcm_%%s/%%s", addr)
 
 	a := assert.New(tfcm.t)
 
