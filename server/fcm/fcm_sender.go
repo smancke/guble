@@ -31,7 +31,7 @@ func NewSender(apiKey string) *sender {
 }
 
 func (s *sender) Send(request connector.Request) (response interface{}, err error) {
-	deviceToken := request.Subscriber().Route().Get("device_token")
+	deviceToken := request.Subscriber().Route().Get(deviceTokenKey)
 
 	fcmMessage := fcmMessage(request.Message())
 	fcmMessage.To = deviceToken

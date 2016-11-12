@@ -13,6 +13,9 @@ import (
 const (
 	// schema is the default database schema for FCM
 	schema = "fcm_registration"
+
+	deviceTokenKey = "device_token"
+	userIDKEy      = "user_id"
 )
 
 var (
@@ -42,7 +45,7 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 		Name:       "fcm",
 		Schema:     schema,
 		Prefix:     *config.Prefix,
-		URLPattern: fmt.Sprintf("/{device_token}/{user_id}/{%s:.*}", connector.TopicParam),
+		URLPattern: fmt.Sprintf("/{%s}/{%s}/{%s:.*}", deviceTokenKey, userIDKEy, connector.TopicParam),
 		Workers:    *config.Workers,
 	})
 	if err != nil {
@@ -126,7 +129,7 @@ func (f *fcm) replaceCanonical(subscriber connector.Subscriber, newToken string)
 	topic := subscriber.Route().Path
 	params := subscriber.Route().RouteParams.Copy()
 
-	params["device_token"] = newToken
+	params[deviceTokenKey] = newToken
 
 	newSubscriber, err := manager.Create(topic, params)
 	go f.Run(newSubscriber)

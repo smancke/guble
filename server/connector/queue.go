@@ -73,7 +73,7 @@ func (q *queue) worker(i int) {
 				}).Error("Error handling connector response")
 			}
 		}
-		defer q.wg.Done()
+		q.wg.Done()
 	}
 }
 

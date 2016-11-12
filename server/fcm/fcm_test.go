@@ -73,7 +73,7 @@ func TestConnector_GetErrorMessageFromFCM(t *testing.T) {
 	mocks.router.EXPECT().Subscribe(gomock.Any()).Do(func(r *router.Route) (*router.Route, error) {
 		a.Equal("/topic", string(r.Path))
 		a.Equal("user01", r.Get("user_id"))
-		a.Equal("device01", r.Get("device_token"))
+		a.Equal("device01", r.Get(deviceTokenKey))
 		route = r
 		return r, nil
 	})
@@ -87,14 +87,14 @@ func TestConnector_GetErrorMessageFromFCM(t *testing.T) {
 	// expect the route unsubscribed
 	mocks.router.EXPECT().Unsubscribe(gomock.Any()).Do(func(route *router.Route) {
 		a.Equal("/topic", string(route.Path))
-		a.Equal("device01", route.Get("device_token"))
+		a.Equal("device01", route.Get(deviceTokenKey))
 	})
 
 	// expect the route subscribe with the new canonicalID from replaceSubscriptionWithCanonicalID
 	mocks.router.EXPECT().Subscribe(gomock.Any()).Do(func(route *router.Route) {
 		a.Equal("/topic", string(route.Path))
 		a.Equal("user01", route.Get("user_id"))
-		appid := route.Get("device_token")
+		appid := route.Get(deviceTokenKey)
 		a.Equal("fcmCanonicalID", appid)
 	})
 	// mocks.store.EXPECT().MaxMessageID(gomock.Any()).Return(uint64(4), nil)
