@@ -25,7 +25,7 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 * Batteries included: usable as front-facing server, without the need of a proxy layer
 * Self-contained: no mandatory dependencies to other services
 
-## Working Features (0.2)
+## Working Features (0.3)
 
 * Publishing and subscription of messages to topics and subtopics
 * Persistent message store with transparent live and offline fetching
@@ -38,6 +38,9 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 * Improved logging using [logrus](https://github.com/Sirupsen/logrus) and logstash formatter
 * Health-Check with Endpoint
 * Collection of Basic Metrics, with Endpoint
+* Added Postgresql as KV Backend
+* Load testing with 5000 messages per instance
+
 
 ## Throughput
 Measured on an old notebook with i5-2520M, dual core and SSD. Message payload was 'Hello Word'.
@@ -51,9 +54,10 @@ During the tests, the memory consumption of the server was around ~25 MB.
 ## Table of Contents
 
 - [Roadmap](#roadmap)
-  - [Roadmap Release 0.3](#roadmap-release-03)
   - [Roadmap Release 0.4](#roadmap-release-04)
   - [Roadmap Release 0.5](#roadmap-release-05)
+  - [Roadmap Release 0.6](#roadmap-release-06)
+  - [Roadmap Release 0.7](#roadmap-release-07)
 - [Guble Docker Image](#guble-docker-image)
   - [Start the Guble Server](#start-the-guble-server)
   - [Connecting with the Guble Client](#connecting-with-the-guble-client)
@@ -70,15 +74,9 @@ During the tests, the memory consumption of the server was around ~25 MB.
     - [Server Status Messages](#server-status-messages)
   - [Topics](#topics)
     - [Subtopics](#subtopics)
-    - [User Topics](#user-topics)
-    - [Group Topics](#group-topics)
 
 # Roadmap
 This is the current (and fast changing) roadmap and todo list:
-
-## Roadmap Release 0.3
-* Add Postgresql as KV Backend
-* Load testing with 5000 messages per instance
 
 ## Roadmap Release 0.4
 * Support for Apple Push Notification services (a new connector alongside Firebase)
