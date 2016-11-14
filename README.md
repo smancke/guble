@@ -12,9 +12,9 @@ Guble is a simple user-facing messaging and data replication server written in G
 [![Awesome-Go](https://camo.githubusercontent.com/13c4e50d88df7178ae1882a203ed57b641674f94/68747470733a2f2f63646e2e7261776769742e636f6d2f73696e647265736f726875732f617765736f6d652f643733303566333864323966656437386661383536353265336136336531353464643865383832392f6d656469612f62616467652e737667)](https://awesome-go.com)
 
 # Overview
-Guble is in an early state (release 0.2). 
+Guble is in an early state (release 0.3). 
 It is already working well and is very useful, but the protocol, API and storage formats 
-may still change (until reaching 0.5). 
+may still change (until reaching 0.7). 
 If you intend to use guble, please get in contact with us.
 
 The goal of guble is to be a simple and fast message bus for user interaction and replication of data between multiple devices:
@@ -77,32 +77,39 @@ During the tests, the memory consumption of the server was around ~25 MB.
 This is the current (and fast changing) roadmap and todo list:
 
 ## Roadmap Release 0.3
-* Replication across multiple servers (in a Guble cluster)
 * Add Postgresql as KV Backend
-* Upgrade, cleanup, abstraction, documentation, and test coverage of the FCM connector
-* Load testing with 5000 connections per instance
+* Load testing with 5000 messages per instance
 
 ## Roadmap Release 0.4
 * Support for Apple Push Notification services (a new connector alongside Firebase)
-* Support for SMS-sending: a new connector
-* Make notification messages optional by client configuration
-* Storing the sequence-Id of topics in KV store, if we turn off persistence
+* Upgrade, cleanup, abstraction, documentation, and test coverage of the Firebase connector
+* GET list of subscribers / list of topics per subscriber (userID , deviceID) 
 
 ## Roadmap Release 0.5
-* (TBD) Acknowledgement of message delivery
-* Stable JavaScript client: https://github.com/smancke/guble-js
-* (TBD) Add Consul as KV Backend
-* (TBD) Index-based search of messages using [GoLucene](https://github.com/balzaczyy/golucene)
+* Support for SMS-sending (a new connector alongside Firebase)
+* Replication across multiple servers (in a Guble cluster)
+* Acknowledgement of message delivery for connectors
+* Storing the sequence-Id of topics in KV store, if we turn off persistence
+* Filtering of messages in guble server (e.g. sent by the REST client) according to URL parameters: UserID, DeviceID, Connector name
+* Updating README to show subscribe/unsubscribe/get/posting, health/metrics 
+
+## Roadmap Release 0.6
+* Make notification messages optional by client configuration
 * Correct behaviour of receive command with `maxCount` on subtopics
-* Configuration of different persistence strategies for topics
-* Delivery semantics: user must read on one device, deliver only to one device, notify if not connected, etc.
-* Improved authentication and access-management
-* HTTPS support in the service
 * Cancel of fetch in the message store and multiple concurrent fetch commands for the same topic
-* Minimal example: chat application
+* Configuration of different persistence strategies for topics
+* Delivery semantics: user must read on one device / deliver only to one device / notify if not connected, etc.
 * User-specific persistent subscriptions across all clients of the user
 * Client: (re-)setup of subscriptions after client reconnect
 * Message size limit configurable by the client with fetching by URL
+
+## Roadmap Release 0.7
+* HTTPS support in the service
+* Minimal example: chat application
+* Stable JavaScript client: https://github.com/smancke/guble-js
+* (TBD) Improved authentication and access-management
+* (TBD) Add Consul as KV Backend
+* (TBD) Index-based search of messages using [GoLucene](https://github.com/balzaczyy/golucene)
 
 # Guble Docker Image
 We are providing Docker images of the server and client for your convenience.
@@ -370,38 +377,10 @@ This notification has the same meaning as the http 500 Internal Server Error.
 ## Topics
 
 Messages can be hierarchically routed by topics, so they are represented by a path, separated by `/`.
-There are two global topic namespaces: `/user` and `/group`.
 The server takes care, that a message only gets delivered once, even if it is matched by multiple
 subscription paths.
 
 ### Subtopics
-The path delimiter gives the semantic of subtopics. With this, a subscription to a parent topic (e.g. `/foo`)
+The path delimiter gives the semantic of subtopics. 
+With this, a subscription to a parent topic (e.g. `/foo`)
 also results in receiving all messages of the subtopics (e.g. `/foo/bar`).
-
-### User Topics
-Each user has its own topic namespace.
-```
-/user/<userId>
-```
-Within this namespace, every device or application the user is connected with can create its own topic:
-```
-/user/<userId>/<applicationId>
-```
-In addition to this, there is a topic for all devices:
-```
-/user/<userId>/common
-```
-As soon as the application is connected, it gets automatically subscribed to the topics `applicationId` and `common`.
-So other applications can address this application by sending messages to one of these topics.
-Applications are free to send messages to any subtopic within the user namespace.
-Subtopics other than `applicationId` or `common` are also addressable, but not subscribed by default.
-If one sends a message to `/user/<userId>/foo`, only those applications of the user will receive it, that have explicitly subscribed to it.
-
-### Group Topics
-(TODO, not implemented in the first version)
-
-Multiple users can share a group where every member of the group can send to topics and subscribe to them.
-The topics of a group are located under:
-```
-/user/<groupId>/
-```
