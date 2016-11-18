@@ -62,18 +62,18 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 // by sending a request with only apikey. If the response is processed by the FCM endpoint
 // the status will be UP, otherwise the error from sending the message will be returned.
 func (f *fcm) Check() error {
-	message := &gcm.Message{
-		To: "ABC",
-	}
-	sender, ok := f.Sender().(*sender)
-	if !ok {
-		return ErrInvalidSender
-	}
-	_, err := sender.gcmSender.Send(message)
-	if err != nil {
-		logger.WithField("error", err.Error()).Error("error checking FCM connection")
-		return err
-	}
+	// message := &gcm.Message{
+	// 	To: "ABC",
+	// }
+	// sender, ok := f.Sender().(*sender)
+	// if !ok {
+	// 	return ErrInvalidSender
+	// }
+	// _, err := sender.gcmSender.Send(message)
+	// if err != nil {
+	// 	logger.WithField("error", err.Error()).Error("error checking FCM connection")
+	// 	return err
+	// }
 	return nil
 }
 
