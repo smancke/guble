@@ -192,7 +192,7 @@ func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 	}
 
 	delete(params, TopicParam)
-	subscriber := c.manager.Find(GenerateKey(topic, params))
+	subscriber := c.manager.Find(GenerateKey("/"+topic, params))
 	if subscriber == nil {
 		http.Error(w, `{"error":"subscription not found"}`, http.StatusNotFound)
 		return
@@ -204,7 +204,7 @@ func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, `{"unsubscribed":"%v"}`, topic)
+	fmt.Fprintf(w, `{"unsubscribed":"/%v"}`, topic)
 }
 
 // Start will run start all current subscriptions and workers to process the messages
