@@ -1,7 +1,6 @@
 package fcm
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/Bogh/gcm"
@@ -16,10 +15,6 @@ const (
 
 	deviceTokenKey = "device_token"
 	userIDKEy      = "user_id"
-)
-
-var (
-	ErrInvalidSender = errors.New("Invalid FCM Sender.")
 )
 
 // Config is used for configuring the Firebase Cloud Messaging component.
