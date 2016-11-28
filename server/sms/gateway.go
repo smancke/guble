@@ -48,6 +48,7 @@ func (gw *gateway) Start() {
 	r := routerimport.NewRoute(router.RouteConfig{
 		Path:        protocol.Path(gw.config.path),
 		ChannelSize: 10,
+		//TODO ADD the FETCH REQUEST
 	})
 	gw.route = r
 
@@ -98,8 +99,6 @@ func (gw *gateway) proxyLoop() error {
 		opened bool = true
 		m      *protocol.Message
 	)
-	sCtx, cancel := context.WithCancel(gw.ctx)
-	gw.cancel = cancel
 	defer func() { gw.cancel = nil }()
 
 	for opened {
@@ -114,11 +113,11 @@ func (gw *gateway) proxyLoop() error {
 				log.WithField("error", err.Error()).Error("Sending of message failed")
 			}
 
-		case <-sCtx.Done():
+		case <-gw.ctx.Done():
 			// If the parent context is still running then only this subscriber context
 			// has been cancelled
 			if gw.ctx.Err() == nil {
-				return sCtx.Err()
+				return gw.ctx.Err()
 			}
 			return nil
 		}
@@ -128,12 +127,16 @@ func (gw *gateway) proxyLoop() error {
 	return connector.ErrRouteChannelClosed
 }
 
-func (gw *gateway) Restart() {
-
+func (gw *gateway) Restart() error {
+	//TODO RECREATE THE ROUTE WITH THE LAST ID FETCH REQUEST
+	return nil
 }
 
-func (gw *gateway) Stop() {
-
+func (gw *gateway) Stop() error {
+	gw.logger.Debug("Stopping gateway")
+	gw.cancel()
+	gw.logger.Debug("Stopped gateway")
+	return nil
 }
 
 func (gw *gateway) Cancel() {
