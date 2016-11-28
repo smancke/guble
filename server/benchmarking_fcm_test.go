@@ -116,10 +116,10 @@ func (params *benchParams) throughputFCM() {
 
 	params.service = StartService()
 
-	var fcmConn connector.ReactiveConnector
+	var fcmConn connector.ResponsiveConnector
 	var ok bool
 	for _, iface := range params.service.ModulesSortedByStartOrder() {
-		fcmConn, ok = iface.(connector.ReactiveConnector)
+		fcmConn, ok = iface.(connector.ResponsiveConnector)
 		if ok {
 			break
 		}

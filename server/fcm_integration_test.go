@@ -66,10 +66,10 @@ func TestFCMRestart(t *testing.T) {
 
 	assertMetrics(a, s, expectedValues{true, 0, 0, 0})
 
-	var fcmConn connector.ReactiveConnector
+	var fcmConn connector.ResponsiveConnector
 	var ok bool
 	for _, iface := range s.ModulesSortedByStartOrder() {
-		fcmConn, ok = iface.(connector.ReactiveConnector)
+		fcmConn, ok = iface.(connector.ResponsiveConnector)
 		if ok {
 			break
 		}

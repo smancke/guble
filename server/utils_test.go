@@ -99,11 +99,11 @@ func newTestClusterNode(t *testing.T, nodeConfig testClusterNodeConfig) *testClu
 	s := StartService()
 
 	var (
-		fcmConnector connector.ReactiveConnector
+		fcmConnector connector.ResponsiveConnector
 		ok           bool
 	)
 	for _, iface := range s.ModulesSortedByStartOrder() {
-		if fcmConnector, ok = iface.(connector.ReactiveConnector); ok {
+		if fcmConnector, ok = iface.(connector.ResponsiveConnector); ok {
 			break
 		}
 	}
@@ -152,7 +152,7 @@ func (tcn *testClusterNode) cleanup(removeDir bool) {
 type TestFCM struct {
 	sync.RWMutex
 	t         *testing.T
-	Connector connector.ReactiveConnector
+	Connector connector.ResponsiveConnector
 	Received  int // received messages
 	receiveC  chan bool
 	timeout   time.Duration

@@ -31,11 +31,10 @@ type Config struct {
 type fcm struct {
 	Config
 	connector.Connector
-	// sender connector.Sender
 }
 
-// New creates a new *fcm and returns it as an connector.ReactiveConnector
-func New(router router.Router, sender connector.Sender, config Config) (connector.ReactiveConnector, error) {
+// New creates a new *fcm and returns it as an connector.ResponsiveConnector
+func New(router router.Router, sender connector.Sender, config Config) (connector.ResponsiveConnector, error) {
 	baseConn, err := connector.NewConnector(router, sender, connector.Config{
 		Name:       "fcm",
 		Schema:     schema,
@@ -51,25 +50,6 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 	newConn := &fcm{config, baseConn}
 	newConn.SetResponseHandler(newConn)
 	return newConn, nil
-}
-
-// Check returns nil if health-check succeeds, or an error if health-check fails
-// by sending a request with only apikey. If the response is processed by the FCM endpoint
-// the status will be UP, otherwise the error from sending the message will be returned.
-func (f *fcm) Check() error {
-	// message := &gcm.Message{
-	// 	To: "ABC",
-	// }
-	// sender, ok := f.Sender().(*sender)
-	// if !ok {
-	// 	return ErrInvalidSender
-	// }
-	// _, err := sender.gcmSender.Send(message)
-	// if err != nil {
-	// 	logger.WithField("error", err.Error()).Error("error checking FCM connection")
-	// 	return err
-	// }
-	return nil
 }
 
 func (f *fcm) HandleResponse(request connector.Request, responseIface interface{}, err error) error {

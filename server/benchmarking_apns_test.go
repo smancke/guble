@@ -123,10 +123,10 @@ func (params *benchParams) throughputAPNS() {
 
 	params.service = StartService()
 
-	var apnsConn connector.ReactiveConnector
+	var apnsConn connector.ResponsiveConnector
 	var ok bool
 	for _, iface := range params.service.ModulesSortedByStartOrder() {
-		apnsConn, ok = iface.(connector.ReactiveConnector)
+		apnsConn, ok = iface.(connector.ResponsiveConnector)
 		if ok {
 			break
 		}

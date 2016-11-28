@@ -199,14 +199,7 @@ func TestNew_HandleResponseDoNotHandleSubscriber(t *testing.T) {
 	}
 }
 
-func TestConn_Check(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
-	c, _ := newAPNSConnector(t)
-	assert.Nil(t, c.Check())
-}
-
-func newAPNSConnector(t *testing.T) (c connector.ReactiveConnector, mKVS *MockKVStore) {
+func newAPNSConnector(t *testing.T) (c connector.ResponsiveConnector, mKVS *MockKVStore) {
 	mKVS = NewMockKVStore(testutil.MockCtrl)
 	mRouter := NewMockRouter(testutil.MockCtrl)
 	mRouter.EXPECT().KVStore().Return(mKVS, nil).AnyTimes()

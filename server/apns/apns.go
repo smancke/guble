@@ -30,8 +30,8 @@ type conn struct {
 	connector.Connector
 }
 
-// New creates a new Connector without starting it
-func New(router router.Router, sender connector.Sender, config Config) (connector.ReactiveConnector, error) {
+// New creates a new connector.ResponsiveConnector without starting it
+func New(router router.Router, sender connector.Sender, config Config) (connector.ResponsiveConnector, error) {
 	baseConn, err := connector.NewConnector(
 		router,
 		sender,
@@ -86,11 +86,5 @@ func (c *conn) HandleResponse(request connector.Request, responseIface interface
 		}
 		//TODO Cosmin Bogdan: extra-APNS-handling
 	}
-	return nil
-}
-
-// Check returns nil if health-check succeeds, or an error if health-check fails
-func (c *conn) Check() error {
-	//TODO implement
 	return nil
 }

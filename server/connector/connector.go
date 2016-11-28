@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/docker/distribution/health"
 	"github.com/gorilla/mux"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/kvstore"
@@ -33,12 +32,8 @@ type SenderSetter interface {
 }
 
 type ResponseHandler interface {
-	// HandleResponse handles the response+error returned by the Sender
+	// HandleResponse handles the response+error (returned by a Sender)
 	HandleResponse(Request, interface{}, error) error
-}
-
-type Runner interface {
-	Run(Subscriber)
 }
 
 type ResponseHandleSetter interface {
@@ -46,20 +41,23 @@ type ResponseHandleSetter interface {
 	SetResponseHandler(ResponseHandler)
 }
 
+type Runner interface {
+	Run(Subscriber)
+}
+
 type Connector interface {
 	service.Startable
 	service.Stopable
 	service.Endpoint
-	ResponseHandleSetter
 	SenderSetter
+	ResponseHandleSetter
 	Runner
 	Manager() Manager
 }
 
-type ReactiveConnector interface {
+type ResponsiveConnector interface {
 	Connector
 	ResponseHandler
-	health.Checker
 }
 
 type connector struct {
