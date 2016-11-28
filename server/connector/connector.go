@@ -146,7 +146,7 @@ func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
 	subscribers := c.manager.Filter(filters)
 	topics := make([]string, 0, len(subscribers))
 	for _, s := range subscribers {
-		topics = append(topics, string(s.Route().Path))
+		topics = append(topics, s.Route().Path.RemovePrefixSlash())
 	}
 
 	encoder := json.NewEncoder(w)
@@ -179,7 +179,7 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	}
 
 	go c.Run(subscriber)
-	fmt.Fprintf(w, `{"subscribed":"/%v"}`, topic)
+	fmt.Fprintf(w, `{"subscribed":"%v"}`, subscriber.Route().Path)
 }
 
 // Delete removes a subscriber

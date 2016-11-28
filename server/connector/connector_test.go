@@ -148,11 +148,11 @@ func TestConnector_GetList_And_Getters(t *testing.T) {
 
 	subscriber1 := NewMockSubscriber(testutil.MockCtrl)
 	subscriber1.EXPECT().Route().Return(router.NewRoute(router.RouteConfig{
-		Path: "topic1",
+		Path: "/topic1",
 	}))
 	subscriber2 := NewMockSubscriber(testutil.MockCtrl)
 	subscriber2.EXPECT().Route().Return(router.NewRoute(router.RouteConfig{
-		Path: "topic2",
+		Path: "/topic2",
 	}))
 	mocks.manager.EXPECT().Filter(gomock.Any()).Return([]Subscriber{subscriber1, subscriber2})
 

@@ -12,3 +12,7 @@ func (path Path) Partition() string {
 	}
 	return strings.SplitN(string(path), "/", 2)[0]
 }
+
+func (path Path) RemovePrefixSlash() string {
+	return strings.TrimPrefix(string(path), "/")
+}
