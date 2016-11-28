@@ -179,7 +179,7 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	}
 
 	go c.Run(subscriber)
-	fmt.Fprintf(w, `{"subscribed":"%v"}`, subscriber.Route().Path)
+	fmt.Fprintf(w, `{"subscribed":"/%v"}`, topic)
 }
 
 // Delete removes a subscriber
