@@ -6,6 +6,7 @@ import (
 	"github.com/Bogh/gcm"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/connector"
+	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/router"
 )
 
@@ -57,6 +58,8 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 	if err != nil && !isValidResponseError(err) {
 		logger.WithField("error", err.Error()).Error("Error sending message to FCM")
 		mTotalSendErrors.Add(1)
+		metrics.AddToMaps(currentTotalErrorsLatenciesKey, int64(metadata.Latency), mMinute, mHour, mDay)
+		metrics.AddToMaps(currentTotalErrorsKey, 1, mMinute, mHour, mDay)
 		return err
 	}
 	message := request.Message()
@@ -76,6 +79,8 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 	}
 	if response.Ok() {
 		mTotalSentMessages.Add(1)
+		metrics.AddToMaps(currentTotalMessagesLatenciesKey, int64(metadata.Latency), mMinute, mHour, mDay)
+		metrics.AddToMaps(currentTotalMessagesKey, 1, mMinute, mHour, mDay)
 		return nil
 	}
 
@@ -94,7 +99,7 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 	}
 
 	if response.CanonicalIDs != 0 {
-		mTotalResponseReplacedCanonicalErrors.Add(1)
+		mTotalReplacedCanonicalErrors.Add(1)
 		// we only send to one receiver, so we know that we can replace the old id with the first registration id (=canonical id)
 		return f.replaceCanonical(request.Subscriber(), response.Results[0].RegistrationID)
 	}
