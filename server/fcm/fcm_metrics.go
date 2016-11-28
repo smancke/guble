@@ -6,16 +6,16 @@ import (
 )
 
 var (
-	mTotalSentMessages                    = metrics.NewInt("guble.fcm.total_sent_messages")
-	mTotalResponseErrors                  = metrics.NewInt("guble.fcm.total_response_errors")
-	mTotalResponseInternalErrors          = metrics.NewInt("guble.fcm.total_response_internal_errors")
-	mTotalResponseNotRegisteredErrors     = metrics.NewInt("guble.fcm.total_response_not_registered_errors")
-	mTotalResponseReplacedCanonicalErrors = metrics.NewInt("guble.fcm.total_response_replaced_canonical_errors")
-	mTotalResponseOtherErrors             = metrics.NewInt("guble.fcm.total_response_other_errors")
-	mTotalSendErrors                      = metrics.NewInt("guble.fcm.total_sent_message_errors")
-	mMinute                               = metrics.NewMap("guble.fcm.minute")
-	mHour                                 = metrics.NewMap("guble.fcm.hour")
-	mDay                                  = metrics.NewMap("guble.fcm.day")
+	mTotalSentMessages                    = metrics.NewInt("fcm.total_sent_messages")
+	mTotalResponseErrors                  = metrics.NewInt("fcm.total_response_errors")
+	mTotalResponseInternalErrors          = metrics.NewInt("fcm.total_response_internal_errors")
+	mTotalResponseNotRegisteredErrors     = metrics.NewInt("fcm.total_response_not_registered_errors")
+	mTotalResponseReplacedCanonicalErrors = metrics.NewInt("fcm.total_response_replaced_canonical_errors")
+	mTotalResponseOtherErrors             = metrics.NewInt("fcm.total_response_other_errors")
+	mTotalSendErrors                      = metrics.NewInt("fcm.total_sent_message_errors")
+	mMinute                               = metrics.NewMap("fcm.minute")
+	mHour                                 = metrics.NewMap("fcm.hour")
+	mDay                                  = metrics.NewMap("fcm.day")
 )
 
 const (
