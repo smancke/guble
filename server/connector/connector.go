@@ -13,6 +13,7 @@ import (
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/service"
+	"time"
 )
 
 const DefaultWorkers = 1
@@ -31,9 +32,13 @@ type SenderSetter interface {
 	SetSender(Sender)
 }
 
+type Metadata struct {
+	Latency time.Duration
+}
+
 type ResponseHandler interface {
 	// HandleResponse handles the response+error (returned by a Sender)
-	HandleResponse(Request, interface{}, error) error
+	HandleResponse(Request, interface{}, *Metadata, error) error
 }
 
 type ResponseHandleSetter interface {

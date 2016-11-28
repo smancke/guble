@@ -47,7 +47,7 @@ func TestConn_HandleResponseOnSendError(t *testing.T) {
 	e := errors.New("A Sender error")
 
 	//when
-	err := c.HandleResponse(mRequest, nil, e)
+	err := c.HandleResponse(mRequest, nil, nil, e)
 
 	//then
 	a.Equal(e, err)
@@ -82,7 +82,7 @@ func TestConn_HandleResponse(t *testing.T) {
 	}
 
 	//when
-	err := c.HandleResponse(mRequest, response, nil)
+	err := c.HandleResponse(mRequest, response, nil, nil)
 
 	//then
 	a.NoError(err)
@@ -127,7 +127,7 @@ func TestNew_HandleResponseHandleSubscriber(t *testing.T) {
 		}
 
 		//when
-		err := c.HandleResponse(mRequest, response, nil)
+		err := c.HandleResponse(mRequest, response, nil, nil)
 
 		//then
 		a.NoError(err)
@@ -190,7 +190,7 @@ func TestNew_HandleResponseDoNotHandleSubscriber(t *testing.T) {
 		}
 
 		//when
-		err := c.HandleResponse(mRequest, response, nil)
+		err := c.HandleResponse(mRequest, response, nil, nil)
 
 		//then
 		a.NoError(err)

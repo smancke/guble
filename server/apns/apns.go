@@ -55,7 +55,7 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 	return newConn, nil
 }
 
-func (c *conn) HandleResponse(request connector.Request, responseIface interface{}, errSend error) error {
+func (c *conn) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, errSend error) error {
 	logger.Debug("HandleResponse")
 	if errSend != nil {
 		logger.WithError(errSend).Error("error when trying to send APNS notification")

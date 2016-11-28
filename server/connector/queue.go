@@ -4,9 +4,10 @@ import (
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
+	"time"
 )
 
-// Queue is an interface modeling a task-queue (it is started and more Requests can be pushed to it, an finally it is stopped).
+// Queue is an interface modeling a task-queue (it is started and more Requests can be pushed to it, and finally it is stopped).
 type Queue interface {
 	ResponseHandleSetter
 	SenderSetter
@@ -21,6 +22,7 @@ type queue struct {
 	responseHandler ResponseHandler
 	requestsC       chan Request
 	nWorkers        int
+	metrics         bool
 	wg              sync.WaitGroup
 }
 
@@ -29,6 +31,7 @@ func NewQueue(sender Sender, nWorkers int) Queue {
 	q := &queue{
 		sender:   sender,
 		nWorkers: nWorkers,
+		metrics:  true,
 	}
 	return q
 }
@@ -50,7 +53,6 @@ func (q *queue) SetSender(s Sender) {
 }
 
 func (q *queue) Start() error {
-	// make sure the channel opened on start
 	q.requestsC = make(chan Request)
 	for i := 1; i <= q.nWorkers; i++ {
 		go q.worker(i)
@@ -60,11 +62,21 @@ func (q *queue) Start() error {
 
 func (q *queue) worker(i int) {
 	logger.WithField("worker", i).Debug("starting queue worker")
+	var beforeSend time.Time
+	var latency time.Duration
 	for request := range q.requestsC {
 		q.wg.Add(1)
+		if q.metrics {
+			beforeSend = time.Now()
+		}
 		response, err := q.sender.Send(request)
 		if q.responseHandler != nil {
-			err = q.responseHandler.HandleResponse(request, response, err)
+			var metadata *Metadata
+			if q.metrics {
+				latency = time.Now().Sub(beforeSend)
+				metadata = &Metadata{latency}
+			}
+			err = q.responseHandler.HandleResponse(request, response, metadata, err)
 			if err != nil {
 				logger.WithFields(log.Fields{
 					"error":      err.Error(),

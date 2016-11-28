@@ -53,7 +53,7 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 	return newConn, nil
 }
 
-func (f *fcm) HandleResponse(request connector.Request, responseIface interface{}, err error) error {
+func (f *fcm) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, err error) error {
 	if err != nil && !isValidResponseError(err) {
 		logger.WithField("error", err.Error()).Error("Error sending message to FCM")
 		mTotalSendErrors.Add(1)
