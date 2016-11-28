@@ -6,11 +6,16 @@ import (
 )
 
 var (
-	mTotalSentMessages      = metrics.NewInt("guble.fcm.total_sent_messages")
-	mTotalSentMessageErrors = metrics.NewInt("guble.fcm.total_sent_message_errors")
-	mMinute                 = metrics.NewMap("guble.fcm.minute")
-	mHour                   = metrics.NewMap("guble.fcm.hour")
-	mDay                    = metrics.NewMap("guble.fcm.day")
+	mTotalSentMessages                    = metrics.NewInt("guble.fcm.total_sent_messages")
+	mTotalResponseErrors                  = metrics.NewInt("guble.fcm.total_response_errors")
+	mTotalResponseInternalErrors          = metrics.NewInt("guble.fcm.total_response_internal_errors")
+	mTotalResponseNotRegisteredErrors     = metrics.NewInt("guble.fcm.total_response_not_registered_errors")
+	mTotalResponseReplacedCanonicalErrors = metrics.NewInt("guble.fcm.total_response_replaced_canonical_errors")
+	mTotalResponseOtherErrors             = metrics.NewInt("guble.fcm.total_response_other_errors")
+	mTotalSendErrors                      = metrics.NewInt("guble.fcm.total_sent_message_errors")
+	mMinute                               = metrics.NewMap("guble.fcm.minute")
+	mHour                                 = metrics.NewMap("guble.fcm.hour")
+	mDay                                  = metrics.NewMap("guble.fcm.day")
 )
 
 const (
@@ -24,7 +29,12 @@ const (
 
 func startMetrics() {
 	mTotalSentMessages.Set(0)
-	mTotalSentMessageErrors.Set(0)
+	mTotalSendErrors.Set(0)
+	mTotalResponseErrors.Set(0)
+	mTotalResponseInternalErrors.Set(0)
+	mTotalResponseNotRegisteredErrors.Set(0)
+	mTotalResponseReplacedCanonicalErrors.Set(0)
+	mTotalResponseOtherErrors.Set(0)
 	t := time.Now()
 	resetCurrentMetrics(mMinute, t)
 	resetCurrentMetrics(mHour, t)

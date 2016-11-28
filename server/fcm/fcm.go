@@ -49,12 +49,14 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 
 	newConn := &fcm{config, baseConn}
 	newConn.SetResponseHandler(newConn)
+	startMetrics()
 	return newConn, nil
 }
 
 func (f *fcm) HandleResponse(request connector.Request, responseIface interface{}, err error) error {
 	if err != nil && !isValidResponseError(err) {
 		logger.WithField("error", err.Error()).Error("Error sending message to FCM")
+		mTotalSendErrors.Add(1)
 		return err
 	}
 	message := request.Message()
@@ -62,15 +64,18 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 
 	response, ok := responseIface.(*gcm.Response)
 	if !ok {
+		mTotalResponseErrors.Add(1)
 		return fmt.Errorf("Invalid FCM Response")
 	}
 
 	logger.WithField("messageID", message.ID).Debug("Delivered message to FCM")
 	subscriber.SetLastID(message.ID)
 	if err := f.Manager().Update(request.Subscriber()); err != nil {
+		mTotalResponseInternalErrors.Add(1)
 		return err
 	}
 	if response.Ok() {
+		mTotalSentMessages.Add(1)
 		return nil
 	}
 
@@ -80,6 +85,7 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 	case "NotRegistered":
 		logger.Debug("Removing not registered FCM subscription")
 		f.Manager().Remove(subscriber)
+		mTotalResponseNotRegisteredErrors.Add(1)
 		return response.Error
 	case "InvalidRegistration":
 		logger.WithField("jsonError", errText).Error("InvalidRegistration of FCM subscription")
@@ -88,9 +94,11 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 	}
 
 	if response.CanonicalIDs != 0 {
+		mTotalResponseReplacedCanonicalErrors.Add(1)
 		// we only send to one receiver, so we know that we can replace the old id with the first registration id (=canonical id)
 		return f.replaceCanonical(request.Subscriber(), response.Results[0].RegistrationID)
 	}
+	mTotalResponseOtherErrors.Add(1)
 	return nil
 }
 

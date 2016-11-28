@@ -43,7 +43,7 @@ func (s *sender) Send(request connector.Request) (response interface{}, err erro
 
 	if err != nil && !isValidResponseError(err) {
 		// Even if we receive an error we could still have a valid response
-		mTotalSentMessageErrors.Add(1)
+		mTotalSendErrors.Add(1)
 		metrics.AddToMaps(currentTotalErrorsLatenciesKey, int64(latencyDuration), mMinute, mHour, mDay)
 		metrics.AddToMaps(currentTotalErrorsKey, 1, mMinute, mHour, mDay)
 		return
