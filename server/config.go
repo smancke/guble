@@ -13,6 +13,7 @@ import (
 
 	"github.com/smancke/guble/server/apns"
 	"github.com/smancke/guble/server/fcm"
+	sms "github.com/smancke/guble/server/sms"
 )
 
 const (
@@ -66,6 +67,7 @@ type (
 		Postgres        PostgresConfig
 		FCM             fcm.Config
 		APNS            apns.Config
+		SMS             sms.Config
 		Cluster         ClusterConfig
 	}
 )
@@ -189,6 +191,22 @@ var (
 				Default(defaultNodePort).Envar("GUBLE_NODE_PORT").Int(),
 			Remotes: tcpAddrListParser(kingpin.Flag("remotes", `(cluster mode) The list of TCP addresses of some other guble nodes (format: "IP:port")`).
 				Envar("GUBLE_NODE_REMOTES")),
+		},
+		SMS: sms.Config{
+			Enabled: kingpin.Flag("sms", "Enable the  SMS  gateway)").
+				Envar("GUBLE_SMS").
+				Bool(),
+			APIKey: kingpin.Flag("sms-api-key", "The Nexmo API Key for Sending sms").
+				Envar("GUBLE_SMS_API_KEY").
+				String()  ,
+			APISecret: kingpin.Flag("sms-api-key", "The Nexmo API Secret for Sending sms").
+				Envar("GUBLE_SMS_API_SECRET").
+				String()  ,
+
+			Workers: kingpin.Flag("sms-workers", "The number of workers handling traffic with Nexmo sms endpoint(default: number of CPUs)").
+			Default(strconv.Itoa(runtime.NumCPU())).
+			Envar("GUBLE_SMS_WORKERS").
+			Int(),
 		},
 	}
 )

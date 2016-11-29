@@ -12,19 +12,25 @@ import (
 	"strconv"
 )
 
+const SMS_SCHEMA = "sms_notifications"
+const SMS_NAME = "sms"
+
 type Sender interface {
 	Send(*protocol.Message) error
 }
 
-type GatewayConfig struct {
-	path    string
-	Workers int
-	Name    string
-	Schema  string
+type Config struct {
+	Enabled   *bool
+	APIKey    *string
+	APISecret *string
+	Workers   *int
+	Path      string
+	Name      string
+	Schema    string
 }
 
 type gateway struct {
-	config *GatewayConfig
+	config *Config
 	sender Sender
 	router router.Router
 	logger *log.Entry
@@ -35,17 +41,20 @@ type gateway struct {
 	LastIDSent uint64
 }
 
-func NewGateway(router router.Router, sender Sender, config GatewayConfig) *gateway {
-	if config.Workers <= 0 {
-		config.Workers = connector.DefaultWorkers
+func NewGateway(router router.Router, sender Sender, config Config) (*gateway, error) {
+	if *config.Workers <= 0 {
+		*config.Workers = connector.DefaultWorkers
 	}
+	config.Schema = SMS_SCHEMA
+	config.Name = SMS_NAME
+	//TODO ADD IT as a params
+	config.Path = SMS_NAME
 
 	gw := &gateway{
 		router: router,
 		logger: logger.WithField("name", config.Name),
 	}
-
-	return gw
+	return gw, nil
 }
 
 func (gw *gateway) Start() error {
@@ -63,7 +72,7 @@ func (gw *gateway) Start() error {
 	}
 
 	r := routerimport.NewRoute(router.RouteConfig{
-		Path:         protocol.Path(gw.config.path),
+		Path:         protocol.Path(gw.config.Path),
 		ChannelSize:  10,
 		FetchRequest: fr,
 	})
@@ -133,6 +142,7 @@ func (gw *gateway) proxyLoop() error {
 			if err != nil {
 				log.WithField("error", err.Error()).Error("Sending of message failed")
 			}
+			gw.SetLastSentID(m.ID)
 
 		case <-gw.ctx.Done():
 			// If the parent context is still running then only this subscriber context
@@ -158,7 +168,7 @@ func (gw *gateway) Restart() error {
 	}
 
 	r := routerimport.NewRoute(router.RouteConfig{
-		Path:         protocol.Path(gw.config.path),
+		Path:         protocol.Path(gw.config.Path),
 		ChannelSize:  10,
 		FetchRequest: store.NewFetchRequest(gw.route.Path.Partition(), gw.LastIDSent, 0, store.DirectionForward, -1),
 	})
@@ -176,8 +186,8 @@ func (gw *gateway) Stop() error {
 	return nil
 }
 
-func (gw *gateway) SetLastFetchID(ID uint64) error {
-	gw.logger.WithField("lastID", ID).WithField("path", gw.config.path).Debug("Seting last id to ")
+func (gw *gateway) SetLastSentID(ID uint64) error {
+	gw.logger.WithField("lastID", ID).WithField("path", gw.config.Path).Debug("Seting last id to ")
 
 	kvStore, err := gw.router.KVStore()
 	if err != nil {
@@ -187,9 +197,9 @@ func (gw *gateway) SetLastFetchID(ID uint64) error {
 
 	buffer := make([]byte, 8)
 	binary.LittleEndian.PutUint64(buffer, ID)
-	err = kvStore.Put(gw.config.Schema, gw.config.path, buffer)
+	err = kvStore.Put(gw.config.Schema, gw.config.Path, buffer)
 	if err != nil {
-		gw.logger.WithField("error", err.Error()).WithField("path", gw.config.path).Error("KvStore could not set value for lastID for topic")
+		gw.logger.WithField("error", err.Error()).WithField("path", gw.config.Path).Error("KvStore could not set value for lastID for topic")
 		return err
 	}
 	gw.LastIDSent = ID
@@ -202,9 +212,9 @@ func (gw *gateway) ReadLastID() error {
 		gw.logger.WithField("error", err.Error()).Error("KvStore could not be accesed from gateway")
 		return err
 	}
-	val, exist, err := kvStore.Get(gw.config.Schema, gw.config.path)
+	val, exist, err := kvStore.Get(gw.config.Schema, gw.config.Path)
 	if err != nil {
-		gw.logger.WithField("error", err.Error()).WithField("path", gw.config.path).Error("KvStore could not get value for lastID for topic")
+		gw.logger.WithField("error", err.Error()).WithField("path", gw.config.Path).Error("KvStore could not get value for lastID for topic")
 		return err
 	}
 
@@ -221,7 +231,7 @@ func (gw *gateway) ReadLastID() error {
 
 	gw.LastIDSent = uint64(sequenceValue)
 
-	gw.logger.WithField("lastID", gw.LastIDSent).WithField("path", gw.config.path).Debug("ReadLastID is ")
+	gw.logger.WithField("lastID", gw.LastIDSent).WithField("path", gw.config.Path).Debug("ReadLastID is ")
 	return nil
 
 }

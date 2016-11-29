@@ -30,6 +30,7 @@ import (
 	"github.com/pkg/profile"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/apns"
+	sms "github.com/smancke/guble/server/sms"
 )
 
 const (
@@ -168,6 +169,25 @@ var CreateModules = func(router router.Router) []interface{} {
 		}
 	} else {
 		logger.Info("APNS: disabled")
+	}
+
+	if *Config.SMS.Enabled {
+		logger.Info("Optivo SMS: enabled")
+		if *Config.SMS.APIKey == "" || *Config.SMS.APISecret == "" {
+			logger.Panic("The API Key has to be provided when NEXMO SMS connector is enabled")
+		}
+		optivoSender, err := sms.NewNexmoSender(*Config.SMS.APIKey, *Config.SMS.APISecret)
+		if err != nil {
+			logger.WithError(err).Error("Error creating Optivo Sender")
+		}
+		smsConn, err := sms.NewGateway(router, optivoSender, Config.SMS)
+		if err != nil {
+			logger.WithError(err).Error("Error creating Optivo Sender")
+		} else {
+			modules = append(modules, smsConn)
+		}
+	} else {
+		logger.Info("SMS: disabled")
 	}
 
 	return modules
