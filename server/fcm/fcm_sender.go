@@ -9,7 +9,6 @@ import (
 	"github.com/Bogh/gcm"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/server/metrics"
 )
 
 const (
@@ -30,29 +29,12 @@ func NewSender(apiKey string) *sender {
 	}
 }
 
-func (s *sender) Send(request connector.Request) (response interface{}, err error) {
+func (s *sender) Send(request connector.Request) (interface{}, error) {
 	deviceToken := request.Subscriber().Route().Get(deviceTokenKey)
-
 	fcmMessage := fcmMessage(request.Message())
 	fcmMessage.To = deviceToken
 	logger.WithFields(log.Fields{"deviceToken": fcmMessage.To}).Debug("sending message")
-
-	beforeSend := time.Now()
-	response, err = s.gcmSender.Send(fcmMessage)
-	latencyDuration := time.Now().Sub(beforeSend)
-
-	if err != nil && !isValidResponseError(err) {
-		// Even if we receive an error we could still have a valid response
-		mTotalSentMessageErrors.Add(1)
-		metrics.AddToMaps(currentTotalErrorsLatenciesKey, int64(latencyDuration), mMinute, mHour, mDay)
-		metrics.AddToMaps(currentTotalErrorsKey, 1, mMinute, mHour, mDay)
-		return
-	}
-
-	mTotalSentMessages.Add(1)
-	metrics.AddToMaps(currentTotalMessagesLatenciesKey, int64(latencyDuration), mMinute, mHour, mDay)
-	metrics.AddToMaps(currentTotalMessagesKey, 1, mMinute, mHour, mDay)
-	return
+	return s.gcmSender.Send(fcmMessage)
 }
 
 func fcmMessage(message *protocol.Message) *gcm.Message {

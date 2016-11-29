@@ -34,30 +34,6 @@ type mocks struct {
 	gcmSender *MockSender
 }
 
-//TODO Cosmin Bogdan test should be re-enabled after Check() works and is a public func
-// func TestConnector_Check(t *testing.T) {
-// 	_, finish := testutil.NewMockCtrl(t)
-// 	defer finish()
-
-// 	a := assert.New(t)
-// 	gcm, _, _ := testGCMResponse(t, testutil.SuccessGCMResponse)
-
-// 	done := make(chan bool)
-// 	mockSender := testutil.CreateGcmSender(
-// 		testutil.CreateRoundTripperWithJsonResponse(
-// 			http.StatusOK, testutil.SuccessGCMResponse, done))
-// 	gcm.Sender = mockSender
-// 	err := gcm.check()
-// 	a.NoError(err)
-
-// 	done2 := make(chan bool)
-// 	mockSender2 := testutil.CreateGcmSender(
-// 		testutil.CreateRoundTripperWithJsonResponse(
-// 			http.StatusUnauthorized, "", done2))
-// 	gcm.Sender = mockSender2
-// 	a.Error(gcm.check())
-// }
-
 func TestConnector_GetErrorMessageFromFCM(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
@@ -202,7 +178,7 @@ func TestFCMFormatMessage(t *testing.T) {
 	}
 }
 
-func testFCM(t *testing.T, mockStore bool) (connector.ReactiveConnector, *mocks) {
+func testFCM(t *testing.T, mockStore bool) (connector.ResponsiveConnector, *mocks) {
 	mcks := new(mocks)
 
 	mcks.router = NewMockRouter(testutil.MockCtrl)
@@ -235,7 +211,7 @@ func testFCM(t *testing.T, mockStore bool) (connector.ReactiveConnector, *mocks)
 	return conn, mcks
 }
 
-func postSubscription(t *testing.T, fcmConn connector.ReactiveConnector, userID, gcmID, topic string) {
+func postSubscription(t *testing.T, fcmConn connector.ResponsiveConnector, userID, gcmID, topic string) {
 	a := assert.New(t)
 	u := fmt.Sprintf("http://localhost/fcm/%s/%s/%s", gcmID, userID, topic)
 	req, err := http.NewRequest(http.MethodPost, u, nil)
@@ -247,7 +223,7 @@ func postSubscription(t *testing.T, fcmConn connector.ReactiveConnector, userID,
 	a.Equal(fmt.Sprintf(`{"subscribed":"/%s"}`, topic), string(w.Body.Bytes()))
 }
 
-func deleteSubscription(t *testing.T, fcmConn connector.ReactiveConnector, userID, gcmID, topic string) {
+func deleteSubscription(t *testing.T, fcmConn connector.ResponsiveConnector, userID, gcmID, topic string) {
 	a := assert.New(t)
 	u := fmt.Sprintf("http://localhost/fcm/%s/%s/%s", gcmID, userID, topic)
 	req, err := http.NewRequest(http.MethodDelete, u, nil)

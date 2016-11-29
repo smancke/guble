@@ -24,14 +24,14 @@ type Config struct {
 	Prefix              *string
 }
 
-// conn is the private struct for handling the communication with APNS
-type conn struct {
+// apns is the private struct for handling the communication with APNS
+type apns struct {
 	Config
 	connector.Connector
 }
 
-// New creates a new Connector without starting it
-func New(router router.Router, sender connector.Sender, config Config) (connector.ReactiveConnector, error) {
+// New creates a new connector.ResponsiveConnector without starting it
+func New(router router.Router, sender connector.Sender, config Config) (connector.ResponsiveConnector, error) {
 	baseConn, err := connector.NewConnector(
 		router,
 		sender,
@@ -47,15 +47,27 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 		logger.WithError(err).Error("Base connector error")
 		return nil, err
 	}
-	newConn := &conn{
+	a := &apns{
 		Config:    config,
 		Connector: baseConn,
 	}
-	newConn.SetResponseHandler(newConn)
-	return newConn, nil
+	a.SetResponseHandler(a)
+	return a, nil
 }
 
-func (c *conn) HandleResponse(request connector.Request, responseIface interface{}, errSend error) error {
+func (a *apns) Start() error {
+	err := a.Connector.Start()
+	if err == nil {
+		a.startMetrics()
+	}
+	return err
+}
+
+func (a *apns) startMetrics() {
+	//TODO implement APNS metrics (it is a separate task)
+}
+
+func (c *apns) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, errSend error) error {
 	logger.Debug("HandleResponse")
 	if errSend != nil {
 		logger.WithError(errSend).Error("error when trying to send APNS notification")
@@ -86,11 +98,5 @@ func (c *conn) HandleResponse(request connector.Request, responseIface interface
 		}
 		//TODO Cosmin Bogdan: extra-APNS-handling
 	}
-	return nil
-}
-
-// Check returns nil if health-check succeeds, or an error if health-check fails
-func (c *conn) Check() error {
-	//TODO implement
 	return nil
 }
