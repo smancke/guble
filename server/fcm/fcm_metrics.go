@@ -27,43 +27,31 @@ const (
 	milliPerNano                     = 1000000
 )
 
-func startMetrics() {
-	mTotalSentMessages.Set(0)
-	mTotalSendErrors.Set(0)
-	mTotalResponseErrors.Set(0)
-	mTotalResponseInternalErrors.Set(0)
-	mTotalResponseNotRegisteredErrors.Set(0)
-	mTotalReplacedCanonicalErrors.Set(0)
-	mTotalResponseOtherErrors.Set(0)
-	t := time.Now()
-	resetCurrentMetrics(mMinute, t)
-	resetCurrentMetrics(mHour, t)
-	resetCurrentMetrics(mDay, t)
-	go metrics.Every(time.Minute, processAndReset, mMinute)
-	go metrics.Every(time.Hour, processAndReset, mHour)
-	go metrics.Every(time.Hour*24, processAndReset, mDay)
-}
-
-func processAndReset(m metrics.Map, timeframe time.Duration, t time.Time) {
+func processAndResetIntervalMetrics(m metrics.Map, td time.Duration, t time.Time) {
 	msgLatenciesValue := m.Get(currentTotalMessagesLatenciesKey)
 	msgNumberValue := m.Get(currentTotalMessagesKey)
 	errLatenciesValue := m.Get(currentTotalErrorsLatenciesKey)
 	errNumberValue := m.Get(currentTotalErrorsKey)
 
 	m.Init()
-	resetCurrentMetrics(m, t)
-	metrics.SetRate(m, "last_messages_rate_sec", msgNumberValue, timeframe, time.Second)
-	metrics.SetRate(m, "last_errors_rate_sec", errNumberValue, timeframe, time.Second)
+	resetIntervalMetrics(m, t)
+	metrics.SetRate(m, "last_messages_rate_sec", msgNumberValue, td, time.Second)
+	metrics.SetRate(m, "last_errors_rate_sec", errNumberValue, td, time.Second)
 	metrics.SetAverage(m, "last_messages_average_latency_msec",
 		msgLatenciesValue, msgNumberValue, milliPerNano, defaultAverageLatencyJSONValue)
 	metrics.SetAverage(m, "last_errors_average_latency_msec",
 		errLatenciesValue, errNumberValue, milliPerNano, defaultAverageLatencyJSONValue)
 }
 
-func resetCurrentMetrics(m metrics.Map, t time.Time) {
+func resetIntervalMetrics(m metrics.Map, t time.Time) {
 	m.Set("current_interval_start", metrics.NewTime(t))
 	metrics.AddToMaps(currentTotalMessagesLatenciesKey, 0, m)
 	metrics.AddToMaps(currentTotalMessagesKey, 0, m)
 	metrics.AddToMaps(currentTotalErrorsLatenciesKey, 0, m)
 	metrics.AddToMaps(currentTotalErrorsKey, 0, m)
+}
+
+func addToLatenciesAndCountsMaps(latenciesKey string, countKey string, latency time.Duration) {
+	metrics.AddToMaps(latenciesKey, int64(latency), mMinute, mHour, mDay)
+	metrics.AddToMaps(countKey, 1, mMinute, mHour, mDay)
 }

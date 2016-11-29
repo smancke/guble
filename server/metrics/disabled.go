@@ -31,5 +31,5 @@ func NewMap(name string) Map {
 	return &dummyMap{}
 }
 
-func Every(d time.Duration, f func(Map, time.Time), m Map) {
+func RegisterInterval(m Map, td time.Duration, reset func(Map, time.Time), processAndReset func(Map, time.Duration, time.Time)) {
 }

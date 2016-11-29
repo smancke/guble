@@ -24,7 +24,7 @@ type Config struct {
 	Prefix              *string
 }
 
-// conn is the private struct for handling the communication with APNS
+// apns is the private struct for handling the communication with APNS
 type conn struct {
 	Config
 	connector.Connector
@@ -52,7 +52,12 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 		Connector: baseConn,
 	}
 	newConn.SetResponseHandler(newConn)
+	newConn.StartMetrics()
 	return newConn, nil
+}
+
+func (c *conn) StartMetrics() {
+	//TODO implement APNS metrics (it is a separate task)
 }
 
 func (c *conn) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, errSend error) error {

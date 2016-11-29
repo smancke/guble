@@ -4,12 +4,12 @@
 package connector
 
 import (
-	context "context"
-	gomock "github.com/golang/mock/gomock"
-	protocol "github.com/smancke/guble/protocol"
-	
-	router "github.com/smancke/guble/server/router"
-	http "net/http"
+	"context"
+	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/protocol"
+
+	"github.com/smancke/guble/server/router"
+	"net/http"
 )
 
 // Mock of Connector interface
@@ -31,6 +31,16 @@ func NewMockConnector(ctrl *gomock.Controller) *MockConnector {
 
 func (_m *MockConnector) EXPECT() *_MockConnectorRecorder {
 	return _m.recorder
+}
+
+func (_m *MockConnector) Context() context.Context {
+	ret := _m.ctrl.Call(_m, "Context")
+	ret0, _ := ret[0].(context.Context)
+	return ret0
+}
+
+func (_mr *_MockConnectorRecorder) Context() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Context")
 }
 
 func (_m *MockConnector) GetPrefix() string {
@@ -178,14 +188,14 @@ func (_m *MockResponseHandler) EXPECT() *_MockResponseHandlerRecorder {
 	return _m.recorder
 }
 
-func (_m *MockResponseHandler) HandleResponse(_param0 Request, _param1 interface{}, _param2 error) error {
-	ret := _m.ctrl.Call(_m, "HandleResponse", _param0, _param1, _param2)
+func (_m *MockResponseHandler) HandleResponse(_param0 Request, _param1 interface{}, _param2 *Metadata, _param3 error) error {
+	ret := _m.ctrl.Call(_m, "HandleResponse", _param0, _param1, _param2, _param3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockResponseHandlerRecorder) HandleResponse(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "HandleResponse", arg0, arg1, arg2)
+func (_mr *_MockResponseHandlerRecorder) HandleResponse(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "HandleResponse", arg0, arg1, arg2, arg3)
 }
 
 // Mock of Manager interface

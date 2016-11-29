@@ -41,7 +41,7 @@ type ResponseHandler interface {
 	HandleResponse(Request, interface{}, *Metadata, error) error
 }
 
-type ResponseHandleSetter interface {
+type ResponseHandlerSetter interface {
 	ResponseHandler() ResponseHandler
 	SetResponseHandler(ResponseHandler)
 }
@@ -55,14 +55,16 @@ type Connector interface {
 	service.Stopable
 	service.Endpoint
 	SenderSetter
-	ResponseHandleSetter
+	ResponseHandlerSetter
 	Runner
 	Manager() Manager
+	Context() context.Context
 }
 
 type ResponsiveConnector interface {
 	Connector
 	ResponseHandler
+	StartMetrics()
 }
 
 type connector struct {
@@ -302,6 +304,10 @@ func (c *connector) Stop() error {
 
 func (c *connector) Manager() Manager {
 	return c.manager
+}
+
+func (c *connector) Context() context.Context {
+	return c.ctx
 }
 
 func (c *connector) ResponseHandler() ResponseHandler {

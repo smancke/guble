@@ -8,6 +8,7 @@ import (
 	"github.com/smancke/guble/server/connector"
 	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/router"
+	"time"
 )
 
 const (
@@ -50,16 +51,29 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 
 	newConn := &fcm{config, baseConn}
 	newConn.SetResponseHandler(newConn)
-	startMetrics()
+	newConn.StartMetrics()
 	return newConn, nil
+}
+
+func (f *fcm) StartMetrics() {
+	mTotalSentMessages.Set(0)
+	mTotalSendErrors.Set(0)
+	mTotalResponseErrors.Set(0)
+	mTotalResponseInternalErrors.Set(0)
+	mTotalResponseNotRegisteredErrors.Set(0)
+	mTotalReplacedCanonicalErrors.Set(0)
+	mTotalResponseOtherErrors.Set(0)
+
+	metrics.RegisterInterval(f.Context(), mMinute, time.Minute, resetIntervalMetrics, processAndResetIntervalMetrics)
+	metrics.RegisterInterval(f.Context(), mHour, time.Hour, resetIntervalMetrics, processAndResetIntervalMetrics)
+	metrics.RegisterInterval(f.Context(), mDay, time.Hour*24, resetIntervalMetrics, processAndResetIntervalMetrics)
 }
 
 func (f *fcm) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, err error) error {
 	if err != nil && !isValidResponseError(err) {
 		logger.WithField("error", err.Error()).Error("Error sending message to FCM")
 		mTotalSendErrors.Add(1)
-		metrics.AddToMaps(currentTotalErrorsLatenciesKey, int64(metadata.Latency), mMinute, mHour, mDay)
-		metrics.AddToMaps(currentTotalErrorsKey, 1, mMinute, mHour, mDay)
+		addToLatenciesAndCountsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, metadata.Latency)
 		return err
 	}
 	message := request.Message()
@@ -79,8 +93,7 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 	}
 	if response.Ok() {
 		mTotalSentMessages.Add(1)
-		metrics.AddToMaps(currentTotalMessagesLatenciesKey, int64(metadata.Latency), mMinute, mHour, mDay)
-		metrics.AddToMaps(currentTotalMessagesKey, 1, mMinute, mHour, mDay)
+		addToLatenciesAndCountsMaps(currentTotalMessagesLatenciesKey, currentTotalMessagesKey, metadata.Latency)
 		return nil
 	}
 

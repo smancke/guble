@@ -9,7 +9,7 @@ import (
 
 // Queue is an interface modeling a task-queue (it is started and more Requests can be pushed to it, and finally it is stopped).
 type Queue interface {
-	ResponseHandleSetter
+	ResponseHandlerSetter
 	SenderSetter
 
 	Start() error
