@@ -151,7 +151,7 @@ func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
 	subscribers := c.manager.Filter(filters)
 	topics := make([]string, 0, len(subscribers))
 	for _, s := range subscribers {
-		topics = append(topics, string(s.Route().Path))
+		topics = append(topics, s.Route().Path.RemovePrefixSlash())
 	}
 
 	encoder := json.NewEncoder(w)
@@ -197,7 +197,7 @@ func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 	}
 
 	delete(params, TopicParam)
-	subscriber := c.manager.Find(GenerateKey(topic, params))
+	subscriber := c.manager.Find(GenerateKey("/"+topic, params))
 	if subscriber == nil {
 		http.Error(w, `{"error":"subscription not found"}`, http.StatusNotFound)
 		return
@@ -209,7 +209,7 @@ func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, `{"unsubscribed":"%v"}`, topic)
+	fmt.Fprintf(w, `{"unsubscribed":"/%v"}`, topic)
 }
 
 // Start will run start all current subscriptions and workers to process the messages

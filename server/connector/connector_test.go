@@ -119,7 +119,7 @@ func TestConnector_DeleteSubscription(t *testing.T) {
 	}, true, false)
 
 	subscriber := NewMockSubscriber(testutil.MockCtrl)
-	mocks.manager.EXPECT().Find(gomock.Eq(GenerateKey("topic1", map[string]string{
+	mocks.manager.EXPECT().Find(gomock.Eq(GenerateKey("/topic1", map[string]string{
 		"device_token": "device1",
 		"user_id":      "user1",
 	}))).Return(subscriber)
@@ -128,7 +128,7 @@ func TestConnector_DeleteSubscription(t *testing.T) {
 	req, err := http.NewRequest(http.MethodDelete, "/connector/device1/user1/topic1", strings.NewReader(""))
 	a.NoError(err)
 	conn.ServeHTTP(recorder, req)
-	a.Equal(`{"unsubscribed":"topic1"}`, recorder.Body.String())
+	a.Equal(`{"unsubscribed":"/topic1"}`, recorder.Body.String())
 	time.Sleep(200 * time.Millisecond)
 }
 
