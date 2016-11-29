@@ -57,12 +57,12 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 func (f *fcm) Start() error {
 	err := f.Connector.Start()
 	if err == nil {
-		f.StartMetrics()
+		f.startMetrics()
 	}
 	return err
 }
 
-func (f *fcm) StartMetrics() {
+func (f *fcm) startMetrics() {
 	mTotalSentMessages.Set(0)
 	mTotalSendErrors.Set(0)
 	mTotalResponseErrors.Set(0)
