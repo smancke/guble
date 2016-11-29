@@ -292,7 +292,7 @@ func (c *connector) restart(s Subscriber) error {
 	return nil
 }
 
-// Stop stops the connector (the context, the queue, the subscription loops)
+// Stop the connector (the context, the queue, the subscription loops)
 func (c *connector) Stop() error {
 	c.logger.Debug("Stopping connector")
 	c.cancel()

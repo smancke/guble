@@ -51,8 +51,13 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 
 	newConn := &fcm{config, baseConn}
 	newConn.SetResponseHandler(newConn)
-	newConn.StartMetrics()
 	return newConn, nil
+}
+
+func (f *fcm) Start() error {
+	f.Connector.Start()
+	f.StartMetrics()
+	return nil
 }
 
 func (f *fcm) StartMetrics() {

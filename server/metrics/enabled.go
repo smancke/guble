@@ -19,11 +19,11 @@ func NewMap(name string) Map {
 
 func RegisterInterval(ctx context.Context, m Map, td time.Duration, reset func(Map, time.Time), processAndReset func(Map, time.Duration, time.Time)) {
 	reset(m, time.Now())
-	go func(m Map, d time.Duration, processAndReset func(Map, time.Duration, time.Time)) {
+	go func(m Map, td time.Duration, processAndReset func(Map, time.Duration, time.Time)) {
 		for {
 			select {
-			case t := <-time.Tick(d):
-				processAndReset(m, d, t)
+			case t := <-time.Tick(td):
+				processAndReset(m, td, t)
 			case <-ctx.Done():
 				return
 			}

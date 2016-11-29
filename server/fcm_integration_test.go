@@ -33,16 +33,16 @@ type fcmMetricsMap struct {
 }
 
 type fcmMetrics struct {
-	TotalSentMessages      int           `json:"guble.fcm.total_sent_messages"`
-	TotalSentMessageErrors int           `json:"guble.fcm.total_sent_message_errors"`
-	Minute                 fcmMetricsMap `json:"guble.fcm.minute"`
-	Hour                   fcmMetricsMap `json:"guble.fcm.hour"`
-	Day                    fcmMetricsMap `json:"guble.fcm.day"`
+	TotalSentMessages      int           `json:"fcm.total_sent_messages"`
+	TotalSentMessageErrors int           `json:"fcm.total_sent_message_errors"`
+	Minute                 fcmMetricsMap `json:"fcm.minute"`
+	Hour                   fcmMetricsMap `json:"fcm.hour"`
+	Day                    fcmMetricsMap `json:"fcm.day"`
 }
 
 type routerMetrics struct {
-	CurrentRoutes        int `json:"guble.router.current_routes"`
-	CurrentSubscriptions int `json:"guble.router.current_subscriptions"`
+	CurrentRoutes        int `json:"router.current_routes"`
+	CurrentSubscriptions int `json:"router.current_subscriptions"`
 }
 
 type expectedValues struct {
@@ -52,8 +52,7 @@ type expectedValues struct {
 	CurrentSubscriptions int
 }
 
-// Test that restarting the service continues to fetch messages from store
-// for a subscription from lastID
+// Test that restarting the service continues to fetch messages from store for a subscription from lastID
 func TestFCMRestart(t *testing.T) {
 	// defer testutil.EnableDebugForMethod()()
 	defer testutil.ResetDefaultRegistryHealthCheck()
