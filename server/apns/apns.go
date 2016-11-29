@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/sideshow/apns2"
 	"github.com/smancke/guble/server/connector"
+	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/router"
+	"time"
 )
 
 const (
@@ -64,7 +66,20 @@ func (a *apns) Start() error {
 }
 
 func (a *apns) startMetrics() {
-	//TODO implement APNS metrics (it is a separate task)
+	mTotalSentMessages.Set(0)
+	mTotalSendErrors.Set(0)
+	mTotalResponseErrors.Set(0)
+	mTotalResponseInternalErrors.Set(0)
+	mTotalResponseNotRegisteredErrors.Set(0)
+	mTotalResponseOtherErrors.Set(0)
+
+	a.startIntervalMetric(mMinute, time.Minute)
+	a.startIntervalMetric(mHour, time.Hour)
+	a.startIntervalMetric(mDay, time.Hour*24)
+}
+
+func (a *apns) startIntervalMetric(m metrics.Map, td time.Duration) {
+	metrics.RegisterInterval(a.Context(), m, td, resetIntervalMetrics, processAndResetIntervalMetrics)
 }
 
 func (c *apns) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, errSend error) error {
