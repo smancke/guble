@@ -71,9 +71,13 @@ func (f *fcm) startMetrics() {
 	mTotalReplacedCanonicalErrors.Set(0)
 	mTotalResponseOtherErrors.Set(0)
 
-	metrics.RegisterInterval(f.Context(), mMinute, time.Minute, resetIntervalMetrics, processAndResetIntervalMetrics)
-	metrics.RegisterInterval(f.Context(), mHour, time.Hour, resetIntervalMetrics, processAndResetIntervalMetrics)
-	metrics.RegisterInterval(f.Context(), mDay, time.Hour*24, resetIntervalMetrics, processAndResetIntervalMetrics)
+	f.startIntervalMetric(mMinute, time.Minute)
+	f.startIntervalMetric(mHour, time.Hour)
+	f.startIntervalMetric(mDay, time.Hour*24)
+}
+
+func (f *fcm) startIntervalMetric(m metrics.Map, td time.Duration) {
+	metrics.RegisterInterval(f.Context(), m, td, resetIntervalMetrics, processAndResetIntervalMetrics)
 }
 
 func (f *fcm) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, err error) error {
