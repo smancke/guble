@@ -6,16 +6,16 @@ import (
 )
 
 var (
-	ns                                = metrics.NS("apns")
-	mTotalSentMessages                = ns.NewInt("total_sent_messages")
-	mTotalSendErrors                  = ns.NewInt("total_sent_message_errors")
-	mTotalResponseErrors              = ns.NewInt("total_response_errors")
-	mTotalResponseInternalErrors      = ns.NewInt("total_response_internal_errors")
-	mTotalResponseNotRegisteredErrors = ns.NewInt("total_response_not_registered_errors")
-	mTotalResponseOtherErrors         = ns.NewInt("total_response_other_errors")
-	mMinute                           = ns.NewMap("minute")
-	mHour                             = ns.NewMap("hour")
-	mDay                              = ns.NewMap("day")
+	ns                               = metrics.NS("apns")
+	mTotalSentMessages               = ns.NewInt("total_sent_messages")
+	mTotalSendErrors                 = ns.NewInt("total_sent_message_errors")
+	mTotalResponseErrors             = ns.NewInt("total_response_errors")
+	mTotalResponseInternalErrors     = ns.NewInt("total_response_internal_errors")
+	mTotalResponseRegistrationErrors = ns.NewInt("total_response_registration_errors")
+	mTotalResponseOtherErrors        = ns.NewInt("total_response_other_errors")
+	mMinute                          = ns.NewMap("minute")
+	mHour                            = ns.NewMap("hour")
+	mDay                             = ns.NewMap("day")
 )
 
 const (

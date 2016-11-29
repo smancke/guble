@@ -99,6 +99,7 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 	logger.WithField("messageID", message.ID).Debug("Delivered message to FCM")
 	subscriber.SetLastID(message.ID)
 	if err := f.Manager().Update(request.Subscriber()); err != nil {
+		logger.WithField("error", err.Error()).Error("Manager could not update subscription")
 		mTotalResponseInternalErrors.Add(1)
 		return err
 	}
