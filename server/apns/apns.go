@@ -56,9 +56,11 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 }
 
 func (a *apns) Start() error {
-	a.Connector.Start()
-	a.startMetrics()
-	return nil
+	err := a.Connector.Start()
+	if err == nil {
+		a.startMetrics()
+	}
+	return err
 }
 
 func (a *apns) startMetrics() {

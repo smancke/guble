@@ -55,9 +55,11 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 }
 
 func (f *fcm) Start() error {
-	f.Connector.Start()
-	f.StartMetrics()
-	return nil
+	err := f.Connector.Start()
+	if err == nil {
+		f.StartMetrics()
+	}
+	return err
 }
 
 func (f *fcm) StartMetrics() {
