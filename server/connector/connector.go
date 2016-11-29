@@ -64,7 +64,6 @@ type Connector interface {
 type ResponsiveConnector interface {
 	Connector
 	ResponseHandler
-	StartMetrics()
 }
 
 type connector struct {

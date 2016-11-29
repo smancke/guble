@@ -25,7 +25,7 @@ type Config struct {
 }
 
 // apns is the private struct for handling the communication with APNS
-type conn struct {
+type apns struct {
 	Config
 	connector.Connector
 }
@@ -47,20 +47,25 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 		logger.WithError(err).Error("Base connector error")
 		return nil, err
 	}
-	newConn := &conn{
+	a := &apns{
 		Config:    config,
 		Connector: baseConn,
 	}
-	newConn.SetResponseHandler(newConn)
-	newConn.StartMetrics()
-	return newConn, nil
+	a.SetResponseHandler(a)
+	return a, nil
 }
 
-func (c *conn) StartMetrics() {
+func (a *apns) Start() error {
+	a.Connector.Start()
+	a.startMetrics()
+	return nil
+}
+
+func (a *apns) startMetrics() {
 	//TODO implement APNS metrics (it is a separate task)
 }
 
-func (c *conn) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, errSend error) error {
+func (c *apns) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, errSend error) error {
 	logger.Debug("HandleResponse")
 	if errSend != nil {
 		logger.WithError(errSend).Error("error when trying to send APNS notification")

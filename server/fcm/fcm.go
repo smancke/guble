@@ -49,9 +49,9 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 		return nil, err
 	}
 
-	newConn := &fcm{config, baseConn}
-	newConn.SetResponseHandler(newConn)
-	return newConn, nil
+	f := &fcm{config, baseConn}
+	f.SetResponseHandler(f)
+	return f, nil
 }
 
 func (f *fcm) Start() error {
