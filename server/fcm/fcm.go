@@ -26,6 +26,7 @@ type Config struct {
 	Workers              *int
 	Endpoint             *string
 	Prefix               *string
+	IntervalMetrics      *bool
 	AfterMessageDelivery protocol.MessageDeliveryCallback
 }
 
@@ -57,12 +58,12 @@ func New(router router.Router, sender connector.Sender, config Config) (connecto
 func (f *fcm) Start() error {
 	err := f.Connector.Start()
 	if err == nil {
-		f.StartMetrics()
+		f.startMetrics()
 	}
 	return err
 }
 
-func (f *fcm) StartMetrics() {
+func (f *fcm) startMetrics() {
 	mTotalSentMessages.Set(0)
 	mTotalSendErrors.Set(0)
 	mTotalResponseErrors.Set(0)
@@ -71,16 +72,24 @@ func (f *fcm) StartMetrics() {
 	mTotalReplacedCanonicalErrors.Set(0)
 	mTotalResponseOtherErrors.Set(0)
 
-	metrics.RegisterInterval(f.Context(), mMinute, time.Minute, resetIntervalMetrics, processAndResetIntervalMetrics)
-	metrics.RegisterInterval(f.Context(), mHour, time.Hour, resetIntervalMetrics, processAndResetIntervalMetrics)
-	metrics.RegisterInterval(f.Context(), mDay, time.Hour*24, resetIntervalMetrics, processAndResetIntervalMetrics)
+	if *f.IntervalMetrics {
+		f.startIntervalMetric(mMinute, time.Minute)
+		f.startIntervalMetric(mHour, time.Hour)
+		f.startIntervalMetric(mDay, time.Hour*24)
+	}
+}
+
+func (f *fcm) startIntervalMetric(m metrics.Map, td time.Duration) {
+	metrics.RegisterInterval(f.Context(), m, td, resetIntervalMetrics, processAndResetIntervalMetrics)
 }
 
 func (f *fcm) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, err error) error {
 	if err != nil && !isValidResponseError(err) {
 		logger.WithField("error", err.Error()).Error("Error sending message to FCM")
 		mTotalSendErrors.Add(1)
-		addToLatenciesAndCountsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, metadata.Latency)
+		if *f.IntervalMetrics && metadata != nil {
+			addToLatenciesAndCountsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, metadata.Latency)
+		}
 		return err
 	}
 	message := request.Message()
@@ -95,12 +104,15 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 	logger.WithField("messageID", message.ID).Debug("Delivered message to FCM")
 	subscriber.SetLastID(message.ID)
 	if err := f.Manager().Update(request.Subscriber()); err != nil {
+		logger.WithField("error", err.Error()).Error("Manager could not update subscription")
 		mTotalResponseInternalErrors.Add(1)
 		return err
 	}
 	if response.Ok() {
 		mTotalSentMessages.Add(1)
-		addToLatenciesAndCountsMaps(currentTotalMessagesLatenciesKey, currentTotalMessagesKey, metadata.Latency)
+		if *f.IntervalMetrics && metadata != nil {
+			addToLatenciesAndCountsMaps(currentTotalMessagesLatenciesKey, currentTotalMessagesKey, metadata.Latency)
+		}
 		return nil
 	}
 

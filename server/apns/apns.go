@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/sideshow/apns2"
 	"github.com/smancke/guble/server/connector"
+	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/router"
+	"time"
 )
 
 const (
@@ -22,6 +24,7 @@ type Config struct {
 	AppTopic            *string
 	Workers             *int
 	Prefix              *string
+	IntervalMetrics     *bool
 }
 
 // apns is the private struct for handling the communication with APNS
@@ -64,39 +67,70 @@ func (a *apns) Start() error {
 }
 
 func (a *apns) startMetrics() {
-	//TODO implement APNS metrics (it is a separate task)
+	mTotalSentMessages.Set(0)
+	mTotalSendErrors.Set(0)
+	mTotalResponseErrors.Set(0)
+	mTotalResponseInternalErrors.Set(0)
+	mTotalResponseRegistrationErrors.Set(0)
+	mTotalResponseOtherErrors.Set(0)
+
+	if *a.IntervalMetrics {
+		a.startIntervalMetric(mMinute, time.Minute)
+		a.startIntervalMetric(mHour, time.Hour)
+		a.startIntervalMetric(mDay, time.Hour*24)
+	}
 }
 
-func (c *apns) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, errSend error) error {
-	logger.Debug("HandleResponse")
+func (a *apns) startIntervalMetric(m metrics.Map, td time.Duration) {
+	metrics.RegisterInterval(a.Context(), m, td, resetIntervalMetrics, processAndResetIntervalMetrics)
+}
+
+func (a *apns) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, errSend error) error {
 	if errSend != nil {
 		logger.WithError(errSend).Error("error when trying to send APNS notification")
+		mTotalSendErrors.Add(1)
+		if *a.IntervalMetrics && metadata != nil {
+			addToLatenciesAndCountsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, metadata.Latency)
+		}
 		return errSend
 	}
-	if r, ok := responseIface.(*apns2.Response); ok {
-		messageID := request.Message().ID
-		subscriber := request.Subscriber()
-		subscriber.SetLastID(messageID)
-		if err := c.Manager().Update(subscriber); err != nil {
-			logger.WithField("error", err.Error()).Error("Manager could not update subscription")
-			return err
+	r, ok := responseIface.(*apns2.Response)
+	if !ok {
+		mTotalResponseErrors.Add(1)
+		return fmt.Errorf("Response could not be converted to an APNS Response")
+	}
+	messageID := request.Message().ID
+	subscriber := request.Subscriber()
+	subscriber.SetLastID(messageID)
+	if err := a.Manager().Update(subscriber); err != nil {
+		logger.WithField("error", err.Error()).Error("Manager could not update subscription")
+		mTotalResponseInternalErrors.Add(1)
+		return err
+	}
+	if r.Sent() {
+		logger.WithField("id", r.ApnsID).Debug("APNS notification was successfully sent")
+		mTotalSentMessages.Add(1)
+		if *a.IntervalMetrics && metadata != nil {
+			addToLatenciesAndCountsMaps(currentTotalMessagesLatenciesKey, currentTotalMessagesKey, metadata.Latency)
 		}
-		if r.Sent() {
-			logger.WithField("id", r.ApnsID).Debug("APNS notification was successfully sent")
-			return nil
-		}
-		logger.WithField("id", r.ApnsID).WithField("reason", r.Reason).Error("APNS notification was not sent")
-		switch r.Reason {
-		case
-			apns2.ReasonMissingDeviceToken,
-			apns2.ReasonBadDeviceToken,
-			apns2.ReasonDeviceTokenNotForTopic,
-			apns2.ReasonUnregistered:
+		return nil
+	}
+	logger.WithField("id", r.ApnsID).WithField("reason", r.Reason).Error("APNS notification was not sent")
+	switch r.Reason {
+	case
+		apns2.ReasonMissingDeviceToken,
+		apns2.ReasonBadDeviceToken,
+		apns2.ReasonDeviceTokenNotForTopic,
+		apns2.ReasonUnregistered:
 
-			logger.WithField("id", r.ApnsID).Info("removing subscriber because a relevant error was received from APNS")
-			c.Manager().Remove(subscriber)
+		logger.WithField("id", r.ApnsID).Info("trying to removing subscriber because a relevant error was received from APNS")
+		mTotalResponseRegistrationErrors.Add(1)
+		err := a.Manager().Remove(subscriber)
+		if err != nil {
+			logger.WithField("id", r.ApnsID).Error("could not remove subscriber")
 		}
-		//TODO Cosmin Bogdan: extra-APNS-handling
+	default:
+		mTotalResponseOtherErrors.Add(1)
 	}
 	return nil
 }

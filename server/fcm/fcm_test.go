@@ -184,23 +184,25 @@ func testFCM(t *testing.T, mockStore bool) (connector.ResponsiveConnector, *mock
 	mcks.router = NewMockRouter(testutil.MockCtrl)
 	mcks.router.EXPECT().Cluster().Return(nil).AnyTimes()
 
-	kvstore := kvstore.NewMemoryKVStore()
-	mcks.router.EXPECT().KVStore().Return(kvstore, nil).AnyTimes()
+	kvs := kvstore.NewMemoryKVStore()
+	mcks.router.EXPECT().KVStore().Return(kvs, nil).AnyTimes()
 
 	key := "TEST-API-KEY"
 	nWorkers := 1
 	endpoint := ""
 	prefix := "/fcm/"
+	intervalMetrics := false
 
 	mcks.gcmSender = NewMockSender(testutil.MockCtrl)
 	sender := NewSender(key)
 	sender.gcmSender = mcks.gcmSender
 
 	conn, err := New(mcks.router, sender, Config{
-		APIKey:   &key,
-		Workers:  &nWorkers,
-		Endpoint: &endpoint,
-		Prefix:   &prefix,
+		APIKey:          &key,
+		Workers:         &nWorkers,
+		Endpoint:        &endpoint,
+		Prefix:          &prefix,
+		IntervalMetrics: &intervalMetrics,
 	})
 	assert.NoError(t, err)
 	if mockStore {

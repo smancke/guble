@@ -18,6 +18,11 @@ var (
 	numGoroutines = expvar.NewInt("num_goroutines")
 )
 
+const (
+	DefaultAverageLatencyJSONValue = "\"\""
+	MilliPerNano                   = 1000000
+)
+
 // HttpHandler is a HTTP handler writing the current metrics to the http.ResponseWriter
 func HttpHandler(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json; charset=utf-8")

@@ -207,9 +207,11 @@ func newAPNSConnector(t *testing.T) (c connector.ResponsiveConnector, mKVS *Mock
 
 	prefix := "/apns/"
 	workers := 1
+	intervalMetrics := false
 	cfg := Config{
-		Prefix:  &prefix,
-		Workers: &workers,
+		Prefix:          &prefix,
+		Workers:         &workers,
+		IntervalMetrics: &intervalMetrics,
 	}
 	c, err := New(mRouter, mSender, cfg)
 
