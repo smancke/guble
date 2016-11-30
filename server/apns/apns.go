@@ -24,6 +24,7 @@ type Config struct {
 	AppTopic            *string
 	Workers             *int
 	Prefix              *string
+	IntervalMetrics     *bool
 }
 
 // apns is the private struct for handling the communication with APNS
@@ -73,20 +74,24 @@ func (a *apns) startMetrics() {
 	mTotalResponseRegistrationErrors.Set(0)
 	mTotalResponseOtherErrors.Set(0)
 
-	a.startIntervalMetric(mMinute, time.Minute)
-	a.startIntervalMetric(mHour, time.Hour)
-	a.startIntervalMetric(mDay, time.Hour*24)
+	if *a.IntervalMetrics {
+		a.startIntervalMetric(mMinute, time.Minute)
+		a.startIntervalMetric(mHour, time.Hour)
+		a.startIntervalMetric(mDay, time.Hour*24)
+	}
 }
 
 func (a *apns) startIntervalMetric(m metrics.Map, td time.Duration) {
 	metrics.RegisterInterval(a.Context(), m, td, resetIntervalMetrics, processAndResetIntervalMetrics)
 }
 
-func (c *apns) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, errSend error) error {
+func (a *apns) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, errSend error) error {
 	if errSend != nil {
 		logger.WithError(errSend).Error("error when trying to send APNS notification")
 		mTotalSendErrors.Add(1)
-		addToLatenciesAndCountsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, metadata.Latency)
+		if *a.IntervalMetrics && metadata != nil {
+			addToLatenciesAndCountsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, metadata.Latency)
+		}
 		return errSend
 	}
 	r, ok := responseIface.(*apns2.Response)
@@ -97,7 +102,7 @@ func (c *apns) HandleResponse(request connector.Request, responseIface interface
 	messageID := request.Message().ID
 	subscriber := request.Subscriber()
 	subscriber.SetLastID(messageID)
-	if err := c.Manager().Update(subscriber); err != nil {
+	if err := a.Manager().Update(subscriber); err != nil {
 		logger.WithField("error", err.Error()).Error("Manager could not update subscription")
 		mTotalResponseInternalErrors.Add(1)
 		return err
@@ -105,7 +110,9 @@ func (c *apns) HandleResponse(request connector.Request, responseIface interface
 	if r.Sent() {
 		logger.WithField("id", r.ApnsID).Debug("APNS notification was successfully sent")
 		mTotalSentMessages.Add(1)
-		addToLatenciesAndCountsMaps(currentTotalMessagesLatenciesKey, currentTotalMessagesKey, metadata.Latency)
+		if *a.IntervalMetrics && metadata != nil {
+			addToLatenciesAndCountsMaps(currentTotalMessagesLatenciesKey, currentTotalMessagesKey, metadata.Latency)
+		}
 		return nil
 	}
 	logger.WithField("id", r.ApnsID).WithField("reason", r.Reason).Error("APNS notification was not sent")
@@ -118,7 +125,7 @@ func (c *apns) HandleResponse(request connector.Request, responseIface interface
 
 		logger.WithField("id", r.ApnsID).Info("trying to removing subscriber because a relevant error was received from APNS")
 		mTotalResponseRegistrationErrors.Add(1)
-		err := c.Manager().Remove(subscriber)
+		err := a.Manager().Remove(subscriber)
 		if err != nil {
 			logger.WithField("id", r.ApnsID).Error("could not remove subscriber")
 		}

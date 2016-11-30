@@ -132,6 +132,7 @@ var CreateModules = func(router router.Router) []interface{} {
 		}
 		Config.FCM.AfterMessageDelivery = AfterMessageDelivery
 		sender := fcm.NewSender(*Config.FCM.APIKey)
+		*Config.FCM.IntervalMetrics = true
 		if fcmConn, err := fcm.New(router, sender, Config.FCM); err != nil {
 			logger.WithError(err).Error("Error creating FCM connector")
 		} else {
@@ -161,6 +162,7 @@ var CreateModules = func(router router.Router) []interface{} {
 		if err != nil {
 			logger.Panic("APNS Sender could not be created")
 		}
+		*Config.APNS.IntervalMetrics = true
 		if apnsConn, err := apns.New(router, apnsSender, Config.APNS); err != nil {
 			logger.WithError(err).Error("Error creating APNS connector")
 		} else {

@@ -26,6 +26,7 @@ type Config struct {
 	Workers              *int
 	Endpoint             *string
 	Prefix               *string
+	IntervalMetrics      *bool
 	AfterMessageDelivery protocol.MessageDeliveryCallback
 }
 
@@ -71,9 +72,11 @@ func (f *fcm) startMetrics() {
 	mTotalReplacedCanonicalErrors.Set(0)
 	mTotalResponseOtherErrors.Set(0)
 
-	f.startIntervalMetric(mMinute, time.Minute)
-	f.startIntervalMetric(mHour, time.Hour)
-	f.startIntervalMetric(mDay, time.Hour*24)
+	if *f.IntervalMetrics {
+		f.startIntervalMetric(mMinute, time.Minute)
+		f.startIntervalMetric(mHour, time.Hour)
+		f.startIntervalMetric(mDay, time.Hour*24)
+	}
 }
 
 func (f *fcm) startIntervalMetric(m metrics.Map, td time.Duration) {
@@ -84,7 +87,9 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 	if err != nil && !isValidResponseError(err) {
 		logger.WithField("error", err.Error()).Error("Error sending message to FCM")
 		mTotalSendErrors.Add(1)
-		addToLatenciesAndCountsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, metadata.Latency)
+		if *f.IntervalMetrics && metadata != nil {
+			addToLatenciesAndCountsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, metadata.Latency)
+		}
 		return err
 	}
 	message := request.Message()
@@ -105,7 +110,9 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 	}
 	if response.Ok() {
 		mTotalSentMessages.Add(1)
-		addToLatenciesAndCountsMaps(currentTotalMessagesLatenciesKey, currentTotalMessagesKey, metadata.Latency)
+		if *f.IntervalMetrics && metadata != nil {
+			addToLatenciesAndCountsMaps(currentTotalMessagesLatenciesKey, currentTotalMessagesKey, metadata.Latency)
+		}
 		return nil
 	}
 
