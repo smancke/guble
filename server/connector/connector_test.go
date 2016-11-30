@@ -146,22 +146,13 @@ func TestConnector_GetList_And_Getters(t *testing.T) {
 		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
 	}, true, false)
 
-	subscriber1 := NewMockSubscriber(testutil.MockCtrl)
-	subscriber1.EXPECT().Route().Return(router.NewRoute(router.RouteConfig{
-		Path: "topic1",
-	}))
-	subscriber2 := NewMockSubscriber(testutil.MockCtrl)
-	subscriber2.EXPECT().Route().Return(router.NewRoute(router.RouteConfig{
-		Path: "topic2",
-	}))
-	mocks.manager.EXPECT().Filter(gomock.Any()).Return([]Subscriber{subscriber1, subscriber2})
-
 	req, err := http.NewRequest(http.MethodGet, "/connector/", strings.NewReader(""))
 	a.NoError(err)
 
 	conn.ServeHTTP(recorder, req)
-	expectedJSON := `["topic1","topic2"]`
+	expectedJSON := `{"error":"Missing filters"}`
 	a.JSONEq(expectedJSON, recorder.Body.String())
+	a.Equal(http.StatusBadRequest, recorder.Code)
 
 	a.Equal("/connector/", conn.GetPrefix())
 	a.Equal(mocks.manager, conn.Manager())

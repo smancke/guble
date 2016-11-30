@@ -143,6 +143,12 @@ func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
 		filters[key] = value[0]
 	}
 
+	log.WithField("filters", filters).Debug("Get list of subscriptions")
+	if len(filters) == 0 {
+		http.Error(w, `{"error":"Missing filters"}`, http.StatusBadRequest)
+		return
+	}
+
 	subscribers := c.manager.Filter(filters)
 	topics := make([]string, 0, len(subscribers))
 	for _, s := range subscribers {
@@ -161,6 +167,8 @@ func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
 // Post creates a new subscriber
 func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
+	log.WithField("params", params).Debug("Create subscription")
+
 	topic, ok := params[TopicParam]
 	if !ok {
 		fmt.Fprintf(w, "Missing topic parameter.")
@@ -179,12 +187,14 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	}
 
 	go c.Run(subscriber)
+	log.WithField("topic", topic).Debug("Subscription created")
 	fmt.Fprintf(w, `{"subscribed":"/%v"}`, topic)
 }
 
 // Delete removes a subscriber
 func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
+	log.WithField("params", params).Debug("Deleting subscription")
 	topic, ok := params[TopicParam]
 	if !ok {
 		fmt.Fprintf(w, "Missing topic parameter.")
