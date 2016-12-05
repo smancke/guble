@@ -7,13 +7,14 @@ import (
 	"net/http"
 	"sync"
 
+	"time"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/service"
-	"time"
 )
 
 const DefaultWorkers = 1
@@ -128,6 +129,9 @@ func (c *connector) initMuxRouter() {
 }
 
 func (c *connector) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	c.logger.WithFields(log.Fields{
+		"path": req.URL.RequestURI(),
+	}).Info("Handling request")
 	c.mux.ServeHTTP(w, req)
 }
 
