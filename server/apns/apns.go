@@ -116,7 +116,8 @@ func (a *apns) HandleResponse(request connector.Request, responseIface interface
 		}
 		return nil
 	}
-	logger.WithField("id", r.ApnsID).WithField("reason", r.Reason).Error("APNS notification was not sent")
+	logger.Error("APNS notification was not sent")
+	logger.WithField("id", r.ApnsID).WithField("reason", r.Reason).Debug("APNS notification was not sent - details")
 	switch r.Reason {
 	case
 		apns2.ReasonMissingDeviceToken,
@@ -131,7 +132,7 @@ func (a *apns) HandleResponse(request connector.Request, responseIface interface
 			logger.WithField("id", r.ApnsID).Error("could not remove subscriber")
 		}
 	default:
-		logger.WithField("id", r.ApnsID).Error("handling other APNS errors")
+		logger.Error("handling other APNS errors")
 		mTotalResponseOtherErrors.Add(1)
 	}
 	return nil
