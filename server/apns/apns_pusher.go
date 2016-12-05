@@ -24,7 +24,9 @@ func newPusher(c Config) (Pusher, error) {
 		return nil, errCert
 	}
 	if *c.Production {
+		logger.Debug("APNS Pusher in Production mode")
 		return apns2.NewClient(cert).Production(), nil
 	}
+	logger.Debug("APNS Pusher in Development mode")
 	return apns2.NewClient(cert).Development(), nil
 }
