@@ -198,15 +198,19 @@ var (
 				Bool(),
 			APIKey: kingpin.Flag("sms-api-key", "The Nexmo API Key for Sending sms").
 				Envar("GUBLE_SMS_API_KEY").
-				String()  ,
+				String(),
 			APISecret: kingpin.Flag("sms-api-key", "The Nexmo API Secret for Sending sms").
 				Envar("GUBLE_SMS_API_SECRET").
-				String()  ,
+				String(),
+			SMSTopic: kingpin.Flag("sms-topic", "The topic for sms route").
+				Envar("GUBLE_SMS_TOPIC").
+				Default(sms.SMS_DEFAULT_TOPIC).
+				String(),
 
 			Workers: kingpin.Flag("sms-workers", "The number of workers handling traffic with Nexmo sms endpoint(default: number of CPUs)").
-			Default(strconv.Itoa(runtime.NumCPU())).
-			Envar("GUBLE_SMS_WORKERS").
-			Int(),
+				Default(strconv.Itoa(runtime.NumCPU())).
+				Envar("GUBLE_SMS_WORKERS").
+				Int(),
 		},
 	}
 )

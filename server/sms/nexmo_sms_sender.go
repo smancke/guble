@@ -1,42 +1,21 @@
 package gateway
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/protocol"
-	"net/http"
 	"bytes"
 	"encoding/json"
-	"strconv"
+	log "github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/protocol"
+	"github.com/wendal/errors"
 	"io/ioutil"
+	"net/http"
+	"strconv"
 )
-
-type NexmoSender struct {
-	logger    *log.Entry
-	ApiKey    string
-	ApiSecret string
-}
 
 const (
 	KEY    = "ce40b46d"
 	SECRET = "153d2b2c72985370"
 	URL    = "https://rest.nexmo.com/sms/json?"
 )
-
-func NewNexmoSender(apiKey, apiSecret string) (*NexmoSender, error) {
-	return &NexmoSender{
-		logger:    logger.WithField("name", "optivoSender"),
-		ApiKey:    apiKey,
-		ApiSecret: apiSecret,
-	}, nil
-}
-
-func (ns *NexmoSender) Send(msg *protocol.Message) error {
-	ns.logger.WithFields(log.Fields{
-		"ID":   msg.ID,
-		"body": msg.Body,
-	}).Info("Sending Message  to Optivo")
-	return nil
-}
 
 type NexmoSms struct {
 	ApiKey    string `json:"api_key"`
@@ -55,7 +34,6 @@ type VerifyCheckResponse struct {
 	Currency  string       `json:"currency"`
 	ErrorText string       `json:"error_text"`
 }
-
 
 const (
 	ResponseSuccess ResponseCode = iota
@@ -116,34 +94,67 @@ type NexmoMessageReport struct {
 }
 
 type NexmoMessageResponse struct {
-	MessageCount int             `json:"message-count,string"`
+	MessageCount int                  `json:"message-count,string"`
 	Messages     []NexmoMessageReport `json:"messages"`
 }
 
-func EncodeNexmoSms(toPhoneNumber, from, body string) ([]byte, error) {
+type NexmoSender struct {
+	logger    *log.Entry
+	ApiKey    string
+	ApiSecret string
+}
 
-	sms := NexmoSms{
-		ApiKey:    KEY,
-		ApiSecret: SECRET,
-		To:        toPhoneNumber,
-		From:      from,
-		SmsBody:   body,
+func NewNexmoSender(apiKey, apiSecret string) (*NexmoSender, error) {
+	return &NexmoSender{
+		logger:    logger.WithField("name", "optivoSender"),
+		ApiKey:    apiKey,
+		ApiSecret: apiSecret,
+	}, nil
+}
+
+func (ns *NexmoSender) Send(msg *protocol.Message) error {
+	ns.logger.WithFields(log.Fields{
+		"ID":   msg.ID,
+		"body": msg.Body,
+	}).Info("Sending Message  to Optivo")
+
+	nexmoSMS := new(NexmoSms)
+	err := json.Unmarshal(msg.Body, nexmoSMS)
+	if err != nil {
+		logger.WithField("error", err.Error()).Error("Could not decode message body")
+		return err
 	}
+	nexmoSMSResponse, err := ns.SendSms(nexmoSMS)
+	if err != nil {
+
+		logger.WithField("error", err.Error()).Error("Could not decode message body")
+		return err
+	}
+	if nexmoSMSResponse.MessageCount < 1 {
+		return errors.New("MSG NOT SENT")
+	}
+
+	return nil
+}
+
+func (sms *NexmoSms) EncodeNexmoSms(apiKey, apiSecret string) ([]byte, error) {
+	sms.ApiKey = apiKey
+	sms.ApiSecret = apiSecret
 
 	d, err := json.Marshal(&sms)
 	if err != nil {
-		log.WithField("error", err.Error()).Error("Could not encode sms as json")
+		logger.WithField("error", err.Error()).Error("Could not encode sms as json")
 		return nil, err
 	}
 	return d, nil
 
 }
 
-func  (ns *NexmoSender)SendSms( toPhoneNumber, from, body string)(*NexmoMessageResponse, error) {
-	smsEncoded ,err := EncodeNexmoSms(toPhoneNumber,from,body)
+func (ns *NexmoSender) SendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {
+	smsEncoded, err := sms.EncodeNexmoSms(ns.ApiKey, ns.ApiSecret)
 	if err != nil {
-		log.WithField("error", err.Error()).Error("Error encoding sms")
-		return nil,err
+		logger.WithField("error", err.Error()).Error("Error encoding sms")
+		return nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodPost, URL, bytes.NewBuffer(smsEncoded))
@@ -153,8 +164,8 @@ func  (ns *NexmoSender)SendSms( toPhoneNumber, from, body string)(*NexmoMessageR
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.WithField("error", err.Error()).Error("Error doing the request to sms endpoint")
-		return nil,err
+		logger.WithField("error", err.Error()).Error("Error doing the request to sms endpoint")
+		return nil, err
 	}
 
 	defer resp.Body.Close()
@@ -164,10 +175,10 @@ func  (ns *NexmoSender)SendSms( toPhoneNumber, from, body string)(*NexmoMessageR
 
 	err = json.Unmarshal(respBody, &messageResponse)
 	if err != nil {
-		log.WithField("error", err.Error()).Error("Error decoding the response from sms endpoint")
-		return  nil,err
+		logger.WithField("error", err.Error()).Error("Error decoding the response from sms endpoint")
+		return nil, err
 	}
-	log.WithField("messageResponse", messageResponse).Debug("Actual response was")
+	logger.WithField("messageResponse", messageResponse).Debug("Actual response was")
 
-	return  messageResponse,nil
+	return messageResponse, nil
 }
