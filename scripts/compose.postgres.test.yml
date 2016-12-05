@@ -1,8 +1,8 @@
 # docker-compose file to run test(s) using dockerized Postgresql
 # Start Postgres from root of project with following command:
-#     sudo docker-compose -f scripts/postgres.test.compose.yml up -d
+#     sudo docker-compose -f scripts/compose.postgres.test.yml up -d
 # Stop Postgres from root of project with following command:
-#     sudo docker-compose -f scripts/postgres.test.compose.yml down
+#     sudo docker-compose -f scripts/compose.postgres.test.yml down
 version: '2'
 services:
   postgres:

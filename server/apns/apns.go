@@ -123,13 +123,14 @@ func (a *apns) HandleResponse(request connector.Request, responseIface interface
 		apns2.ReasonDeviceTokenNotForTopic,
 		apns2.ReasonUnregistered:
 
-		logger.WithField("id", r.ApnsID).Info("trying to removing subscriber because a relevant error was received from APNS")
+		logger.WithField("id", r.ApnsID).Info("trying to remove subscriber because a relevant error was received from APNS")
 		mTotalResponseRegistrationErrors.Add(1)
 		err := a.Manager().Remove(subscriber)
 		if err != nil {
 			logger.WithField("id", r.ApnsID).Error("could not remove subscriber")
 		}
 	default:
+		logger.WithField("id", r.ApnsID).Error("handling other APNS errors")
 		mTotalResponseOtherErrors.Add(1)
 	}
 	return nil
