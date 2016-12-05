@@ -27,14 +27,6 @@ type NexmoSms struct {
 
 type ResponseCode int
 
-type VerifyCheckResponse struct {
-	Status    ResponseCode `json:"status,string"`
-	EventID   string       `json:"event_id"`
-	Price     string       `json:"price"`
-	Currency  string       `json:"currency"`
-	ErrorText string       `json:"error_text"`
-}
-
 const (
 	ResponseSuccess ResponseCode = iota
 	ResponseThrottled
@@ -54,6 +46,11 @@ const (
 	ResponseInvalidTTL
 	ResponseFacilityNotAllowed
 	ResponseInvalidMessageClass
+)
+
+var (
+	ErrNoSMSSent         = errors.New("No sms was sent to Nexmo")
+	ErrIncompleteSMSSent = errors.New("Nexmo sms was only partial delivered.One or more part returned an error")
 )
 
 var nexmoResponseCodeMap = map[ResponseCode]string{
@@ -98,6 +95,20 @@ type NexmoMessageResponse struct {
 	Messages     []NexmoMessageReport `json:"messages"`
 }
 
+func (nm NexmoMessageResponse) Check() error {
+	if nm.MessageCount == 0 {
+		return ErrNoSMSSent
+	}
+	for i := 0; i < nm.MessageCount; i++ {
+		if nm.Messages[i].Status != ResponseSuccess {
+			logger.WithField("status", nm.Messages[i].Status).WithField("error", nm.Messages[i].ErrorText).Error("Error received from Nexmo")
+			return ErrIncompleteSMSSent
+		}
+	}
+	return nil
+
+}
+
 type NexmoSender struct {
 	logger    *log.Entry
 	ApiKey    string
@@ -130,11 +141,9 @@ func (ns *NexmoSender) Send(msg *protocol.Message) error {
 		logger.WithField("error", err.Error()).Error("Could not decode message body")
 		return err
 	}
-	if nexmoSMSResponse.MessageCount < 1 {
-		return errors.New("MSG NOT SENT")
-	}
+	logger.WithField("response", nexmoSMSResponse).Debug("Received nexmo response was")
 
-	return nil
+	return nexmoSMSResponse.Check()
 }
 
 func (sms *NexmoSms) EncodeNexmoSms(apiKey, apiSecret string) ([]byte, error) {
