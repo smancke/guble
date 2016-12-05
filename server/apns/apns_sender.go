@@ -24,7 +24,7 @@ type sender struct {
 func NewSender(config Config) (connector.Sender, error) {
 	pusher, err := newPusher(config)
 	if err != nil {
-		logger.WithError(err).Error("APNS Pusher creation error")
+		logger.WithField("error", err.Error()).Error("APNS Pusher creation error")
 		return nil, err
 	}
 	return NewSenderUsingPusher(pusher, *config.AppTopic)
@@ -41,7 +41,10 @@ func NewSenderUsingPusher(pusher Pusher, appTopic string) (connector.Sender, err
 }
 
 func (s sender) Send(request connector.Request) (interface{}, error) {
-	logger.Debug("Trying to push a message to APNS")
+	logger.WithField("payload", string(request.Message().Body)).
+		WithField("devicetoken", request.Subscriber().Route().Get(deviceIDKey)).
+		WithField("apptopic", s.appTopic).
+		Debug("Trying to push a message to APNS")
 	return s.client.Push(&apns2.Notification{
 		Priority:    apns2.PriorityHigh,
 		Topic:       s.appTopic,
