@@ -131,7 +131,7 @@ func (c *connector) initMuxRouter() {
 func (c *connector) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c.logger.WithFields(log.Fields{
 		"path": req.URL.RequestURI(),
-	}).Info("Handling request")
+	}).Info("Handling HTTP request")
 	c.mux.ServeHTTP(w, req)
 }
 
