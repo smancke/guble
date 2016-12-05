@@ -3,8 +3,9 @@ package connector
 import (
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // Queue is an interface modeling a task-queue (it is started and more Requests can be pushed to it, and finally it is stopped).
@@ -84,6 +85,10 @@ func (q *queue) worker(i int) {
 					"message":    request.Message(),
 				}).Error("Error handling connector response")
 			}
+		} else if err == nil {
+			logger.WithField("response", response).Debug("No response handler.")
+		} else {
+			logger.WithField("error", err.Error()).Error("Sending error. No response handler.")
 		}
 		q.wg.Done()
 	}
