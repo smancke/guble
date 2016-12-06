@@ -14,7 +14,7 @@ import (
 	"github.com/golang/mock/gomock"
 )
 
-func TestGateway_StartStop(t *testing.T) {
+func Test_StartStop(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer testutil.EnableDebugForMethod()()
 	defer finish()
@@ -45,7 +45,7 @@ func TestGateway_StartStop(t *testing.T) {
 	a.NoError(err)
 }
 
-func TestGateway_Run(t *testing.T) {
+func Test_SendOneSms(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer testutil.EnableDebugForMethod()()
 	defer finish()
@@ -71,8 +71,6 @@ func TestGateway_Run(t *testing.T) {
 		Schema:   SMSSchema,
 	}
 
-
-
 	gw, err := New(routerMock, mockSmsSender, config)
 	a.NoError(err)
 
@@ -94,8 +92,11 @@ func TestGateway_Run(t *testing.T) {
 	}
 
 	mockSmsSender.EXPECT().Send(gomock.Eq(&msg)).Return(nil)
-	time.Sleep(time.Second)
 	a.NotNil(gw.route)
 	gw.route.Deliver(&msg)
-	time.Sleep(time.Second)
+	time.Sleep(100* time.Millisecond)
+
+
+	err = gw.Stop()
+	a.NoError(err)
 }
