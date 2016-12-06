@@ -46,9 +46,9 @@ type conn struct {
 }
 
 func New(router router.Router, sender Sender, config Config) (*conn, error) {
-	// if *config.Workers <= 0 {
-	// 	*config.Workers = connector.DefaultWorkers
-	// }
+	if *config.Workers <= 0 {
+		*config.Workers = connector.DefaultWorkers
+	}
 	config.Schema = SMSSchema
 	config.Name = SMSDefaultTopic
 
