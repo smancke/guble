@@ -1,4 +1,4 @@
-package gateway
+package sms
 
 import (
 	"context"
@@ -12,8 +12,10 @@ import (
 	"strconv"
 )
 
-const SMS_SCHEMA = "sms_notifications"
-const SMS_DEFAULT_TOPIC = "sms"
+const (
+	SMSSchema = "sms_notifications"
+	SMSDefaultTopic = "sms"
+)
 
 type Sender interface {
 	Send(*protocol.Message) error
@@ -26,11 +28,11 @@ type Config struct {
 	Workers   *int
 	SMSTopic  *string
 
-	Name      string
-	Schema    string
+	Name   string
+	Schema string
 }
 
-type gateway struct {
+type connector struct {
 	config *Config
 	sender Sender
 	router router.Router
@@ -42,32 +44,37 @@ type gateway struct {
 	LastIDSent uint64
 }
 
-func NewGateway(router router.Router, sender Sender, config Config) (*gateway, error) {
+func New(router router.Router, sender Sender, config Config) (*connector, error) {
 	if *config.Workers <= 0 {
 		*config.Workers = connector.DefaultWorkers
 	}
-	config.Schema = SMS_SCHEMA
-	config.Name = SMS_DEFAULT_TOPIC
+	config.Schema = SMSSchema
+	config.Name = SMSDefaultTopic
 
-	gw := &gateway{
+	gw := &connector{
 		router: router,
 		logger: logger.WithField("name", config.Name),
+		config: &config,
 	}
+
 	return gw, nil
 }
 
-func (gw *gateway) Start() error {
+func (gw *connector) Start() error {
+	gw.logger.Debug("Starting gateway")
 
 	err := gw.ReadLastID()
 	if err != nil {
 		return err
 	}
 
+	gw.ctx, gw.cancel = context.WithCancel(context.Background())
+
 	var fr *store.FetchRequest
 	if gw.LastIDSent == 0 {
-		fr = store.NewFetchRequest(gw.route.Path.Partition(), 0, 0, store.DirectionForward, -1)
+		fr = store.NewFetchRequest(protocol.Path(*gw.config.SMSTopic).Partition(), 0, 0, store.DirectionForward, -1)
 	} else {
-		fr = store.NewFetchRequest(gw.route.Path.Partition(), gw.LastIDSent, 0, store.DirectionForward, -1)
+		fr = store.NewFetchRequest(protocol.Path(*gw.config.SMSTopic).Partition(), gw.LastIDSent, 0, store.DirectionForward, -1)
 	}
 
 	r := routerimport.NewRoute(router.RouteConfig{
@@ -78,10 +85,13 @@ func (gw *gateway) Start() error {
 	gw.route = r
 
 	go gw.Run()
+
+	gw.logger.Debug("Started gateway")
 	return nil
 }
 
-func (gw *gateway) Run() {
+func (gw *connector) Run() {
+	gw.logger.Debug("Starting gateway run")
 	var provideErr error
 	go func() {
 		err := gw.route.Provide(gw.router, true)
@@ -123,7 +133,7 @@ func (gw *gateway) Run() {
 
 }
 
-func (gw *gateway) proxyLoop() error {
+func (gw *connector) proxyLoop() error {
 	var (
 		opened bool = true
 		m      *protocol.Message
@@ -157,7 +167,7 @@ func (gw *gateway) proxyLoop() error {
 	return connector.ErrRouteChannelClosed
 }
 
-func (gw *gateway) Restart() error {
+func (gw *connector) Restart() error {
 	gw.Cancel()
 	gw.cancel = nil
 
@@ -178,14 +188,14 @@ func (gw *gateway) Restart() error {
 	return nil
 }
 
-func (gw *gateway) Stop() error {
+func (gw *connector) Stop() error {
 	gw.logger.Debug("Stopping gateway")
 	gw.cancel()
 	gw.logger.Debug("Stopped gateway")
 	return nil
 }
 
-func (gw *gateway) SetLastSentID(ID uint64) error {
+func (gw *connector) SetLastSentID(ID uint64) error {
 	gw.logger.WithField("lastID", ID).WithField("path", *gw.config.SMSTopic).Debug("Seting last id to ")
 
 	kvStore, err := gw.router.KVStore()
@@ -205,7 +215,7 @@ func (gw *gateway) SetLastSentID(ID uint64) error {
 	return nil
 }
 
-func (gw *gateway) ReadLastID() error {
+func (gw *connector) ReadLastID() error {
 	kvStore, err := gw.router.KVStore()
 	if err != nil {
 		gw.logger.WithField("error", err.Error()).Error("KvStore could not be accesed from gateway")
@@ -235,7 +245,7 @@ func (gw *gateway) ReadLastID() error {
 
 }
 
-func (gw *gateway) Cancel() {
+func (gw *connector) Cancel() {
 	if gw.cancel != nil {
 		gw.cancel()
 	}

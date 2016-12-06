@@ -35,7 +35,7 @@ import (
 
 const (
 	fileOption = "file"
-	fcmPath    = "/fcm/"
+	fcmPath    = "/fcm/k"
 )
 
 var AfterMessageDelivery = func(m *protocol.Message) {
@@ -172,17 +172,17 @@ var CreateModules = func(router router.Router) []interface{} {
 	}
 
 	if *Config.SMS.Enabled {
-		logger.Info("Optivo SMS: enabled")
+		logger.Info("Nexmo SMS: enabled")
 		if *Config.SMS.APIKey == "" || *Config.SMS.APISecret == "" {
 			logger.Panic("The API Key has to be provided when NEXMO SMS connector is enabled")
 		}
 		optivoSender, err := sms.NewNexmoSender(*Config.SMS.APIKey, *Config.SMS.APISecret)
 		if err != nil {
-			logger.WithError(err).Error("Error creating Optivo Sender")
+			logger.WithError(err).Error("Error creating Nexmo Sender")
 		}
-		smsConn, err := sms.NewGateway(router, optivoSender, Config.SMS)
+		smsConn, err := sms.New(router, optivoSender, Config.SMS)
 		if err != nil {
-			logger.WithError(err).Error("Error creating Optivo Sender")
+			logger.WithError(err).Error("Error creating Nexmo Sender")
 		} else {
 			modules = append(modules, smsConn)
 		}

@@ -200,3 +200,14 @@ $MOCKGEN -package rest \
       -destination server/rest/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
       Router
+
+# server/sms Mocks
+$MOCKGEN -package sms \
+      -destination server/sms/mocks_sender_gen_test.go \
+      github.com/smancke/guble/server/sms \
+      Sender
+
+$MOCKGEN -package sms \
+      -destination server/sms/mocks_router_gen_test.go \
+      github.com/smancke/guble/server/router \
+      Router

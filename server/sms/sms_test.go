@@ -1,4 +1,4 @@
-package gateway
+package sms
 
 import (
 	"github.com/smancke/guble/testutil"

@@ -1,4 +1,4 @@
-package gateway
+package sms
 
 import (
 	"bytes"
@@ -12,18 +12,11 @@ import (
 )
 
 const (
-	KEY    = "ce40b46d"
-	SECRET = "153d2b2c72985370"
+	KEY    = "f2aa2990" //"ce40b46d"
+	SECRET = "48fbd038ffd5ed13" //"153d2b2c72985370"
 	URL    = "https://rest.nexmo.com/sms/json?"
 )
 
-type NexmoSms struct {
-	ApiKey    string `json:"api_key"`
-	ApiSecret string `json:"api_secret"`
-	To        string `json:"to"`
-	From      string `json:"from"`
-	SmsBody   string `json:"text"`
-}
 
 type ResponseCode int
 
@@ -144,19 +137,6 @@ func (ns *NexmoSender) Send(msg *protocol.Message) error {
 	logger.WithField("response", nexmoSMSResponse).Debug("Received nexmo response was")
 
 	return nexmoSMSResponse.Check()
-}
-
-func (sms *NexmoSms) EncodeNexmoSms(apiKey, apiSecret string) ([]byte, error) {
-	sms.ApiKey = apiKey
-	sms.ApiSecret = apiSecret
-
-	d, err := json.Marshal(&sms)
-	if err != nil {
-		logger.WithField("error", err.Error()).Error("Could not encode sms as json")
-		return nil, err
-	}
-	return d, nil
-
 }
 
 func (ns *NexmoSender) SendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {

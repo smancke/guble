@@ -1,4 +1,4 @@
-package gateway
+package sms
 import (
 	log "github.com/Sirupsen/logrus"
 )

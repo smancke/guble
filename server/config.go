@@ -204,7 +204,7 @@ var (
 				String(),
 			SMSTopic: kingpin.Flag("sms-topic", "The topic for sms route").
 				Envar("GUBLE_SMS_TOPIC").
-				Default(sms.SMS_DEFAULT_TOPIC).
+				Default(sms.SMSDefaultTopic).
 				String(),
 
 			Workers: kingpin.Flag("sms-workers", "The number of workers handling traffic with Nexmo sms endpoint(default: number of CPUs)").
