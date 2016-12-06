@@ -30,7 +30,7 @@ import (
 	"github.com/pkg/profile"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/apns"
-	sms "github.com/smancke/guble/server/sms"
+	"github.com/smancke/guble/server/sms"
 )
 
 const (

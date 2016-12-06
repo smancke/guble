@@ -13,7 +13,7 @@ import (
 
 	"github.com/smancke/guble/server/apns"
 	"github.com/smancke/guble/server/fcm"
-	sms "github.com/smancke/guble/server/sms"
+	"github.com/smancke/guble/server/sms"
 )
 
 const (

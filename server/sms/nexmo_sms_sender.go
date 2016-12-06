@@ -3,20 +3,20 @@ package sms
 import (
 	"bytes"
 	"encoding/json"
-	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/protocol"
-	"github.com/wendal/errors"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/smancke/guble/protocol"
 )
 
 const (
-	KEY    = "f2aa2990" //"ce40b46d"
+	KEY    = "f2aa2990"         //"ce40b46d"
 	SECRET = "48fbd038ffd5ed13" //"153d2b2c72985370"
 	URL    = "https://rest.nexmo.com/sms/json?"
 )
-
 
 type ResponseCode int
 

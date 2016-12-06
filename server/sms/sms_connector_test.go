@@ -1,13 +1,15 @@
 package sms
 
 import (
+	"testing"
+
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
-	"testing"
 	//"github.com/smancke/guble/server/store/dummystore"
-	"github.com/smancke/guble/protocol"
 	"encoding/json"
+
+	"github.com/smancke/guble/protocol"
 )
 
 func TestGateway_StartStop(t *testing.T) {
@@ -41,9 +43,6 @@ func TestGateway_StartStop(t *testing.T) {
 	a.NoError(err)
 }
 
-
-
-
 func TestGateway_Run(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer testutil.EnableDebugForMethod()()
@@ -74,21 +73,19 @@ func TestGateway_Run(t *testing.T) {
 	a.NoError(err)
 
 	sms := NexmoSms{
-		To:"toNumber",
-		From:"FromNUmber",
-		SmsBody:"boyd",
+		To:      "toNumber",
+		From:    "FromNUmber",
+		SmsBody: "boyd",
 	}
 	d, err := json.Marshal(&sms)
 	a.NoError(err)
 
-	msg:= protocol.Message{
-		  Path:  protocol.Path(topic),
-		Body:        d,
+	msg := protocol.Message{
+		Path: protocol.Path(topic),
+		Body: d,
 	}
 	a.NotNil(gw.route)
-	logger.WithField("msg",msg).Info("aaaaaaaaaaaaaa")
+	logger.WithField("msg", msg).Info("aaaaaaaaaaaaaa")
 	gw.route.Deliver(&msg)
 
-
 }
-
