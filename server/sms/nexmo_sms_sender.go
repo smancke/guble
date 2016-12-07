@@ -117,11 +117,6 @@ func NewNexmoSender(apiKey, apiSecret string) (*NexmoSender, error) {
 }
 
 func (ns *NexmoSender) Send(msg *protocol.Message) error {
-	ns.logger.WithFields(log.Fields{
-		"ID":   msg.ID,
-		"body": msg.Body,
-	}).Info("Sending Message  to Optivo")
-
 	nexmoSMS := new(NexmoSms)
 	err := json.Unmarshal(msg.Body, nexmoSMS)
 	if err != nil {
@@ -156,7 +151,6 @@ func (ns *NexmoSender) SendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {
 		logger.WithField("error", err.Error()).Error("Error doing the request to sms endpoint")
 		return nil, err
 	}
-
 	defer resp.Body.Close()
 
 	var messageResponse *NexmoMessageResponse

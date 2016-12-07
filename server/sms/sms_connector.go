@@ -111,7 +111,7 @@ func (c *conn) Run() {
 		c.logger.WithField("error", err.Error()).Error("Error returned by gateway proxy loop")
 
 		// If Route channel closed try restarting
-		if err == connector.ErrRouteChannelClosed {
+		if err == connector.ErrRouteChannelClosed || err == ErrNoSMSSent || err == ErrIncompleteSMSSent {
 			c.Restart()
 			return
 		}
@@ -124,11 +124,13 @@ func (c *conn) Run() {
 
 		// Router closed the route, try restart
 		if provideErr == router.ErrInvalidRoute {
+			log.Info("asgfagasg")
 			c.Restart()
 			return
 		}
 		// Router module is stopping, exit the process
 		if _, ok := provideErr.(*router.ModuleStoppingError); ok {
+			log.Info("asgfagasg 2" )
 			return
 		}
 	}
@@ -137,8 +139,8 @@ func (c *conn) Run() {
 
 func (c *conn) proxyLoop() error {
 	var (
-		opened bool = true
-		recvMsg      *protocol.Message
+		opened  bool = true
+		recvMsg *protocol.Message
 	)
 	defer func() { c.cancel = nil }()
 
@@ -153,7 +155,7 @@ func (c *conn) proxyLoop() error {
 			err := c.sender.Send(recvMsg)
 			if err != nil {
 				log.WithField("error", err.Error()).Error("Sending of message failed")
-				return  err
+				return err
 			}
 			c.SetLastSentID(recvMsg.ID)
 
@@ -172,6 +174,7 @@ func (c *conn) proxyLoop() error {
 }
 
 func (c *conn) Restart() error {
+	c.logger.WithField("lastID",c.LastIDSent).Debug("Restart in progress")
 	c.Cancel()
 	c.cancel = nil
 
@@ -188,7 +191,7 @@ func (c *conn) Restart() error {
 	c.route = r
 
 	go c.Run()
-
+	c.logger.WithField("lastID",c.LastIDSent).Debug("Restart finished")
 	return nil
 }
 
