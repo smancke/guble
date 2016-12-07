@@ -3,8 +3,8 @@ package sms
 import "encoding/json"
 
 type NexmoSms struct {
-	ApiKey    string `json:"api_key"`
-	ApiSecret string `json:"api_secret"`
+	ApiKey    string `json:"api_key,omitempty"`
+	ApiSecret string `json:"api_secret,omitempty"`
 	To        string `json:"to"`
 	From      string `json:"from"`
 	Text      string `json:"text"`
