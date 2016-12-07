@@ -30,11 +30,12 @@ import (
 	"github.com/pkg/profile"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/apns"
+	"github.com/smancke/guble/server/sms"
 )
 
 const (
 	fileOption = "file"
-	fcmPath    = "/fcm/"
+	fcmPath    = "/fcm/k"
 )
 
 var AfterMessageDelivery = func(m *protocol.Message) {
@@ -170,6 +171,25 @@ var CreateModules = func(router router.Router) []interface{} {
 		}
 	} else {
 		logger.Info("APNS: disabled")
+	}
+
+	if *Config.SMS.Enabled {
+		logger.Info("Nexmo SMS: enabled")
+		if *Config.SMS.APIKey == "" || *Config.SMS.APISecret == "" {
+			logger.Panic("The API Key has to be provided when NEXMO SMS connector is enabled")
+		}
+		optivoSender, err := sms.NewNexmoSender(*Config.SMS.APIKey, *Config.SMS.APISecret)
+		if err != nil {
+			logger.WithError(err).Error("Error creating Nexmo Sender")
+		}
+		smsConn, err := sms.New(router, optivoSender, Config.SMS)
+		if err != nil {
+			logger.WithError(err).Error("Error creating Nexmo Sender")
+		} else {
+			modules = append(modules, smsConn)
+		}
+	} else {
+		logger.Info("SMS: disabled")
 	}
 
 	return modules

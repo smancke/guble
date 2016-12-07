@@ -88,7 +88,6 @@ func (r *Route) Deliver(msg *protocol.Message) error {
 		mTotalNotMatchedByFilters.Add(1)
 		return nil
 	}
-
 	// not an infinite queue
 	if r.queueSize >= 0 {
 		// if size is zero the sending is direct
