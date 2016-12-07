@@ -47,7 +47,7 @@ func TestConn_HandleResponseOnSendError(t *testing.T) {
 	e := errors.New("A Sender error")
 
 	//when
-	err := c.HandleResponse(mRequest, nil, e)
+	err := c.HandleResponse(mRequest, nil, nil, e)
 
 	//then
 	a.Equal(e, err)
@@ -82,7 +82,7 @@ func TestConn_HandleResponse(t *testing.T) {
 	}
 
 	//when
-	err := c.HandleResponse(mRequest, response, nil)
+	err := c.HandleResponse(mRequest, response, nil, nil)
 
 	//then
 	a.NoError(err)
@@ -127,7 +127,7 @@ func TestNew_HandleResponseHandleSubscriber(t *testing.T) {
 		}
 
 		//when
-		err := c.HandleResponse(mRequest, response, nil)
+		err := c.HandleResponse(mRequest, response, nil, nil)
 
 		//then
 		a.NoError(err)
@@ -190,7 +190,7 @@ func TestNew_HandleResponseDoNotHandleSubscriber(t *testing.T) {
 		}
 
 		//when
-		err := c.HandleResponse(mRequest, response, nil)
+		err := c.HandleResponse(mRequest, response, nil, nil)
 
 		//then
 		a.NoError(err)
@@ -199,14 +199,7 @@ func TestNew_HandleResponseDoNotHandleSubscriber(t *testing.T) {
 	}
 }
 
-func TestConn_Check(t *testing.T) {
-	_, finish := testutil.NewMockCtrl(t)
-	defer finish()
-	c, _ := newAPNSConnector(t)
-	assert.Nil(t, c.Check())
-}
-
-func newAPNSConnector(t *testing.T) (c connector.ReactiveConnector, mKVS *MockKVStore) {
+func newAPNSConnector(t *testing.T) (c connector.ResponsiveConnector, mKVS *MockKVStore) {
 	mKVS = NewMockKVStore(testutil.MockCtrl)
 	mRouter := NewMockRouter(testutil.MockCtrl)
 	mRouter.EXPECT().KVStore().Return(mKVS, nil).AnyTimes()
@@ -214,9 +207,11 @@ func newAPNSConnector(t *testing.T) (c connector.ReactiveConnector, mKVS *MockKV
 
 	prefix := "/apns/"
 	workers := 1
+	intervalMetrics := false
 	cfg := Config{
-		Prefix:  &prefix,
-		Workers: &workers,
+		Prefix:          &prefix,
+		Workers:         &workers,
+		IntervalMetrics: &intervalMetrics,
 	}
 	c, err := New(mRouter, mSender, cfg)
 

@@ -119,7 +119,7 @@ func TestConnector_DeleteSubscription(t *testing.T) {
 	}, true, false)
 
 	subscriber := NewMockSubscriber(testutil.MockCtrl)
-	mocks.manager.EXPECT().Find(gomock.Eq(GenerateKey("topic1", map[string]string{
+	mocks.manager.EXPECT().Find(gomock.Eq(GenerateKey("/topic1", map[string]string{
 		"device_token": "device1",
 		"user_id":      "user1",
 	}))).Return(subscriber)
@@ -128,7 +128,7 @@ func TestConnector_DeleteSubscription(t *testing.T) {
 	req, err := http.NewRequest(http.MethodDelete, "/connector/device1/user1/topic1", strings.NewReader(""))
 	a.NoError(err)
 	conn.ServeHTTP(recorder, req)
-	a.Equal(`{"unsubscribed":"topic1"}`, recorder.Body.String())
+	a.Equal(`{"unsubscribed":"/topic1"}`, recorder.Body.String())
 	time.Sleep(200 * time.Millisecond)
 }
 
@@ -146,22 +146,13 @@ func TestConnector_GetList_And_Getters(t *testing.T) {
 		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
 	}, true, false)
 
-	subscriber1 := NewMockSubscriber(testutil.MockCtrl)
-	subscriber1.EXPECT().Route().Return(router.NewRoute(router.RouteConfig{
-		Path: "topic1",
-	}))
-	subscriber2 := NewMockSubscriber(testutil.MockCtrl)
-	subscriber2.EXPECT().Route().Return(router.NewRoute(router.RouteConfig{
-		Path: "topic2",
-	}))
-	mocks.manager.EXPECT().Filter(gomock.Any()).Return([]Subscriber{subscriber1, subscriber2})
-
 	req, err := http.NewRequest(http.MethodGet, "/connector/", strings.NewReader(""))
 	a.NoError(err)
 
 	conn.ServeHTTP(recorder, req)
-	expectedJSON := `["topic1","topic2"]`
+	expectedJSON := `{"error":"Missing filters"}`
 	a.JSONEq(expectedJSON, recorder.Body.String())
+	a.Equal(http.StatusBadRequest, recorder.Code)
 
 	a.Equal("/connector/", conn.GetPrefix())
 	a.Equal(mocks.manager, conn.Manager())

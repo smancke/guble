@@ -35,6 +35,8 @@ const (
 
 var (
 	defaultFCMEndpoint = gcm.GcmSendEndpoint
+	defaultFCMMetrics  = true
+	defaultAPNSMetrics = true
 	environments       = []string{development, integration, preproduction, production}
 )
 
@@ -155,6 +157,7 @@ var (
 				Envar("GUBLE_FCM_PREFIX").
 				Default("/fcm/").
 				String(),
+			IntervalMetrics: &defaultFCMMetrics,
 		},
 		APNS: apns.Config{
 			Enabled: kingpin.Flag("apns", "Enable the APNS connector (by default, in Development mode)").
@@ -183,6 +186,7 @@ var (
 				Default(strconv.Itoa(runtime.NumCPU())).
 				Envar("GUBLE_APNS_WORKERS").
 				Int(),
+			IntervalMetrics: &defaultAPNSMetrics,
 		},
 		Cluster: ClusterConfig{
 			NodeID: kingpin.Flag("node-id", "(cluster mode) This guble node's own ID: a strictly positive integer number which must be unique in cluster").

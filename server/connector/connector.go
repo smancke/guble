@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"sync"
 
+	"time"
+
 	log "github.com/Sirupsen/logrus"
-	"github.com/docker/distribution/health"
 	"github.com/gorilla/mux"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/kvstore"
@@ -32,34 +33,38 @@ type SenderSetter interface {
 	SetSender(Sender)
 }
 
+type Metadata struct {
+	Latency time.Duration
+}
+
 type ResponseHandler interface {
-	// HandleResponse handles the response+error returned by the Sender
-	HandleResponse(Request, interface{}, error) error
+	// HandleResponse handles the response+error (returned by a Sender)
+	HandleResponse(Request, interface{}, *Metadata, error) error
+}
+
+type ResponseHandlerSetter interface {
+	ResponseHandler() ResponseHandler
+	SetResponseHandler(ResponseHandler)
 }
 
 type Runner interface {
 	Run(Subscriber)
 }
 
-type ResponseHandleSetter interface {
-	ResponseHandler() ResponseHandler
-	SetResponseHandler(ResponseHandler)
-}
-
 type Connector interface {
 	service.Startable
 	service.Stopable
 	service.Endpoint
-	ResponseHandleSetter
 	SenderSetter
+	ResponseHandlerSetter
 	Runner
 	Manager() Manager
+	Context() context.Context
 }
 
-type ReactiveConnector interface {
+type ResponsiveConnector interface {
 	Connector
 	ResponseHandler
-	health.Checker
 }
 
 type connector struct {
@@ -124,6 +129,9 @@ func (c *connector) initMuxRouter() {
 }
 
 func (c *connector) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	c.logger.WithFields(log.Fields{
+		"path": req.URL.RequestURI(),
+	}).Info("Handling HTTP request")
 	c.mux.ServeHTTP(w, req)
 }
 
@@ -143,10 +151,16 @@ func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
 		filters[key] = value[0]
 	}
 
+	log.WithField("filters", filters).Debug("Get list of subscriptions")
+	if len(filters) == 0 {
+		http.Error(w, `{"error":"Missing filters"}`, http.StatusBadRequest)
+		return
+	}
+
 	subscribers := c.manager.Filter(filters)
 	topics := make([]string, 0, len(subscribers))
 	for _, s := range subscribers {
-		topics = append(topics, string(s.Route().Path))
+		topics = append(topics, s.Route().Path.RemovePrefixSlash())
 	}
 
 	encoder := json.NewEncoder(w)
@@ -161,6 +175,8 @@ func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
 // Post creates a new subscriber
 func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
+	log.WithField("params", params).Debug("Create subscription")
+
 	topic, ok := params[TopicParam]
 	if !ok {
 		fmt.Fprintf(w, "Missing topic parameter.")
@@ -179,12 +195,14 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	}
 
 	go c.Run(subscriber)
+	log.WithField("topic", topic).Debug("Subscription created")
 	fmt.Fprintf(w, `{"subscribed":"/%v"}`, topic)
 }
 
 // Delete removes a subscriber
 func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
+	log.WithField("params", params).Debug("Deleting subscription")
 	topic, ok := params[TopicParam]
 	if !ok {
 		fmt.Fprintf(w, "Missing topic parameter.")
@@ -192,7 +210,7 @@ func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 	}
 
 	delete(params, TopicParam)
-	subscriber := c.manager.Find(GenerateKey(topic, params))
+	subscriber := c.manager.Find(GenerateKey("/"+topic, params))
 	if subscriber == nil {
 		http.Error(w, `{"error":"subscription not found"}`, http.StatusNotFound)
 		return
@@ -204,7 +222,7 @@ func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, `{"unsubscribed":"%v"}`, topic)
+	fmt.Fprintf(w, `{"unsubscribed":"/%v"}`, topic)
 }
 
 // Start will run start all current subscriptions and workers to process the messages
@@ -287,7 +305,7 @@ func (c *connector) restart(s Subscriber) error {
 	return nil
 }
 
-// Stop stops the connector (the context, the queue, the subscription loops)
+// Stop the connector (the context, the queue, the subscription loops)
 func (c *connector) Stop() error {
 	c.logger.Debug("Stopping connector")
 	c.cancel()
@@ -299,6 +317,10 @@ func (c *connector) Stop() error {
 
 func (c *connector) Manager() Manager {
 	return c.manager
+}
+
+func (c *connector) Context() context.Context {
+	return c.ctx
 }
 
 func (c *connector) ResponseHandler() ResponseHandler {

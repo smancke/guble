@@ -3,6 +3,7 @@
 package metrics
 
 import (
+	"context"
 	"expvar"
 	"time"
 )
@@ -16,8 +17,16 @@ func NewMap(name string) Map {
 	return expvar.NewMap(name)
 }
 
-func Every(d time.Duration, f func(Map, time.Duration, time.Time), m Map) {
-	for t := range time.Tick(d) {
-		f(m, d, t)
-	}
+func RegisterInterval(ctx context.Context, m Map, td time.Duration, reset func(Map, time.Time), processAndReset func(Map, time.Duration, time.Time)) {
+	reset(m, time.Now())
+	go func(m Map, td time.Duration, processAndReset func(Map, time.Duration, time.Time)) {
+		for {
+			select {
+			case t := <-time.Tick(td):
+				processAndReset(m, td, t)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}(m, td, processAndReset)
 }

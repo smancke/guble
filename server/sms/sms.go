@@ -3,11 +3,11 @@ package sms
 import "encoding/json"
 
 type NexmoSms struct {
-	ApiKey    string `json:"api_key"`
-	ApiSecret string `json:"api_secret"`
+	ApiKey    string `json:"api_key,omitempty"`
+	ApiSecret string `json:"api_secret,omitempty"`
 	To        string `json:"to"`
 	From      string `json:"from"`
-	SmsBody   string `json:"text"`
+	Text      string `json:"text"`
 }
 
 func (sms *NexmoSms) EncodeNexmoSms(apiKey, apiSecret string) ([]byte, error) {
@@ -20,5 +20,4 @@ func (sms *NexmoSms) EncodeNexmoSms(apiKey, apiSecret string) ([]byte, error) {
 		return nil, err
 	}
 	return d, nil
-
 }
