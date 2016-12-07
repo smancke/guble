@@ -56,6 +56,7 @@ func New(router router.Router, sender Sender, config Config) (*conn, error) {
 		router: router,
 		logger: logger.WithField("name", config.Name),
 		config: &config,
+		sender: sender,
 	}
 
 	return gw, nil
@@ -95,7 +96,7 @@ func (c *conn) Run() {
 	c.logger.Debug("Starting gateway run")
 	var provideErr error
 	go func() {
-		err := c.route.Provide(c.router, true)
+		err := c.route.Provide(c.router, false)
 		if err != nil {
 			// cancel subscription loop if there is an error on the provider
 			//provideErr = err
@@ -137,22 +138,24 @@ func (c *conn) Run() {
 func (c *conn) proxyLoop() error {
 	var (
 		opened bool = true
-		m      *protocol.Message
+		recvMsg      *protocol.Message
 	)
 	defer func() { c.cancel = nil }()
 
 	for opened {
 		select {
-		case m, opened = <-c.route.MessagesChannel():
+		case recvMsg, opened = <-c.route.MessagesChannel():
 			if !opened {
+				logger.WithField("m", recvMsg).Info("not open")
 				break
 			}
 
-			err := c.sender.Send(m)
+			err := c.sender.Send(recvMsg)
 			if err != nil {
 				log.WithField("error", err.Error()).Error("Sending of message failed")
+				return  err
 			}
-			c.SetLastSentID(m.ID)
+			c.SetLastSentID(recvMsg.ID)
 
 		case <-c.ctx.Done():
 			// If the parent context is still running then only this subscriber context

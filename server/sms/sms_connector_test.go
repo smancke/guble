@@ -6,13 +6,15 @@ import (
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
-	//"github.com/smancke/guble/server/store/dummystore"
 	"encoding/json"
 
 	"github.com/smancke/guble/protocol"
+	"time"
+	"github.com/smancke/guble/server/store/dummystore"
+	"github.com/golang/mock/gomock"
 )
 
-func TestGateway_StartStop(t *testing.T) {
+func Test_StartStop(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer testutil.EnableDebugForMethod()()
 	defer finish()
@@ -43,7 +45,7 @@ func TestGateway_StartStop(t *testing.T) {
 	a.NoError(err)
 }
 
-func TestGateway_Run(t *testing.T) {
+func Test_SendOneSms(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer testutil.EnableDebugForMethod()()
 	defer finish()
@@ -56,7 +58,9 @@ func TestGateway_Run(t *testing.T) {
 	a.NotNil(kvStore)
 	routerMock := NewMockRouter(testutil.MockCtrl)
 	routerMock.EXPECT().KVStore().AnyTimes().Return(kvStore, nil)
-	//routerMock.EXPECT().MessageStore().AnyTimes().Return(msgStore,nil)
+	msgStore := dummystore.New(kvStore)
+	routerMock.EXPECT().MessageStore().AnyTimes().Return(msgStore,nil)
+
 
 	topic := "sms"
 	worker := 1
@@ -66,6 +70,7 @@ func TestGateway_Run(t *testing.T) {
 		Name:     "test_gateway",
 		Schema:   SMSSchema,
 	}
+
 	gw, err := New(routerMock, mockSmsSender, config)
 	a.NoError(err)
 
@@ -75,17 +80,23 @@ func TestGateway_Run(t *testing.T) {
 	sms := NexmoSms{
 		To:      "toNumber",
 		From:    "FromNUmber",
-		SmsBody: "boyd",
+		SmsBody: "body",
 	}
 	d, err := json.Marshal(&sms)
 	a.NoError(err)
 
 	msg := protocol.Message{
 		Path: protocol.Path(topic),
+		ID: uint64(4),
 		Body: d,
 	}
-	a.NotNil(gw.route)
-	logger.WithField("msg", msg).Info("aaaaaaaaaaaaaa")
-	gw.route.Deliver(&msg)
 
+	mockSmsSender.EXPECT().Send(gomock.Eq(&msg)).Return(nil)
+	a.NotNil(gw.route)
+	gw.route.Deliver(&msg)
+	time.Sleep(100* time.Millisecond)
+
+
+	err = gw.Stop()
+	a.NoError(err)
 }

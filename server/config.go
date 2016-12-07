@@ -203,7 +203,7 @@ var (
 			APIKey: kingpin.Flag("sms-api-key", "The Nexmo API Key for Sending sms").
 				Envar("GUBLE_SMS_API_KEY").
 				String(),
-			APISecret: kingpin.Flag("sms-api-key", "The Nexmo API Secret for Sending sms").
+			APISecret: kingpin.Flag("sms-api-secret", "The Nexmo API Secret for Sending sms").
 				Envar("GUBLE_SMS_API_SECRET").
 				String(),
 			SMSTopic: kingpin.Flag("sms-topic", "The topic for sms route").

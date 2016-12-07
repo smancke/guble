@@ -92,18 +92,15 @@ func (r *Route) Deliver(msg *protocol.Message) error {
 	if r.queueSize >= 0 {
 		// if size is zero the sending is direct
 		if r.queueSize == 0 {
-			loggerMessage.Info("aici")
 			return r.sendDirect(msg)
 		} else if r.queue.size() >= r.queueSize {
 			loggerMessage.Error("Closing route because queue is full")
 			r.Close()
 			mTotalDeliverMessageErrors.Add(1)
 			return ErrQueueFull
-			loggerMessage.Info("aici2")
 		}
 	}
 
-	loggerMessage.Info("aici3")
 	r.queue.push(msg)
 	loggerMessage.WithField("queue_size", r.queue.size()).Debug("Deliver")
 
