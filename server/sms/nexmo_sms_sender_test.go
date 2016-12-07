@@ -15,7 +15,7 @@ func TestNexmoSender_Send(t *testing.T) {
 	sms := new(NexmoSms)
 	sms.To = "+40746278186"
 	sms.From = "REWE Lieferservice"
-	sms.SmsBody = "Lieber Kunde! Ihre Lieferung kommt heute zwischen 12.04 und 12.34 Uhr. Vielen Dank für Ihre Bestellung! Ihr REWE Lieferservice"
+	sms.Text = "Lieber Kunde! Ihre Lieferung kommt heute zwischen 12.04 und 12.34 Uhr. Vielen Dank für Ihre Bestellung! Ihr REWE Lieferservice"
 
 	response, err := sender.SendSms(sms)
 	a.Equal(1, response.MessageCount)
@@ -31,7 +31,7 @@ func TestNexmoSender_SendWithError(t *testing.T) {
 	sms := NexmoSms{
 		To:      "toNumber",
 		From:    "FromNUmber",
-		SmsBody: "body",
+		Text: "body",
 	}
 	d, err := json.Marshal(&sms)
 	a.NoError(err)
