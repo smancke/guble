@@ -374,7 +374,7 @@ func TestRouter_CleanShutdown(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
 
-	assert := assert.New(t)
+	a := assert.New(t)
 
 	var ID uint64
 
@@ -398,7 +398,7 @@ func TestRouter_CleanShutdown(t *testing.T) {
 			ChannelSize: 3,
 		},
 	))
-	assert.Nil(err)
+	a.Nil(err)
 
 	doneC := make(chan bool)
 
@@ -410,7 +410,7 @@ func TestRouter_CleanShutdown(t *testing.T) {
 			case <-doneC:
 				return
 			default:
-				assert.True(ok)
+				a.True(ok)
 			}
 		}
 	}()
@@ -425,8 +425,8 @@ func TestRouter_CleanShutdown(t *testing.T) {
 
 			if errHandle != nil {
 				mse, ok := errHandle.(*ModuleStoppingError)
-				assert.True(ok)
-				assert.Equal("Router", mse.Name)
+				a.True(ok)
+				a.Equal("Router", mse.Name)
 				return
 			}
 
@@ -434,7 +434,7 @@ func TestRouter_CleanShutdown(t *testing.T) {
 			select {
 			case _, ok := <-doneC:
 				if !ok {
-					assert.Fail("Expected error from router handle message")
+					a.Fail("Expected error from router handle message")
 				}
 			default:
 			}
@@ -443,10 +443,10 @@ func TestRouter_CleanShutdown(t *testing.T) {
 
 	close(doneC)
 	err = router.Stop()
-	assert.Nil(err)
+	a.Nil(err)
 
 	// wait for above goroutine to finish
-	<-time.After(50 * time.Millisecond)
+	<-time.After(100 * time.Millisecond)
 }
 
 func TestRouter_Check(t *testing.T) {

@@ -66,11 +66,11 @@ func TestSender_Send(t *testing.T) {
 	}
 
 	mSubscriber := NewMockSubscriber(testutil.MockCtrl)
-	mSubscriber.EXPECT().Route().Return(route)
+	mSubscriber.EXPECT().Route().Return(route).AnyTimes()
 
 	mRequest := NewMockRequest(testutil.MockCtrl)
-	mRequest.EXPECT().Subscriber().Return(mSubscriber)
-	mRequest.EXPECT().Message().Return(msg)
+	mRequest.EXPECT().Subscriber().Return(mSubscriber).AnyTimes()
+	mRequest.EXPECT().Message().Return(msg).AnyTimes()
 
 	mPusher := NewMockPusher(testutil.MockCtrl)
 	mPusher.EXPECT().Push(gomock.Any()).Return(nil, nil)
