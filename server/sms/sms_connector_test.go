@@ -83,7 +83,7 @@ func Test_SendOneSms(t *testing.T) {
 	sms := NexmoSms{
 		To:      "toNumber",
 		From:    "FromNUmber",
-		SmsBody: "body",
+		Text: "body",
 	}
 	d, err := json.Marshal(&sms)
 	a.NoError(err)
@@ -137,7 +137,7 @@ func Test_Restart(t *testing.T) {
 	sms := NexmoSms{
 		To:      "toNumber",
 		From:    "FromNUmber",
-		SmsBody: "body",
+		Text: "body",
 	}
 	d, err := json.Marshal(&sms)
 	a.NoError(err)
