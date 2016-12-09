@@ -3,10 +3,10 @@ package sms
 import (
 	"context"
 	"encoding/binary"
-	"strconv"
 
 	"github.com/smancke/guble/server/connector"
 
+	"bytes"
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
@@ -15,7 +15,7 @@ import (
 
 const (
 	SMSSchema       = "sms_notifications"
-	SMSDefaultTopic = "sms"
+	SMSDefaultTopic = "/sms"
 )
 
 type Sender interface {
@@ -96,7 +96,7 @@ func (c *conn) Run() {
 	c.logger.Debug("Starting gateway run")
 	var provideErr error
 	go func() {
-		err := c.route.Provide(c.router, false)
+		err := c.route.Provide(c.router, true)
 		if err != nil {
 			// cancel subscription loop if there is an error on the provider
 			//provideErr = err
@@ -130,7 +130,7 @@ func (c *conn) Run() {
 		}
 		// Router module is stopping, exit the process
 		if _, ok := provideErr.(*router.ModuleStoppingError); ok {
-			log.Info("asgfagasg 2" )
+			log.Info("asgfagasg 2")
 			return
 		}
 	}
@@ -174,7 +174,7 @@ func (c *conn) proxyLoop() error {
 }
 
 func (c *conn) Restart() error {
-	c.logger.WithField("lastID",c.LastIDSent).Debug("Restart in progress")
+	c.logger.WithField("lastID", c.LastIDSent).Debug("Restart in progress")
 	c.Cancel()
 	c.cancel = nil
 
@@ -191,7 +191,7 @@ func (c *conn) Restart() error {
 	c.route = r
 
 	go c.Run()
-	c.logger.WithField("lastID",c.LastIDSent).Debug("Restart finished")
+	c.logger.WithField("lastID", c.LastIDSent).Debug("Restart finished")
 	return nil
 }
 
@@ -239,7 +239,7 @@ func (c *conn) ReadLastID() error {
 		return nil
 	}
 
-	sequenceValue, err := strconv.ParseUint(string(val), 10, 64)
+	sequenceValue, err := binary.ReadUvarint(bytes.NewBuffer(val))
 	if err != nil {
 		c.logger.WithField("error", err.Error()).Error("Could not parse to uint64 the value stored in db")
 		return err
