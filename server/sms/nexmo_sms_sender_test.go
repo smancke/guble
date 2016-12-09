@@ -5,10 +5,12 @@ import (
 	"github.com/smancke/guble/protocol"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"github.com/smancke/guble/testutil"
 )
 
 func TestNexmoSender_Send(t *testing.T) {
 	a := assert.New(t)
+	testutil.SkipIfDisabled(t)
 	sender, err := NewNexmoSender(KEY, SECRET)
 	a.NoError(err)
 
@@ -29,8 +31,8 @@ func TestNexmoSender_SendWithError(t *testing.T) {
 	a.NoError(err)
 
 	sms := NexmoSms{
-		To:      "toNumber",
-		From:    "FromNUmber",
+		To:   "toNumber",
+		From: "FromNUmber",
 		Text: "body",
 	}
 	d, err := json.Marshal(&sms)
@@ -46,5 +48,5 @@ func TestNexmoSender_SendWithError(t *testing.T) {
 
 	err = sender.Send(&msg)
 	a.Error(err)
-	a.Equal(ErrIncompleteSMSSent,err)
+	a.Equal(ErrIncompleteSMSSent, err)
 }

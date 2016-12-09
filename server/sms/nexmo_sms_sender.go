@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	KEY    = "f2aa2990"         //"ce40b46d"
-	SECRET = "48fbd038ffd5ed13" //"153d2b2c72985370"
+	KEY    = "ce40b46d"
+	SECRET = "153d2b2c72985370"
 	URL    = "https://rest.nexmo.com/sms/json?"
 )
 
