@@ -2,11 +2,10 @@ package sms
 
 import (
 	"context"
-	"encoding/binary"
+	"encoding/json"
 
 	"github.com/smancke/guble/server/connector"
 
-	"bytes"
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
@@ -72,24 +71,31 @@ func (c *conn) Start() error {
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
-	var fr *store.FetchRequest
-	if c.LastIDSent == 0 {
-		fr = store.NewFetchRequest(protocol.Path(*c.config.SMSTopic).Partition(), 0, 0, store.DirectionForward, -1)
-	} else {
-		fr = store.NewFetchRequest(protocol.Path(*c.config.SMSTopic).Partition(), c.LastIDSent, 0, store.DirectionForward, -1)
-	}
-
-	r := router.NewRoute(router.RouteConfig{
-		Path:         protocol.Path(*c.config.SMSTopic),
-		ChannelSize:  10,
-		FetchRequest: fr,
-	})
-	c.route = r
+	c.initRoute()
 
 	go c.Run()
 
 	c.logger.Debug("Started gateway")
 	return nil
+}
+
+func (c *conn) initRoute() {
+	c.route = router.NewRoute(router.RouteConfig{
+		Path:         protocol.Path(*c.config.SMSTopic),
+		ChannelSize:  10,
+		FetchRequest: c.fetchRequest(),
+	})
+}
+
+func (c *conn) fetchRequest() (fr *store.FetchRequest) {
+	if c.LastIDSent > 0 {
+		fr = store.NewFetchRequest(
+			protocol.Path(*c.config.SMSTopic).Partition(),
+			c.LastIDSent+1,
+			0,
+			store.DirectionForward, -1)
+	}
+	return
 }
 
 func (c *conn) Run() {
@@ -124,13 +130,11 @@ func (c *conn) Run() {
 
 		// Router closed the route, try restart
 		if provideErr == router.ErrInvalidRoute {
-			log.Info("asgfagasg")
 			c.Restart()
 			return
 		}
 		// Router module is stopping, exit the process
 		if _, ok := provideErr.(*router.ModuleStoppingError); ok {
-			log.Info("asgfagasg 2")
 			return
 		}
 	}
@@ -183,14 +187,10 @@ func (c *conn) Restart() error {
 		return err
 	}
 
-	r := router.NewRoute(router.RouteConfig{
-		Path:         protocol.Path(*c.config.SMSTopic),
-		ChannelSize:  10,
-		FetchRequest: store.NewFetchRequest(c.route.Path.Partition(), c.LastIDSent, 0, store.DirectionForward, -1),
-	})
-	c.route = r
+	c.initRoute()
 
 	go c.Run()
+
 	c.logger.WithField("lastID", c.LastIDSent).Debug("Restart finished")
 	return nil
 }
@@ -211,9 +211,12 @@ func (c *conn) SetLastSentID(ID uint64) error {
 		return err
 	}
 
-	buffer := make([]byte, 8)
-	binary.LittleEndian.PutUint64(buffer, ID)
-	err = kvStore.Put(c.config.Schema, *c.config.SMSTopic, buffer)
+	data, err := json.Marshal(struct{ ID uint64 }{ID: ID})
+	if err != nil {
+		c.logger.WithField("error", err.Error()).Error("Error encoding last ID")
+		return err
+	}
+	err = kvStore.Put(c.config.Schema, *c.config.SMSTopic, data)
 	if err != nil {
 		c.logger.WithField("error", err.Error()).WithField("path", *c.config.SMSTopic).Error("KvStore could not set value for lastID for topic")
 		return err
@@ -228,7 +231,7 @@ func (c *conn) ReadLastID() error {
 		c.logger.WithField("error", err.Error()).Error("KvStore could not be accesed from gateway")
 		return err
 	}
-	val, exist, err := kvStore.Get(c.config.Schema, *c.config.SMSTopic)
+	data, exist, err := kvStore.Get(c.config.Schema, *c.config.SMSTopic)
 	if err != nil {
 		c.logger.WithField("error", err.Error()).WithField("path", *c.config.SMSTopic).Error("KvStore could not get value for lastID for topic")
 		return err
@@ -239,15 +242,15 @@ func (c *conn) ReadLastID() error {
 		return nil
 	}
 
-	sequenceValue, err := binary.ReadUvarint(bytes.NewBuffer(val))
+	v := &struct{ ID uint64 }{}
+	err = json.Unmarshal(data, v)
 	if err != nil {
 		c.logger.WithField("error", err.Error()).Error("Could not parse to uint64 the value stored in db")
 		return err
 	}
+	c.LastIDSent = v.ID
 
-	c.LastIDSent = uint64(sequenceValue)
-
-	c.logger.WithField("lastID", c.LastIDSent).WithField("path", *c.config.SMSTopic).Debug("ReadLastID is ")
+	c.logger.WithField("lastID", c.LastIDSent).WithField("path", *c.config.SMSTopic).Debug("ReadLastID")
 	return nil
 
 }

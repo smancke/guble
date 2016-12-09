@@ -4,16 +4,18 @@ import (
 	"testing"
 
 	"encoding/json"
+
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
+
+	"strings"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/store"
 	"github.com/smancke/guble/server/store/dummystore"
-	"strings"
-	"time"
 )
 
 func Test_StartStop(t *testing.T) {
@@ -113,7 +115,7 @@ func Test_SendOneSms(t *testing.T) {
 func Test_Restart(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-	defer testutil.EnableDebugForMethod() ()
+	defer testutil.EnableDebugForMethod()()
 	a := assert.New(t)
 
 	mockSmsSender := NewMockSender(ctrl)
@@ -182,4 +184,39 @@ func Test_Restart(t *testing.T) {
 	a.NotNil(gw.route)
 	gw.route.Deliver(&msg)
 	time.Sleep(100 * time.Millisecond)
+}
+
+func TestReadLastID(t *testing.T) {
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
+	defer testutil.EnableDebugForMethod()()
+	a := assert.New(t)
+
+	mockSmsSender := NewMockSender(ctrl)
+	kvStore := kvstore.NewMemoryKVStore()
+
+	a.NotNil(kvStore)
+	routerMock := NewMockRouter(testutil.MockCtrl)
+	routerMock.EXPECT().KVStore().AnyTimes().Return(kvStore, nil)
+	msgStore := dummystore.New(kvStore)
+	routerMock.EXPECT().MessageStore().AnyTimes().Return(msgStore, nil)
+
+	topic := "/sms"
+	worker := 1
+	config := Config{
+		Workers:  &worker,
+		SMSTopic: &topic,
+		Name:     "test_gateway",
+		Schema:   SMSSchema,
+	}
+
+	gw, err := New(routerMock, mockSmsSender, config)
+	a.NoError(err)
+
+	gw.SetLastSentID(uint64(10))
+
+	gw.ReadLastID()
+
+	a.Equal(uint64(10), gw.LastIDSent)
 }
