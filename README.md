@@ -12,7 +12,7 @@ Guble is a simple user-facing messaging and data replication server written in G
 [![Awesome-Go](https://camo.githubusercontent.com/13c4e50d88df7178ae1882a203ed57b641674f94/68747470733a2f2f63646e2e7261776769742e636f6d2f73696e647265736f726875732f617765736f6d652f643733303566333864323966656437386661383536353265336136336531353464643865383832392f6d656469612f62616467652e737667)](https://awesome-go.com)
 
 # Overview
-Guble is in an early state (release 0.3). 
+Guble is in an early state (release 0.4). 
 It is already working well and is very useful, but the protocol, API and storage formats 
 may still change (until reaching 0.7). 
 If you intend to use guble, please get in contact with us.
@@ -25,7 +25,7 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 * Batteries included: usable as front-facing server, without the need of a proxy layer
 * Self-contained: no mandatory dependencies to other services
 
-## Working Features (0.3)
+## Working Features (0.4)
 
 * Publishing and subscription of messages to topics and subtopics
 * Persistent message store with transparent live and offline fetching
@@ -40,7 +40,10 @@ The goal of guble is to be a simple and fast message bus for user interaction an
 * Collection of Basic Metrics, with Endpoint
 * Added Postgresql as KV Backend
 * Load testing with 5000 messages per instance
-
+* Support for Apple Push Notification services (a new connector alongside Firebase)
+* Upgrade, cleanup, abstraction, documentation, and test coverage of the Firebase connector
+* GET list of subscribers / list of topics per subscriber (userID , deviceID) 
+* Support for SMS-sending using Nexmo (a new connector alongside Firebase)
 
 ## Throughput
 Measured on an old notebook with i5-2520M, dual core and SSD. Message payload was 'Hello Word'.
@@ -54,7 +57,6 @@ During the tests, the memory consumption of the server was around ~25 MB.
 ## Table of Contents
 
 - [Roadmap](#roadmap)
-  - [Roadmap Release 0.4](#roadmap-release-04)
   - [Roadmap Release 0.5](#roadmap-release-05)
   - [Roadmap Release 0.6](#roadmap-release-06)
   - [Roadmap Release 0.7](#roadmap-release-07)
@@ -78,13 +80,7 @@ During the tests, the memory consumption of the server was around ~25 MB.
 # Roadmap
 This is the current (and fast changing) roadmap and todo list:
 
-## Roadmap Release 0.4
-* Support for Apple Push Notification services (a new connector alongside Firebase)
-* Upgrade, cleanup, abstraction, documentation, and test coverage of the Firebase connector
-* GET list of subscribers / list of topics per subscriber (userID , deviceID) 
-
 ## Roadmap Release 0.5
-* Support for SMS-sending (a new connector alongside Firebase)
 * Replication across multiple servers (in a Guble cluster)
 * Acknowledgement of message delivery for connectors
 * Storing the sequence-Id of topics in KV store, if we turn off persistence
