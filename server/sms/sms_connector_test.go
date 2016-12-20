@@ -84,7 +84,7 @@ func Test_SendOneSms(t *testing.T) {
 	}
 
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *router.Route) (*router.Route, error) {
-		a.Equal(topic, r.Path.Partition())
+		a.Equal(topic, string(r.Path))
 		return r, nil
 	})
 
@@ -172,7 +172,6 @@ func Test_Restart(t *testing.T) {
 		ID:            uint64(4),
 		Body:          d,
 	}
-
 
 	//TODO MARIAN  FIX THIS TEST
 	//msgStore.EXPECT().MaxMessageID(gomock.Eq(gw.route.Path.Partition())).Return(uint64(0), nil)
