@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/Bogh/gcm"
 	"github.com/pkg/profile"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/apns"
@@ -132,8 +133,11 @@ var CreateModules = func(router router.Router) []interface{} {
 			logger.Panic("The API Key has to be provided when Firebase Cloud Messaging is enabled")
 		}
 		Config.FCM.AfterMessageDelivery = AfterMessageDelivery
-		sender := fcm.NewSender(*Config.FCM.APIKey)
 		*Config.FCM.IntervalMetrics = true
+		if Config.FCM.Endpoint != nil {
+			gcm.GcmSendEndpoint = *Config.FCM.Endpoint
+		}
+		sender := fcm.NewSender(*Config.FCM.APIKey)
 		if fcmConn, err := fcm.New(router, sender, Config.FCM); err != nil {
 			logger.WithError(err).Error("Error creating FCM connector")
 		} else {
