@@ -16,7 +16,10 @@ type Map interface {
 
 func SetRate(m Map, key string, value expvar.Var, timeframe, unit time.Duration) {
 	if value != nil {
-		v, _ := strconv.ParseInt(value.String(), 10, 64)
+		v, err := strconv.ParseInt(value.String(), 10, 64)
+		if err != nil {
+			m.Set(key, zeroValue)
+		}
 		m.Set(key, newRate(v, timeframe, unit))
 	} else {
 		m.Set(key, zeroValue)
@@ -25,8 +28,11 @@ func SetRate(m Map, key string, value expvar.Var, timeframe, unit time.Duration)
 
 func SetAverage(m Map, key string, totalVar, casesVar expvar.Var, scale int64, defaultValue string) {
 	if totalVar != nil && casesVar != nil {
-		total, _ := strconv.ParseInt(totalVar.String(), 10, 64)
-		cases, _ := strconv.ParseInt(casesVar.String(), 10, 64)
+		total, err1 := strconv.ParseInt(totalVar.String(), 10, 64)
+		cases, err2 := strconv.ParseInt(casesVar.String(), 10, 64)
+		if err1 != nil || err2 != nil {
+			m.Set(key, zeroValue)
+		}
 		m.Set(key, newAverage(total, cases, scale, defaultValue))
 	} else {
 		m.Set(key, zeroValue)
