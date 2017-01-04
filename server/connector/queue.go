@@ -74,7 +74,7 @@ func (q *queue) worker(i int) {
 		if q.responseHandler != nil {
 			var metadata *Metadata
 			if q.metrics {
-				latency = time.Now().Sub(beforeSend)
+				latency = time.Since(beforeSend)
 				metadata = &Metadata{latency}
 			}
 			err = q.responseHandler.HandleResponse(request, response, metadata, err)
