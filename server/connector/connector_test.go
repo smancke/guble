@@ -48,6 +48,7 @@ func TestConnector_PostSubscription(t *testing.T) {
 	mocks.manager.EXPECT().Create(gomock.Eq(protocol.Path("/topic1")), gomock.Eq(router.RouteParams{
 		"device_token": "device1",
 		"user_id":      "user1",
+		"connector":    "test",
 	})).Return(subscriber, nil)
 
 	subscriber.EXPECT().Loop(gomock.Any(), gomock.Any())
@@ -76,19 +77,20 @@ func TestConnector_PostSubscriptionNoMocks(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	conn, mocks := getTestConnector(t, Config{
-		Name:       "test",
-		Schema:     "test",
+		Name:       "name",
+		Schema:     "schema",
 		Prefix:     "/connector/",
 		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
 	}, false, false)
 
 	entriesC := make(chan [2]string)
-	mocks.kvstore.EXPECT().Iterate(gomock.Eq("test"), gomock.Eq("")).Return(entriesC)
+	mocks.kvstore.EXPECT().Iterate(gomock.Eq("schema"), gomock.Eq("")).Return(entriesC)
 	close(entriesC)
 
-	mocks.kvstore.EXPECT().Put(gomock.Eq("test"), gomock.Eq(GenerateKey("/topic1", map[string]string{
+	mocks.kvstore.EXPECT().Put(gomock.Eq("schema"), gomock.Eq(GenerateKey("/topic1", map[string]string{
 		"device_token": "device1",
 		"user_id":      "user1",
+		"connector":    "name",
 	})), gomock.Any())
 
 	mocks.router.EXPECT().Subscribe(gomock.Any())
@@ -112,8 +114,8 @@ func TestConnector_DeleteSubscription(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	conn, mocks := getTestConnector(t, Config{
-		Name:       "test",
-		Schema:     "test",
+		Name:       "name",
+		Schema:     "schema",
 		Prefix:     "/connector/",
 		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
 	}, true, false)
@@ -122,6 +124,7 @@ func TestConnector_DeleteSubscription(t *testing.T) {
 	mocks.manager.EXPECT().Find(gomock.Eq(GenerateKey("/topic1", map[string]string{
 		"device_token": "device1",
 		"user_id":      "user1",
+		"connector":    "name",
 	}))).Return(subscriber)
 	mocks.manager.EXPECT().Remove(subscriber).Return(nil)
 
