@@ -4,6 +4,8 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/smancke/guble/logformatter"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/apns"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/cluster"
 	"github.com/smancke/guble/server/fcm"
@@ -12,6 +14,7 @@ import (
 	"github.com/smancke/guble/server/rest"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/service"
+	"github.com/smancke/guble/server/sms"
 	"github.com/smancke/guble/server/store"
 	"github.com/smancke/guble/server/store/dummystore"
 	"github.com/smancke/guble/server/store/filestore"
@@ -29,9 +32,7 @@ import (
 
 	"github.com/Bogh/gcm"
 	"github.com/pkg/profile"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/apns"
-	"github.com/smancke/guble/server/sms"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 const (
@@ -208,7 +209,10 @@ func Main() {
 
 	parseConfig()
 
-	log.SetFormatter(&logformatter.LogstashFormatter{Env: *Config.EnvName})
+	if !terminal.IsTerminal(int(os.Stdout.Fd())) {
+		log.SetFormatter(&logformatter.LogstashFormatter{Env: *Config.EnvName})
+	}
+
 	level, err := log.ParseLevel(*Config.Log)
 	if err != nil {
 		logger.WithError(err).Fatal("Invalid log level")
