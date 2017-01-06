@@ -111,14 +111,12 @@ func (s *subscriber) Route() *router.Route {
 }
 
 func (s *subscriber) Loop(ctx context.Context, q Queue) error {
-	var (
-		opened bool = true
-		m      *protocol.Message
-	)
+	var m *protocol.Message
 	sCtx, cancel := context.WithCancel(ctx)
 	s.cancel = cancel
 	defer func() { s.cancel = nil }()
 
+	opened := true
 	for opened {
 		select {
 		case m, opened = <-s.route.MessagesChannel():
