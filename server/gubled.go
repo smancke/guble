@@ -36,7 +36,6 @@ import (
 
 const (
 	fileOption = "file"
-	fcmPath    = "/fcm/k"
 )
 
 var AfterMessageDelivery = func(m *protocol.Message) {

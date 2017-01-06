@@ -98,12 +98,7 @@ func (m *manager) Add(s Subscriber) error {
 	}
 	m.subscribers[s.Key()] = s
 
-	err := m.updateStore(s)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return m.updateStore(s)
 }
 
 func (m *manager) Update(s Subscriber) error {
@@ -114,12 +109,7 @@ func (m *manager) Update(s Subscriber) error {
 	}
 
 	m.subscribers[s.Key()] = s
-	err := m.updateStore(s)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return m.updateStore(s)
 }
 
 func (m *manager) Exists(key string) bool {
@@ -142,7 +132,6 @@ func (m *manager) Remove(s Subscriber) error {
 
 	delete(m.subscribers, s.Key())
 	return m.removeStore(s)
-
 }
 
 func (m *manager) updateStore(s Subscriber) error {
@@ -150,12 +139,7 @@ func (m *manager) updateStore(s Subscriber) error {
 	if err != nil {
 		return err
 	}
-
-	err = m.kvstore.Put(m.schema, s.Key(), data)
-	if err != nil {
-		return err
-	}
-	return nil
+	return m.kvstore.Put(m.schema, s.Key(), data)
 }
 
 func (m *manager) removeStore(s Subscriber) error {

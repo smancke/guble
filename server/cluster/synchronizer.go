@@ -367,32 +367,29 @@ func (p *partitions) encode() ([]byte, error) {
 // ```
 func (p *partitions) decode(data []byte) error {
 	decoder := codec.NewDecoderBytes(data, h)
-
 	err := decoder.Decode(p)
 	if err != nil {
 		logger.WithError(err).Error("Error decoding partitions data")
 		return err
 	}
-
 	return nil
 }
 
 func partitionsFromStore(store store.MessageStore) *partitions {
 	messagePartitions, err := store.Partitions()
 	if err != nil {
-		logger.WithError(err).Error("Error retriving store partitions")
+		logger.WithError(err).Error("Error retrieving store localPartitions")
 		return nil
 	}
 
-	partitions := make(partitions, 0, len(messagePartitions))
+	localPartitions := make(partitions, 0, len(messagePartitions))
 	for _, p := range messagePartitions {
-		partitions = append(partitions, partition{
+		localPartitions = append(localPartitions, partition{
 			Name:  p.Name(),
 			MaxID: p.MaxMessageID(),
 		})
 	}
-
-	return &partitions
+	return &localPartitions
 }
 
 // send this struct to a node to request the messages between StartID and EndID

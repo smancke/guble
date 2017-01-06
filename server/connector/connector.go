@@ -20,7 +20,8 @@ import (
 const DefaultWorkers = 1
 
 var (
-	TopicParam = "topic"
+	TopicParam     = "topic"
+	ConnectorParam = "connector"
 )
 
 type Sender interface {
@@ -175,15 +176,15 @@ func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
 // Post creates a new subscriber
 func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	log.WithField("params", params).Debug("Create subscription")
-
+	log.WithField("params", params).Debug("POST subscription")
 	topic, ok := params[TopicParam]
 	if !ok {
 		fmt.Fprintf(w, "Missing topic parameter.")
 		return
 	}
 	delete(params, TopicParam)
-
+	params[ConnectorParam] = c.config.Name
+	log.WithField("params", params).WithField("topic", topic).Debug("Creating subscription")
 	subscriber, err := c.manager.Create(protocol.Path("/"+topic), params)
 	if err != nil {
 		if err == ErrSubscriberExists {
@@ -193,7 +194,6 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 		}
 		return
 	}
-
 	go c.Run(subscriber)
 	log.WithField("topic", topic).Debug("Subscription created")
 	fmt.Fprintf(w, `{"subscribed":"/%v"}`, topic)
@@ -202,26 +202,26 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 // Delete removes a subscriber
 func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	log.WithField("params", params).Debug("Deleting subscription")
+	log.WithField("params", params).Debug("DELETE subscription")
 	topic, ok := params[TopicParam]
 	if !ok {
 		fmt.Fprintf(w, "Missing topic parameter.")
 		return
 	}
-
 	delete(params, TopicParam)
+	params[ConnectorParam] = c.config.Name
+	log.WithField("params", params).WithField("topic", topic).Debug("Finding subscription to delete it")
 	subscriber := c.manager.Find(GenerateKey("/"+topic, params))
 	if subscriber == nil {
 		http.Error(w, `{"error":"subscription not found"}`, http.StatusNotFound)
 		return
 	}
-
+	log.WithField("params", params).WithField("topic", topic).Debug("Deleting subscription")
 	err := c.manager.Remove(subscriber)
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"unknown error: %s"}`, err.Error()), http.StatusInternalServerError)
 		return
 	}
-
 	fmt.Fprintf(w, `{"unsubscribed":"/%v"}`, topic)
 }
 
