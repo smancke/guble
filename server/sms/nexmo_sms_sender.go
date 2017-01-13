@@ -110,7 +110,7 @@ type NexmoSender struct {
 
 func NewNexmoSender(apiKey, apiSecret string) (*NexmoSender, error) {
 	return &NexmoSender{
-		logger:    logger.WithField("name", "optivoSender"),
+		logger:    logger.WithField("name", "nexmoSender"),
 		ApiKey:    apiKey,
 		ApiSecret: apiSecret,
 	}, nil

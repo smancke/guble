@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	//used for pprof server
 	_ "net/http/pprof"
 
 	log "github.com/Sirupsen/logrus"
