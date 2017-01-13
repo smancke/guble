@@ -3,9 +3,9 @@ package sms
 import (
 	"encoding/json"
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"github.com/smancke/guble/testutil"
 )
 
 func TestNexmoSender_Send(t *testing.T) {

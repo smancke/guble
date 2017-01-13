@@ -52,7 +52,7 @@ func Test_SortedListSanity(t *testing.T) {
 	a.False(found, "Element should not be found since is a number greater than the random generated upper limit")
 	a.Equal(pos, -1)
 	a.Nil(foundEntry)
-	logrus.WithField("bestIndex", bestIndex).Info("Seraching for closest position")
+	logrus.WithField("bestIndex", bestIndex).Info("Searching for closest position")
 
 	a.Equal(list.front().id, list.get(0).id, "First element should contain the smallest element")
 	a.Nil(list.get(-1), "Trying to get an invalid index will return nil")
