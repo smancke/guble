@@ -17,7 +17,10 @@ import (
 	"github.com/smancke/guble/server/service"
 )
 
-const DefaultWorkers = 1
+const (
+	DefaultWorkers                  = 1
+	SubstituteSubscriberInformation = "substitute"
+)
 
 var (
 	TopicParam     = "topic"
@@ -121,11 +124,12 @@ func (c *connector) initMuxRouter() {
 	muxRouter := mux.NewRouter()
 
 	baseRouter := muxRouter.PathPrefix(c.GetPrefix()).Subrouter()
-	baseRouter.Methods("GET").HandlerFunc(c.GetList)
+	baseRouter.Methods(http.MethodGet).HandlerFunc(c.GetList)
+	baseRouter.Methods(http.MethodPost).PathPrefix(SubstituteSubscriberInformation).HandlerFunc(c.Substitute)
 
 	subRouter := baseRouter.Path(c.config.URLPattern).Subrouter()
-	subRouter.Methods("POST").HandlerFunc(c.Post)
-	subRouter.Methods("DELETE").HandlerFunc(c.Delete)
+	subRouter.Methods(http.MethodPost).HandlerFunc(c.Post)
+	subRouter.Methods(http.MethodDelete).HandlerFunc(c.Delete)
 	c.mux = muxRouter
 }
 
@@ -223,6 +227,13 @@ func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	fmt.Fprintf(w, `{"unsubscribed":"/%v"}`, topic)
+}
+
+func (c *connector) Substitute(w http.ResponseWriter, req *http.Request) {
+	params := mux.Vars(req)
+	log.WithField("params", params).Debug("POST subscription")
+	//TODO here do the magic
+
 }
 
 // Start will run start all current subscriptions and workers to process the messages
