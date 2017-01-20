@@ -18,12 +18,12 @@ import (
 )
 
 const (
-	DefaultWorkers = 1
+	DefaultWorkers                  = 1
 	SubstituteSubscriberInformation = "/substitute/"
 )
 
 var (
-	TopicParam = "topic"
+	TopicParam     = "topic"
 	ConnectorParam = "connector"
 )
 
@@ -80,13 +80,13 @@ type connector struct {
 	router  router.Router
 	kvstore kvstore.KVStore
 
-	mux     *mux.Router
+	mux *mux.Router
 
-	ctx     context.Context
-	cancel  context.CancelFunc
+	ctx    context.Context
+	cancel context.CancelFunc
 
-	logger  *log.Entry
-	wg      sync.WaitGroup
+	logger *log.Entry
+	wg     sync.WaitGroup
 }
 
 type Config struct {
@@ -95,6 +95,16 @@ type Config struct {
 	Prefix     string
 	URLPattern string
 	Workers    int
+}
+
+type substitutionRequest struct {
+	FieldName string `json:"field"`
+	OldValue  string `json:"old_value"`
+	NewValue  string `json:"new_value"`
+}
+
+func (s *substitutionRequest) isValid() bool {
+	return s.FieldName != "" && s.NewValue != "" && s.FieldName != ""
 }
 
 func NewConnector(router router.Router, sender Sender, config Config) (Connector, error) {
@@ -190,7 +200,7 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	delete(params, TopicParam)
 	params[ConnectorParam] = c.config.Name
 	log.WithField("params", params).WithField("topic", topic).Debug("Creating subscription")
-	subscriber, err := c.manager.Create(protocol.Path("/" + topic), params)
+	subscriber, err := c.manager.Create(protocol.Path("/"+topic), params)
 	if err != nil {
 		if err == ErrSubscriberExists {
 			fmt.Fprintf(w, `{"error":"subscription already exists"}`)
@@ -216,7 +226,7 @@ func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 	delete(params, TopicParam)
 	params[ConnectorParam] = c.config.Name
 	log.WithField("params", params).WithField("topic", topic).Debug("Finding subscription to delete it")
-	subscriber := c.manager.Find(GenerateKey("/" + topic, params))
+	subscriber := c.manager.Find(GenerateKey("/"+topic, params))
 	if subscriber == nil {
 		http.Error(w, `{"error":"subscription not found"}`, http.StatusNotFound)
 		return
@@ -230,41 +240,35 @@ func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, `{"unsubscribed":"/%v"}`, topic)
 }
 
-type Substitution struct {
-	FieldName string `json:"field"`
-	OldValue  string `json:"old_value"`
-	NewValue  string `json:"new_value"`
-}
-
 func (c *connector) Substitute(w http.ResponseWriter, req *http.Request) {
 
-	//TODO here do the magic
-
-	substitutionReq := new(Substitution)
+	substitutionReq := new(substitutionRequest)
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&substitutionReq)
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"json body could not be decode: %s"}`, err.Error()), http.StatusBadRequest)
 		return
 	}
+	if !substitutionReq.isValid() {
+		http.Error(w, `{"error":"not all values we're supplied"}`, http.StatusBadRequest)
+		return
+	}
 
 	filters := map[string]string{}
 	filters[substitutionReq.FieldName] = substitutionReq.OldValue
-	subscribers  := c.manager.Filter(filters)
-	totalSubscribersUpdated := 0;
-	for _,sub :=range subscribers {
-		sub.Route().Set(substitutionReq.FieldName,substitutionReq.NewValue)
-		err =c.manager.Update(sub)
+	subscribers := c.manager.Filter(filters)
+	totalSubscribersUpdated := 0
+	for _, sub := range subscribers {
+		sub.Route().Set(substitutionReq.FieldName, substitutionReq.NewValue)
+		err = c.manager.Update(sub)
 		if err != nil {
 			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
 			return
 		}
-		totalSubscribersUpdated++;
+		totalSubscribersUpdated++
 	}
 
-
-
-	log.WithField("subscribers", subscribers).WithField("req", substitutionReq).Info("POST SUBSTITUTE  subscriber info ")
+	log.WithField("subscribers", subscribers).WithField("req", substitutionReq).Debug("Substituted subscriber info ")
 	fmt.Fprintf(w, `{"modified":"%d"}`, totalSubscribersUpdated)
 }
 
