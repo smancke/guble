@@ -49,6 +49,9 @@ func (m *manager) Load() error {
 }
 
 func (m *manager) Find(key string) Subscriber {
+	m.RLock()
+	defer m.RUnlock()
+
 	if s, exists := m.subscribers[key]; exists {
 		return s
 	}
@@ -57,15 +60,24 @@ func (m *manager) Find(key string) Subscriber {
 
 func (m *manager) Create(topic protocol.Path, params router.RouteParams) (Subscriber, error) {
 	key := GenerateKey(string(topic), params)
+	//TODO MARIAN  remove this logs   when 503 is done.
+	logger.WithField("key", key).Debug("Create generated key")
+
 	if m.Exists(key) {
+		logger.WithField("key", key).Debug("Create key exists already")
 		return nil, ErrSubscriberExists
 	}
 
+	logger.Debug("Create  newSubscriber")
 	s := NewSubscriber(topic, params, 0)
+
+	logger.WithField("subscriber", s).Debug("Create  newSubscriber created")
 	err := m.Add(s)
 	if err != nil {
+		logger.WithField("error", err.Error()).Debug("Create Manager Add failed")
 		return nil, err
 	}
+	logger.Debug("Create  finished")
 	return s, nil
 }
 
@@ -81,6 +93,9 @@ func (m *manager) List() []Subscriber {
 }
 
 func (m *manager) Filter(filters map[string]string) (subscribers []Subscriber) {
+	m.RLock()
+	defer m.RUnlock()
+
 	for _, s := range m.subscribers {
 		if s.Filter(filters) {
 			subscribers = append(subscribers, s)
@@ -139,6 +154,8 @@ func (m *manager) updateStore(s Subscriber) error {
 	if err != nil {
 		return err
 	}
+	//TODO MARIAN also remove this logs.
+	logger.WithField("subscriber", s).Debug("UpdateStore")
 	return m.kvstore.Put(m.schema, s.Key(), data)
 }
 
