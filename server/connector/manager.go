@@ -60,6 +60,7 @@ func (m *manager) Find(key string) Subscriber {
 
 func (m *manager) Create(topic protocol.Path, params router.RouteParams) (Subscriber, error) {
 	key := GenerateKey(string(topic), params)
+	//TODO MARIAN  remove this logs   when 503 is done.
 	logger.WithField("key", key).Debug("Create generated key")
 
 	if m.Exists(key) {
