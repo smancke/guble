@@ -105,14 +105,15 @@ func (m *manager) Filter(filters map[string]string) (subscribers []Subscriber) {
 }
 
 func (m *manager) Add(s Subscriber) error {
+	logger.WithField("subscriber", s).WithField("lock", m.RWMutex).Debug("Add subscriber before locking")
 	m.Lock()
 	defer m.Unlock()
-
+	logger.WithField("subscriber", s).WithField("lock", m.RWMutex).Debug("Add subscriber lock acquired")
 	if _, found := m.subscribers[s.Key()]; found {
 		return ErrSubscriberExists
 	}
 	m.subscribers[s.Key()] = s
-
+	logger.WithField("subscriber", s).Debug("Add subscriber before updating store")
 	return m.updateStore(s)
 }
 
