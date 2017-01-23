@@ -154,6 +154,8 @@ func (m *manager) updateStore(s Subscriber) error {
 	if err != nil {
 		return err
 	}
+	//TODO MARIAN also remove this logs.
+	logger.WithField("subscriber", s).Debug("UpdateStore")
 	return m.kvstore.Put(m.schema, s.Key(), data)
 }
 

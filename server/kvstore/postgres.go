@@ -46,6 +46,7 @@ func (kvStore *PostgresKVStore) Open() error {
 	gormdb.SingularTable(true)
 	gormdb.DB().SetMaxIdleConns(kvStore.config.MaxIdleConns)
 	gormdb.DB().SetMaxOpenConns(kvStore.config.MaxOpenConns)
+	gormdb.DB().SetConnMaxLifetime()
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
 		logger.WithField("err", err).Error("Error in schema migration")
 		return err
