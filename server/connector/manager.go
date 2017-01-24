@@ -103,60 +103,44 @@ func (m *manager) Filter(filters map[string]string) (subscribers []Subscriber) {
 }
 
 func (m *manager) Add(s Subscriber) error {
-	logger.WithField("subscriber", s).WithField("lock", m.RWMutex).Debug("Add subscriber before locking")
-	err := m.checkSubscribersExist(s)
-	if err != nil {
-		return err
+	logger.WithField("subscriber", s).WithField("lock", m.RWMutex).Debug("Add subscriber started")
+
+	if m.Exists(s.Key()) {
+		return ErrSubscriberExists
 	}
 
 	if err := m.updateStore(s); err != nil {
 		return err
 	}
 
-	m.putSubscriberInMap(s)
-	logger.WithField("subscriber", s).Debug("Add subscriber after updating store")
+	m.putSubscriber(s)
+	logger.WithField("subscriber", s).Debug("Add subscriber finished")
 	return nil
 }
 
 func (m *manager) Update(s Subscriber) error {
-	err := m.checkSubscriberDoesNotExists(s)
+	logger.WithField("subscriber", s).Debug("Update subscriber started")
+	if !m.Exists(s.Key()) {
+		return ErrSubscriberDoesNotExist
+	}
+
+	err := m.updateStore(s)
 	if err != nil {
 		return err
 	}
 
-	m.putSubscriberInMap(s)
-	return m.updateStore(s)
-}
-
-func (m *manager) checkSubscriberDoesNotExists(s Subscriber) error {
-	m.RLock()
-	defer m.RUnlock()
-
-	if _, found := m.subscribers[s.Key()]; !found {
-		return ErrSubscriberDoesNotExist
-	}
-
+	m.putSubscriber(s)
+	logger.WithField("subscriber", s).Debug("Update subscriber finished")
 	return nil
 }
 
-func (m *manager) checkSubscribersExist(s Subscriber) error {
-	m.RLock()
-	defer m.RUnlock()
-
-	if _, found := m.subscribers[s.Key()]; found {
-		return ErrSubscriberExists
-	}
-
-	return nil
-}
-
-func (m *manager) putSubscriberInMap(s Subscriber) {
+func (m *manager) putSubscriber(s Subscriber) {
 	m.Lock()
 	defer m.Unlock()
 	m.subscribers[s.Key()] = s
 }
 
-func (m *manager) deleteSubscriberFromMap(s Subscriber) {
+func (m *manager) deleteSubscriber(s Subscriber) {
 	m.Lock()
 	defer m.Unlock()
 	delete(m.subscribers, s.Key())
@@ -171,19 +155,24 @@ func (m *manager) Exists(key string) bool {
 }
 
 func (m *manager) Remove(s Subscriber) error {
-	m.cancelSubscribers(s)
+	logger.WithField("subscriber", s).Debug("Remove subscriber started")
+	m.cancelSubscriber(s)
 
-	err := m.checkSubscriberDoesNotExists(s)
+	if !m.Exists(s.Key()) {
+		return ErrSubscriberDoesNotExist
+	}
+
+	err := m.removeStore(s)
 	if err != nil {
 		return err
 	}
 
-	m.deleteSubscriberFromMap(s)
-
-	return m.removeStore(s)
+	m.deleteSubscriber(s)
+	logger.WithField("subscriber", s).Debug("Remove subscriber finished")
+	return nil
 }
 
-func (m *manager) cancelSubscribers(s Subscriber) {
+func (m *manager) cancelSubscriber(s Subscriber) {
 	m.Lock()
 	defer m.Unlock()
 
