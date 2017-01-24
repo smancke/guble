@@ -109,6 +109,7 @@ func (m *manager) Add(s Subscriber) error {
 	m.Lock()
 	logger.WithField("subscriber", s).WithField("lock", m.RWMutex).Debug("Add subscriber lock acquired")
 	if _, found := m.subscribers[s.Key()]; found {
+		m.Unlock()
 		return ErrSubscriberExists
 	}
 	m.Unlock()
