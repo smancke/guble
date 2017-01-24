@@ -177,6 +177,7 @@ func (m *manager) Remove(s Subscriber) error {
 	if err != nil {
 		return err
 	}
+
 	m.deleteSubscriberFromMap(s)
 
 	return m.removeStore(s)
