@@ -82,8 +82,8 @@ func (m *manager) Create(topic protocol.Path, params router.RouteParams) (Subscr
 }
 
 func (m *manager) List() []Subscriber {
-	m.Lock()
-	defer m.Unlock()
+	m.RLock()
+	defer m.RUnlock()
 
 	l := make([]Subscriber, 0, len(m.subscribers))
 	for _, s := range m.subscribers {
@@ -106,34 +106,62 @@ func (m *manager) Filter(filters map[string]string) (subscribers []Subscriber) {
 
 func (m *manager) Add(s Subscriber) error {
 	logger.WithField("subscriber", s).WithField("lock", m.RWMutex).Debug("Add subscriber before locking")
-	m.Lock()
-	logger.WithField("subscriber", s).WithField("lock", m.RWMutex).Debug("Add subscriber lock acquired")
-	if _, found := m.subscribers[s.Key()]; found {
-		m.Unlock()
-		return ErrSubscriberExists
+	err := m.checkSubscribersExist(s)
+	if err != nil {
+		return err
 	}
-	m.Unlock()
 
 	if err := m.updateStore(s); err != nil {
 		return err
 	}
 
-	m.Lock()
-	m.subscribers[s.Key()] = s
-	m.Unlock()
+	m.putSubscriberInMap(s)
 	logger.WithField("subscriber", s).Debug("Add subscriber after updating store")
 	return nil
 }
 
 func (m *manager) Update(s Subscriber) error {
-	m.Lock()
-	defer m.Unlock()
+	err := m.checkSubscriberDoesNotExists(s)
+	if err != nil {
+		return err
+	}
+
+	m.putSubscriberInMap(s)
+	return m.updateStore(s)
+}
+
+func (m *manager) checkSubscriberDoesNotExists(s Subscriber) error {
+	m.RLock()
+	defer m.RUnlock()
+
 	if _, found := m.subscribers[s.Key()]; !found {
 		return ErrSubscriberDoesNotExist
 	}
 
+	return nil
+}
+
+func (m *manager) checkSubscribersExist(s Subscriber) error {
+	m.RLock()
+	defer m.RUnlock()
+
+	if _, found := m.subscribers[s.Key()]; found {
+		return ErrSubscriberExists
+	}
+
+	return nil
+}
+
+func (m *manager) putSubscriberInMap(s Subscriber) {
+	m.Lock()
+	defer m.Unlock()
 	m.subscribers[s.Key()] = s
-	return m.updateStore(s)
+}
+
+func (m *manager) deleteSubscriberFromMap(s Subscriber) {
+	m.Lock()
+	defer m.Unlock()
+	delete(m.subscribers, s.Key())
 }
 
 func (m *manager) Exists(key string) bool {
@@ -145,17 +173,22 @@ func (m *manager) Exists(key string) bool {
 }
 
 func (m *manager) Remove(s Subscriber) error {
+	m.cancelSubscribers(s)
+
+	err := m.checkSubscriberDoesNotExists(s)
+	if err != nil {
+		return err
+	}
+	m.deleteSubscriberFromMap(s)
+
+	return m.removeStore(s)
+}
+
+func (m *manager) cancelSubscribers(s Subscriber) {
 	m.Lock()
 	defer m.Unlock()
 
 	s.Cancel()
-
-	if _, found := m.subscribers[s.Key()]; !found {
-		return ErrSubscriberDoesNotExist
-	}
-
-	delete(m.subscribers, s.Key())
-	return m.removeStore(s)
 }
 
 func (m *manager) updateStore(s Subscriber) error {
@@ -169,5 +202,7 @@ func (m *manager) updateStore(s Subscriber) error {
 }
 
 func (m *manager) removeStore(s Subscriber) error {
+	//TODO MARIAN also remove this logs.
+	logger.WithField("subscriber", s).Debug("RemoveStore")
 	return m.kvstore.Delete(m.schema, s.Key())
 }
