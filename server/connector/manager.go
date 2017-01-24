@@ -62,13 +62,11 @@ func (m *manager) Create(topic protocol.Path, params router.RouteParams) (Subscr
 	key := GenerateKey(string(topic), params)
 	//TODO MARIAN  remove this logs   when 503 is done.
 	logger.WithField("key", key).Debug("Create generated key")
-
 	if m.Exists(key) {
 		logger.WithField("key", key).Debug("Create key exists already")
 		return nil, ErrSubscriberExists
 	}
 
-	logger.Debug("Create  newSubscriber")
 	s := NewSubscriber(topic, params, 0)
 
 	logger.WithField("subscriber", s).Debug("Create  newSubscriber created")
