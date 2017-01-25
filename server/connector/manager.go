@@ -49,6 +49,9 @@ func (m *manager) Load() error {
 }
 
 func (m *manager) Find(key string) Subscriber {
+	m.RLock()
+	defer m.RUnlock()
+
 	if s, exists := m.subscribers[key]; exists {
 		return s
 	}
@@ -57,21 +60,28 @@ func (m *manager) Find(key string) Subscriber {
 
 func (m *manager) Create(topic protocol.Path, params router.RouteParams) (Subscriber, error) {
 	key := GenerateKey(string(topic), params)
+	//TODO MARIAN  remove this logs   when 503 is done.
+	logger.WithField("key", key).Debug("Create generated key")
 	if m.Exists(key) {
+		logger.WithField("key", key).Debug("Create key exists already")
 		return nil, ErrSubscriberExists
 	}
 
 	s := NewSubscriber(topic, params, 0)
+
+	logger.WithField("subscriber", s).Debug("Create  newSubscriber created")
 	err := m.Add(s)
 	if err != nil {
+		logger.WithField("error", err.Error()).Debug("Create Manager Add failed")
 		return nil, err
 	}
+	logger.Debug("Create  finished")
 	return s, nil
 }
 
 func (m *manager) List() []Subscriber {
-	m.Lock()
-	defer m.Unlock()
+	m.RLock()
+	defer m.RUnlock()
 
 	l := make([]Subscriber, 0, len(m.subscribers))
 	for _, s := range m.subscribers {
@@ -81,6 +91,9 @@ func (m *manager) List() []Subscriber {
 }
 
 func (m *manager) Filter(filters map[string]string) (subscribers []Subscriber) {
+	m.RLock()
+	defer m.RUnlock()
+
 	for _, s := range m.subscribers {
 		if s.Filter(filters) {
 			subscribers = append(subscribers, s)
@@ -90,26 +103,47 @@ func (m *manager) Filter(filters map[string]string) (subscribers []Subscriber) {
 }
 
 func (m *manager) Add(s Subscriber) error {
-	m.Lock()
-	defer m.Unlock()
+	logger.WithField("subscriber", s).WithField("lock", m.RWMutex).Debug("Add subscriber started")
 
-	if _, found := m.subscribers[s.Key()]; found {
+	if m.Exists(s.Key()) {
 		return ErrSubscriberExists
 	}
-	m.subscribers[s.Key()] = s
 
-	return m.updateStore(s)
+	if err := m.updateStore(s); err != nil {
+		return err
+	}
+
+	m.putSubscriber(s)
+	logger.WithField("subscriber", s).Debug("Add subscriber finished")
+	return nil
 }
 
 func (m *manager) Update(s Subscriber) error {
-	m.Lock()
-	defer m.Unlock()
-	if _, found := m.subscribers[s.Key()]; !found {
+	logger.WithField("subscriber", s).Debug("Update subscriber started")
+	if !m.Exists(s.Key()) {
 		return ErrSubscriberDoesNotExist
 	}
 
+	err := m.updateStore(s)
+	if err != nil {
+		return err
+	}
+
+	m.putSubscriber(s)
+	logger.WithField("subscriber", s).Debug("Update subscriber finished")
+	return nil
+}
+
+func (m *manager) putSubscriber(s Subscriber) {
+	m.Lock()
+	defer m.Unlock()
 	m.subscribers[s.Key()] = s
-	return m.updateStore(s)
+}
+
+func (m *manager) deleteSubscriber(s Subscriber) {
+	m.Lock()
+	defer m.Unlock()
+	delete(m.subscribers, s.Key())
 }
 
 func (m *manager) Exists(key string) bool {
@@ -121,17 +155,28 @@ func (m *manager) Exists(key string) bool {
 }
 
 func (m *manager) Remove(s Subscriber) error {
+	logger.WithField("subscriber", s).Debug("Remove subscriber started")
+	m.cancelSubscriber(s)
+
+	if !m.Exists(s.Key()) {
+		return ErrSubscriberDoesNotExist
+	}
+
+	err := m.removeStore(s)
+	if err != nil {
+		return err
+	}
+
+	m.deleteSubscriber(s)
+	logger.WithField("subscriber", s).Debug("Remove subscriber finished")
+	return nil
+}
+
+func (m *manager) cancelSubscriber(s Subscriber) {
 	m.Lock()
 	defer m.Unlock()
 
 	s.Cancel()
-
-	if _, found := m.subscribers[s.Key()]; !found {
-		return ErrSubscriberDoesNotExist
-	}
-
-	delete(m.subscribers, s.Key())
-	return m.removeStore(s)
 }
 
 func (m *manager) updateStore(s Subscriber) error {
@@ -139,9 +184,13 @@ func (m *manager) updateStore(s Subscriber) error {
 	if err != nil {
 		return err
 	}
+	//TODO MARIAN also remove this logs.
+	logger.WithField("subscriber", s).Debug("UpdateStore")
 	return m.kvstore.Put(m.schema, s.Key(), data)
 }
 
 func (m *manager) removeStore(s Subscriber) error {
+	//TODO MARIAN also remove this logs.
+	logger.WithField("subscriber", s).Debug("RemoveStore")
 	return m.kvstore.Delete(m.schema, s.Key())
 }
