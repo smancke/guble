@@ -30,9 +30,6 @@ type LogstashFormatter struct {
 
 	// TimestampFormat sets the format used for timestamps.
 	TimestampFormat string
-
-	// Host  sets the host field
-	Host string
 }
 
 // Format the logrus entry to a byte slice, or return an error.
