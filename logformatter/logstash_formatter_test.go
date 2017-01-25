@@ -41,6 +41,7 @@ func TestLogstashFormatter_Format(t *testing.T) {
 	a.Equal("prod", data["environment"])
 
 	a.NotEmpty(data["@timestamp"])
+	a.NotEmpty(data["host"])
 	a.Equal("abc", data["type"])
 	a.Equal("msg", data["message"])
 	a.Equal("info", data["loglevel"])

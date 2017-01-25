@@ -38,7 +38,7 @@ func (kvStore *PostgresKVStore) Open() error {
 	}
 
 	if err := gormdb.DB().Ping(); err != nil {
-		kvStore.logger.WithError(err).Error("Error pinging database")
+		kvStore.logger.WithField("error", err.Error()).Error("Error pinging database")
 	} else {
 		kvStore.logger.Info("Ping reply from database")
 	}
