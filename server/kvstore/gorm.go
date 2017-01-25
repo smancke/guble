@@ -40,7 +40,7 @@ func (store *kvStore) Check() error {
 		return errors.New(errorMessage)
 	}
 	if err := store.db.DB().Ping(); err != nil {
-		store.logger.WithError(err).Error("Error pinging database")
+		store.logger.WithField("error", err.Error()).Error("Error pinging database")
 		return err
 	}
 	return nil
