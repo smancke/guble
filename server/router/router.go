@@ -136,14 +136,14 @@ func (router *router) Check() error {
 	if checkable, ok := router.messageStore.(health.Checker); ok {
 		err := checkable.Check()
 		if err != nil {
-			logger.WithError(err).Error("MessageStore check failed")
+			logger.WithField("error", err.Error()).Error("MessageStore check failed")
 			return err
 		}
 	}
 	if checkable, ok := router.kvStore.(health.Checker); ok {
 		err := checkable.Check()
 		if err != nil {
-			logger.WithError(err).Error("KVStore check failed")
+			logger.WithField("error", err.Error()).Error("KVStore check failed")
 			return err
 		}
 	}
@@ -159,7 +159,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 
 	mTotalMessagesIncoming.Add(1)
 	if err := router.isStopping(); err != nil {
-		logger.WithError(err).Error("Router is stopping")
+		logger.WithField("error", err.Error()).Error("Router is stopping")
 		return err
 	}
 
@@ -175,7 +175,7 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 	mTotalMessagesIncomingBytes.Add(int64(len(message.Bytes())))
 	size, err := router.messageStore.StoreMessage(message, nodeID)
 	if err != nil {
-		logger.WithError(err).Error("Error storing message")
+		logger.WithField("error", err.Error()).Error("Error storing message")
 		mTotalMessageStoreErrors.Add(1)
 		return err
 	}
