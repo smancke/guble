@@ -7,7 +7,6 @@ import (
 
 	// use gorm's postgres dialect
 	_ "github.com/jinzhu/gorm/dialects/postgres"
-	"time"
 )
 
 const postgresGormLogMode = false
