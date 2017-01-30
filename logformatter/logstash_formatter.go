@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Sirupsen/logrus"
+	"os"
 	"time"
 )
 
@@ -78,6 +79,14 @@ func (f *LogstashFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		fields["fields.level"] = v
 	}
 	fields["loglevel"] = entry.Level.String()
+
+	//set host field
+	hostname, err := os.Hostname()
+	if err == nil {
+		fields["host"] = hostname
+	} else {
+		fields["host"] = ""
+	}
 
 	// set type field
 	if f.Type != "" {

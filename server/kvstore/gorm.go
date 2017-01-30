@@ -40,7 +40,7 @@ func (store *kvStore) Check() error {
 		return errors.New(errorMessage)
 	}
 	if err := store.db.DB().Ping(); err != nil {
-		store.logger.WithError(err).Error("Error pinging database")
+		store.logger.WithField("error", err.Error()).Error("Error pinging database")
 		return err
 	}
 	return nil
@@ -72,7 +72,7 @@ func (store *kvStore) Iterate(schema string, keyPrefix string) chan [2]string {
 		rows, err := store.db.Raw("select key, value from kv_entry where schema = ? and key LIKE ?", schema, keyPrefix+"%").
 			Rows()
 		if err != nil {
-			store.logger.WithError(err).Error("Error fetching keys from database")
+			store.logger.WithField("error", err.Error()).Error("Error fetching keys from database")
 		} else {
 			defer rows.Close()
 			for rows.Next() {
@@ -92,7 +92,7 @@ func (store *kvStore) IterateKeys(schema string, keyPrefix string) chan string {
 		rows, err := store.db.Raw("select key from kv_entry where schema = ? and key LIKE ?", schema, keyPrefix+"%").
 			Rows()
 		if err != nil {
-			store.logger.WithError(err).Error("Error fetching keys from database")
+			store.logger.WithField("error", err.Error()).Error("Error fetching keys from database")
 		} else {
 			defer rows.Close()
 			for rows.Next() {

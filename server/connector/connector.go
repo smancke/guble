@@ -149,6 +149,7 @@ func (c *connector) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		"path": req.URL.RequestURI(),
 	}).Info("Handling HTTP request")
 	c.mux.ServeHTTP(w, req)
+
 }
 
 func (c *connector) GetPrefix() string {
