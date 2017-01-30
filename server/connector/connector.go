@@ -19,7 +19,7 @@ import (
 
 const (
 	DefaultWorkers                  = 1
-	SubstituteSubscriberInformation = "/substitute/"
+	SubstitutePath = "/substitute/"
 )
 
 var (
@@ -133,10 +133,9 @@ func NewConnector(router router.Router, sender Sender, config Config) (Connector
 func (c *connector) initMuxRouter() {
 	muxRouter := mux.NewRouter()
 
-	logger.WithField("prefix", c.GetPrefix()).Info("asfafas")
 	baseRouter := muxRouter.PathPrefix(c.GetPrefix()).Subrouter()
 	baseRouter.Methods(http.MethodGet).HandlerFunc(c.GetList)
-	baseRouter.Methods(http.MethodPost).PathPrefix(SubstituteSubscriberInformation).HandlerFunc(c.Substitute)
+	baseRouter.Methods(http.MethodPost).PathPrefix(SubstitutePath).HandlerFunc(c.Substitute)
 
 	subRouter := baseRouter.Path(c.config.URLPattern).Subrouter()
 	subRouter.Methods(http.MethodPost).HandlerFunc(c.Post)
@@ -168,7 +167,7 @@ func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
 		filters[key] = value[0]
 	}
 
-	log.WithField("filters", filters).Debug("Get list of subscriptions")
+	c.logger.WithField("filters", filters).Debug("Get list of subscriptions")
 	if len(filters) == 0 {
 		http.Error(w, `{"error":"Missing filters"}`, http.StatusBadRequest)
 		return
@@ -192,7 +191,7 @@ func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
 // Post creates a new subscriber
 func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	log.WithField("params", params).Debug("POST subscription")
+	c.logger.WithField("params", params).Debug("POST subscription")
 	topic, ok := params[TopicParam]
 	if !ok {
 		fmt.Fprintf(w, "Missing topic parameter.")
@@ -200,7 +199,7 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	}
 	delete(params, TopicParam)
 	params[ConnectorParam] = c.config.Name
-	log.WithField("params", params).WithField("topic", topic).Debug("Creating subscription")
+	c.logger.WithField("params", params).WithField("topic", topic).Debug("Creating subscription")
 	subscriber, err := c.manager.Create(protocol.Path("/"+topic), params)
 	if err != nil {
 		if err == ErrSubscriberExists {
@@ -211,14 +210,14 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	go c.Run(subscriber)
-	log.WithField("topic", topic).Debug("Subscription created")
+	c.logger.WithField("topic", topic).Debug("Subscription created")
 	fmt.Fprintf(w, `{"subscribed":"/%v"}`, topic)
 }
 
 // Delete removes a subscriber
 func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	log.WithField("params", params).Debug("DELETE subscription")
+	c.logger.WithField("params", params).Debug("DELETE subscription")
 	topic, ok := params[TopicParam]
 	if !ok {
 		fmt.Fprintf(w, "Missing topic parameter.")
@@ -226,13 +225,13 @@ func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 	}
 	delete(params, TopicParam)
 	params[ConnectorParam] = c.config.Name
-	log.WithField("params", params).WithField("topic", topic).Debug("Finding subscription to delete it")
+	c.logger.WithField("params", params).WithField("topic", topic).Debug("Finding subscription to delete it")
 	subscriber := c.manager.Find(GenerateKey("/"+topic, params))
 	if subscriber == nil {
 		http.Error(w, `{"error":"subscription not found"}`, http.StatusNotFound)
 		return
 	}
-	log.WithField("params", params).WithField("topic", topic).Debug("Deleting subscription")
+	c.logger.WithField("params", params).WithField("topic", topic).Debug("Deleting subscription")
 	err := c.manager.Remove(subscriber)
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"unknown error: %s"}`, err.Error()), http.StatusInternalServerError)
@@ -269,7 +268,7 @@ func (c *connector) Substitute(w http.ResponseWriter, req *http.Request) {
 		totalSubscribersUpdated++
 	}
 
-	log.WithField("subscribers", subscribers).WithField("req", substitutionReq).Debug("Substituted subscriber info ")
+	c.logger.WithField("subscribers", subscribers).WithField("req", substitutionReq).Debug("Substituted subscriber info ")
 	fmt.Fprintf(w, `{"modified":"%d"}`, totalSubscribersUpdated)
 }
 
