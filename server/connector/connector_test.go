@@ -237,6 +237,94 @@ func TestConnector_StartWithSubscriptions(t *testing.T) {
 	a.NoError(err)
 }
 
+func TestConnector_Substitute(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
+	a := assert.New(t)
+	conn, mocks := getTestConnector(t, Config{
+		Name:       "test",
+		Schema:     "test",
+		Prefix:     "/connector/",
+		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
+	}, false, false)
+
+	entriesC := make(chan [2]string)
+	mocks.kvstore.EXPECT().Iterate(gomock.Eq("test"), gomock.Eq("")).Return(entriesC)
+	close(entriesC)
+	mocks.kvstore.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Times(4)
+
+	err := conn.Start()
+	a.NoError(err)
+
+	routes := make([]*router.Route, 0, 4)
+	mocks.router.EXPECT().Subscribe(gomock.Any()).Do(func(r *router.Route) (*router.Route, error) {
+		routes = append(routes, r)
+		return r, nil
+	}).Times(4)
+
+	// create subscriptions
+	createSubscriptions(t, conn, 4)
+	time.Sleep(100 * time.Millisecond)
+
+	postBody := `{
+			"field":"device_token",
+			"old_value":"device1",
+			"new_value":"asgasgasgagasgaasg2"
+			}
+	`
+	mocks.kvstore.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+	recorder := httptest.NewRecorder()
+	req, err := http.NewRequest(http.MethodPost, "/connector"+ SubstitutePath, strings.NewReader(postBody))
+	conn.ServeHTTP(recorder, req)
+
+	a.Equal(http.StatusOK, recorder.Code)
+	a.Equal(`{"modified":"1"}`, recorder.Body.String())
+}
+
+func TestConnector_SubstituteWrongPostBody(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
+	a := assert.New(t)
+	conn, mocks := getTestConnector(t, Config{
+		Name:       "test",
+		Schema:     "test",
+		Prefix:     "/connector/",
+		URLPattern: "/{device_token}/{user_id}/{topic:.*}",
+	}, false, false)
+
+	entriesC := make(chan [2]string)
+	mocks.kvstore.EXPECT().Iterate(gomock.Eq("test"), gomock.Eq("")).Return(entriesC)
+	close(entriesC)
+	mocks.kvstore.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Times(4)
+
+	err := conn.Start()
+	a.NoError(err)
+
+	routes := make([]*router.Route, 0, 4)
+	mocks.router.EXPECT().Subscribe(gomock.Any()).Do(func(r *router.Route) (*router.Route, error) {
+		routes = append(routes, r)
+		return r, nil
+	}).Times(4)
+
+	// create subscriptions
+	createSubscriptions(t, conn, 4)
+	time.Sleep(100 * time.Millisecond)
+
+	postBody := `{
+			"field_invalid":"device_token",
+			"old_value":"device1",
+			"new_value":"asgasgasgagasgaasg2"
+			}
+	`
+	recorder := httptest.NewRecorder()
+	req, err := http.NewRequest(http.MethodPost, "/connector"+ SubstitutePath, strings.NewReader(postBody))
+	conn.ServeHTTP(recorder, req)
+
+	a.Equal(http.StatusBadRequest, recorder.Code)
+}
+
 func createSubscriptions(t *testing.T, conn Connector, count int) {
 	a := assert.New(t)
 	for i := 1; i <= count; i++ {
