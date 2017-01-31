@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/certificate"
+	"time"
 )
 
 type Pusher interface {
@@ -23,6 +24,11 @@ func newPusher(c Config) (Pusher, error) {
 	if errCert != nil {
 		return nil, errCert
 	}
+
+	//see https://github.com/sideshow/apns2/issues/24 and https://github.com/sideshow/apns2/issues/20
+	apns2.TLSDialTimeout = 4 * time.Second
+	apns2.HTTPClientTimeout = 4 * time.Second
+
 	if *c.Production {
 		logger.Debug("APNS Pusher in Production mode")
 		return apns2.NewClient(cert).Production(), nil
