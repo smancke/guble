@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	DefaultWorkers                  = 1
+	DefaultWorkers = 1
 	SubstitutePath = "/substitute/"
 )
 

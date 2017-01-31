@@ -275,7 +275,7 @@ func TestConnector_Substitute(t *testing.T) {
 	`
 	mocks.kvstore.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 	recorder := httptest.NewRecorder()
-	req, err := http.NewRequest(http.MethodPost, "/connector"+ SubstitutePath, strings.NewReader(postBody))
+	req, err := http.NewRequest(http.MethodPost, "/connector"+SubstitutePath, strings.NewReader(postBody))
 	conn.ServeHTTP(recorder, req)
 
 	a.Equal(http.StatusOK, recorder.Code)
@@ -319,7 +319,7 @@ func TestConnector_SubstituteWrongPostBody(t *testing.T) {
 			}
 	`
 	recorder := httptest.NewRecorder()
-	req, err := http.NewRequest(http.MethodPost, "/connector"+ SubstitutePath, strings.NewReader(postBody))
+	req, err := http.NewRequest(http.MethodPost, "/connector"+SubstitutePath, strings.NewReader(postBody))
 	conn.ServeHTTP(recorder, req)
 
 	a.Equal(http.StatusBadRequest, recorder.Code)
