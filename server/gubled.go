@@ -182,11 +182,11 @@ var CreateModules = func(router router.Router) []interface{} {
 		if *Config.SMS.APIKey == "" || *Config.SMS.APISecret == "" {
 			logger.Panic("The API Key has to be provided when NEXMO SMS connector is enabled")
 		}
-		optivoSender, err := sms.NewNexmoSender(*Config.SMS.APIKey, *Config.SMS.APISecret)
+		nexmoSender, err := sms.NewNexmoSender(*Config.SMS.APIKey, *Config.SMS.APISecret)
 		if err != nil {
 			logger.WithError(err).Error("Error creating Nexmo Sender")
 		}
-		smsConn, err := sms.New(router, optivoSender, Config.SMS)
+		smsConn, err := sms.New(router, nexmoSender, Config.SMS)
 		if err != nil {
 			logger.WithError(err).Error("Error creating Nexmo Sender")
 		} else {
