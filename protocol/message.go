@@ -39,6 +39,7 @@ type Message struct {
 	// The message payload
 	Body []byte
 
+	// Used in cluster mode to identify a guble node
 	NodeID uint8
 }
 
