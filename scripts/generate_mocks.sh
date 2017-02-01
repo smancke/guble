@@ -8,7 +8,6 @@ if [ -z "$GOPATH" ]; then
       exit 1
 fi
 
-
 # replace in file if last operation was successful
 function replace {
       FILE=$1; shift;
@@ -25,15 +24,15 @@ MOCKGEN=$GOPATH/bin/mockgen
 $MOCKGEN  -self_package service -package service \
       -destination server/service/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
-      Router
+      Router &
 
 $MOCKGEN -self_package service -package service \
       -destination server/service/mocks_checker_gen_test.go \
       github.com/docker/distribution/health \
-      Checker
+      Checker &
 
 # server/router mocks
-$MOCKGEN  -self_package router -package router \
+$MOCKGEN -self_package router -package router \
       -destination server/router/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
       Router
@@ -42,22 +41,22 @@ replace "server/router/mocks_router_gen_test.go" "router \"github.com\/smancke\/
 $MOCKGEN -self_package router -package router \
       -destination server/router/mocks_store_gen_test.go \
       github.com/smancke/guble/server/store \
-      MessageStore
+      MessageStore &
 
 $MOCKGEN -self_package router -package router \
       -destination server/router/mocks_kvstore_gen_test.go \
       github.com/smancke/guble/server/kvstore \
-      KVStore
+      KVStore &
 
 $MOCKGEN -self_package router -package router \
       -destination server/router/mocks_auth_gen_test.go \
       github.com/smancke/guble/server/auth \
-      AccessManager
+      AccessManager &
 
 $MOCKGEN -self_package router -package router \
       -destination server/router/mocks_checker_gen_test.go \
       github.com/docker/distribution/health \
-      Checker
+      Checker &
 
 # client mocks
 $MOCKGEN  -self_package client -package client \
@@ -66,82 +65,68 @@ $MOCKGEN  -self_package client -package client \
       WSConnection,Client
 replace "client/mocks_client_gen_test.go" "client \"github.com\/smancke\/guble\/client\"" "client\."
 
-
 # server/apns mocks
 $MOCKGEN -package apns \
       -destination server/apns/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
-      Router
+      Router &
+
 $MOCKGEN -package apns \
       -destination server/apns/mocks_kvstore_gen_test.go \
       github.com/smancke/guble/server/kvstore \
-      KVStore
+      KVStore &
+
 $MOCKGEN -package apns \
-      -destination server/apns/mocks_sender_gen_test.go \
+      -destination server/apns/mocks_connector_gen_test.go \
       github.com/smancke/guble/server/connector \
-      Sender
-$MOCKGEN -package apns \
-      -destination server/apns/mocks_request_gen_test.go \
-      github.com/smancke/guble/server/connector \
-      Request
-$MOCKGEN -package apns \
-      -destination server/apns/mocks_subscriber_gen_test.go \
-      github.com/smancke/guble/server/connector \
-      Subscriber
-$MOCKGEN -package apns \
-      -destination server/apns/mocks_sender_gen_test.go \
-      github.com/smancke/guble/server/connector \
-      Sender
-$MOCKGEN -package apns \
-      -destination server/apns/mocks_subscriber_gen_test.go \
-      github.com/smancke/guble/server/connector \
-      Subscriber
+      Sender,Request,Subscriber &
+
 $MOCKGEN -package apns \
       -destination server/apns/mocks_pusher_gen_test.go \
       github.com/smancke/guble/server/apns \
-      Pusher
+      Pusher &
 
 # server/fcm mocks
 $MOCKGEN -package fcm \
       -destination server/fcm/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
-      Router
+      Router &
 
 $MOCKGEN -self_package fcm -package fcm \
       -destination server/fcm/mocks_kvstore_gen_test.go \
       github.com/smancke/guble/server/kvstore \
-      KVStore
+      KVStore &
 
 $MOCKGEN -self_package fcm -package fcm \
       -destination server/fcm/mocks_store_gen_test.go \
       github.com/smancke/guble/server/store \
-      MessageStore
+      MessageStore &
 
 $MOCKGEN -self_package fcm -package fcm \
       -destination server/fcm/mocks_gcm_gen_test.go \
       github.com/Bogh/gcm \
-      Sender
+      Sender &
 
 # server mocks
 $MOCKGEN -package server \
       -destination server/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
-      Router
+      Router &
 
 $MOCKGEN -self_package server -package server \
       -destination server/mocks_auth_gen_test.go \
       github.com/smancke/guble/server/auth \
-      AccessManager
+      AccessManager &
 
 $MOCKGEN -self_package server -package server \
       -destination server/mocks_store_gen_test.go \
       github.com/smancke/guble/server/store \
-      MessageStore
+      MessageStore &
 
 $MOCKGEN -package server \
       -destination server/mocks_apns_pusher_gen_test.go \
       github.com/smancke/guble/server/apns \
-      Pusher
+      Pusher &
 
 # server/auth mocks
 $MOCKGEN -self_package auth -package auth \
@@ -164,12 +149,12 @@ replace "server/connector/mocks_connector_gen_test.go" \
 $MOCKGEN -self_package connector -package connector \
       -destination server/connector/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
-      Router
+      Router &
 
 $MOCKGEN -self_package connector -package connector \
       -destination server/connector/mocks_kvstore_gen_test.go \
       github.com/smancke/guble/server/kvstore \
-      KVStore
+      KVStore &
 
 # server/websocket mocks
 $MOCKGEN  -self_package websocket -package websocket \
@@ -183,35 +168,38 @@ replace "server/websocket/mocks_websocket_gen_test.go" \
 $MOCKGEN -self_package websocket -package websocket \
       -destination server/websocket/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
-      Router
+      Router &
 
 $MOCKGEN -self_package websocket -package websocket \
       -destination server/websocket/mocks_store_gen_test.go \
       github.com/smancke/guble/server/store \
-      MessageStore
+      MessageStore &
 
 $MOCKGEN -self_package websocket -package websocket \
       -destination server/websocket/mocks_auth_gen_test.go \
       github.com/smancke/guble/server/auth \
-      AccessManager
+      AccessManager &
 
 # server/rest Mocks
 $MOCKGEN -package rest \
       -destination server/rest/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
-      Router
+      Router &
 
 # server/sms Mocks
 $MOCKGEN -package sms \
       -destination server/sms/mocks_sender_gen_test.go \
       github.com/smancke/guble/server/sms \
-      Sender
+      Sender &
 
 $MOCKGEN -package sms \
       -destination server/sms/mocks_router_gen_test.go \
       github.com/smancke/guble/server/router \
-      Router
+      Router &
+
 $MOCKGEN -self_package router -package sms \
       -destination server/sms/mocks_store_gen_test.go \
       github.com/smancke/guble/server/store \
-      MessageStore
+      MessageStore &
+
+wait

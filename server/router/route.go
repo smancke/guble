@@ -24,8 +24,6 @@ var (
 type Route struct {
 	RouteConfig
 
-	messageStore store.MessageStore
-
 	messagesC chan *protocol.Message
 
 	// queue that will store the messages in correct order.
