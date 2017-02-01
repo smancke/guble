@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+const (
+	defaultServiceName     = "guble"
+	defaultLogType         = "application"
+	defaultApplicationType = "service"
+)
+
 // LogstashFormatter generates json in logstash format.
 // Logstash site: http://logstash.net/
 type LogstashFormatter struct {
@@ -22,21 +28,34 @@ type LogstashFormatter struct {
 	//ServiceName will be by default guble
 	ServiceName string
 
-	//ApplicationType will be  by default "service".Other values could be "service", "system", "appserver", "webserver"
+	//ApplicationType will be  by default "service". Other values could be "service", "system", "appserver", "webserver"
 	ApplicationType string
 
-	//LogType will be by default  application.Other possible values "access", "error", "application", "system"
+	//LogType will be by default  application. Other possible values "access", "error", "application", "system"
 	LogType string
 
-	// TimestampFormat sets the format used for timestamps.
+	//TimestampFormat sets the format used for timestamps.
 	TimestampFormat string
 }
 
 // Format the logrus entry to a byte slice, or return an error.
 func (f *LogstashFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	fields := make(logrus.Fields)
+
 	for k, v := range entry.Data {
-		fields[k] = v
+		switch v := v.(type) {
+		case error:
+			// Otherwise errors are ignored by `encoding/json`
+			// https://github.com/Sirupsen/logrus/issues/137
+			// https://github.com/sirupsen/logrus/issues/377
+			fields[k] = v.Error()
+		default:
+			fields[k] = v
+		}
+	}
+
+	if f.Env != "" {
+		fields["environment"] = f.Env
 	}
 
 	timeStampFormat := f.TimestampFormat
@@ -49,53 +68,48 @@ func (f *LogstashFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	if f.ServiceName != "" {
 		fields["service"] = f.ServiceName
 	} else {
-		fields["service"] = "guble"
+		fields["service"] = defaultServiceName
 	}
 
 	if f.ApplicationType != "" {
 		fields["application_type"] = f.ServiceName
 	} else {
-		fields["application_type"] = "service"
+		fields["application_type"] = defaultApplicationType
 	}
 
 	if f.LogType != "" {
 		fields["log_type"] = f.LogType
 	} else {
-		fields["log_type"] = "application"
+		fields["log_type"] = defaultLogType
 	}
 
-	fields["environment"] = f.Env
-
-	// set message field
-	v, ok := entry.Data["message"]
-	if ok {
-		fields["fields.message"] = v
-	}
-	fields["message"] = entry.Message
-
-	// set level field
-	v, ok = entry.Data["level"]
-	if ok {
-		fields["fields.level"] = v
+	// set level field, prefixing fields clashes
+	if v, ok := entry.Data["loglevel"]; ok {
+		fields["fields.loglevel"] = v
 	}
 	fields["loglevel"] = entry.Level.String()
 
-	//set host field
-	hostname, err := os.Hostname()
-	if err == nil {
+	//set host field, prefixing fields clashes
+	if v, ok := entry.Data["host"]; ok {
+		fields["fields.host"] = v
+	}
+	if hostname, err := os.Hostname(); err == nil {
 		fields["host"] = hostname
-	} else {
-		fields["host"] = ""
 	}
 
 	// set type field
 	if f.Type != "" {
-		v, ok = entry.Data["type"]
-		if ok {
+		if v, ok := entry.Data["type"]; ok {
 			fields["fields.type"] = v
 		}
 		fields["type"] = f.Type
 	}
+
+	// set message field, prefixing fields clashes
+	if v, ok := entry.Data["msg"]; ok {
+		fields["fields.msg"] = v
+	}
+	fields["msg"] = entry.Message
 
 	serialized, err := json.Marshal(fields)
 	if err != nil {
