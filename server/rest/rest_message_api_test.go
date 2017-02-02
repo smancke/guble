@@ -29,12 +29,12 @@ func TestServerHTTP(t *testing.T) {
 	routerMock := NewMockRouter(ctrl)
 	api := NewRestMessageAPI(routerMock, "/api")
 
-	url, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")
+	u, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")
 
 	// and a http context
 	req := &http.Request{
 		Method: http.MethodPost,
-		URL:    url,
+		URL:    u,
 		Body:   ioutil.NopCloser(bytes.NewReader(testBytes)),
 		Header: http.Header{},
 	}
@@ -52,7 +52,6 @@ func TestServerHTTP(t *testing.T) {
 
 	// when: I POST a message
 	api.ServeHTTP(w, req)
-
 }
 
 // Server should return an 405 Method Not Allowed in case method request is not POST
@@ -61,11 +60,11 @@ func TestServeHTTP_GetError(t *testing.T) {
 	defer testutil.EnableDebugForMethod()()
 	api := NewRestMessageAPI(nil, "/api")
 
-	url, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")
+	u, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")
 	// and a http context
 	req := &http.Request{
 		Method: http.MethodGet,
-		URL:    url,
+		URL:    u,
 		Body:   ioutil.NopCloser(bytes.NewReader(testBytes)),
 		Header: http.Header{},
 	}
@@ -74,6 +73,7 @@ func TestServeHTTP_GetError(t *testing.T) {
 	// when: I POST a message
 	api.ServeHTTP(w, req)
 
+	//then
 	a.Equal(http.StatusNotFound, w.Code)
 }
 
@@ -87,17 +87,19 @@ func TestServeHTTP_GetSubscribers(t *testing.T) {
 
 	routerMock := NewMockRouter(testutil.MockCtrl)
 	api := NewRestMessageAPI(routerMock, "/api")
-	routerMock.EXPECT().GetSubscribersForTopic(gomock.Any()).Return([]byte("{}"), nil)
-	url, _ := url.Parse("http://localhost/api/subscribers/mytopic")
+	routerMock.EXPECT().GetSubscribers(gomock.Any()).Return([]byte("{}"), nil)
+	u, _ := url.Parse("http://localhost/api/subscribers/mytopic")
 	// and a http context
 	req := &http.Request{
 		Method: http.MethodGet,
-		URL:    url,
+		URL:    u,
 	}
 	w := &httptest.ResponseRecorder{}
 
 	// when: I POST a message
 	api.ServeHTTP(w, req)
+
+	//then
 	a.Equal(http.StatusOK, w.Code)
 }
 

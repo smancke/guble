@@ -54,7 +54,9 @@ func (f *LogstashFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		}
 	}
 
-	fields["environment"] = f.Env
+	if f.Env != "" {
+		fields["environment"] = f.Env
+	}
 
 	timeStampFormat := f.TimestampFormat
 	if timeStampFormat == "" {
@@ -81,12 +83,6 @@ func (f *LogstashFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		fields["log_type"] = defaultLogType
 	}
 
-	// set message field, prefixing fields clashes
-	if v, ok := entry.Data["msg"]; ok {
-		fields["fields.msg"] = v
-	}
-	fields["msg"] = entry.Message
-
 	// set level field, prefixing fields clashes
 	if v, ok := entry.Data["loglevel"]; ok {
 		fields["fields.loglevel"] = v
@@ -97,7 +93,6 @@ func (f *LogstashFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	if v, ok := entry.Data["host"]; ok {
 		fields["fields.host"] = v
 	}
-
 	if hostname, err := os.Hostname(); err == nil {
 		fields["host"] = hostname
 	}
@@ -109,6 +104,12 @@ func (f *LogstashFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		}
 		fields["type"] = f.Type
 	}
+
+	// set message field, prefixing fields clashes
+	if v, ok := entry.Data["msg"]; ok {
+		fields["fields.msg"] = v
+	}
+	fields["msg"] = entry.Message
 
 	serialized, err := json.Marshal(fields)
 	if err != nil {

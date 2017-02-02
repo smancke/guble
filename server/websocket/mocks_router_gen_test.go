@@ -4,13 +4,13 @@
 package websocket
 
 import (
-	gomock "github.com/golang/mock/gomock"
-	protocol "github.com/smancke/guble/protocol"
-	auth "github.com/smancke/guble/server/auth"
-	cluster "github.com/smancke/guble/server/cluster"
-	kvstore "github.com/smancke/guble/server/kvstore"
-	router "github.com/smancke/guble/server/router"
-	store "github.com/smancke/guble/server/store"
+	"github.com/golang/mock/gomock"
+	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/auth"
+	"github.com/smancke/guble/server/cluster"
+	"github.com/smancke/guble/server/kvstore"
+	"github.com/smancke/guble/server/router"
+	"github.com/smancke/guble/server/store"
 )
 
 // Mock of Router interface
@@ -75,15 +75,15 @@ func (_mr *_MockRouterRecorder) Fetch(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Fetch", arg0)
 }
 
-func (_m *MockRouter) GetSubscribersForTopic(_param0 string) ([]byte, error) {
-	ret := _m.ctrl.Call(_m, "GetSubscribersForTopic", _param0)
+func (_m *MockRouter) GetSubscribers(_param0 string) ([]byte, error) {
+	ret := _m.ctrl.Call(_m, "GetSubscribers", _param0)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockRouterRecorder) GetSubscribersForTopic(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetSubscribersForTopic", arg0)
+func (_mr *_MockRouterRecorder) GetSubscribers(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetSubscribers", arg0)
 }
 
 func (_m *MockRouter) HandleMessage(_param0 *protocol.Message) error {
