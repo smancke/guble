@@ -8,6 +8,11 @@ import (
 	"testing"
 )
 
+const (
+	KEY    = "ce40b46d"
+	SECRET = "153d2b2c72985370"
+)
+
 func TestNexmoSender_Send(t *testing.T) {
 	a := assert.New(t)
 	testutil.SkipIfDisabled(t)
@@ -19,7 +24,7 @@ func TestNexmoSender_Send(t *testing.T) {
 	sms.From = "REWE Lieferservice"
 	sms.Text = "Lieber Kunde! Ihre Lieferung kommt heute zwischen 12.04 und 12.34 Uhr. Vielen Dank für Ihre Bestellung! Ihr REWE Lieferservice"
 
-	response, err := sender.SendSms(sms)
+	response, err := sender.sendSms(sms)
 	a.Equal(1, response.MessageCount)
 	a.Equal(ResponseSuccess, response.Messages[0].Status)
 	a.NoError(err)
