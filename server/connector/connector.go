@@ -17,7 +17,10 @@ import (
 	"github.com/smancke/guble/server/service"
 )
 
-const DefaultWorkers = 1
+const (
+	DefaultWorkers = 1
+	SubstitutePath = "/substitute/"
+)
 
 var (
 	TopicParam     = "topic"
@@ -94,6 +97,16 @@ type Config struct {
 	Workers    int
 }
 
+type substitutionRequest struct {
+	FieldName string `json:"field"`
+	OldValue  string `json:"old_value"`
+	NewValue  string `json:"new_value"`
+}
+
+func (s *substitutionRequest) isValid() bool {
+	return s.FieldName != "" && s.NewValue != "" && s.FieldName != ""
+}
+
 func NewConnector(router router.Router, sender Sender, config Config) (Connector, error) {
 	kvs, err := router.KVStore()
 	if err != nil {
@@ -121,11 +134,12 @@ func (c *connector) initMuxRouter() {
 	muxRouter := mux.NewRouter()
 
 	baseRouter := muxRouter.PathPrefix(c.GetPrefix()).Subrouter()
-	baseRouter.Methods("GET").HandlerFunc(c.GetList)
+	baseRouter.Methods(http.MethodGet).HandlerFunc(c.GetList)
+	baseRouter.Methods(http.MethodPost).PathPrefix(SubstitutePath).HandlerFunc(c.Substitute)
 
 	subRouter := baseRouter.Path(c.config.URLPattern).Subrouter()
-	subRouter.Methods("POST").HandlerFunc(c.Post)
-	subRouter.Methods("DELETE").HandlerFunc(c.Delete)
+	subRouter.Methods(http.MethodPost).HandlerFunc(c.Post)
+	subRouter.Methods(http.MethodDelete).HandlerFunc(c.Delete)
 	c.mux = muxRouter
 }
 
@@ -153,7 +167,7 @@ func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
 		filters[key] = value[0]
 	}
 
-	log.WithField("filters", filters).Debug("Get list of subscriptions")
+	c.logger.WithField("filters", filters).Debug("Get list of subscriptions")
 	if len(filters) == 0 {
 		http.Error(w, `{"error":"Missing filters"}`, http.StatusBadRequest)
 		return
@@ -177,7 +191,7 @@ func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
 // Post creates a new subscriber
 func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	log.WithField("params", params).Debug("POST subscription")
+	c.logger.WithField("params", params).Debug("POST subscription")
 	topic, ok := params[TopicParam]
 	if !ok {
 		fmt.Fprintf(w, "Missing topic parameter.")
@@ -185,7 +199,7 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	}
 	delete(params, TopicParam)
 	params[ConnectorParam] = c.config.Name
-	log.WithField("params", params).WithField("topic", topic).Debug("Creating subscription")
+	c.logger.WithField("params", params).WithField("topic", topic).Debug("Creating subscription")
 	subscriber, err := c.manager.Create(protocol.Path("/"+topic), params)
 	if err != nil {
 		if err == ErrSubscriberExists {
@@ -196,14 +210,14 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	go c.Run(subscriber)
-	log.WithField("topic", topic).Debug("Subscription created")
+	c.logger.WithField("topic", topic).Debug("Subscription created")
 	fmt.Fprintf(w, `{"subscribed":"/%v"}`, topic)
 }
 
 // Delete removes a subscriber
 func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	log.WithField("params", params).Debug("DELETE subscription")
+	c.logger.WithField("params", params).Debug("DELETE subscription")
 	topic, ok := params[TopicParam]
 	if !ok {
 		fmt.Fprintf(w, "Missing topic parameter.")
@@ -211,19 +225,51 @@ func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 	}
 	delete(params, TopicParam)
 	params[ConnectorParam] = c.config.Name
-	log.WithField("params", params).WithField("topic", topic).Debug("Finding subscription to delete it")
+	c.logger.WithField("params", params).WithField("topic", topic).Debug("Finding subscription to delete it")
 	subscriber := c.manager.Find(GenerateKey("/"+topic, params))
 	if subscriber == nil {
 		http.Error(w, `{"error":"subscription not found"}`, http.StatusNotFound)
 		return
 	}
-	log.WithField("params", params).WithField("topic", topic).Debug("Deleting subscription")
+	c.logger.WithField("params", params).WithField("topic", topic).Debug("Deleting subscription")
 	err := c.manager.Remove(subscriber)
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"unknown error: %s"}`, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprintf(w, `{"unsubscribed":"/%v"}`, topic)
+}
+
+func (c *connector) Substitute(w http.ResponseWriter, req *http.Request) {
+
+	substitutionReq := new(substitutionRequest)
+	decoder := json.NewDecoder(req.Body)
+	err := decoder.Decode(&substitutionReq)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"json body could not be decode: %s"}`, err.Error()), http.StatusBadRequest)
+		return
+	}
+	if !substitutionReq.isValid() {
+		http.Error(w, `{"error":"not all values we're supplied"}`, http.StatusBadRequest)
+		return
+	}
+
+	filters := map[string]string{}
+	filters[substitutionReq.FieldName] = substitutionReq.OldValue
+	subscribers := c.manager.Filter(filters)
+	totalSubscribersUpdated := 0
+	for _, sub := range subscribers {
+		sub.Route().Set(substitutionReq.FieldName, substitutionReq.NewValue)
+		err = c.manager.Update(sub)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		totalSubscribersUpdated++
+	}
+
+	c.logger.WithField("subscribers", subscribers).WithField("req", substitutionReq).Debug("Substituted subscriber info ")
+	fmt.Fprintf(w, `{"modified":"%d"}`, totalSubscribersUpdated)
 }
 
 // Start will run start all current subscriptions and workers to process the messages

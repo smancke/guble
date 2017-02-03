@@ -7,7 +7,6 @@ import (
 
 	// use gorm's postgres dialect
 	_ "github.com/jinzhu/gorm/dialects/postgres"
-	"time"
 )
 
 const postgresGormLogMode = false
@@ -45,11 +44,12 @@ func (kvStore *PostgresKVStore) Open() error {
 
 	gormdb.LogMode(postgresGormLogMode)
 	gormdb.SingularTable(true)
-	gormdb.DB().SetMaxIdleConns(kvStore.config.MaxIdleConns)
+	//TODO MARIAN REMOVE THIS AFTER BUG
+	gormdb.DB().SetMaxIdleConns(-1)
 	gormdb.DB().SetMaxOpenConns(kvStore.config.MaxOpenConns)
 
 	//TODO MARIAN maybe config
-	gormdb.DB().SetConnMaxLifetime(2 * time.Minute)
+	//gormdb.DB().SetConnMaxLifetime(2 * time.Minute)
 	if err := gormdb.AutoMigrate(&kvEntry{}).Error; err != nil {
 		logger.WithField("err", err).Error("Error in schema migration")
 		return err

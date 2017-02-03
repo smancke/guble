@@ -15,12 +15,12 @@ func TestLogstashFormatter_Format(t *testing.T) {
 	lf := LogstashFormatter{Type: "abc", ServiceName: "guble", Env: "prod"}
 
 	fields := logrus.Fields{
-		"message": "def",
-		"level":   "ijk",
-		"type":    "lmn",
-		"one":     1,
-		"pi":      3.14,
-		"bool":    true,
+		"msg":   "def",
+		"level": "ijk",
+		"type":  "lmn",
+		"one":   1,
+		"pi":    3.14,
+		"bool":  true,
 	}
 
 	entry := logrus.WithFields(fields)
@@ -43,11 +43,11 @@ func TestLogstashFormatter_Format(t *testing.T) {
 	a.NotEmpty(data["@timestamp"])
 	a.NotEmpty(data["host"])
 	a.Equal("abc", data["type"])
-	a.Equal("msg", data["message"])
+	a.Equal("msg", data["msg"])
 	a.Equal("info", data["loglevel"])
 
 	// substituted fields
-	a.Equal("def", data["fields.message"])
+	a.Equal("def", data["fields.msg"])
 	a.Equal("lmn", data["fields.type"])
 
 	// formats

@@ -27,16 +27,17 @@ const (
 
 // Router interface provides a mechanism for PubSub messaging
 type Router interface {
+	Subscribe(r *Route) (*Route, error)
+	Unsubscribe(r *Route)
+	HandleMessage(message *protocol.Message) error
+	Fetch(*store.FetchRequest) error
+	GetSubscribers(topic string) ([]byte, error)
+
 	AccessManager() (auth.AccessManager, error)
 	MessageStore() (store.MessageStore, error)
 	KVStore() (kvstore.KVStore, error)
 	Cluster() *cluster.Cluster
-	Fetch(*store.FetchRequest) error
 
-	Subscribe(r *Route) (*Route, error)
-	Unsubscribe(r *Route)
-	HandleMessage(message *protocol.Message) error
-	GetSubscribersForTopic(topic string) ([]byte, error)
 	Done() <-chan bool
 }
 
@@ -101,7 +102,7 @@ func (router *router) Start() error {
 
 				select {
 				case message := <-router.handleC:
-					router.routeMessage(message)
+					router.handleMessage(message)
 					runtime.Gosched()
 				case subscriber := <-router.subscribeC:
 					router.subscribe(subscriber.route)
@@ -192,22 +193,6 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 	return nil
 }
 
-func (router *router) GetSubscribersForTopic(topicPath string) ([]byte, error) {
-	subscribers := make([]RouteParams, 0)
-	routes, present := router.routes[protocol.Path(topicPath)]
-	if present {
-		for index, currRoute := range routes {
-			logger.WithFields(log.Fields{
-				"index":       index,
-				"routeParams": currRoute.RouteParams,
-			}).Debug("Added route to slice")
-			subscribers = append(subscribers, currRoute.RouteParams)
-		}
-	}
-	return json.Marshal(subscribers)
-}
-
-// Subscribe adds a route to the subscribers. If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Subscribe(r *Route) (*Route, error) {
 	logger.WithFields(log.Fields{
 		"accessManager": router.accessManager,
@@ -235,6 +220,7 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 	return r, nil
 }
 
+// Subscribe adds a route to the subscribers. If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Unsubscribe(r *Route) {
 	logger.WithFields(log.Fields{
 		"accessManager": router.accessManager,
@@ -247,6 +233,21 @@ func (router *router) Unsubscribe(r *Route) {
 	}
 	router.unsubscribeC <- req
 	<-req.doneC
+}
+
+func (router *router) GetSubscribers(topicPath string) ([]byte, error) {
+	subscribers := make([]RouteParams, 0)
+	routes, present := router.routes[protocol.Path(topicPath)]
+	if present {
+		for index, currRoute := range routes {
+			logger.WithFields(log.Fields{
+				"index":       index,
+				"routeParams": currRoute.RouteParams,
+			}).Debug("Added route to slice")
+			subscribers = append(subscribers, currRoute.RouteParams)
+		}
+	}
+	return json.Marshal(subscribers)
 }
 
 func (router *router) subscribe(r *Route) {
@@ -331,7 +332,7 @@ func (router *router) isStopping() error {
 	return nil
 }
 
-func (router *router) routeMessage(message *protocol.Message) {
+func (router *router) handleMessage(message *protocol.Message) {
 	flog := logger.WithFields(log.Fields{
 		"topic":    message.Path,
 		"metadata": message.Metadata(),
@@ -360,7 +361,7 @@ func (router *router) routeMessage(message *protocol.Message) {
 }
 
 func (router *router) closeRoutes() {
-	logger.Debug("Called closeRoutes")
+	logger.Debug("closeRoutes")
 
 	for _, currentRouteList := range router.routes {
 		for _, route := range currentRouteList {
@@ -406,6 +407,15 @@ func removeIfMatching(slice []*Route, route *Route) ([]*Route, bool) {
 	return append(slice[:position], slice[position+1:]...), true
 }
 
+func (router *router) Fetch(req *store.FetchRequest) error {
+	logger.Debug("Fetch")
+	if err := router.isStopping(); err != nil {
+		return err
+	}
+	router.messageStore.Fetch(req)
+	return nil
+}
+
 // AccessManager returns the `accessManager` provided for the router
 func (router *router) AccessManager() (auth.AccessManager, error) {
 	if router.accessManager == nil {
@@ -428,14 +438,6 @@ func (router *router) KVStore() (kvstore.KVStore, error) {
 		return nil, ErrServiceNotProvided
 	}
 	return router.kvStore, nil
-}
-
-func (router *router) Fetch(req *store.FetchRequest) error {
-	if err := router.isStopping(); err != nil {
-		return err
-	}
-	router.messageStore.Fetch(req)
-	return nil
 }
 
 // Cluster returns the `cluster` provided for the router, or nil if no cluster was set-up

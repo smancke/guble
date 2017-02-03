@@ -65,7 +65,7 @@ func (api *RestMessageAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		resp, err := api.router.GetSubscribersForTopic(topic)
+		resp, err := api.router.GetSubscribers(topic)
 		w.Header().Set("Content-Type", "application/json")
 
 		_, err = w.Write(resp)

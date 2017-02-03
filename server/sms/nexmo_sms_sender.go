@@ -99,7 +99,6 @@ func (nm NexmoMessageResponse) Check() error {
 		}
 	}
 	return nil
-
 }
 
 type NexmoSender struct {
