@@ -115,21 +115,20 @@ func (ns *NexmoSender) Send(msg *protocol.Message) error {
 	nexmoSMS := new(NexmoSms)
 	err := json.Unmarshal(msg.Body, nexmoSMS)
 	if err != nil {
-		logger.WithField("error", err.Error()).Error("Could not decode message body")
+		logger.WithField("error", err.Error()).Error("Could not decode message body to send to nexmo")
 		return err
 	}
-	nexmoSMSResponse, err := ns.SendSms(nexmoSMS)
+	nexmoSMSResponse, err := ns.sendSms(nexmoSMS)
 	if err != nil {
-
-		logger.WithField("error", err.Error()).Error("Could not decode message body")
+		logger.WithField("error", err.Error()).Error("Could not decode nexmo response message body")
 		return err
 	}
-	logger.WithField("response", nexmoSMSResponse).Debug("Received nexmo response")
+	logger.WithField("response", nexmoSMSResponse).Debug("Decoded nexmo response")
 
 	return nexmoSMSResponse.Check()
 }
 
-func (ns *NexmoSender) SendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {
+func (ns *NexmoSender) sendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {
 	smsEncoded, err := sms.EncodeNexmoSms(ns.ApiKey, ns.ApiSecret)
 	if err != nil {
 		logger.WithField("error", err.Error()).Error("Error encoding sms")
@@ -143,7 +142,7 @@ func (ns *NexmoSender) SendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		logger.WithField("error", err.Error()).Error("Error doing the request to sms endpoint")
+		logger.WithField("error", err.Error()).Error("Error doing the request to nexmo endpoint")
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -153,10 +152,10 @@ func (ns *NexmoSender) SendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {
 
 	err = json.Unmarshal(respBody, &messageResponse)
 	if err != nil {
-		logger.WithField("error", err.Error()).Error("Error decoding the response from sms endpoint")
+		logger.WithField("error", err.Error()).Error("Error decoding the response from nexmo endpoint")
 		return nil, err
 	}
-	logger.WithField("messageResponse", messageResponse).Debug("Actual response was")
+	logger.WithField("messageResponse", messageResponse).Debug("Actual nexmo response")
 
 	return messageResponse, nil
 }
