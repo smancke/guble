@@ -332,7 +332,12 @@ func (router *router) isStopping() error {
 }
 
 func (router *router) routeMessage(message *protocol.Message) {
-	logger.WithField("msgMetadata", message.Metadata()).Debug("Called routeMessage for data")
+	flog := logger.WithFields(log.Fields{
+		"topic":    message.Path,
+		"metadata": message.Metadata(),
+		"filters":  message.Filters,
+	})
+	flog.Debug("Called routeMessage for data")
 	mTotalMessagesRouted.Add(1)
 
 	matched := false
@@ -349,7 +354,7 @@ func (router *router) routeMessage(message *protocol.Message) {
 	}
 
 	if !matched {
-		logger.WithField("topic", message.Path).Debug("No route matched.")
+		flog.Debug("No route matched.")
 		mTotalMessagesNotMatchingTopic.Add(1)
 	}
 }
