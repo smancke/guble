@@ -32,93 +32,92 @@ type Config struct {
 	Schema string
 }
 
-type conn struct {
+type gateway struct {
 	config *Config
+
 	sender Sender
 	router router.Router
-	logger *log.Entry
 	route  *router.Route
 
-	ctx        context.Context
-	cancel     context.CancelFunc
 	LastIDSent uint64
+
+	ctx        context.Context
+	cancelFunc context.CancelFunc
+
+	logger *log.Entry
 }
 
-func New(router router.Router, sender Sender, config Config) (*conn, error) {
+func New(router router.Router, sender Sender, config Config) (*gateway, error) {
 	if *config.Workers <= 0 {
 		*config.Workers = connector.DefaultWorkers
 	}
 	config.Schema = SMSSchema
 	config.Name = SMSDefaultTopic
-
-	gw := &conn{
-		router: router,
-		logger: logger.WithField("name", config.Name),
+	return &gateway{
 		config: &config,
+		router: router,
 		sender: sender,
-	}
-
-	return gw, nil
+		logger: logger.WithField("name", config.Name),
+	}, nil
 }
 
-func (c *conn) Start() error {
-	c.logger.Debug("Starting gateway")
+func (g *gateway) Start() error {
+	g.logger.Debug("Starting gateway")
 
-	err := c.ReadLastID()
+	err := g.ReadLastID()
 	if err != nil {
 		return err
 	}
 
-	c.ctx, c.cancel = context.WithCancel(context.Background())
+	g.ctx, g.cancelFunc = context.WithCancel(context.Background())
 
-	c.initRoute()
+	g.initRoute()
 
-	go c.Run()
+	go g.Run()
 
-	c.logger.Debug("Started gateway")
+	g.logger.Debug("Started gateway")
 	return nil
 }
 
-func (c *conn) initRoute() {
-	c.route = router.NewRoute(router.RouteConfig{
-		Path:         protocol.Path(*c.config.SMSTopic),
+func (g *gateway) initRoute() {
+	g.route = router.NewRoute(router.RouteConfig{
+		Path:         protocol.Path(*g.config.SMSTopic),
 		ChannelSize:  10,
-		FetchRequest: c.fetchRequest(),
+		FetchRequest: g.fetchRequest(),
 	})
 }
 
-func (c *conn) fetchRequest() (fr *store.FetchRequest) {
-	if c.LastIDSent > 0 {
+func (g *gateway) fetchRequest() (fr *store.FetchRequest) {
+	if g.LastIDSent > 0 {
 		fr = store.NewFetchRequest(
-			protocol.Path(*c.config.SMSTopic).Partition(),
-			c.LastIDSent+1,
+			protocol.Path(*g.config.SMSTopic).Partition(),
+			g.LastIDSent+1,
 			0,
 			store.DirectionForward, -1)
 	}
 	return
 }
 
-func (c *conn) Run() {
-	c.logger.Debug("Starting gateway run")
+func (g *gateway) Run() {
+	g.logger.Debug("Run gateway")
 	var provideErr error
 	go func() {
-		err := c.route.Provide(c.router, true)
+		err := g.route.Provide(g.router, true)
 		if err != nil {
 			// cancel subscription loop if there is an error on the provider
-			//provideErr = err
 			logger.WithField("error", err.Error()).Error("Provide returned error")
 			provideErr = err
-			c.Cancel()
+			g.Cancel()
 		}
 	}()
 
-	err := c.proxyLoop()
+	err := g.proxyLoop()
 	if err != nil && provideErr == nil {
-		c.logger.WithField("error", err.Error()).Error("Error returned by gateway proxy loop")
+		g.logger.WithField("error", err.Error()).Error("Error returned by gateway proxy loop")
 
-		// If Route channel closed try restarting
+		// If Route channel closed, try restarting
 		if err == connector.ErrRouteChannelClosed || err == ErrNoSMSSent || err == ErrIncompleteSMSSent {
-			c.Restart()
+			g.Restart()
 			return
 		}
 
@@ -126,11 +125,11 @@ func (c *conn) Run() {
 
 	if provideErr != nil {
 		// TODO Bogdan Treat errors where a subscription provide fails
-		c.logger.WithField("error", provideErr.Error()).Error("Route provide error")
+		g.logger.WithField("error", provideErr.Error()).Error("Route provide error")
 
 		// Router closed the route, try restart
 		if provideErr == router.ErrInvalidRoute {
-			c.Restart()
+			g.Restart()
 			return
 		}
 		// Router module is stopping, exit the process
@@ -138,36 +137,35 @@ func (c *conn) Run() {
 			return
 		}
 	}
-
 }
 
-func (c *conn) proxyLoop() error {
+func (g *gateway) proxyLoop() error {
 	var (
-		opened  bool = true
-		recvMsg *protocol.Message
+		opened      bool = true
+		receivedMsg *protocol.Message
 	)
-	defer func() { c.cancel = nil }()
+	defer func() { g.cancelFunc = nil }()
 
 	for opened {
 		select {
-		case recvMsg, opened = <-c.route.MessagesChannel():
+		case receivedMsg, opened = <-g.route.MessagesChannel():
 			if !opened {
-				logger.WithField("m", recvMsg).Info("not open")
+				logger.WithField("receivedMsg", receivedMsg).Info("not open")
 				break
 			}
 
-			err := c.sender.Send(recvMsg)
+			err := g.sender.Send(receivedMsg)
 			if err != nil {
 				log.WithField("error", err.Error()).Error("Sending of message failed")
 				return err
 			}
-			c.SetLastSentID(recvMsg.ID)
+			g.SetLastSentID(receivedMsg.ID)
 
-		case <-c.ctx.Done():
+		case <-g.ctx.Done():
 			// If the parent context is still running then only this subscriber context
 			// has been cancelled
-			if c.ctx.Err() == nil {
-				return c.ctx.Err()
+			if g.ctx.Err() == nil {
+				return g.ctx.Err()
 			}
 			return nil
 		}
@@ -177,86 +175,85 @@ func (c *conn) proxyLoop() error {
 	return connector.ErrRouteChannelClosed
 }
 
-func (c *conn) Restart() error {
-	c.logger.WithField("lastID", c.LastIDSent).Debug("Restart in progress")
-	c.Cancel()
-	c.cancel = nil
+func (g *gateway) Restart() error {
+	g.logger.WithField("LastIDSent", g.LastIDSent).Debug("Restart in progress")
 
-	err := c.ReadLastID()
+	g.Cancel()
+	g.cancelFunc = nil
+
+	err := g.ReadLastID()
 	if err != nil {
 		return err
 	}
 
-	c.initRoute()
+	g.initRoute()
 
-	go c.Run()
+	go g.Run()
 
-	c.logger.WithField("lastID", c.LastIDSent).Debug("Restart finished")
+	g.logger.WithField("LastIDSent", g.LastIDSent).Debug("Restart finished")
 	return nil
 }
 
-func (c *conn) Stop() error {
-	c.logger.Debug("Stopping gateway")
-	c.cancel()
-	c.logger.Debug("Stopped gateway")
+func (g *gateway) Stop() error {
+	g.logger.Debug("Stopping gateway")
+	g.cancelFunc()
+	g.logger.Debug("Stopped gateway")
 	return nil
 }
 
-func (c *conn) SetLastSentID(ID uint64) error {
-	c.logger.WithField("lastID", ID).WithField("path", *c.config.SMSTopic).Debug("Seting last id to ")
+func (g *gateway) SetLastSentID(ID uint64) error {
+	g.logger.WithField("LastIDSent", ID).WithField("path", *g.config.SMSTopic).Debug("Seting LastIDSent")
 
-	kvStore, err := c.router.KVStore()
+	kvStore, err := g.router.KVStore()
 	if err != nil {
-		c.logger.WithField("error", err.Error()).Error("KvStore could not be accesed from gateway")
+		g.logger.WithField("error", err.Error()).Error("KVStore could not be accesed from gateway")
 		return err
 	}
 
 	data, err := json.Marshal(struct{ ID uint64 }{ID: ID})
 	if err != nil {
-		c.logger.WithField("error", err.Error()).Error("Error encoding last ID")
+		g.logger.WithField("error", err.Error()).Error("Error encoding last ID")
 		return err
 	}
-	err = kvStore.Put(c.config.Schema, *c.config.SMSTopic, data)
+	err = kvStore.Put(g.config.Schema, *g.config.SMSTopic, data)
 	if err != nil {
-		c.logger.WithField("error", err.Error()).WithField("path", *c.config.SMSTopic).Error("KvStore could not set value for lastID for topic")
+		g.logger.WithField("error", err.Error()).WithField("path", *g.config.SMSTopic).Error("KVStore could not set value for LastIDSent for topic")
 		return err
 	}
-	c.LastIDSent = ID
+	g.LastIDSent = ID
 	return nil
 }
 
-func (c *conn) ReadLastID() error {
-	kvStore, err := c.router.KVStore()
+func (g *gateway) ReadLastID() error {
+	kvStore, err := g.router.KVStore()
 	if err != nil {
-		c.logger.WithField("error", err.Error()).Error("KvStore could not be accesed from gateway")
+		g.logger.WithField("error", err.Error()).Error("KVStore could not be accesed from sms gateway")
 		return err
 	}
-	data, exist, err := kvStore.Get(c.config.Schema, *c.config.SMSTopic)
+	data, exist, err := kvStore.Get(g.config.Schema, *g.config.SMSTopic)
 	if err != nil {
-		c.logger.WithField("error", err.Error()).WithField("path", *c.config.SMSTopic).Error("KvStore could not get value for lastID for topic")
+		g.logger.WithField("error", err.Error()).WithField("path", *g.config.SMSTopic).Error("KvStore could not get value for LastIDSent for topic")
 		return err
 	}
-
 	if !exist {
-		c.LastIDSent = 0
+		g.LastIDSent = 0
 		return nil
 	}
 
 	v := &struct{ ID uint64 }{}
 	err = json.Unmarshal(data, v)
 	if err != nil {
-		c.logger.WithField("error", err.Error()).Error("Could not parse to uint64 the value stored in db")
+		g.logger.WithField("error", err.Error()).Error("Could not parse as uint64 the LastIDSent value stored in db")
 		return err
 	}
-	c.LastIDSent = v.ID
+	g.LastIDSent = v.ID
 
-	c.logger.WithField("lastID", c.LastIDSent).WithField("path", *c.config.SMSTopic).Debug("ReadLastID")
+	g.logger.WithField("LastIDSent", g.LastIDSent).WithField("path", *g.config.SMSTopic).Debug("ReadLastID")
 	return nil
-
 }
 
-func (c *conn) Cancel() {
-	if c.cancel != nil {
-		c.cancel()
+func (g *gateway) Cancel() {
+	if g.cancelFunc != nil {
+		g.cancelFunc()
 	}
 }

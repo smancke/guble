@@ -8,6 +8,11 @@ import (
 	"testing"
 )
 
+const (
+	KEY    = "ce40b46d"
+	SECRET = "153d2b2c72985370"
+)
+
 func TestNexmoSender_Send(t *testing.T) {
 	a := assert.New(t)
 	testutil.SkipIfDisabled(t)

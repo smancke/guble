@@ -12,11 +12,7 @@ import (
 	"github.com/smancke/guble/protocol"
 )
 
-const (
-	KEY    = "ce40b46d"
-	SECRET = "153d2b2c72985370"
-	URL    = "https://rest.nexmo.com/sms/json?"
-)
+const URL = "https://rest.nexmo.com/sms/json?"
 
 type ResponseCode int
 
@@ -128,7 +124,7 @@ func (ns *NexmoSender) Send(msg *protocol.Message) error {
 		logger.WithField("error", err.Error()).Error("Could not decode message body")
 		return err
 	}
-	logger.WithField("response", nexmoSMSResponse).Debug("Received nexmo response was")
+	logger.WithField("response", nexmoSMSResponse).Debug("Received nexmo response")
 
 	return nexmoSMSResponse.Check()
 }
