@@ -2,6 +2,7 @@
 
 Guble is a simple user-facing messaging and data replication server written in Go.
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/f3b9a351201b416db4fe6df8faea363b)](https://www.codacy.com/app/cosminrentea/guble?utm_source=github.com&utm_medium=referral&utm_content=smancke/guble&utm_campaign=badger)
 [![Release](https://img.shields.io/github/release/smancke/guble.svg)](https://github.com/smancke/guble/releases/latest)
 [![Docker](https://img.shields.io/docker/pulls/smancke/guble.svg)](https://hub.docker.com/r/smancke/guble/)
 [![Build Status](https://api.travis-ci.org/smancke/guble.svg?branch=master)](https://travis-ci.org/smancke/guble)
