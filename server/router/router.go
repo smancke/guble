@@ -24,7 +24,7 @@ const (
 	handleChannelCapacity        = 500
 	subscribeChannelCapacity     = 10
 	unsubscribeChannelCapacity   = 10
-	routerPrefix                 = "/debug/router"
+	routerPrefix                 = "/admin/router"
 )
 
 // Router interface provides a mechanism for PubSub messaging
@@ -454,8 +454,8 @@ func (router *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, `{"error": Error method not allowed.Only HTTP GET is accepted}`, http.StatusMethodNotAllowed)
 		return
 	}
-	encoder := json.NewEncoder(w)
-	err := encoder.Encode(router.routes)
+
+	err := json.NewEncoder(w).Encode(router.routes)
 	if err != nil {
 		http.Error(w, `{"error":Error encoding data.}`, http.StatusInternalServerError)
 		logger.WithField("error", err.Error()).Error("Error encoding data.")
