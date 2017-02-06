@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
-
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
+
 	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/service"
 )
@@ -78,7 +77,6 @@ type connector struct {
 	manager Manager
 	queue   Queue
 	router  router.Router
-	kvstore kvstore.KVStore
 
 	mux *mux.Router
 
@@ -97,16 +95,6 @@ type Config struct {
 	Workers    int
 }
 
-type substitutionRequest struct {
-	FieldName string `json:"field"`
-	OldValue  string `json:"old_value"`
-	NewValue  string `json:"new_value"`
-}
-
-func (s *substitutionRequest) isValid() bool {
-	return s.FieldName != "" && s.NewValue != "" && s.FieldName != ""
-}
-
 func NewConnector(router router.Router, sender Sender, config Config) (Connector, error) {
 	kvs, err := router.KVStore()
 	if err != nil {
@@ -123,7 +111,6 @@ func NewConnector(router router.Router, sender Sender, config Config) (Connector
 		manager: NewManager(config.Schema, kvs),
 		queue:   NewQueue(sender, config.Workers),
 		router:  router,
-		kvstore: kvs,
 		logger:  logger.WithField("name", config.Name),
 	}
 	c.initMuxRouter()
@@ -241,25 +228,23 @@ func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 }
 
 func (c *connector) Substitute(w http.ResponseWriter, req *http.Request) {
-
-	substitutionReq := new(substitutionRequest)
-	decoder := json.NewDecoder(req.Body)
-	err := decoder.Decode(&substitutionReq)
+	s := new(substitution)
+	err := json.NewDecoder(req.Body).Decode(&s)
 	if err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"json body could not be decode: %s"}`, err.Error()), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf(`{"error":"json body could not be decoded: %s"}`, err.Error()), http.StatusBadRequest)
 		return
 	}
-	if !substitutionReq.isValid() {
-		http.Error(w, `{"error":"not all values we're supplied"}`, http.StatusBadRequest)
+	if !s.isValid() {
+		http.Error(w, `{"error":"not all required values were supplied"}`, http.StatusBadRequest)
 		return
 	}
 
 	filters := map[string]string{}
-	filters[substitutionReq.FieldName] = substitutionReq.OldValue
+	filters[s.FieldName] = s.OldValue
 	subscribers := c.manager.Filter(filters)
 	totalSubscribersUpdated := 0
 	for _, sub := range subscribers {
-		sub.Route().Set(substitutionReq.FieldName, substitutionReq.NewValue)
+		sub.Route().Set(s.FieldName, s.NewValue)
 		err = c.manager.Update(sub)
 		if err != nil {
 			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
@@ -268,7 +253,7 @@ func (c *connector) Substitute(w http.ResponseWriter, req *http.Request) {
 		totalSubscribersUpdated++
 	}
 
-	c.logger.WithField("subscribers", subscribers).WithField("req", substitutionReq).Debug("Substituted subscriber info ")
+	c.logger.WithField("subscribers", subscribers).WithField("req", s).Debug("Substituted subscriber info ")
 	fmt.Fprintf(w, `{"modified":"%d"}`, totalSubscribersUpdated)
 }
 
