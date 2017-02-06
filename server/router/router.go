@@ -16,6 +16,7 @@ import (
 	"github.com/smancke/guble/server/cluster"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/store"
+	"net/http"
 )
 
 const (
@@ -23,6 +24,7 @@ const (
 	handleChannelCapacity        = 500
 	subscribeChannelCapacity     = 10
 	unsubscribeChannelCapacity   = 10
+	routerPrefix                 = "/admin/router"
 )
 
 // Router interface provides a mechanism for PubSub messaging
@@ -443,4 +445,24 @@ func (router *router) KVStore() (kvstore.KVStore, error) {
 // Cluster returns the `cluster` provided for the router, or nil if no cluster was set-up
 func (router *router) Cluster() *cluster.Cluster {
 	return router.cluster
+}
+
+func (router *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if req.Method != http.MethodGet {
+		http.Error(w, `{"error": Error method not allowed.Only HTTP GET is accepted}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := json.NewEncoder(w).Encode(router.routes)
+	if err != nil {
+		http.Error(w, `{"error":Error encoding data.}`, http.StatusInternalServerError)
+		logger.WithField("error", err.Error()).Error("Error encoding data.")
+		return
+	}
+}
+
+func (router *router) GetPrefix() string {
+	return routerPrefix
 }
