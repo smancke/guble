@@ -82,7 +82,7 @@ func (c *conn) Start() error {
 func (c *conn) initRoute() {
 	c.route = router.NewRoute(router.RouteConfig{
 		Path:         protocol.Path(*c.config.SMSTopic),
-		ChannelSize:  10,
+		ChannelSize:  5000,
 		FetchRequest: c.fetchRequest(),
 	})
 }
