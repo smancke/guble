@@ -75,7 +75,7 @@ func checkConnectedNotificationJSON(t *testing.T, user string, connectedJSON str
 	assert.NoError(t, e)
 }
 
-//Used only for test and unmarshal of the json response
+//Used only for test and unmarshalling of the json response
 type Subscriber struct {
 	DeviceToken string `json:"device_token"`
 	UserID      string `json:"user_id"`
