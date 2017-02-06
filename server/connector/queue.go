@@ -53,6 +53,7 @@ func (q *queue) SetSender(s Sender) {
 	q.sender = s
 }
 
+// Start a fixed number of goroutines to handle requests and responses w.r.t. external push-notification services.
 func (q *queue) Start() error {
 	q.requestsC = make(chan Request)
 	for i := 1; i <= q.nWorkers; i++ {
@@ -63,34 +64,37 @@ func (q *queue) Start() error {
 
 func (q *queue) worker(i int) {
 	logger.WithField("worker", i).Debug("starting queue worker")
-	var beforeSend time.Time
-	var latency time.Duration
 	for request := range q.requestsC {
-		q.wg.Add(1)
+		q.handle(request)
+	}
+}
+
+func (q *queue) handle(request Request) {
+	q.wg.Add(1)
+	defer q.wg.Done()
+
+	var beforeSend time.Time
+	if q.metrics {
+		beforeSend = time.Now()
+	}
+	response, err := q.sender.Send(request)
+	if q.responseHandler != nil {
+		var metadata *Metadata
 		if q.metrics {
-			beforeSend = time.Now()
+			metadata = &Metadata{time.Since(beforeSend)}
 		}
-		response, err := q.sender.Send(request)
-		if q.responseHandler != nil {
-			var metadata *Metadata
-			if q.metrics {
-				latency = time.Since(beforeSend)
-				metadata = &Metadata{latency}
-			}
-			err = q.responseHandler.HandleResponse(request, response, metadata, err)
-			if err != nil {
-				logger.WithFields(log.Fields{
-					"error":      err.Error(),
-					"subscriber": request.Subscriber(),
-					"message":    request.Message(),
-				}).Error("Error handling connector response")
-			}
-		} else if err == nil {
-			logger.WithField("response", response).Debug("No response handler.")
-		} else {
-			logger.WithField("error", err.Error()).Error("Sending error. No response handler.")
+		err = q.responseHandler.HandleResponse(request, response, metadata, err)
+		if err != nil {
+			logger.WithFields(log.Fields{
+				"error":      err.Error(),
+				"subscriber": request.Subscriber(),
+				"message":    request.Message(),
+			}).Error("error handling connector response")
 		}
-		q.wg.Done()
+	} else if err == nil {
+		logger.WithField("response", response).Debug("no response handler was set")
+	} else {
+		logger.WithField("error", err.Error()).Error("error while sending, and no response handler was set")
 	}
 }
 
@@ -100,7 +104,7 @@ func (q *queue) Push(request Request) error {
 		if r := recover(); r != nil {
 			switch x := r.(type) {
 			case error:
-				logger.WithError(x).Error("Recovered error")
+				logger.WithError(x).Error("recovered from error")
 			default:
 				panic(r)
 			}
