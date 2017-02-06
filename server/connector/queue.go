@@ -8,7 +8,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-// Queue is an interface modeling a task-queue (it is started and more Requests can be pushed to it, and finally it is stopped).
+// Queue is an interface modeling a task-queue (it is started and more Requests can be pushed to it, and finally it is stopped after all requests are handled).
 type Queue interface {
 	ResponseHandlerSetter
 	SenderSetter
