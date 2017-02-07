@@ -116,7 +116,7 @@ func (g *gateway) Run() {
 		g.logger.WithField("error", err.Error()).Error("Error returned by gateway proxy loop")
 
 		// If Route channel closed, try restarting
-		if err == connector.ErrRouteChannelClosed || err == ErrNoSMSSent || err == ErrIncompleteSMSSent {
+		if isRestartableErr(err) {
 			g.Restart()
 			return
 		}
@@ -137,6 +137,12 @@ func (g *gateway) Run() {
 			return
 		}
 	}
+}
+func isRestartableErr(err error) bool {
+	return err == connector.ErrRouteChannelClosed ||
+		err == ErrNoSMSSent ||
+		err == ErrIncompleteSMSSent ||
+		err == ErrSMSResponseDecodingFailed
 }
 
 func (g *gateway) proxyLoop() error {
