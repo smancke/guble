@@ -43,8 +43,9 @@ const (
 )
 
 var (
-	ErrNoSMSSent         = errors.New("No sms was sent to Nexmo")
-	ErrIncompleteSMSSent = errors.New("Nexmo sms was only partial delivered.One or more part returned an error")
+	ErrNoSMSSent                 = errors.New("No sms was sent to Nexmo")
+	ErrIncompleteSMSSent         = errors.New("Nexmo sms was only partial delivered.One or more part returned an error")
+	ErrSMSResponseDecodingFailed = errors.New("Nexmo response decoding failed.")
 )
 
 var nexmoResponseCodeMap = map[ResponseCode]string{
@@ -150,19 +151,23 @@ func (ns *NexmoSender) sendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {
 
 	resp, err := (&http.Client{}).Do(req)
 	if err != nil {
-		logger.WithField("error", err.Error()).Error("Error doing the request to nexmo endpoint.")
+		logger.WithField("error", err.Error()).Error("Error doing the request to nexmo endpoint")
 		ns.createHttpClient()
-		return nil, err
+		return nil, ErrNoSMSSent
 	}
 	defer resp.Body.Close()
 
 	var messageResponse *NexmoMessageResponse
-	respBody, _ := ioutil.ReadAll(resp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		logger.WithField("error", err.Error()).Error("Error reading the nexmo body response")
+		return nil, ErrSMSResponseDecodingFailed
+	}
 
 	err = json.Unmarshal(respBody, &messageResponse)
 	if err != nil {
 		logger.WithField("error", err.Error()).Error("Error decoding the response from nexmo endpoint")
-		return nil, err
+		return nil, ErrSMSResponseDecodingFailed
 	}
 	logger.WithField("messageResponse", messageResponse).Debug("Actual nexmo response")
 
