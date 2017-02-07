@@ -2,10 +2,12 @@ package sms
 
 import (
 	"encoding/json"
+	"testing"
+	"time"
+
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 const (
@@ -31,6 +33,7 @@ func TestNexmoSender_Send(t *testing.T) {
 }
 
 func TestNexmoSender_SendWithError(t *testing.T) {
+	RequestTimeout = time.Second
 	a := assert.New(t)
 	sender, err := NewNexmoSender(KEY, SECRET)
 	a.NoError(err)
