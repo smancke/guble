@@ -33,7 +33,7 @@ type RouteConfig struct {
 
 	// FetchRequest to fetch messages before subscribing
 	// The Partition field of the FetchRequest is overrided with the Partition of the Route topic
-	FetchRequest *store.FetchRequest
+	FetchRequest *store.FetchRequest `json:"-"`
 }
 
 func (rc *RouteConfig) Equal(other RouteConfig, keys ...string) bool {
