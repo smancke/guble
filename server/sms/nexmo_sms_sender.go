@@ -16,7 +16,7 @@ import (
 var (
 	URL                = "https://rest.nexmo.com/sms/json?"
 	MaxIdleConnections = 100
-	RequestTimeout     = 30 * time.Second
+	RequestTimeout     = 500 * time.Millisecond
 )
 
 type ResponseCode int
