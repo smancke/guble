@@ -24,7 +24,7 @@ const (
 	handleChannelCapacity        = 500
 	subscribeChannelCapacity     = 10
 	unsubscribeChannelCapacity   = 10
-	routerPrefix                 = "/admin/router"
+	prefix                       = "/admin/router"
 )
 
 // Router interface provides a mechanism for PubSub messaging
@@ -464,5 +464,5 @@ func (router *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (router *router) GetPrefix() string {
-	return routerPrefix
+	return prefix
 }
