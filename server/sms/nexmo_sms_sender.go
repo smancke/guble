@@ -7,12 +7,17 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 )
 
-const URL = "https://rest.nexmo.com/sms/json?"
+var (
+	URL                = "https://rest.nexmo.com/sms/json?"
+	MaxIdleConnections = 100
+	RequestTimeout     = 500 * time.Millisecond
+)
 
 type ResponseCode int
 
@@ -101,14 +106,18 @@ type NexmoSender struct {
 	logger    *log.Entry
 	ApiKey    string
 	ApiSecret string
+
+	httpClient *http.Client
 }
 
 func NewNexmoSender(apiKey, apiSecret string) (*NexmoSender, error) {
-	return &NexmoSender{
+	ns := &NexmoSender{
 		logger:    logger.WithField("name", "nexmoSender"),
 		ApiKey:    apiKey,
 		ApiSecret: apiSecret,
-	}, nil
+	}
+	ns.createHttpClient()
+	return ns, nil
 }
 
 func (ns *NexmoSender) Send(msg *protocol.Message) error {
@@ -139,10 +148,10 @@ func (ns *NexmoSender) sendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Content-Length", strconv.Itoa(len(smsEncoded)))
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := (&http.Client{}).Do(req)
 	if err != nil {
-		logger.WithField("error", err.Error()).Error("Error doing the request to nexmo endpoint")
+		logger.WithField("error", err.Error()).Error("Error doing the request to nexmo endpoint.")
+		ns.createHttpClient()
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -158,4 +167,14 @@ func (ns *NexmoSender) sendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {
 	logger.WithField("messageResponse", messageResponse).Debug("Actual nexmo response")
 
 	return messageResponse, nil
+}
+
+func (ns *NexmoSender) createHttpClient() {
+	logger.Debug("Recreating HTTP client for nexmo sender")
+	ns.httpClient = &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost: MaxIdleConnections,
+		},
+		Timeout: RequestTimeout,
+	}
 }
