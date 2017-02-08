@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"expvar"
 	"github.com/golang/mock/gomock"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
@@ -34,11 +35,13 @@ func Test_StartStop(t *testing.T) {
 	routerMock.EXPECT().MessageStore().AnyTimes().Return(msgStore, nil)
 	topic := "sms"
 	worker := 1
+	intervalMetrics := true
 	config := Config{
-		Workers:  &worker,
-		SMSTopic: &topic,
-		Name:     "test_gateway",
-		Schema:   SMSSchema,
+		Workers:         &worker,
+		SMSTopic:        &topic,
+		Name:            "test_gateway",
+		Schema:          SMSSchema,
+		IntervalMetrics: &intervalMetrics,
 	}
 
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *router.Route) (*router.Route, error) {
@@ -76,11 +79,13 @@ func Test_SendOneSms(t *testing.T) {
 
 	topic := "/sms"
 	worker := 1
+	intervalMetrics := true
 	config := Config{
-		Workers:  &worker,
-		SMSTopic: &topic,
-		Name:     "test_gateway",
-		Schema:   SMSSchema,
+		Workers:         &worker,
+		SMSTopic:        &topic,
+		Name:            "test_gateway",
+		Schema:          SMSSchema,
+		IntervalMetrics: &intervalMetrics,
 	}
 
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *router.Route) (*router.Route, error) {
@@ -120,6 +125,10 @@ func Test_SendOneSms(t *testing.T) {
 	a.NoError(err)
 
 	time.Sleep(100 * time.Millisecond)
+
+	totalSentCount := expvar.NewInt("total_sent_messages")
+	totalSentCount.Add(1)
+	a.Equal(totalSentCount, mTotalSentMessages)
 }
 
 func Test_Restart(t *testing.T) {
@@ -139,11 +148,14 @@ func Test_Restart(t *testing.T) {
 
 	topic := "/sms"
 	worker := 1
+	intervalMetrics := true
 	config := Config{
 		Workers:  &worker,
 		SMSTopic: &topic,
 		Name:     "test_gateway",
 		Schema:   SMSSchema,
+
+		IntervalMetrics: &intervalMetrics,
 	}
 
 	routerMock.EXPECT().Subscribe(gomock.Any()).Do(func(r *router.Route) (*router.Route, error) {
@@ -173,25 +185,8 @@ func Test_Restart(t *testing.T) {
 		Body:          d,
 	}
 
-	//TODO MARIAN  FIX THIS TEST
-	//msgStore.EXPECT().MaxMessageID(gomock.Eq(gw.route.Path.Partition())).Return(uint64(0), nil)
-	//msgStore.EXPECT().MaxMessageID(gomock.Eq(gw.route.Path.Partition())).Return(uint64(4), nil)
-	//msgStore.EXPECT().MaxMessageID(gomock.Eq(gw.route.Path.Partition())).Return(uint64(4), nil)
 	mockSmsSender.EXPECT().Send(gomock.Eq(&msg)).Times(1).Return(ErrNoSMSSent)
 
-	//routerMock.EXPECT().Fetch(gomock.Any()).Do(func(r *store.FetchRequest) {
-	//	go func() {
-	//
-	//		logger.WithField("r.Partition", r.Partition).Info("----")
-	//
-	//		a.Equal(strings.Split(topic, "/")[1], r.Partition)
-	//
-	//		r.StartC <- 1
-	//
-	//		r.MessageC <- &store.FetchedMessage{ID: uint64(4), Message: msg.Bytes()}
-	//		close(r.MessageC)
-	//	}()
-	//})
 	doneC := make(chan bool)
 	routerMock.EXPECT().Done().AnyTimes().Return(doneC)
 	//
