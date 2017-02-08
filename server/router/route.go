@@ -72,7 +72,9 @@ func (r *Route) String() string {
 }
 
 // Deliver takes a messages and adds it to the queue to be delivered into the channel
-func (r *Route) Deliver(msg *protocol.Message) error {
+// store boolean specifies if the messages are being fetched or are from the router
+// In case the are fetched from the store the route won't close if it's full
+func (r *Route) Deliver(msg *protocol.Message, store bool) error {
 	loggerMessage := r.logger.WithField("message", msg)
 
 	if r.isInvalid() {
@@ -90,7 +92,7 @@ func (r *Route) Deliver(msg *protocol.Message) error {
 	if r.queueSize >= 0 {
 		// if size is zero the sending is direct
 		if r.queueSize == 0 {
-			return r.sendDirect(msg)
+			return r.sendDirect(msg, store)
 		} else if r.queue.size() >= r.queueSize {
 			loggerMessage.Error("Closing route because queue is full")
 			r.Close()
@@ -183,7 +185,7 @@ REFETCH:
 			}
 
 			r.logger.WithField("messageID", message.ID).Debug("Sending fetched message in channel")
-			if err := r.Deliver(message); err != nil {
+			if err := r.Deliver(message, true); err != nil {
 				return err
 			}
 			lastID = message.ID
@@ -335,7 +337,12 @@ func (r *Route) invalidRecover() error {
 }
 
 // sendDirect sends the message directly in the channel
-func (r *Route) sendDirect(msg *protocol.Message) error {
+func (r *Route) sendDirect(msg *protocol.Message, store bool) error {
+	if store {
+		r.messagesC <- msg
+		return nil
+	}
+
 	select {
 	case r.messagesC <- msg:
 		return nil
