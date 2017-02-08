@@ -153,6 +153,7 @@ func (ns *NexmoSender) sendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {
 	if err != nil {
 		logger.WithField("error", err.Error()).Error("Error doing the request to nexmo endpoint")
 		ns.createHttpClient()
+		mTotalSendErrors.Add(1)
 		return nil, ErrNoSMSSent
 	}
 	defer resp.Body.Close()
@@ -161,12 +162,14 @@ func (ns *NexmoSender) sendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		logger.WithField("error", err.Error()).Error("Error reading the nexmo body response")
+		mTotalResponseInternalErrors.Add(1)
 		return nil, ErrSMSResponseDecodingFailed
 	}
 
 	err = json.Unmarshal(respBody, &messageResponse)
 	if err != nil {
 		logger.WithField("error", err.Error()).Error("Error decoding the response from nexmo endpoint")
+		mTotalResponseInternalErrors.Add(1)
 		return nil, ErrSMSResponseDecodingFailed
 	}
 	logger.WithField("messageResponse", messageResponse).Debug("Actual nexmo response")
