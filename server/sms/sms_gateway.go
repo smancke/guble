@@ -73,10 +73,11 @@ func (g *gateway) Start() error {
 	}
 
 	g.ctx, g.cancelFunc = context.WithCancel(context.Background())
-
 	g.initRoute()
 
 	go g.Run()
+
+	g.startMetrics()
 
 	g.logger.Debug("Started gateway")
 	return nil
