@@ -20,7 +20,6 @@ func newPusher(c Config) (Pusher, error) {
 		cert, errCert = certificate.FromP12File(*c.CertificateFileName, *c.CertificatePassword)
 	} else {
 		cert, errCert = certificate.FromP12Bytes(*c.CertificateBytes, *c.CertificatePassword)
-		logger.Info("sata")
 	}
 	if errCert != nil {
 		return nil, errCert
