@@ -88,7 +88,7 @@ func (a *apns) startIntervalMetric(m metrics.Map, td time.Duration) {
 func (a *apns) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, errSend error) error {
 	logger.Debug("Handle APNS response")
 	if errSend != nil {
-		logger.WithField("error", errSend.Error()).Error("error when trying to send APNS notification")
+		logger.WithField("error", errSend.Error()).WithField("error_type", errSend).Error("error when trying to send APNS notification")
 		mTotalSendErrors.Add(1)
 		if *a.IntervalMetrics && metadata != nil {
 			addToLatenciesAndCountsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, metadata.Latency)
@@ -96,7 +96,8 @@ func (a *apns) HandleResponse(request connector.Request, responseIface interface
 
 		newSender, err := NewSender(a.Config)
 		if err != nil {
-			logger.Panic("APNS Sender could not be created")
+			logger.Warn("APNS Sender could not be recreated")
+			return fmt.Errorf("APNS Sender could not be recreated.")
 		}
 		a.SetSender(newSender)
 
