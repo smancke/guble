@@ -1,6 +1,7 @@
 package apns
 
 import (
+	"errors"
 	"fmt"
 	"github.com/sideshow/apns2"
 	"github.com/smancke/guble/server/connector"
@@ -12,6 +13,10 @@ import (
 const (
 	// schema is the default database schema for APNS
 	schema = "apns_registration"
+)
+
+var (
+	errSenderNotRecreated = errors.New("APNS Sender could not be recreated.")
 )
 
 // Config is used for configuring the APNS module.
@@ -97,7 +102,7 @@ func (a *apns) HandleResponse(request connector.Request, responseIface interface
 		newSender, err := NewSender(a.Config)
 		if err != nil {
 			logger.Warn("APNS Sender could not be recreated")
-			return fmt.Errorf("APNS Sender could not be recreated.")
+			return errSenderNotRecreated
 		}
 		a.SetSender(newSender)
 
