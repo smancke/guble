@@ -50,7 +50,7 @@ func TestConn_HandleResponseOnSendError(t *testing.T) {
 	err := c.HandleResponse(mRequest, nil, nil, e)
 
 	//then
-	a.Equal(e, err)
+	a.Equal(errSenderNotRecreated, err)
 }
 
 func TestConn_HandleResponse(t *testing.T) {
@@ -208,10 +208,14 @@ func newAPNSConnector(t *testing.T) (c connector.ResponsiveConnector, mKVS *Mock
 	prefix := "/apns/"
 	workers := 1
 	intervalMetrics := false
+	password := "test"
+	bytes := []byte("test")
 	cfg := Config{
-		Prefix:          &prefix,
-		Workers:         &workers,
-		IntervalMetrics: &intervalMetrics,
+		Prefix:              &prefix,
+		Workers:             &workers,
+		IntervalMetrics:     &intervalMetrics,
+		CertificatePassword: &password,
+		CertificateBytes:    &bytes,
 	}
 	c, err := New(mRouter, mSender, cfg)
 

@@ -26,8 +26,8 @@ func newPusher(c Config) (Pusher, error) {
 	}
 
 	//see https://github.com/sideshow/apns2/issues/24 and https://github.com/sideshow/apns2/issues/20
-	apns2.TLSDialTimeout = 4 * time.Second
-	apns2.HTTPClientTimeout = 4 * time.Second
+	apns2.TLSDialTimeout = 40 * time.Second
+	apns2.HTTPClientTimeout = 60 * time.Second
 
 	if *c.Production {
 		logger.Debug("APNS Pusher in Production mode")
