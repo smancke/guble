@@ -228,7 +228,7 @@ func TestConnector_StartWithSubscriptions(t *testing.T) {
 			ID:   uint64(i),
 			Path: protocol.Path("/topic"),
 			Body: []byte("test body"),
-		})
+		}, true)
 	}
 
 	time.Sleep(100 * time.Millisecond)
