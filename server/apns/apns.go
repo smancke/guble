@@ -93,6 +93,13 @@ func (a *apns) HandleResponse(request connector.Request, responseIface interface
 		if *a.IntervalMetrics && metadata != nil {
 			addToLatenciesAndCountsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, metadata.Latency)
 		}
+
+		newSender, err := NewSender(a.Config)
+		if err != nil {
+			logger.Panic("APNS Sender could not be created")
+		}
+		a.SetSender(newSender)
+
 		return errSend
 	}
 	r, ok := responseIface.(*apns2.Response)
