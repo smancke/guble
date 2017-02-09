@@ -37,6 +37,7 @@ var (
 	defaultFCMEndpoint = gcm.GcmSendEndpoint
 	defaultFCMMetrics  = true
 	defaultAPNSMetrics = true
+	defaultSMSMetrics  = true
 	environments       = []string{development, integration, preproduction, production}
 )
 
@@ -215,6 +216,7 @@ var (
 				Default(strconv.Itoa(runtime.NumCPU())).
 				Envar("GUBLE_SMS_WORKERS").
 				Int(),
+			IntervalMetrics: &defaultSMSMetrics,
 		},
 	}
 )

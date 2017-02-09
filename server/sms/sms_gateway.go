@@ -8,8 +8,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
+	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/store"
+	"time"
 )
 
 const (
@@ -22,11 +24,12 @@ type Sender interface {
 }
 
 type Config struct {
-	Enabled   *bool
-	APIKey    *string
-	APISecret *string
-	Workers   *int
-	SMSTopic  *string
+	Enabled         *bool
+	APIKey          *string
+	APISecret       *string
+	Workers         *int
+	SMSTopic        *string
+	IntervalMetrics *bool
 
 	Name   string
 	Schema string
@@ -70,10 +73,11 @@ func (g *gateway) Start() error {
 	}
 
 	g.ctx, g.cancelFunc = context.WithCancel(context.Background())
-
 	g.initRoute()
 
 	go g.Run()
+
+	g.startMetrics()
 
 	g.logger.Debug("Started gateway")
 	return nil
@@ -163,8 +167,10 @@ func (g *gateway) proxyLoop() error {
 			err := g.sender.Send(receivedMsg)
 			if err != nil {
 				log.WithField("error", err.Error()).Error("Sending of message failed")
+				mTotalResponseErrors.Add(1)
 				return err
 			}
+			mTotalSentMessages.Add(1)
 			g.SetLastSentID(receivedMsg.ID)
 
 		case <-g.ctx.Done():
@@ -262,4 +268,21 @@ func (g *gateway) Cancel() {
 	if g.cancelFunc != nil {
 		g.cancelFunc()
 	}
+}
+
+func (g *gateway) startMetrics() {
+	mTotalSentMessages.Set(0)
+	mTotalSendErrors.Set(0)
+	mTotalResponseErrors.Set(0)
+	mTotalResponseInternalErrors.Set(0)
+
+	if *g.config.IntervalMetrics {
+		g.startIntervalMetric(mMinute, time.Minute)
+		g.startIntervalMetric(mHour, time.Hour)
+		g.startIntervalMetric(mDay, time.Hour*24)
+	}
+}
+
+func (g *gateway) startIntervalMetric(m metrics.Map, td time.Duration) {
+	metrics.RegisterInterval(g.ctx, m, td, resetIntervalMetrics, processAndResetIntervalMetrics)
 }
