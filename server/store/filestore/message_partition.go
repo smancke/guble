@@ -406,11 +406,12 @@ func (p *messagePartition) store(messageID uint64, data []byte) error {
 // Fetch fetches a set of messages
 func (p *messagePartition) Fetch(req *store.FetchRequest) {
 	le := logger.WithFields(log.Fields{
-		"partition": req.Partition.
-		"startID": req.StartID,
-		"endID": req.EndID,
-		"Count": req.Count,
-	}).Debug("Fetching")
+		"partition": req.Partition,
+		"startID":   req.StartID,
+		"endID":     req.EndID,
+		"Count":     req.Count,
+	})
+	le.Debug("Fetching")
 
 	go func() {
 		fetchList, err := p.calculateFetchList(req)
