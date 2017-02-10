@@ -163,6 +163,8 @@ func isRestartableErr(err error) bool {
 		err == ErrSMSResponseDecodingFailed
 }
 
+// proxyLoop returns the current processed message alongside the error that
+// occured during sending of the message
 func (g *gateway) proxyLoop() (*protocol.Message, error) {
 	var (
 		opened      bool = true
