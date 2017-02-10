@@ -91,7 +91,7 @@ func (a *apns) startIntervalMetric(m metrics.Map, td time.Duration) {
 }
 
 func (a *apns) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, errSend error) error {
-	logger.Debug("Handle APNS response")
+	logger.Info("Handle APNS response")
 	if errSend != nil {
 		logger.WithField("error", errSend.Error()).WithField("error_type", errSend).Error("error when trying to send APNS notification")
 		mTotalSendErrors.Add(1)
