@@ -17,6 +17,7 @@ const (
 
 var (
 	errPusherInvalidParams = errors.New("Invalid parameters of APNS Pusher")
+	ErrRetryFailed = errors.New("Retry failed")
 )
 
 type sender struct {
@@ -79,7 +80,7 @@ func (r *retryable) execute(op func() (interface{}, error)) (interface{}, error)
 		// retry on network errors
 		if err, ok := opError.(net.Error); ok && (err.Timeout() || err.Temporary()) {
 			if tryCounter >= r.maxTries {
-				return result, opError
+				return "", ErrRetryFailed
 			}
 			d := r.Duration()
 			logger.WithField("error", opError.Error()).Warn("Retry in ", d)

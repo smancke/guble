@@ -150,7 +150,7 @@ func Test_Retriable(t *testing.T) {
 		{"No errors", 3, []resultpair{{result: "0"}}, "0", nil, 1},
 		{"Retry once", 3, []resultpair{{err: errMockTimeout}, {result: "1"}}, "1", nil, 2},
 		{"Retry twice", 3, []resultpair{{err: errMockTimeout}, {err: errMockTimeout}, {result: "2"}}, "2", nil, 3},
-		{"Retry only twice", 3, []resultpair{{err: errMockTimeout}, {err: errMockTimeout}, {err: errMockTimeout, result: ""}, {result: "3"}}, "", errMockTimeout, 3},
+		{"Retry only twice", 3, []resultpair{{err: errMockTimeout}, {err: errMockTimeout}, {err: errMockTimeout, result: ""}, {result: "3"}}, "", ErrRetryFailed, 3},
 		{"Do not retry", 3, []resultpair{{err: errMockOther, result: ""}, {result: "1"}}, "", errMockOther, 1},
 	}
 
