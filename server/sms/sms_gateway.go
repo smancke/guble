@@ -3,20 +3,26 @@ package sms
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/smancke/guble/server/connector"
+
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/metrics"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/store"
-	"time"
 )
 
 const (
 	SMSSchema       = "sms_notifications"
 	SMSDefaultTopic = "/sms"
+)
+
+var (
+	ErrRetryFailed = errors.New("Failed retrying to send message.")
 )
 
 type Sender interface {
@@ -115,9 +121,17 @@ func (g *gateway) Run() {
 		}
 	}()
 
-	err := g.proxyLoop()
+	currentMsg, err := g.proxyLoop()
 	if err != nil && provideErr == nil {
 		g.logger.WithField("error", err.Error()).Error("Error returned by gateway proxy loop")
+
+		if err == ErrIncompleteSMSSent {
+			if err := g.retry(currentMsg); err != nil {
+				if err == ErrRetryFailed {
+					g.SetLastSentID(currentMsg.ID)
+				}
+			}
+		}
 
 		// If Route channel closed, try restarting
 		if isRestartableErr(err) {
@@ -149,7 +163,7 @@ func isRestartableErr(err error) bool {
 		err == ErrSMSResponseDecodingFailed
 }
 
-func (g *gateway) proxyLoop() error {
+func (g *gateway) proxyLoop() (*protocol.Message, error) {
 	var (
 		opened      bool = true
 		receivedMsg *protocol.Message
@@ -164,27 +178,54 @@ func (g *gateway) proxyLoop() error {
 				break
 			}
 
-			err := g.sender.Send(receivedMsg)
+			err := g.send(receivedMsg)
 			if err != nil {
-				log.WithField("error", err.Error()).Error("Sending of message failed")
-				mTotalResponseErrors.Add(1)
-				return err
+				return receivedMsg, err
 			}
-			mTotalSentMessages.Add(1)
-			g.SetLastSentID(receivedMsg.ID)
-
 		case <-g.ctx.Done():
 			// If the parent context is still running then only this subscriber context
 			// has been cancelled
 			if g.ctx.Err() == nil {
-				return g.ctx.Err()
+				return nil, g.ctx.Err()
 			}
-			return nil
+			return nil, nil
 		}
 	}
 
 	//TODO Cosmin Bogdan returning this error can mean 2 things: overflow of route's channel, or intentional stopping of router / gubled.
-	return connector.ErrRouteChannelClosed
+	return nil, connector.ErrRouteChannelClosed
+}
+
+func (g *gateway) retry(msg *protocol.Message) error {
+	l := logger.WithField("message", msg)
+	l.Debug("Retrying to send message")
+	for i := 0; i < 3; i++ {
+		l.WithField("retry", i+1).Debug("Sending message")
+		err := g.send(msg)
+		if err != nil {
+			l.WithFields(log.Fields{
+				"retry": i + 1,
+				"err":   err.Error(),
+			}).Error("Retry failed")
+		} else {
+			l.WithField("retry", i+1).Debug("Retry success")
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return ErrRetryFailed
+}
+
+func (g *gateway) send(receivedMsg *protocol.Message) error {
+	err := g.sender.Send(receivedMsg)
+	if err != nil {
+		log.WithField("error", err.Error()).Error("Sending of message failed")
+		mTotalResponseErrors.Add(1)
+		return err
+	}
+	mTotalSentMessages.Add(1)
+	g.SetLastSentID(receivedMsg.ID)
+	return nil
 }
 
 func (g *gateway) Restart() error {
