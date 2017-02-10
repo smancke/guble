@@ -198,7 +198,7 @@ func (g *gateway) proxyLoop() (*protocol.Message, error) {
 
 func (g *gateway) retry(msg *protocol.Message) error {
 	l := logger.WithField("message", msg)
-	l.Debug("Retrying to send message")
+	l.Info("Retrying to send message")
 	for i := 0; i < 3; i++ {
 		l.WithField("retry", i+1).Debug("Sending message")
 		err := g.send(msg)

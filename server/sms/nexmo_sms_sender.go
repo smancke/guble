@@ -133,7 +133,7 @@ func (ns *NexmoSender) Send(msg *protocol.Message) error {
 		logger.WithField("error", err.Error()).Error("Could not decode nexmo response message body")
 		return err
 	}
-	logger.WithField("response", nexmoSMSResponse).Debug("Decoded nexmo response")
+	logger.WithField("response", nexmoSMSResponse).Info("Decoded nexmo response")
 
 	return nexmoSMSResponse.Check()
 }
@@ -172,13 +172,13 @@ func (ns *NexmoSender) sendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {
 		mTotalResponseInternalErrors.Add(1)
 		return nil, ErrSMSResponseDecodingFailed
 	}
-	logger.WithField("messageResponse", messageResponse).Debug("Actual nexmo response")
+	logger.WithField("messageResponse", messageResponse).Info("Actual nexmo response")
 
 	return messageResponse, nil
 }
 
 func (ns *NexmoSender) createHttpClient() {
-	logger.Debug("Recreating HTTP client for nexmo sender")
+	logger.Info("Recreating HTTP client for nexmo sender")
 	ns.httpClient = &http.Client{
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: MaxIdleConnections,
