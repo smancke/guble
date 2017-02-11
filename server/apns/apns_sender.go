@@ -17,7 +17,7 @@ const (
 
 var (
 	errPusherInvalidParams = errors.New("Invalid parameters of APNS Pusher")
-	ErrRetryFailed = errors.New("Retry failed")
+	ErrRetryFailed         = errors.New("Retry failed")
 )
 
 type sender struct {
@@ -64,7 +64,17 @@ func (s sender) Send(request connector.Request) (interface{}, error) {
 		},
 		maxTries: 3,
 	}
-	return withRetry.execute(push)
+	result, err := withRetry.execute(push)
+	if err != nil && err == ErrRetryFailed {
+		if closable, ok := s.client.(closable); ok {
+			logger.Warn("Close TLS and retry again")
+			closable.CloseTLS()
+			return push()
+		} else {
+			logger.Error("Cannot Close TLS. Unrecoverable state")
+		}
+	}
+	return result, err
 }
 
 type retryable struct {
@@ -78,7 +88,7 @@ func (r *retryable) execute(op func() (interface{}, error)) (interface{}, error)
 		tryCounter++
 		result, opError := op()
 		// retry on network errors
-		if err, ok := opError.(net.Error); ok && (err.Timeout() || err.Temporary()) {
+		if _, ok := opError.(net.Error); ok {
 			if tryCounter >= r.maxTries {
 				return "", ErrRetryFailed
 			}

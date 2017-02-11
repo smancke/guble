@@ -4,20 +4,25 @@ import (
 	"crypto/tls"
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/certificate"
+	"golang.org/x/net/http2"
+	"net"
+	"net/http"
+	"sync"
 	"time"
-	"errors"
 )
 
 const (
-	useClientManager bool = false
-)
-
-var (
-	ErrNewClientCreation = errors.New("ClientManager cannot be create new APSN2 client")
+	//see https://github.com/sideshow/apns2/issues/24 and https://github.com/sideshow/apns2/issues/20
+	tlsDialTimeout    = 40 * time.Second
+	httpClientTimeout = 60 * time.Second
 )
 
 type Pusher interface {
 	Push(*apns2.Notification) (*apns2.Response, error)
+}
+
+type closable interface {
+	CloseTLS()
 }
 
 func newPusher(c Config) (Pusher, error) {
@@ -34,51 +39,82 @@ func newPusher(c Config) (Pusher, error) {
 		return nil, errCert
 	}
 
-	var clientFactory func(certificate tls.Certificate) *apns2.Client;
+	var clientFactory func(certificate tls.Certificate) *apns2Client
 	if *c.Production {
 		clientFactory = newProductionClient
 	} else {
 		clientFactory = newDevelopmentClient
 	}
 
-	//see https://github.com/sideshow/apns2/issues/24 and https://github.com/sideshow/apns2/issues/20
-	apns2.TLSDialTimeout = 40 * time.Second
-	apns2.HTTPClientTimeout = 60 * time.Second
+	apns2.TLSDialTimeout = tlsDialTimeout
+	apns2.HTTPClientTimeout = httpClientTimeout
 
-	if useClientManager {
-		clientManager := apns2.NewClientManager()
-		clientManager.MaxSize = 4
-		clientManager.MaxAge = 1 * time.Minute
-		clientManager.Factory = clientFactory
-		mp := multiConnectionPusher {
-			cert: cert,
-			clientManager: clientManager,
-		}
-		return mp, nil
-
-	} else {
-		return clientFactory(cert), nil
-	}
+	return clientFactory(cert), nil
 }
 
-type multiConnectionPusher struct {
-	cert tls.Certificate
-	clientManager *apns2.ClientManager
-}
-
-func (mcp multiConnectionPusher) Push(n *apns2.Notification) (*apns2.Response, error) {
-	client := mcp.clientManager.Get(mcp.cert)
-	if client == nil {
-		return nil, ErrNewClientCreation
-	}
-	return client.Push(n)
-}
-
-func newProductionClient(certificate tls.Certificate) *apns2.Client {
+func newProductionClient(certificate tls.Certificate) *apns2Client {
 	logger.Info("APNS Pusher in Production mode")
-	return apns2.NewClient(certificate).Production()
+	c := newApns2Client(certificate)
+	c.Production()
+	return c
 }
-func newDevelopmentClient(certificate tls.Certificate) *apns2.Client {
+
+func newDevelopmentClient(certificate tls.Certificate) *apns2Client {
 	logger.Info("APNS Pusher in Development mode")
-	return apns2.NewClient(certificate).Development()
+	c := newApns2Client(certificate)
+	c.Development()
+	return c
+}
+
+type apns2Client struct {
+	*apns2.Client
+
+	tlsConn net.Conn
+	mu      sync.Mutex
+}
+
+func newApns2Client(certificate tls.Certificate) *apns2Client {
+	c := &apns2Client{}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{certificate},
+	}
+	if len(certificate.Certificate) > 0 {
+		tlsConfig.BuildNameToCertificate()
+	}
+	transport := &http2.Transport{
+		TLSClientConfig: tlsConfig,
+		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+			conn, err := tls.DialWithDialer(&net.Dialer{Timeout: tlsDialTimeout, KeepAlive: 2 * time.Second}, network, addr, cfg)
+
+			c.mu.Lock()
+			defer c.mu.Unlock()
+			if err == nil {
+				c.tlsConn = conn
+			} else {
+				c.tlsConn = nil
+			}
+			return conn, err
+		},
+	}
+	client := &apns2.Client{
+		HTTPClient: &http.Client{
+			Transport: transport,
+			Timeout:   httpClientTimeout,
+		},
+		Certificate: certificate,
+		Host:        apns2.DefaultHost,
+	}
+	c.Client = client
+	return c
+}
+
+func (c *apns2Client) CloseTLS() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.tlsConn != nil {
+		c.tlsConn.Close()
+		c.tlsConn = nil
+	}
 }
