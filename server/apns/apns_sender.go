@@ -68,9 +68,11 @@ func (s sender) Send(request connector.Request) (interface{}, error) {
 	if err != nil && err == ErrRetryFailed {
 		if closable, ok := s.client.(closable); ok {
 			logger.Warn("Close TLS and retry again")
+			mTotalSendRetryCloseTLS.Add(1)
 			closable.CloseTLS()
 			return push()
 		} else {
+			mTotalSendRetryUnrecoverable.Add(1)
 			logger.Error("Cannot Close TLS. Unrecoverable state")
 		}
 	}
@@ -89,6 +91,7 @@ func (r *retryable) execute(op func() (interface{}, error)) (interface{}, error)
 		result, opError := op()
 		// retry on network errors
 		if _, ok := opError.(net.Error); ok {
+			mTotalSendNetworkErrors.Add(1)
 			if tryCounter >= r.maxTries {
 				return "", ErrRetryFailed
 			}

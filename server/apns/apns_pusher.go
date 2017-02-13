@@ -13,8 +13,8 @@ import (
 
 const (
 	//see https://github.com/sideshow/apns2/issues/24 and https://github.com/sideshow/apns2/issues/20
-	tlsDialTimeout    = 40 * time.Second
-	httpClientTimeout = 60 * time.Second
+	tlsDialTimeout    = 20 * time.Second
+	httpClientTimeout = 30 * time.Second
 )
 
 type Pusher interface {
@@ -108,7 +108,7 @@ func newApns2Client(certificate tls.Certificate) *apns2Client {
 	c.Client = client
 	return c
 }
-
+// interface closable used used by apns_sender
 func (c *apns2Client) CloseTLS() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
