@@ -11,6 +11,8 @@ import (
 	"testing"
 )
 
+var ErrSendRandomError = errors.New("A Sender error")
+
 func TestNew_WithoutKVStore(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
@@ -44,13 +46,12 @@ func TestConn_HandleResponseOnSendError(t *testing.T) {
 	//given
 	c, _ := newAPNSConnector(t)
 	mRequest := NewMockRequest(testutil.MockCtrl)
-	e := errors.New("A Sender error")
 
 	//when
-	err := c.HandleResponse(mRequest, nil, nil, e)
+	err := c.HandleResponse(mRequest, nil, nil, ErrSendRandomError)
 
 	//then
-	a.Equal(errSenderNotRecreated, err)
+	a.Equal(ErrSendRandomError, err)
 }
 
 func TestConn_HandleResponse(t *testing.T) {
