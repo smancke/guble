@@ -72,9 +72,9 @@ func (r *Route) String() string {
 }
 
 // Deliver takes a messages and adds it to the queue to be delivered into the channel
-// store boolean specifies if the messages are being fetched or are from the router
-// In case the are fetched from the store the route won't close if it's full
-func (r *Route) Deliver(msg *protocol.Message, store bool) error {
+// isFromStore boolean specifies if the messages are being fetched or are from the router
+// In case they are fetched from the store the route won't close if it's full
+func (r *Route) Deliver(msg *protocol.Message, isFromStore bool) error {
 	loggerMessage := r.logger.WithField("message", msg)
 
 	if r.isInvalid() {
@@ -92,7 +92,7 @@ func (r *Route) Deliver(msg *protocol.Message, store bool) error {
 	if r.queueSize >= 0 {
 		// if size is zero the sending is direct
 		if r.queueSize == 0 {
-			return r.sendDirect(msg, store)
+			return r.sendDirect(msg, isFromStore)
 		} else if r.queue.size() >= r.queueSize {
 			loggerMessage.Error("Closing route because queue is full")
 			r.Close()
