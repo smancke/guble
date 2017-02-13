@@ -37,6 +37,7 @@ var (
 	defaultFCMEndpoint = gcm.GcmSendEndpoint
 	defaultFCMMetrics  = true
 	defaultAPNSMetrics = true
+	defaultSMSMetrics  = true
 	environments       = []string{development, integration, preproduction, production}
 )
 
@@ -91,7 +92,7 @@ var (
 			Default(defaultHttpListen).
 			Envar("GUBLE_HTTP_LISTEN").
 			String(),
-		KVS: kingpin.Flag("kvs", "The storage backend for the key-value store to use : file | memory").
+		KVS: kingpin.Flag("kvs", "The storage backend for the key-value store to use : file | memory | postgres ").
 			Default(defaultKVSBackend).
 			Envar("GUBLE_KVS").
 			String(),
@@ -215,6 +216,7 @@ var (
 				Default(strconv.Itoa(runtime.NumCPU())).
 				Envar("GUBLE_SMS_WORKERS").
 				Int(),
+			IntervalMetrics: &defaultSMSMetrics,
 		},
 	}
 )

@@ -377,7 +377,7 @@ func (p *messagePartition) store(messageID uint64, data []byte) error {
 	p.entriesCount++
 	p.totalNumberOfMessages++
 
-	log.WithFields(log.Fields{
+	logger.WithFields(log.Fields{
 		"p.noOfEntriesInIndexFile": p.entriesCount,
 		"msgID":                    messageID,
 		"msgSize":                  uint32(len(data)),
@@ -405,7 +405,13 @@ func (p *messagePartition) store(messageID uint64, data []byte) error {
 
 // Fetch fetches a set of messages
 func (p *messagePartition) Fetch(req *store.FetchRequest) {
-	log.WithField("fetchRequest", *req).Debug("Fetching")
+	le := logger.WithFields(log.Fields{
+		"partition": req.Partition,
+		"startID":   req.StartID,
+		"endID":     req.EndID,
+		"Count":     req.Count,
+	})
+	le.Debug("Fetching")
 
 	go func() {
 		fetchList, err := p.calculateFetchList(req)
@@ -420,7 +426,7 @@ func (p *messagePartition) Fetch(req *store.FetchRequest) {
 		err = p.fetchByFetchlist(fetchList, req)
 
 		if err != nil {
-			log.WithField("err", err).Error("Error calculating list")
+			le.WithField("err", err).Error("Error calculating list")
 			req.Error(err)
 			return
 		}
@@ -637,7 +643,7 @@ func (p *messagePartition) loadIndexList(fileID int) (*indexList, error) {
 		}).Debug("readIndexEntry")
 
 		if err != nil {
-			log.WithField("err", err).Error("Read error")
+			logger.WithField("err", err).Error("Read error")
 			return nil, err
 		}
 

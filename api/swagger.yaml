@@ -1,0 +1,473 @@
+swagger: '2.0'
+
+info:
+  version: "0.0.1"
+  title: Guble API
+  
+schemes:
+  - http
+  
+paths:
+  
+  /api/subscribers/{topic}:
+    get:
+      produces:
+        - application/json
+      tags:
+        - REST
+        - APNS
+        - FCM
+
+      description: |
+        Get subscribers registered for a topic
+
+      parameters:
+       - name: topic
+         in: path
+         type: string
+         required: true
+         description: name of the subscribtion topic
+
+      responses:
+        200:
+          description: successful response
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Subscriber'
+        500:
+          description: unknown error
+
+  /api/message/{topic}:
+    post:
+      consumes:
+        - application/json
+      tags:
+        - REST
+        - SMS
+        - APNS
+        - FCM
+      description: |
+        Send message to a connector
+
+      parameters:
+        - name: topic
+          in: path
+          type: string
+          required: true
+          description: |
+            Name of the subscribtion topic.
+            'sms' is a special topic to send a sms message and
+            must not be used neither as APNS nor as FCM topic.
+
+        - name: message
+          in: body
+          required: true
+          description: a json message in the format expected by the connector
+          schema:
+            type: object
+
+        - name: userId
+          in: header
+          required: false
+          type: string
+
+        - name: x-guble
+          in: header
+          required: false
+          type: string
+          description: x-guble- is a generic header prefix
+
+        - name: filterConnector
+          in: query
+          description: |
+            Specifies a connector which should handle message.
+            As the message is in the connector specific format,
+            the parameter should be treated as mandatory.
+          required: false
+          type: string
+          enum:
+           - apns
+           - fcm
+
+        - name: filterUserID
+          in: query
+          description: Specifies a subscribed user which should received the notification.
+          required: false
+          type: string
+
+        - in: query
+          name: filterDeviceToken
+          description: Specifies a device token which should received the notification.
+          required: false
+          type: string
+
+      responses:
+        200:
+          description: successful response
+
+        400:
+          description: malformed request
+
+        500:
+          description: unknown error
+
+
+  /apns/{device_token}/{user_id}/{topic}:
+    post:
+      tags:
+        - APNS
+
+      description: |
+        Create APN subscription
+        
+      parameters:
+      - name: device_token
+        in: path
+        type: string
+        required: true
+        description: device token which mobile device received from APNS
+
+      - name: user_id
+        in: path
+        type: string
+        required: true
+        description: customer uuid or 'anonymous' 
+
+      - name: topic
+        in: path
+        type: string
+        required: true
+        description: name of the subscribtion topic 
+        
+      responses:
+        200:
+          description: successful response
+        500:
+          description: unknown error          
+          
+    delete:
+      tags:
+        - APNS
+
+      description: |
+        Delete APN subscription
+        
+      parameters:
+      - name: device_token
+        in: path
+        type: string
+        required: true
+        description: device token which mobile device received from APNS
+
+      - name: user_id
+        in: path
+        type: string
+        required: true
+        description: customer uuid or 'anonymous' 
+
+      - name: topic
+        in: path
+        type: string
+        required: true
+        description: name of the subscribtion topic 
+        
+      responses:
+        200:
+          description: successful response
+        404:
+          description: subscription not found
+        500:
+          description: unknown error          
+  
+  /apns/:
+    get:
+      tags:
+        - APNS
+      description: |
+         Return the list of APNS subscriptions
+      parameters:
+        - in: query
+          name: device_token
+          description: device token which mobile device received from APNS 
+          required: false
+          type: string
+        - in: query
+          name: user_id
+          description: device token 
+          required: false
+          type: string
+        
+      responses:
+        200:
+          description: list of topics
+          schema:
+            type: array
+            items: {
+              type: string
+            }
+        400:
+          description: missing filters
+        500:
+          description: unknown error
+          
+          
+          
+  /apns/substitute/:
+    post:
+      tags:
+        - APNS
+      description: |
+         Substitutes field value of the APNS subscriber object.
+         Provided old value must match the current value stored in the object for operation
+         to be succcessful
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/SubstitutionRequest'
+            
+      responses:
+        200:
+          description: successful response
+          schema:
+            $ref: '#/definitions/SubstitutionResponse'
+        400:
+          description: invalid substitution request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        500:
+          description: unknown error          
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /fcm/{device_token}/{user_id}/{topic}:
+    post:
+      tags:
+        - FCM
+
+      description: |
+        Create FCM subscription
+
+      parameters:
+      - name: device_token
+        in: path
+        type: string
+        required: true
+        description: device token which mobile device received from FCM
+
+      - name: user_id
+        in: path
+        type: string
+        required: true
+        description: customer uuid or 'anonymous'
+
+      - name: topic
+        in: path
+        type: string
+        required: true
+        description: name of the subscribtion topic
+
+      responses:
+        200:
+          description: successful response
+        500:
+          description: unknown error
+
+    delete:
+      tags:
+        - FCM
+
+      description: |
+        Delete FCM subscription
+
+      parameters:
+      - name: device_token
+        in: path
+        type: string
+        required: true
+        description: device token which mobile device received from FCM
+
+      - name: user_id
+        in: path
+        type: string
+        required: true
+        description: customer uuid or 'anonymous'
+
+      - name: topic
+        in: path
+        type: string
+        required: true
+        description: name of the subscribtion topic
+
+      responses:
+        200:
+          description: successful response
+        404:
+          description: subscription not found
+        500:
+          description: unknown error
+
+  /fcm/:
+    get:
+      tags:
+        - FCM
+      description: |
+         Return the list of subscriptions
+      parameters:
+        - in: query
+          name: device_token
+          description: device token which mobile device received from FCM
+          required: false
+          type: string
+        - in: query
+          name: user_id
+          description: device token
+          required: false
+          type: string
+
+      responses:
+        200:
+          description: list of topics
+          schema:
+            type: array
+            items: {
+              type: string
+            }
+        400:
+          description: missing filters
+        500:
+          description: unknown error
+
+
+
+  /fcm/substitute/:
+    post:
+      tags:
+        - FCM
+      description: |
+         Substitutes field value of the FCMC subscriber object.
+         Provided old value must match the current value stored in the object for operation
+         to be succcessful
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/SubstitutionRequest'
+
+      responses:
+        200:
+          description: successful response
+          schema:
+            $ref: '#/definitions/SubstitutionResponse'
+        400:
+          description: invalid substitution request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        500:
+          description: unknown error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+
+  /admin/healtcheck:
+    get:
+      produces:
+        - application/json
+      tags:
+        - ADMIN
+
+      description: Application health check
+
+      responses:
+        200:
+          description: successful response
+        500:
+          description: unknown error
+
+  /admin/metrics:
+    get:
+      produces:
+        - application/json
+      tags:
+        - ADMIN
+
+      description: Application metrics
+
+      responses:
+        200:
+          description: successful response
+          schema:
+            type: object
+        500:
+          description: unknown error
+
+  /stream/:
+    get:
+      tags:
+        - WEBSOCKET
+
+      description: Web socket interface
+
+      responses:
+        201:
+          description: Response code is 101 after protocol was switched
+definitions:
+  ErrorResponse:
+     type: object
+     properties:
+        error:
+          description: error message
+          type: string
+
+  Subscriber:
+     type: object
+     required:
+      - connector
+      - device_token
+      - user_id
+
+     properties:
+        connector:
+          description: name of the connector
+          type: string
+          enum:
+            - apns
+            - fcm
+
+        device_token:
+          description: device token
+          type: string
+
+        user_id:
+          description: customer uuid or 'anonymous'
+          type: string
+
+  SubstitutionRequest:
+     type: object
+     required:
+      - field
+      - old_value
+      - new_value
+     properties:
+        field:
+          description: field name
+          type: string
+          enum:
+            - device_token
+            - user_id
+        old_value:
+          description: old value
+          type: string
+        new_value:
+          description: new value
+          type: string
+
+  SubstitutionResponse:
+     type: object
+     properties:
+        modified:
+          description: number of modified entries
+          type: integer

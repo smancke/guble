@@ -1,6 +1,7 @@
 package apns
 
 import (
+	"errors"
 	"fmt"
 	"github.com/sideshow/apns2"
 	"github.com/smancke/guble/server/connector"
@@ -12,6 +13,10 @@ import (
 const (
 	// schema is the default database schema for APNS
 	schema = "apns_registration"
+)
+
+var (
+	errSenderNotRecreated = errors.New("APNS Sender could not be recreated.")
 )
 
 // Config is used for configuring the APNS module.
@@ -73,6 +78,9 @@ func (a *apns) startMetrics() {
 	mTotalResponseInternalErrors.Set(0)
 	mTotalResponseRegistrationErrors.Set(0)
 	mTotalResponseOtherErrors.Set(0)
+	mTotalSendNetworkErrors.Set(0)
+	mTotalSendRetryCloseTLS.Set(0)
+	mTotalSendRetryUnrecoverable.Set(0)
 
 	if *a.IntervalMetrics {
 		a.startIntervalMetric(mMinute, time.Minute)
@@ -86,13 +94,23 @@ func (a *apns) startIntervalMetric(m metrics.Map, td time.Duration) {
 }
 
 func (a *apns) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, errSend error) error {
-	logger.Debug("Handle APNS response")
+	logger.Info("Handle APNS response")
 	if errSend != nil {
-		logger.WithField("error", errSend.Error()).Error("error when trying to send APNS notification")
+		logger.WithField("error", errSend.Error()).WithField("error_type", errSend).Error("error when trying to send APNS notification")
 		mTotalSendErrors.Add(1)
 		if *a.IntervalMetrics && metadata != nil {
 			addToLatenciesAndCountsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, metadata.Latency)
 		}
+
+		//if a send error is received recreate the apns sender.
+		//see https://github.com/sideshow/apns2/issues/24 and https://github.com/sideshow/apns2/issues/20
+		newSender, err := NewSender(a.Config)
+		if err != nil {
+			logger.Warn("APNS Sender could not be recreated")
+			return errSenderNotRecreated
+		}
+		a.SetSender(newSender)
+
 		return errSend
 	}
 	r, ok := responseIface.(*apns2.Response)

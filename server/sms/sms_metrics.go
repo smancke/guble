@@ -1,4 +1,4 @@
-package apns
+package sms
 
 import (
 	"github.com/smancke/guble/server/metrics"
@@ -6,19 +6,14 @@ import (
 )
 
 var (
-	ns                               = metrics.NS("apns")
-	mTotalSentMessages               = ns.NewInt("total_sent_messages")
-	mTotalSendErrors                 = ns.NewInt("total_sent_message_errors")
-	mTotalResponseErrors             = ns.NewInt("total_response_errors")
-	mTotalResponseInternalErrors     = ns.NewInt("total_response_internal_errors")
-	mTotalResponseRegistrationErrors = ns.NewInt("total_response_registration_errors")
-	mTotalResponseOtherErrors        = ns.NewInt("total_response_other_errors")
-	mTotalSendNetworkErrors          = ns.NewInt("total_send_network_errors")
-	mTotalSendRetryCloseTLS          = ns.NewInt("total_send_retry_close_tls")
-	mTotalSendRetryUnrecoverable     = ns.NewInt("total_send_retry_unrecoverable")
-	mMinute                          = ns.NewMap("minute")
-	mHour                            = ns.NewMap("hour")
-	mDay                             = ns.NewMap("day")
+	ns                           = metrics.NS("sms")
+	mTotalSentMessages           = ns.NewInt("total_sent_messages")
+	mTotalSendErrors             = ns.NewInt("total_sent_message_errors")
+	mTotalResponseErrors         = ns.NewInt("total_response_errors")
+	mTotalResponseInternalErrors = ns.NewInt("total_response_internal_errors")
+	mMinute                      = ns.NewMap("minute")
+	mHour                        = ns.NewMap("hour")
+	mDay                         = ns.NewMap("day")
 )
 
 const (
@@ -50,9 +45,4 @@ func resetIntervalMetrics(m metrics.Map, t time.Time) {
 	metrics.AddToMaps(currentTotalMessagesKey, 0, m)
 	metrics.AddToMaps(currentTotalErrorsLatenciesKey, 0, m)
 	metrics.AddToMaps(currentTotalErrorsKey, 0, m)
-}
-
-func addToLatenciesAndCountsMaps(latenciesKey string, countKey string, latency time.Duration) {
-	metrics.AddToMaps(latenciesKey, int64(latency), mMinute, mHour, mDay)
-	metrics.AddToMaps(countKey, 1, mMinute, mHour, mDay)
 }

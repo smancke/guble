@@ -133,7 +133,7 @@ func (ns *NexmoSender) Send(msg *protocol.Message) error {
 		logger.WithField("error", err.Error()).Error("Could not decode nexmo response message body")
 		return err
 	}
-	logger.WithField("response", nexmoSMSResponse).Debug("Decoded nexmo response")
+	logger.WithField("response", nexmoSMSResponse).Info("Decoded nexmo response")
 
 	return nexmoSMSResponse.Check()
 }
@@ -153,6 +153,7 @@ func (ns *NexmoSender) sendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {
 	if err != nil {
 		logger.WithField("error", err.Error()).Error("Error doing the request to nexmo endpoint")
 		ns.createHttpClient()
+		mTotalSendErrors.Add(1)
 		return nil, ErrNoSMSSent
 	}
 	defer resp.Body.Close()
@@ -161,21 +162,23 @@ func (ns *NexmoSender) sendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		logger.WithField("error", err.Error()).Error("Error reading the nexmo body response")
+		mTotalResponseInternalErrors.Add(1)
 		return nil, ErrSMSResponseDecodingFailed
 	}
 
 	err = json.Unmarshal(respBody, &messageResponse)
 	if err != nil {
 		logger.WithField("error", err.Error()).Error("Error decoding the response from nexmo endpoint")
+		mTotalResponseInternalErrors.Add(1)
 		return nil, ErrSMSResponseDecodingFailed
 	}
-	logger.WithField("messageResponse", messageResponse).Debug("Actual nexmo response")
+	logger.WithField("messageResponse", messageResponse).Info("Actual nexmo response")
 
 	return messageResponse, nil
 }
 
 func (ns *NexmoSender) createHttpClient() {
-	logger.Debug("Recreating HTTP client for nexmo sender")
+	logger.Info("Recreating HTTP client for nexmo sender")
 	ns.httpClient = &http.Client{
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: MaxIdleConnections,
