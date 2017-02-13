@@ -32,6 +32,7 @@ const (
 	ResponseNumberBarred
 	ResponsePartnerAcctBarred
 	ResponsePartnerQuotaExceeded
+	ResponseUnused
 	ResponseRESTNotEnabled
 	ResponseMessageTooLong
 	ResponseCommunicationFailed
@@ -46,6 +47,7 @@ var (
 	ErrNoSMSSent                 = errors.New("No sms was sent to Nexmo")
 	ErrIncompleteSMSSent         = errors.New("Nexmo sms was only partial delivered.One or more part returned an error")
 	ErrSMSResponseDecodingFailed = errors.New("Nexmo response decoding failed.")
+	ErrNoRetry                   = errors.New("SMS failed. No retrying.")
 )
 
 var nexmoResponseCodeMap = map[ResponseCode]string{
@@ -96,7 +98,14 @@ func (nm NexmoMessageResponse) Check() error {
 	}
 	for i := 0; i < nm.MessageCount; i++ {
 		if nm.Messages[i].Status != ResponseSuccess {
-			logger.WithField("status", nm.Messages[i].Status).WithField("error", nm.Messages[i].ErrorText).Error("Error received from Nexmo")
+			logger.WithField("status", nm.Messages[i].Status).
+				WithField("error", nm.Messages[i].ErrorText).
+				Error("Error received from Nexmo")
+
+			if nm.Messages[i].Status == ResponseInvalidSenderAddress {
+				return nil
+			}
+
 			return ErrIncompleteSMSSent
 		}
 	}
