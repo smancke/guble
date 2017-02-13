@@ -78,6 +78,9 @@ func (a *apns) startMetrics() {
 	mTotalResponseInternalErrors.Set(0)
 	mTotalResponseRegistrationErrors.Set(0)
 	mTotalResponseOtherErrors.Set(0)
+	mTotalSendNetworkErrors.Set(0)
+	mTotalSendRetryCloseTLS.Set(0)
+	mTotalSendRetryUnrecoverable.Set(0)
 
 	if *a.IntervalMetrics {
 		a.startIntervalMetric(mMinute, time.Minute)
