@@ -124,16 +124,17 @@ func (g *gateway) Run() {
 	currentMsg, err := g.proxyLoop()
 	if err != nil && provideErr == nil {
 		g.logger.WithFields(log.Fields{
-			"error":           err.Error(),
-			"isIncompleteSMS": err == ErrIncompleteSMSSent,
+			"error":             err.Error(),
+			"is_incomplete_sms": err == ErrIncompleteSMSSent,
 		}).Error("Error returned by gateway proxy loop")
 
 		if err == ErrIncompleteSMSSent {
 			err2 := g.retry(currentMsg)
 			if err2 != nil {
+				g.logger.WithField("error", err.Error()).Error("Error returned by retry.")
 				if err2 == ErrRetryFailed {
 					if err3 := g.SetLastSentID(currentMsg.ID); err3 != nil {
-						g.logger.WithField("error", err.Error()).Info("")
+						g.logger.WithField("error", err3.Error()).Error("Error setting last ID")
 					}
 				}
 			}
