@@ -26,6 +26,8 @@ type closable interface {
 }
 
 func newPusher(c Config) (Pusher, error) {
+	logger.Info("creating new apns pusher")
+
 	var (
 		cert    tls.Certificate
 		errCert error
@@ -48,6 +50,8 @@ func newPusher(c Config) (Pusher, error) {
 
 	apns2.TLSDialTimeout = tlsDialTimeout
 	apns2.HTTPClientTimeout = httpClientTimeout
+
+	logger.Info("created new apns pusher")
 
 	return clientFactory(cert), nil
 }
@@ -74,6 +78,8 @@ type apns2Client struct {
 }
 
 func newApns2Client(certificate tls.Certificate) *apns2Client {
+	logger.Info("creating new apns2client")
+
 	c := &apns2Client{}
 
 	tlsConfig := &tls.Config{
@@ -106,15 +112,19 @@ func newApns2Client(certificate tls.Certificate) *apns2Client {
 		Host:        apns2.DefaultHost,
 	}
 	c.Client = client
+	logger.Info("created new apns2client")
 	return c
 }
+
 // interface closable used used by apns_sender
 func (c *apns2Client) CloseTLS() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if c.tlsConn != nil {
+		logger.Info("Trying to close TLS connection")
 		c.tlsConn.Close()
+		logger.Info("Closed TLS connection")
 		c.tlsConn = nil
 	}
 }

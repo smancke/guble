@@ -46,7 +46,7 @@ func NewSenderUsingPusher(pusher Pusher, appTopic string) (connector.Sender, err
 
 func (s sender) Send(request connector.Request) (interface{}, error) {
 	deviceToken := request.Subscriber().Route().Get(deviceIDKey)
-	logger.WithField("deviceToken", deviceToken).Debug("Trying to push a message to APNS")
+	logger.WithField("deviceToken", deviceToken).Info("Trying to push a message to APNS")
 	push := func() (interface{}, error) {
 		return s.client.Push(&apns2.Notification{
 			Priority:    apns2.PriorityHigh,

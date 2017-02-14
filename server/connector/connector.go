@@ -154,7 +154,7 @@ func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
 		filters[key] = value[0]
 	}
 
-	c.logger.WithField("filters", filters).Debug("Get list of subscriptions")
+	c.logger.WithField("filters", filters).Info("Get list of subscriptions")
 	if len(filters) == 0 {
 		http.Error(w, `{"error":"Missing filters"}`, http.StatusBadRequest)
 		return
@@ -178,7 +178,7 @@ func (c *connector) GetList(w http.ResponseWriter, req *http.Request) {
 // Post creates a new subscriber
 func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	c.logger.WithField("params", params).Debug("POST subscription")
+	c.logger.WithField("params", params).Info("POST subscription")
 	topic, ok := params[TopicParam]
 	if !ok {
 		fmt.Fprintf(w, "Missing topic parameter.")
@@ -186,7 +186,7 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 	}
 	delete(params, TopicParam)
 	params[ConnectorParam] = c.config.Name
-	c.logger.WithField("params", params).WithField("topic", topic).Debug("Creating subscription")
+	c.logger.WithField("params", params).WithField("topic", topic).Info("Creating subscription")
 	subscriber, err := c.manager.Create(protocol.Path("/"+topic), params)
 	if err != nil {
 		if err == ErrSubscriberExists {
@@ -197,14 +197,14 @@ func (c *connector) Post(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	go c.Run(subscriber)
-	c.logger.WithField("topic", topic).Debug("Subscription created")
+	c.logger.WithField("topic", topic).Info("Subscription created")
 	fmt.Fprintf(w, `{"subscribed":"/%v"}`, topic)
 }
 
 // Delete removes a subscriber
 func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	c.logger.WithField("params", params).Debug("DELETE subscription")
+	c.logger.WithField("params", params).Info("DELETE subscription")
 	topic, ok := params[TopicParam]
 	if !ok {
 		fmt.Fprintf(w, "Missing topic parameter.")
@@ -212,13 +212,13 @@ func (c *connector) Delete(w http.ResponseWriter, req *http.Request) {
 	}
 	delete(params, TopicParam)
 	params[ConnectorParam] = c.config.Name
-	c.logger.WithField("params", params).WithField("topic", topic).Debug("Finding subscription to delete it")
+	c.logger.WithField("params", params).WithField("topic", topic).Info("Finding subscription to delete it")
 	subscriber := c.manager.Find(GenerateKey("/"+topic, params))
 	if subscriber == nil {
 		http.Error(w, `{"error":"subscription not found"}`, http.StatusNotFound)
 		return
 	}
-	c.logger.WithField("params", params).WithField("topic", topic).Debug("Deleting subscription")
+	c.logger.WithField("params", params).WithField("topic", topic).Info("Deleting subscription")
 	err := c.manager.Remove(subscriber)
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"unknown error: %s"}`, err.Error()), http.StatusInternalServerError)
@@ -253,7 +253,7 @@ func (c *connector) Substitute(w http.ResponseWriter, req *http.Request) {
 		totalSubscribersUpdated++
 	}
 
-	c.logger.WithField("subscribers", subscribers).WithField("req", s).Debug("Substituted subscriber info ")
+	c.logger.WithField("subscribers", subscribers).WithField("req", s).Info("Substituted subscriber info ")
 	fmt.Fprintf(w, `{"modified":"%d"}`, totalSubscribersUpdated)
 }
 
@@ -261,21 +261,21 @@ func (c *connector) Substitute(w http.ResponseWriter, req *http.Request) {
 func (c *connector) Start() error {
 	c.queue.Start()
 
-	c.logger.Debug("Starting connector")
+	c.logger.Info("Starting connector")
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
-	c.logger.Debug("Loading subscriptions")
+	c.logger.Info("Loading subscriptions")
 	err := c.manager.Load()
 	if err != nil {
 		return err
 	}
 
-	c.logger.Debug("Starting subscriptions")
+	c.logger.Info("Starting subscriptions")
 	for _, s := range c.manager.List() {
 		go c.Run(s)
 	}
 
-	c.logger.Debug("Started connector")
+	c.logger.Info("Started connector")
 	return nil
 }
 
@@ -339,11 +339,11 @@ func (c *connector) restart(s Subscriber) error {
 
 // Stop the connector (the context, the queue, the subscription loops)
 func (c *connector) Stop() error {
-	c.logger.Debug("Stopping connector")
+	c.logger.Info("Stopping connector")
 	c.cancel()
 	c.queue.Stop()
 	c.wg.Wait()
-	c.logger.Debug("Stopped connector")
+	c.logger.Info("Stopped connector")
 	return nil
 }
 

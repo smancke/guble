@@ -61,21 +61,21 @@ func (m *manager) Find(key string) Subscriber {
 func (m *manager) Create(topic protocol.Path, params router.RouteParams) (Subscriber, error) {
 	key := GenerateKey(string(topic), params)
 	//TODO MARIAN  remove this logs   when 503 is done.
-	logger.WithField("key", key).Debug("Create generated key")
+	logger.WithField("key", key).Info("Create generated key")
 	if m.Exists(key) {
-		logger.WithField("key", key).Debug("Create key exists already")
+		logger.WithField("key", key).Info("Create key exists already")
 		return nil, ErrSubscriberExists
 	}
 
 	s := NewSubscriber(topic, params, 0)
 
-	logger.WithField("subscriber", s).Debug("Create  newSubscriber created")
+	logger.WithField("subscriber", s).Info("Created new subscriber")
 	err := m.Add(s)
 	if err != nil {
-		logger.WithField("error", err.Error()).Debug("Create Manager Add failed")
+		logger.WithField("error", err.Error()).Info("Create Manager Add failed")
 		return nil, err
 	}
-	logger.Debug("Create  finished")
+	logger.Info("Create finished")
 	return s, nil
 }
 
@@ -103,7 +103,7 @@ func (m *manager) Filter(filters map[string]string) (subscribers []Subscriber) {
 }
 
 func (m *manager) Add(s Subscriber) error {
-	logger.WithField("subscriber", s).WithField("lock", m.RWMutex).Debug("Add subscriber started")
+	logger.WithField("subscriber", s).WithField("lock", m.RWMutex).Info("Add subscriber started")
 
 	if m.Exists(s.Key()) {
 		return ErrSubscriberExists
@@ -114,12 +114,12 @@ func (m *manager) Add(s Subscriber) error {
 	}
 
 	m.putSubscriber(s)
-	logger.WithField("subscriber", s).Debug("Add subscriber finished")
+	logger.WithField("subscriber", s).Info("Add subscriber finished")
 	return nil
 }
 
 func (m *manager) Update(s Subscriber) error {
-	logger.WithField("subscriber", s).Debug("Update subscriber started")
+	logger.WithField("subscriber", s).Info("Update subscriber started")
 	if !m.Exists(s.Key()) {
 		return ErrSubscriberDoesNotExist
 	}
@@ -130,7 +130,7 @@ func (m *manager) Update(s Subscriber) error {
 	}
 
 	m.putSubscriber(s)
-	logger.WithField("subscriber", s).Debug("Update subscriber finished")
+	logger.WithField("subscriber", s).Info("Update subscriber finished")
 	return nil
 }
 
@@ -155,7 +155,7 @@ func (m *manager) Exists(key string) bool {
 }
 
 func (m *manager) Remove(s Subscriber) error {
-	logger.WithField("subscriber", s).Debug("Remove subscriber started")
+	logger.WithField("subscriber", s).Info("Remove subscriber started")
 	m.cancelSubscriber(s)
 
 	if !m.Exists(s.Key()) {
@@ -168,7 +168,7 @@ func (m *manager) Remove(s Subscriber) error {
 	}
 
 	m.deleteSubscriber(s)
-	logger.WithField("subscriber", s).Debug("Remove subscriber finished")
+	logger.WithField("subscriber", s).Info("Remove subscriber finished")
 	return nil
 }
 
@@ -185,12 +185,12 @@ func (m *manager) updateStore(s Subscriber) error {
 		return err
 	}
 	//TODO MARIAN also remove this logs.
-	logger.WithField("subscriber", s).Debug("UpdateStore")
+	logger.WithField("subscriber", s).Info("UpdateStore")
 	return m.kvstore.Put(m.schema, s.Key(), data)
 }
 
 func (m *manager) removeStore(s Subscriber) error {
 	//TODO MARIAN also remove this logs.
-	logger.WithField("subscriber", s).Debug("RemoveStore")
+	logger.WithField("subscriber", s).Info("RemoveStore")
 	return m.kvstore.Delete(m.schema, s.Key())
 }
