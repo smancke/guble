@@ -30,9 +30,9 @@ func newPusher(c Config) (Pusher, error) {
 	apns2.HTTPClientTimeout = 60 * time.Second
 
 	if *c.Production {
-		logger.Debug("APNS Pusher in Production mode")
+		logger.Info("APNS Pusher in Production mode")
 		return apns2.NewClient(cert).Production(), nil
 	}
-	logger.Debug("APNS Pusher in Development mode")
+	logger.Info("APNS Pusher in Development mode")
 	return apns2.NewClient(cert).Development(), nil
 }

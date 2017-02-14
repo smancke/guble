@@ -63,7 +63,7 @@ func (q *queue) Start() error {
 }
 
 func (q *queue) worker(i int) {
-	logger.WithField("worker", i).Debug("starting queue worker")
+	logger.WithField("worker", i).Info("starting queue worker")
 	for request := range q.requestsC {
 		q.handle(request)
 	}
@@ -92,7 +92,7 @@ func (q *queue) handle(request Request) {
 			}).Error("error handling connector response")
 		}
 	} else if err == nil {
-		logger.WithField("response", response).Debug("no response handler was set")
+		logger.WithField("response", response).Info("no response handler was set")
 	} else {
 		logger.WithField("error", err.Error()).Error("error while sending, and no response handler was set")
 	}

@@ -124,7 +124,7 @@ func (a *apns) HandleResponse(request connector.Request, responseIface interface
 		return err
 	}
 	if r.Sent() {
-		logger.WithField("id", r.ApnsID).Debug("APNS notification was successfully sent")
+		logger.WithField("id", r.ApnsID).Info("APNS notification was successfully sent")
 		mTotalSentMessages.Add(1)
 		if *a.IntervalMetrics && metadata != nil {
 			addToLatenciesAndCountsMaps(currentTotalMessagesLatenciesKey, currentTotalMessagesKey, metadata.Latency)
@@ -132,7 +132,7 @@ func (a *apns) HandleResponse(request connector.Request, responseIface interface
 		return nil
 	}
 	logger.Error("APNS notification was not sent")
-	logger.WithField("id", r.ApnsID).WithField("reason", r.Reason).Debug("APNS notification was not sent - details")
+	logger.WithField("id", r.ApnsID).WithField("reason", r.Reason).Info("APNS notification was not sent - details")
 	switch r.Reason {
 	case
 		apns2.ReasonMissingDeviceToken,
