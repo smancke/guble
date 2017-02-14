@@ -123,12 +123,19 @@ func (g *gateway) Run() {
 
 	currentMsg, err := g.proxyLoop()
 	if err != nil && provideErr == nil {
-		g.logger.WithField("error", err.Error()).Error("Error returned by gateway proxy loop")
+		g.logger.WithFields(log.Fields{
+			"error":             err.Error(),
+			"is_incomplete_sms": err == ErrIncompleteSMSSent,
+		}).Error("Error returned by gateway proxy loop")
 
 		if err == ErrIncompleteSMSSent {
-			if err := g.retry(currentMsg); err != nil {
-				if err == ErrRetryFailed {
-					g.SetLastSentID(currentMsg.ID)
+			err2 := g.retry(currentMsg)
+			if err2 != nil {
+				g.logger.WithField("error", err.Error()).Error("Error returned by retry.")
+				if err2 == ErrRetryFailed {
+					if err3 := g.SetLastSentID(currentMsg.ID); err3 != nil {
+						g.logger.WithField("error", err3.Error()).Error("Error setting last ID")
+					}
 				}
 			}
 		}
@@ -202,7 +209,7 @@ func (g *gateway) retry(msg *protocol.Message) error {
 	l := logger.WithField("message", msg)
 	l.Info("Retrying to send message")
 	for i := 0; i < 3; i++ {
-		l.WithField("retry", i+1).Debug("Sending message")
+		l.WithField("retry", i+1).Info("Sending message")
 		err := g.send(msg)
 		if err != nil {
 			l.WithFields(log.Fields{
@@ -210,7 +217,7 @@ func (g *gateway) retry(msg *protocol.Message) error {
 				"err":   err.Error(),
 			}).Error("Retry failed")
 		} else {
-			l.WithField("retry", i+1).Debug("Retry success")
+			l.WithField("retry", i+1).Info("Retry success")
 			return nil
 		}
 		time.Sleep(100 * time.Millisecond)
