@@ -60,6 +60,7 @@ func newProductionClient(certificate tls.Certificate) *apns2Client {
 	logger.Info("APNS Pusher in Production mode")
 	c := newApns2Client(certificate)
 	c.Production()
+	logger.WithField("apns_url", c.Host).Info("APNS Pusher in Production mode url")
 	return c
 }
 
@@ -67,6 +68,7 @@ func newDevelopmentClient(certificate tls.Certificate) *apns2Client {
 	logger.Info("APNS Pusher in Development mode")
 	c := newApns2Client(certificate)
 	c.Development()
+	logger.WithField("apns_url", c.Host).Info("APNS Pusher in Development mode url")
 	return c
 }
 
