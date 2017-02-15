@@ -85,7 +85,7 @@ func TestConnector_GetErrorMessageFromFCM(t *testing.T) {
 		ID:   uint64(4),
 		Path: "/topic",
 		Body: []byte("{id:id}"),
-	})
+	}, true)
 
 	// wait before closing the FCM connector
 	time.Sleep(100 * time.Millisecond)
@@ -147,7 +147,7 @@ func TestFCMFormatMessage(t *testing.T) {
 		return nil, nil
 	}).Return(&gcm.Response{}, nil)
 
-	subRoute.Deliver(m)
+	subRoute.Deliver(m, true)
 	select {
 	case <-doneC:
 	case <-time.After(100 * time.Millisecond):
@@ -170,7 +170,7 @@ func TestFCMFormatMessage(t *testing.T) {
 		return nil, nil
 	}).Return(&gcm.Response{}, nil)
 
-	subRoute.Deliver(m)
+	subRoute.Deliver(m, true)
 	select {
 	case <-doneC:
 	case <-time.After(100 * time.Millisecond):

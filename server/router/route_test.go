@@ -34,13 +34,13 @@ func TestRouteDeliver_sendDirect(t *testing.T) {
 	r := testRoute()
 
 	for i := 0; i < chanSize; i++ {
-		err := r.Deliver(dummyMessageWithID)
+		err := r.Deliver(dummyMessageWithID, false)
 		a.NoError(err)
 	}
 
 	done := make(chan bool)
 	go func() {
-		r.Deliver(dummyMessageWithID)
+		r.Deliver(dummyMessageWithID, false)
 		done <- true
 	}()
 
@@ -78,7 +78,7 @@ func TestRouteDeliver_Invalid(t *testing.T) {
 	r := testRoute()
 	r.invalid = true
 
-	err := r.Deliver(dummyMessageWithID)
+	err := r.Deliver(dummyMessageWithID, true)
 	a.Equal(ErrInvalidRoute, err)
 }
 
@@ -90,13 +90,13 @@ func TestRouteDeliver_QueueSize(t *testing.T) {
 
 	// fill the channel buffer and the queue
 	for i := 0; i < chanSize+queueSize; i++ {
-		r.Deliver(dummyMessageWithID)
+		r.Deliver(dummyMessageWithID, true)
 	}
 
 	// and the route should close itself if the queue is overflowed
 	done := make(chan bool)
 	go func() {
-		err := r.Deliver(dummyMessageWithID)
+		err := r.Deliver(dummyMessageWithID, true)
 		a.NotNil(err)
 		done <- true
 	}()
@@ -121,13 +121,13 @@ func TestRouteDeliver_WithTimeout(t *testing.T) {
 
 	// fill the channel buffer
 	for i := 0; i < chanSize; i++ {
-		r.Deliver(dummyMessageWithID)
+		r.Deliver(dummyMessageWithID, true)
 	}
 
 	// delivering one more message should result in a closed route
 	done := make(chan bool)
 	go func() {
-		err := r.Deliver(dummyMessageWithID)
+		err := r.Deliver(dummyMessageWithID, true)
 		a.NoError(err)
 		done <- true
 	}()
@@ -138,7 +138,7 @@ func TestRouteDeliver_WithTimeout(t *testing.T) {
 	}
 
 	time.Sleep(30 * time.Millisecond)
-	err := r.Deliver(dummyMessageWithID)
+	err := r.Deliver(dummyMessageWithID, true)
 	a.Equal(ErrInvalidRoute, err)
 	a.True(r.invalid)
 	a.False(r.consuming)
@@ -189,7 +189,7 @@ func TestRoute_messageFilter(t *testing.T) {
 		ID:   1,
 		Path: "/topic",
 	}
-	route.Deliver(msg)
+	route.Deliver(msg, false)
 
 	// test message is received on the channel
 	a.True(isMessageReceived(route, msg))
@@ -199,7 +199,7 @@ func TestRoute_messageFilter(t *testing.T) {
 		Path: "/topic",
 	}
 	msg.SetFilter("field1", "value1")
-	route.Deliver(msg)
+	route.Deliver(msg, true)
 	a.True(isMessageReceived(route, msg))
 
 	msg = &protocol.Message{
@@ -208,7 +208,7 @@ func TestRoute_messageFilter(t *testing.T) {
 	}
 	msg.SetFilter("field1", "value1")
 	msg.SetFilter("field2", "value2")
-	route.Deliver(msg)
+	route.Deliver(msg, true)
 	a.True(isMessageReceived(route, msg))
 
 	msg = &protocol.Message{
@@ -218,7 +218,7 @@ func TestRoute_messageFilter(t *testing.T) {
 	msg.SetFilter("field1", "value1")
 	msg.SetFilter("field2", "value2")
 	msg.SetFilter("field3", "value3")
-	route.Deliver(msg)
+	route.Deliver(msg, true)
 	a.False(isMessageReceived(route, msg))
 
 	msg = &protocol.Message{
@@ -226,7 +226,7 @@ func TestRoute_messageFilter(t *testing.T) {
 		Path: "/topic",
 	}
 	msg.SetFilter("field3", "value3")
-	route.Deliver(msg)
+	route.Deliver(msg, true)
 	a.False(isMessageReceived(route, msg))
 }
 
@@ -359,7 +359,7 @@ func TestRoute_Provide_WithSubscribe(t *testing.T) {
 				ID:   uint64(i),
 				Path: "/fetch_request",
 				Body: []byte("dummy"),
-			})
+			}, true)
 		}
 
 		return r, nil

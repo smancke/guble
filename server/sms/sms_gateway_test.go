@@ -115,7 +115,7 @@ func Test_SendOneSms(t *testing.T) {
 
 	mockSmsSender.EXPECT().Send(gomock.Eq(&msg)).Return(nil)
 	a.NotNil(gw.route)
-	gw.route.Deliver(&msg)
+	gw.route.Deliver(&msg, true)
 	time.Sleep(100 * time.Millisecond)
 
 	err = gw.Stop()
@@ -193,7 +193,7 @@ func Test_Restart(t *testing.T) {
 	//mockSmsSender.EXPECT().Send(gomock.Eq(&msg)).Return(nil)
 
 	a.NotNil(gw.route)
-	gw.route.Deliver(&msg)
+	gw.route.Deliver(&msg, true)
 	time.Sleep(100 * time.Millisecond)
 }
 

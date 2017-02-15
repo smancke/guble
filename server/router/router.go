@@ -11,12 +11,13 @@ import (
 
 	"encoding/json"
 
+	"net/http"
+
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/auth"
 	"github.com/smancke/guble/server/cluster"
 	"github.com/smancke/guble/server/kvstore"
 	"github.com/smancke/guble/server/store"
-	"net/http"
 )
 
 const (
@@ -348,7 +349,7 @@ func (router *router) handleMessage(message *protocol.Message) {
 		if matchesTopic(message.Path, path) {
 			matched = true
 			for _, route := range pathRoutes {
-				if err := route.Deliver(message); err == ErrInvalidRoute {
+				if err := route.Deliver(message, false); err == ErrInvalidRoute {
 					// Unsubscribe invalid routes
 					router.unsubscribe(route)
 				}
