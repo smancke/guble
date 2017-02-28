@@ -101,16 +101,6 @@ func (a *apns) HandleResponse(request connector.Request, responseIface interface
 		if *a.IntervalMetrics && metadata != nil {
 			addToLatenciesAndCountsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, metadata.Latency)
 		}
-
-		//if a send error is received recreate the apns sender.
-		//see https://github.com/sideshow/apns2/issues/24 and https://github.com/sideshow/apns2/issues/20
-		newSender, err := NewSender(a.Config)
-		if err != nil {
-			logger.Warn("APNS Sender could not be recreated")
-			return errSenderNotRecreated
-		}
-		a.SetSender(newSender)
-
 		return errSend
 	}
 	r, ok := responseIface.(*apns2.Response)
