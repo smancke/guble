@@ -148,6 +148,9 @@ func (ns *NexmoSender) Send(msg *protocol.Message) error {
 }
 
 func (ns *NexmoSender) sendSms(sms *NexmoSms) (*NexmoMessageResponse, error) {
+	// log before encoding
+	logger.WithField("sms_details", sms).Info("sendSms")
+
 	smsEncoded, err := sms.EncodeNexmoSms(ns.ApiKey, ns.ApiSecret)
 	if err != nil {
 		logger.WithField("error", err.Error()).Error("Error encoding sms")
