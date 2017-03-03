@@ -132,10 +132,8 @@ func (g *gateway) Run() {
 			err2 := g.retry(currentMsg)
 			if err2 != nil {
 				g.logger.WithField("error", err2.Error()).Error("Error returned by retry.")
-				if err2 == ErrRetryFailed {
-					if err3 := g.SetLastSentID(currentMsg.ID); err3 != nil {
-						g.logger.WithField("error", err3.Error()).Error("Error setting last ID")
-					}
+				if err3 := g.SetLastSentID(currentMsg.ID); err3 != nil {
+					g.logger.WithField("error", err3.Error()).Error("Error setting last ID")
 				}
 			}
 		}
