@@ -307,8 +307,8 @@ func Test_RetryLoop(t *testing.T) {
 		Body:          d,
 	}
 
-	// when sms is sent simulate an error.No Sms will be delivered with success
-	mockSmsSender.EXPECT().Send(gomock.Eq(&msg)).AnyTimes().Return(ErrIncompleteSMSSent)
+	// when sms is sent simulate an error.No Sms will be delivered with success for 4 times.
+	mockSmsSender.EXPECT().Send(gomock.Eq(&msg)).Times(4).Return(ErrIncompleteSMSSent)
 	a.NotNil(gateway.route)
 
 	// deliver the message on the gateway route.
@@ -316,5 +316,21 @@ func Test_RetryLoop(t *testing.T) {
 	// wait for retry to complete alongside with the 3 sent sms.
 	time.Sleep(500 * time.Millisecond)
 	a.Equal(uint64(4), gateway.LastIDSent, "Last id sent should be the msgID since the retry failed.Already try it for 4 time.Anymore retries would be useless")
+
+	//Send a new message afterwards.
+	successMsg := protocol.Message{
+		Path:          protocol.Path(topic),
+		UserID:        "samsa",
+		ApplicationID: "sms",
+		ID:            uint64(9),
+		Body:          d,
+	}
+
+	//no error will be raised for second message.
+	mockSmsSender.EXPECT().Send(gomock.Eq(&successMsg)).Times(1).Return(nil)
+	gateway.route.Deliver(&successMsg, true)
+	//wait for db to save the last id.
+	time.Sleep(100 * time.Millisecond)
+	a.Equal(uint64(9), gateway.LastIDSent, "Last id sent should be successMsgId")
 
 }
