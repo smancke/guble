@@ -21,6 +21,8 @@ import (
 	"os"
 )
 
+const timeInterval = 100 * time.Millisecond
+
 func Test_StartStop(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
@@ -60,7 +62,7 @@ func Test_StartStop(t *testing.T) {
 	err = gw.Stop()
 	a.NoError(err)
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(timeInterval)
 }
 
 func Test_SendOneSms(t *testing.T) {
@@ -118,7 +120,7 @@ func Test_SendOneSms(t *testing.T) {
 	mockSmsSender.EXPECT().Send(gomock.Eq(&msg)).Return(nil)
 	a.NotNil(gw.route)
 	gw.route.Deliver(&msg, true)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(4 * timeInterval)
 
 	err = gw.Stop()
 	a.NoError(err)
@@ -126,7 +128,7 @@ func Test_SendOneSms(t *testing.T) {
 	err = gw.ReadLastID()
 	a.NoError(err)
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(timeInterval)
 
 	totalSentCount := expvar.NewInt("total_sent_messages")
 	totalSentCount.Add(1)
@@ -191,12 +193,11 @@ func Test_Restart(t *testing.T) {
 
 	doneC := make(chan bool)
 	routerMock.EXPECT().Done().AnyTimes().Return(doneC)
-	//
 	//mockSmsSender.EXPECT().Send(gomock.Eq(&msg)).Return(nil)
 
 	a.NotNil(gw.route)
 	gw.route.Deliver(&msg, true)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(timeInterval)
 }
 
 func TestReadLastID(t *testing.T) {
@@ -314,7 +315,7 @@ func Test_RetryLoop(t *testing.T) {
 	// deliver the message on the gateway route.
 	gateway.route.Deliver(&msg, true)
 	// wait for retry to complete alongside with the 3 sent sms.
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(4 * timeInterval)
 	a.Equal(uint64(4), gateway.LastIDSent, "Last id sent should be the msgID since the retry failed.Already try it for 4 time.Anymore retries would be useless")
 
 	//Send a new message afterwards.
@@ -330,7 +331,7 @@ func Test_RetryLoop(t *testing.T) {
 	mockSmsSender.EXPECT().Send(gomock.Eq(&successMsg)).Times(1).Return(nil)
 	gateway.route.Deliver(&successMsg, true)
 	//wait for db to save the last id.
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(timeInterval)
 	a.Equal(uint64(9), gateway.LastIDSent, "Last id sent should be successMsgId")
 
 }
