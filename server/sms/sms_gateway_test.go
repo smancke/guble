@@ -17,6 +17,8 @@ import (
 	"github.com/smancke/guble/protocol"
 	"github.com/smancke/guble/server/router"
 	"github.com/smancke/guble/server/store/dummystore"
+	"io/ioutil"
+	"os"
 )
 
 func Test_StartStop(t *testing.T) {
@@ -230,4 +232,89 @@ func TestReadLastID(t *testing.T) {
 	gw.ReadLastID()
 
 	a.Equal(uint64(10), gw.LastIDSent)
+}
+
+func tempFilename() string {
+	file, err := ioutil.TempFile("/tmp", "guble_sms_retry")
+	if err != nil {
+		panic(err)
+	}
+	file.Close()
+	os.Remove(file.Name())
+	return file.Name()
+}
+
+func Test_RetryLoop(t *testing.T) {
+	ctrl, finish := testutil.NewMockCtrl(t)
+	defer finish()
+
+	defer testutil.EnableDebugForMethod()()
+	a := assert.New(t)
+
+	//create a mockSms Sender to simulate Nexmo error
+	mockSmsSender := NewMockSender(ctrl)
+	f := tempFilename()
+	defer os.Remove(f)
+
+	//create a KVStore with sqlite3
+	kvStore := kvstore.NewSqliteKVStore(f, false)
+	err := kvStore.Open()
+	a.NoError(err)
+	a.NotNil(kvStore)
+
+	//create a new mock router
+	routerMock := NewMockRouter(testutil.MockCtrl)
+	routerMock.EXPECT().KVStore().AnyTimes().Return(kvStore, nil)
+
+	//create a new mock msg store
+	mockMessageStore := NewMockMessageStore(ctrl)
+	routerMock.EXPECT().MessageStore().AnyTimes().Return(mockMessageStore, nil)
+	mockMessageStore.EXPECT().MaxMessageID(gomock.Any()).Return(uint64(2), nil)
+
+	//setup a new sms gateway
+	worker := 8
+	topic := SMSDefaultTopic
+	enableMetrics := false
+	gateway, err := New(routerMock, mockSmsSender, Config{Workers: &worker, Name: SMSDefaultTopic, Schema: SMSSchema, SMSTopic: &topic, IntervalMetrics: &enableMetrics})
+	a.NoError(err)
+
+	//create a new route on which the gateway will subscribe on /sms
+	route := router.NewRoute(router.RouteConfig{
+		Path:         protocol.Path(*gateway.config.SMSTopic),
+		ChannelSize:  5000,
+		FetchRequest: gateway.fetchRequest(),
+	})
+	//expect 2 subscribe.One for Start.One for Restart
+	routerMock.EXPECT().Subscribe(gomock.Any()).Times(2).Return(route, nil)
+
+	err = gateway.Start()
+	a.NoError(err)
+
+	//create a new sms message
+	sms := NexmoSms{
+		To:   "toNumber",
+		From: "FromNUmber",
+		Text: "body",
+	}
+	d, err := json.Marshal(&sms)
+	a.NoError(err)
+
+	msg := protocol.Message{
+		Path:          protocol.Path(topic),
+		UserID:        "samsa",
+		ApplicationID: "sms",
+		ID:            uint64(4),
+		Body:          d,
+	}
+
+	// when sms is sent simulate an error.No Sms will be delivered with success
+	mockSmsSender.EXPECT().Send(gomock.Eq(&msg)).AnyTimes().Return(ErrIncompleteSMSSent)
+	a.NotNil(gateway.route)
+
+	// deliver the message on the gateway route.
+	gateway.route.Deliver(&msg, true)
+	// wait for retry to complete alongside with the 3 sent sms.
+	time.Sleep(500 * time.Millisecond)
+	a.Equal(uint64(4), gateway.LastIDSent, "Last id sent should be the msgID since the retry failed.Already try it for 4 time.Anymore retries would be useless")
+
 }
