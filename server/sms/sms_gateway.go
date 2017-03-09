@@ -128,7 +128,7 @@ func (g *gateway) Run() {
 			"is_incomplete_sms": err == ErrIncompleteSMSSent,
 		}).Error("Error returned by gateway proxy loop")
 
-		if err == ErrIncompleteSMSSent {
+		if err == ErrIncompleteSMSSent || err == ErrNoSMSSent || err == ErrSMSResponseDecodingFailed {
 			err2 := g.retry(currentMsg)
 			if err2 != nil {
 				g.logger.WithField("error", err2.Error()).Error("Error returned by retry.")
@@ -236,7 +236,7 @@ func (g *gateway) send(receivedMsg *protocol.Message) error {
 }
 
 func (g *gateway) Restart() error {
-	g.logger.WithField("LastIDSent", g.LastIDSent).Debug("Restart in progress")
+	g.logger.WithField("LastIDSent", g.LastIDSent).Info("Restart in progress")
 
 	g.Cancel()
 	g.cancelFunc = nil
@@ -250,7 +250,7 @@ func (g *gateway) Restart() error {
 
 	go g.Run()
 
-	g.logger.WithField("LastIDSent", g.LastIDSent).Debug("Restart finished")
+	g.logger.WithField("LastIDSent", g.LastIDSent).Info("Restart finished")
 	return nil
 }
 
@@ -262,7 +262,7 @@ func (g *gateway) Stop() error {
 }
 
 func (g *gateway) SetLastSentID(ID uint64) error {
-	g.logger.WithField("LastIDSent", ID).WithField("path", *g.config.SMSTopic).Debug("Seting LastIDSent")
+	g.logger.WithField("LastIDSent", ID).WithField("path", *g.config.SMSTopic).Info("Trying to set LastIDSent")
 
 	kvStore, err := g.router.KVStore()
 	if err != nil {
@@ -281,6 +281,7 @@ func (g *gateway) SetLastSentID(ID uint64) error {
 		return err
 	}
 	g.LastIDSent = ID
+	g.logger.WithField("LastIDSent", ID).WithField("path", *g.config.SMSTopic).Info("Seting LastIDSent")
 	return nil
 }
 
@@ -308,7 +309,7 @@ func (g *gateway) ReadLastID() error {
 	}
 	g.LastIDSent = v.ID
 
-	g.logger.WithField("LastIDSent", g.LastIDSent).WithField("path", *g.config.SMSTopic).Debug("ReadLastID")
+	g.logger.WithField("LastIDSent", g.LastIDSent).WithField("path", *g.config.SMSTopic).Info("ReadLastID")
 	return nil
 }
 
