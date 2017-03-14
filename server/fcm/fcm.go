@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/Bogh/gcm"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/server/metrics"
-	"github.com/smancke/guble/server/router"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/connector"
+	"github.com/cosminrentea/gobbler/server/metrics"
+	"github.com/cosminrentea/gobbler/server/router"
 	"time"
 )
 

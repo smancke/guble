@@ -1,11 +1,11 @@
 package service
 
 import (
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/server/store"
-	"github.com/smancke/guble/server/store/dummystore"
-	"github.com/smancke/guble/server/webserver"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/server/kvstore"
+	"github.com/cosminrentea/gobbler/server/store"
+	"github.com/cosminrentea/gobbler/server/store/dummystore"
+	"github.com/cosminrentea/gobbler/server/webserver"
+	"github.com/cosminrentea/gobbler/testutil"
 
 	"github.com/stretchr/testify/assert"
 

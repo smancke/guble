@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"github.com/smancke/guble/protocol"
+	"github.com/cosminrentea/gobbler/protocol"
 )
 
 //AllowAllAccessManager is a dummy implementation that grants access for everything.

@@ -10,9 +10,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/client"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/testutil"
 )
 
 type testgroup struct {

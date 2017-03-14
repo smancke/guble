@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/auth"
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/server/store"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/auth"
+	"github.com/cosminrentea/gobbler/server/kvstore"
+	"github.com/cosminrentea/gobbler/server/store"
+	"github.com/cosminrentea/gobbler/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -86,7 +86,7 @@ func TestRouteDeliver_QueueSize(t *testing.T) {
 	a := assert.New(t)
 	// create a route with a queue size
 	r := testRoute()
-	r.queueSize = queueSize
+	r.QueueSize = queueSize
 
 	// fill the channel buffer and the queue
 	for i := 0; i < chanSize+queueSize; i++ {
@@ -116,7 +116,7 @@ func TestRouteDeliver_WithTimeout(t *testing.T) {
 
 	// create a route with timeout and infinite queue size
 	r := testRoute()
-	r.queueSize = -1 // infinite queue size
+	r.QueueSize = -1 // infinite queue size
 	r.timeout = 10 * time.Millisecond
 
 	// fill the channel buffer

@@ -12,11 +12,11 @@ import (
 
 	"encoding/json"
 
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/server/fcm"
-	"github.com/smancke/guble/server/service"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/client"
+	"github.com/cosminrentea/gobbler/server/connector"
+	"github.com/cosminrentea/gobbler/server/fcm"
+	"github.com/cosminrentea/gobbler/server/service"
+	"github.com/cosminrentea/gobbler/testutil"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/store"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/store"
 )
 
 var (
@@ -46,7 +46,7 @@ func NewRoute(config RouteConfig) *Route {
 	route := &Route{
 		RouteConfig: config,
 
-		queue:     newQueue(config.queueSize),
+		queue:     newQueue(config.QueueSize),
 		messagesC: make(chan *protocol.Message, config.ChannelSize),
 		closeC:    make(chan struct{}),
 
@@ -89,11 +89,11 @@ func (r *Route) Deliver(msg *protocol.Message, isFromStore bool) error {
 		return nil
 	}
 	// not an infinite queue
-	if r.queueSize >= 0 {
+	if r.QueueSize >= 0 {
 		// if size is zero the sending is direct
-		if r.queueSize == 0 {
+		if r.QueueSize == 0 {
 			return r.sendDirect(msg, isFromStore)
-		} else if r.queue.size() >= r.queueSize {
+		} else if r.queue.size() >= r.QueueSize {
 			loggerMessage.Error("Closing route because queue is full")
 			r.Close()
 			mTotalDeliverMessageErrors.Add(1)

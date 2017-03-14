@@ -12,13 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/server/fcm"
+	"github.com/cosminrentea/gobbler/server/connector"
+	"github.com/cosminrentea/gobbler/server/fcm"
 
 	"errors"
 
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/server/service"
+	"github.com/cosminrentea/gobbler/client"
+	"github.com/cosminrentea/gobbler/server/service"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/alecthomas/kingpin.v2"
 )

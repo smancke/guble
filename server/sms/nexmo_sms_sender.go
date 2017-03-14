@@ -10,7 +10,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/protocol"
+	"github.com/cosminrentea/gobbler/protocol"
 )
 
 var (

@@ -5,8 +5,8 @@ import (
 
 	"encoding/json"
 
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/server/kvstore"
+	"github.com/cosminrentea/gobbler/testutil"
 	"github.com/stretchr/testify/assert"
 
 	"strings"
@@ -14,9 +14,9 @@ import (
 
 	"expvar"
 	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/server/store/dummystore"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/router"
+	"github.com/cosminrentea/gobbler/server/store/dummystore"
 )
 
 func Test_StartStop(t *testing.T) {

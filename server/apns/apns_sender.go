@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/jpillora/backoff"
 	"github.com/sideshow/apns2"
-	"github.com/smancke/guble/server/connector"
+	"github.com/cosminrentea/gobbler/server/connector"
 	"net"
 	"time"
 )

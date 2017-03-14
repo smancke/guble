@@ -1,9 +1,9 @@
 package server
 
 import (
-	"github.com/smancke/guble/server/kvstore"
+	"github.com/cosminrentea/gobbler/server/kvstore"
 
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/testutil"
 	"github.com/stretchr/testify/assert"
 
 	"fmt"

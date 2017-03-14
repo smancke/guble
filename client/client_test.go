@@ -1,7 +1,7 @@
 package client
 
 import (
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/testutil"
 
 	"fmt"
 	"strings"

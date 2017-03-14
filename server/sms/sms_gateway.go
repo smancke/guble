@@ -5,15 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/smancke/guble/server/connector"
+	"github.com/cosminrentea/gobbler/server/connector"
 
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/metrics"
-	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/server/store"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/metrics"
+	"github.com/cosminrentea/gobbler/server/router"
+	"github.com/cosminrentea/gobbler/server/store"
 )
 
 const (
@@ -93,6 +93,7 @@ func (g *gateway) initRoute() {
 	g.route = router.NewRoute(router.RouteConfig{
 		Path:         protocol.Path(*g.config.SMSTopic),
 		ChannelSize:  5000,
+		QueueSize:    -1,
 		FetchRequest: g.fetchRequest(),
 	})
 }
