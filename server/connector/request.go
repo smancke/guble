@@ -1,6 +1,6 @@
 package connector
 
-import "github.com/smancke/guble/protocol"
+import "github.com/cosminrentea/gobbler/protocol"
 
 type Request interface {
 	Subscriber() Subscriber

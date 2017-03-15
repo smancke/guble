@@ -6,8 +6,8 @@ import (
 
 	"github.com/azer/snakecase"
 
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/router"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/router"
 
 	"github.com/rs/xid"
 

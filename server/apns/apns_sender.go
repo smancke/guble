@@ -2,9 +2,9 @@ package apns
 
 import (
 	"errors"
+	"github.com/cosminrentea/gobbler/server/connector"
 	"github.com/jpillora/backoff"
 	"github.com/sideshow/apns2"
-	"github.com/smancke/guble/server/connector"
 	"net"
 	"time"
 )

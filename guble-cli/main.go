@@ -9,8 +9,8 @@ import (
 	"syscall"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/protocol"
+	"github.com/cosminrentea/gobbler/client"
+	"github.com/cosminrentea/gobbler/protocol"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 

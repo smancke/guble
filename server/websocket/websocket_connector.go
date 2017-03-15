@@ -1,9 +1,9 @@
 package websocket
 
 import (
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/auth"
-	"github.com/smancke/guble/server/router"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/auth"
+	"github.com/cosminrentea/gobbler/server/router"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"

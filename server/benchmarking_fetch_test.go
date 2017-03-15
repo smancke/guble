@@ -1,8 +1,8 @@
 package server
 
 import (
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/client"
+	"github.com/cosminrentea/gobbler/testutil"
 
 	"github.com/stretchr/testify/assert"
 

@@ -2,8 +2,8 @@ package server
 
 import (
 	"fmt"
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/server/service"
+	"github.com/cosminrentea/gobbler/client"
+	"github.com/cosminrentea/gobbler/server/service"
 	"github.com/stretchr/testify/assert"
 	"strconv"
 	"sync"

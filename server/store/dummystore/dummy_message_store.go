@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/server/store"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/kvstore"
+	"github.com/cosminrentea/gobbler/server/store"
 )
 
 const topicSchema = "topic_sequence"

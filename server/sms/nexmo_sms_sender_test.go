@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,6 +33,7 @@ func TestNexmoSender_Send(t *testing.T) {
 }
 
 func TestNexmoSender_SendWithError(t *testing.T) {
+	defer testutil.EnableDebugForMethod()
 	RequestTimeout = time.Second
 	a := assert.New(t)
 	sender, err := NewNexmoSender(KEY, SECRET)
@@ -56,5 +57,5 @@ func TestNexmoSender_SendWithError(t *testing.T) {
 
 	err = sender.Send(&msg)
 	a.Error(err)
-	a.Equal(ErrIncompleteSMSSent, err)
+	a.Equal(ErrNexmoResponseStatusNotOk, err)
 }

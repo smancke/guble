@@ -1,8 +1,8 @@
 package router
 
 import (
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/auth"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/auth"
 
 	"errors"
 	"fmt"
