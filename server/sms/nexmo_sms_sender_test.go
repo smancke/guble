@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/testutil"
 	"github.com/stretchr/testify/assert"
 )
 

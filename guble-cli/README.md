@@ -3,21 +3,21 @@
 This is the command line client for the guble messaging server. It is intended
 for demonstration and debugging use.
 
-[![Build Status](https://api.travis-ci.org/smancke/guble.svg)](https://travis-ci.org/smancke/guble)
+[![Build Status](https://api.travis-ci.org/cosminrentea/gobbler.svg)](https://travis-ci.org/cosminrentea/gobbler)
 
 
 ## Starting the client with docker 
 The guble docker image has the command line client included. You can execute it within a running golang container and
 connect to the server.
 ```
-docker run -d --name guble smancke/guble
-docker exec -it guble /go/bin/guble-cli
+docker run -d --name gobbler cosminrentea/gobbler
+docker exec -it gobbler /go/bin/guble-cli
 ```
 
 
 ## Building from source
 ```
-	go get github.com/smancke/guble/guble-cli
+	go get github.com/cosminrentea/gobbler/guble-cli
 	bin/guble-cli
 ```
 

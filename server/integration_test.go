@@ -1,9 +1,9 @@
 package server
 
 import (
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/service"
+	"github.com/cosminrentea/gobbler/client"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/service"
 
 	"github.com/stretchr/testify/assert"
 
@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smancke/guble/restclient"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/restclient"
+	"github.com/cosminrentea/gobbler/testutil"
 )
 
 func initServerAndClients(t *testing.T) (*service.Service, client.Client, client.Client, func()) {

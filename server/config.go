@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/smancke/guble/server/apns"
-	"github.com/smancke/guble/server/fcm"
-	"github.com/smancke/guble/server/sms"
+	"github.com/cosminrentea/gobbler/server/apns"
+	"github.com/cosminrentea/gobbler/server/fcm"
+	"github.com/cosminrentea/gobbler/server/sms"
 )
 
 const (

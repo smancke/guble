@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smancke/guble/server/fcm"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/server/fcm"
+	"github.com/cosminrentea/gobbler/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
