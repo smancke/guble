@@ -4,9 +4,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/health"
 
-	"github.com/smancke/guble/server/metrics"
-	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/server/webserver"
+	"github.com/cosminrentea/gobbler/server/metrics"
+	"github.com/cosminrentea/gobbler/server/router"
+	"github.com/cosminrentea/gobbler/server/webserver"
 
 	"github.com/hashicorp/go-multierror"
 	"net/http"

@@ -3,10 +3,10 @@ package cluster
 import (
 	"io/ioutil"
 
-	"github.com/smancke/guble/server/store/filestore"
+	"github.com/cosminrentea/gobbler/server/store/filestore"
 
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/store"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/store"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
@@ -120,10 +120,7 @@ func TestCluster_NewShouldReturnErrorWhenPortIsInvalid(t *testing.T) {
 
 	config := Config{ID: 1, Host: "localhost", Port: -1, Remotes: remotes}
 	_, err := New(&config)
-	if a.Error(err, "An error was expected when Creating the Cluster") {
-		a.Equal(err, errors.New("Failed to start TCP listener. Err: listen tcp :-1: bind: invalid argument"),
-			"Error should be precisely defined")
-	}
+	a.Error(err, "An error was expected when Creating the Cluster")
 }
 
 func TestCluster_StartShouldReturnErrorWhenNoRemotes(t *testing.T) {

@@ -19,9 +19,6 @@ after_success:
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
       GOOS=linux go build -a --ldflags '-linkmode external -extldflags "-static"' . ;
       GOOS=linux go build -a --ldflags '-linkmode external -extldflags "-static"' -o ./guble-cli/guble-cli ./guble-cli ;
-      docker build -t smancke/guble . ;
-      docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" ;
-      docker push smancke/guble ;
     fi
 
 env:

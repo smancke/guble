@@ -2,8 +2,8 @@ package filestore
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/server/store"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/server/store"
+	"github.com/cosminrentea/gobbler/testutil"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"math"

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smancke/guble/server/kvstore"
+	"github.com/cosminrentea/gobbler/server/kvstore"
 	"github.com/stretchr/testify/assert"
 )
 

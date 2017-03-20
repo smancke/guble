@@ -3,7 +3,7 @@ package router
 import (
 	"testing"
 
-	"github.com/smancke/guble/protocol"
+	"github.com/cosminrentea/gobbler/protocol"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -12,11 +12,11 @@ import (
 
 	"encoding/json"
 
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/server/fcm"
-	"github.com/smancke/guble/server/service"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/client"
+	"github.com/cosminrentea/gobbler/server/connector"
+	"github.com/cosminrentea/gobbler/server/fcm"
+	"github.com/cosminrentea/gobbler/server/service"
+	"github.com/cosminrentea/gobbler/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -54,7 +54,7 @@ type expectedValues struct {
 
 // Test that restarting the service continues to fetch messages from store for a subscription from lastID
 func TestFCMRestart(t *testing.T) {
-	// defer testutil.EnableDebugForMethod()()
+	defer testutil.EnableDebugForMethod()()
 	defer testutil.ResetDefaultRegistryHealthCheck()
 
 	a := assert.New(t)
@@ -135,6 +135,8 @@ func serviceSetUp(t *testing.T) (*service.Service, func()) {
 	*Config.Cluster.NodeID = 0
 	*Config.StoragePath = dir
 	*Config.MetricsEndpoint = "/admin/metrics"
+	*Config.WS.Enabled = true
+	*Config.WS.Prefix = "/stream/"
 	*Config.FCM.Enabled = true
 	*Config.FCM.APIKey = "WILL BE OVERWRITTEN"
 	*Config.FCM.Prefix = "/fcm/"

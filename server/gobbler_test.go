@@ -1,9 +1,9 @@
 package server
 
 import (
-	"github.com/smancke/guble/server/kvstore"
+	"github.com/cosminrentea/gobbler/server/kvstore"
 
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/testutil"
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
@@ -114,6 +114,7 @@ func TestStartServiceModules(t *testing.T) {
 	*Config.MS = "file"
 	*Config.FCM.Enabled = false
 	*Config.APNS.Enabled = false
+	*Config.WS.Enabled = false
 
 	// using an available port for http
 	testHttpPort++
@@ -121,15 +122,16 @@ func TestStartServiceModules(t *testing.T) {
 	*Config.HttpListen = fmt.Sprintf(":%d", testHttpPort)
 
 	s := StartService()
+	defer s.Stop()
 
 	// then the number and ordering of modules should be correct
-	a.Equal(6, len(s.ModulesSortedByStartOrder()))
+	a.Equal(5, len(s.ModulesSortedByStartOrder()))
 	var moduleNames []string
 	for _, iface := range s.ModulesSortedByStartOrder() {
 		name := reflect.TypeOf(iface).String()
 		moduleNames = append(moduleNames, name)
 	}
-	a.Equal("*kvstore.MemoryKVStore *filestore.FileMessageStore *router.router *webserver.WebServer *websocket.WSHandler *rest.RestMessageAPI",
+	a.Equal("*kvstore.MemoryKVStore *filestore.FileMessageStore *router.router *webserver.WebServer *rest.RestMessageAPI",
 		strings.Join(moduleNames, " "))
 }
 

@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/router"
+	"github.com/cosminrentea/gobbler/testutil"
 	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -278,6 +278,7 @@ func TestConnector_Substitute(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPost, "/connector"+SubstitutePath, strings.NewReader(postBody))
 	conn.ServeHTTP(recorder, req)
 
+	a.NoError(err)
 	a.Equal(http.StatusOK, recorder.Code)
 	a.Equal(`{"modified":"1"}`, recorder.Body.String())
 }
@@ -322,6 +323,7 @@ func TestConnector_SubstituteWrongPostBody(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPost, "/connector"+SubstitutePath, strings.NewReader(postBody))
 	conn.ServeHTTP(recorder, req)
 
+	a.NoError(err)
 	a.Equal(http.StatusBadRequest, recorder.Code)
 }
 

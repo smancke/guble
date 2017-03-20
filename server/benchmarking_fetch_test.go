@@ -1,8 +1,8 @@
 package server
 
 import (
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/client"
+	"github.com/cosminrentea/gobbler/testutil"
 
 	"github.com/stretchr/testify/assert"
 
@@ -25,6 +25,8 @@ func Benchmark_E2E_Fetch_HelloWorld_Messages(b *testing.B) {
 	*Config.KVS = "memory"
 	*Config.MS = "file"
 	*Config.StoragePath = dir
+	*Config.WS.Enabled = true
+	*Config.WS.Prefix = "/stream/"
 	service := StartService()
 	defer service.Stop()
 

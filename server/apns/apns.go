@@ -3,10 +3,10 @@ package apns
 import (
 	"errors"
 	"fmt"
+	"github.com/cosminrentea/gobbler/server/connector"
+	"github.com/cosminrentea/gobbler/server/metrics"
+	"github.com/cosminrentea/gobbler/server/router"
 	"github.com/sideshow/apns2"
-	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/server/metrics"
-	"github.com/smancke/guble/server/router"
 	"time"
 )
 
@@ -119,6 +119,7 @@ func (a *apns) HandleResponse(request connector.Request, responseIface interface
 	if r.Sent() {
 		logger.WithField("id", r.ApnsID).Info("APNS notification was successfully sent")
 		mTotalSentMessages.Add(1)
+		pSentMessages.Inc()
 		if *a.IntervalMetrics && metadata != nil {
 			addToLatenciesAndCountsMaps(currentTotalMessagesLatenciesKey, currentTotalMessagesKey, metadata.Latency)
 		}

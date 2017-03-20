@@ -11,9 +11,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/smancke/guble/server/apns"
-	"github.com/smancke/guble/server/fcm"
-	"github.com/smancke/guble/server/sms"
+	"github.com/cosminrentea/gobbler/server/apns"
+	"github.com/cosminrentea/gobbler/server/fcm"
+	"github.com/cosminrentea/gobbler/server/sms"
+	"github.com/cosminrentea/gobbler/server/websocket"
 )
 
 const (
@@ -71,6 +72,7 @@ type (
 		FCM             fcm.Config
 		APNS            apns.Config
 		SMS             sms.Config
+		WS		websocket.Config
 		Cluster         ClusterConfig
 	}
 )
@@ -198,7 +200,7 @@ var (
 				Envar("GUBLE_NODE_REMOTES")),
 		},
 		SMS: sms.Config{
-			Enabled: kingpin.Flag("sms", "Enable the  SMS  gateway)").
+			Enabled: kingpin.Flag("sms", "Enable the SMS gateway").
 				Envar("GUBLE_SMS").
 				Bool(),
 			APIKey: kingpin.Flag("sms-api-key", "The Nexmo API Key for Sending sms").
@@ -211,12 +213,20 @@ var (
 				Envar("GUBLE_SMS_TOPIC").
 				Default(sms.SMSDefaultTopic).
 				String(),
-
 			Workers: kingpin.Flag("sms-workers", "The number of workers handling traffic with Nexmo sms endpoint(default: number of CPUs)").
 				Default(strconv.Itoa(runtime.NumCPU())).
 				Envar("GUBLE_SMS_WORKERS").
 				Int(),
 			IntervalMetrics: &defaultSMSMetrics,
+		},
+		WS: websocket.Config{
+			Enabled: kingpin.Flag("ws", "Enable the websocket module").
+				Envar("GUBLE_WS").
+				Bool(),
+			Prefix: kingpin.Flag("ws-prefix", "The Websocket prefix").
+				Envar("GUBLE_WS_PREFIX").
+				Default("/stream/").
+				String(),
 		},
 	}
 )
