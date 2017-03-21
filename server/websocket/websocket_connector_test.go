@@ -1,11 +1,10 @@
 package websocket
 
 import (
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/auth"
-	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/server/store"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/router"
+	"github.com/cosminrentea/gobbler/server/store"
+	"github.com/cosminrentea/gobbler/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -54,7 +53,7 @@ func Test_WebSocket_SubscribeAndUnsubscribe(t *testing.T) {
 		Send([]byte("#" + protocol.SUCCESS_CANCELED + " /foo")).
 		Do(doneGroup)
 
-	websocket := runNewWebSocket(wsconn, routerMock, messageStore, nil)
+	websocket := runNewWebSocket(wsconn, routerMock, messageStore)
 	wg.Wait()
 
 	a.Equal(1, len(websocket.receivers))
@@ -71,7 +70,7 @@ func Test_SendMessage(t *testing.T) {
 	routerMock.EXPECT().HandleMessage(messageMatcher{path: "/path", message: "Hello, this is a test", header: `{"key": "value"}`})
 	wsconn.EXPECT().Send([]byte("#send"))
 
-	runNewWebSocket(wsconn, routerMock, messageStore, nil)
+	runNewWebSocket(wsconn, routerMock, messageStore)
 }
 
 func Test_AnIncomingMessageIsDelivered(t *testing.T) {
@@ -80,44 +79,11 @@ func Test_AnIncomingMessageIsDelivered(t *testing.T) {
 
 	wsconn, routerMock, messageStore := createDefaultMocks([]string{})
 
-	wsconn.EXPECT().Send(aTestMessage.Bytes())
+	wsconn.EXPECT().Send(aTestMessage.Encode())
 
-	handler := runNewWebSocket(wsconn, routerMock, messageStore, nil)
+	handler := runNewWebSocket(wsconn, routerMock, messageStore)
 
-	handler.sendChannel <- aTestMessage.Bytes()
-	time.Sleep(time.Millisecond * 2)
-}
-
-func Test_AnIncomingMessageIsNotAllowed(t *testing.T) {
-	ctrl, finish := testutil.NewMockCtrl(t)
-	defer finish()
-
-	wsconn, routerMock, _ := createDefaultMocks([]string{})
-
-	tam := NewMockAccessManager(ctrl)
-	tam.EXPECT().IsAllowed(auth.READ, "testuser", protocol.Path("/foo")).Return(false)
-	handler := NewWebSocket(
-		testWSHandler(routerMock, tam),
-		wsconn,
-		"testuser",
-	)
-	go func() {
-		handler.Start()
-	}()
-	time.Sleep(time.Millisecond * 2)
-
-	handler.sendChannel <- aTestMessage.Bytes()
-	time.Sleep(time.Millisecond * 2)
-	//nothing shall have been sent
-
-	//now allow
-	tam.EXPECT().IsAllowed(auth.READ, "testuser", protocol.Path("/foo")).Return(true)
-
-	wsconn.EXPECT().Send(aTestMessage.Bytes())
-
-	time.Sleep(time.Millisecond * 2)
-
-	handler.sendChannel <- aTestMessage.Bytes()
+	handler.sendChannel <- aTestMessage.Encode()
 	time.Sleep(time.Millisecond * 2)
 }
 
@@ -147,7 +113,7 @@ func Test_BadCommands(t *testing.T) {
 		return nil
 	}).AnyTimes()
 
-	runNewWebSocket(wsconn, routerMock, messageStore, nil)
+	runNewWebSocket(wsconn, routerMock, messageStore)
 
 	wg.Wait()
 	assert.Equal(t, len(badRequests), counter, "expected number of bad requests does not match")
@@ -160,27 +126,21 @@ func TestExtractUserId(t *testing.T) {
 }
 
 func testWSHandler(
-	routerMock *MockRouter,
-	accessManager auth.AccessManager) *WSHandler {
+	routerMock *MockRouter) *WSHandler {
 
 	return &WSHandler{
-		router:        routerMock,
-		prefix:        "/prefix",
-		accessManager: accessManager,
+		router: routerMock,
+		prefix: "/prefix",
 	}
 }
 
 func runNewWebSocket(
 	wsconn *MockWSConnection,
 	routerMock *MockRouter,
-	messageStore store.MessageStore,
-	accessManager auth.AccessManager) *WebSocket {
+	messageStore store.MessageStore) *WebSocket {
 
-	if accessManager == nil {
-		accessManager = auth.NewAllowAllAccessManager(true)
-	}
 	websocket := NewWebSocket(
-		testWSHandler(routerMock, accessManager),
+		testWSHandler(routerMock),
 		wsconn,
 		"testuser",
 	)

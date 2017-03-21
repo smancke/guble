@@ -1,12 +1,13 @@
 package server
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/testutil"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_Cluster_Subscribe_To_Random_Node(t *testing.T) {
@@ -109,12 +110,12 @@ WAIT:
 				"path":              incomingMessage.Path,
 				"incomingMsgUserId": incomingMessage.UserID,
 				"headerJson":        incomingMessage.HeaderJSON,
-				"body":              incomingMessage.BodyAsString(),
+				"body":              string(incomingMessage.Body),
 				"numReceived":       numReceived,
 			}).Info("Client2 received a message")
 
 			a.Equal(protocol.Path("/testTopic/m"), incomingMessage.Path)
-			a.Equal("body", incomingMessage.BodyAsString())
+			a.Equal("body", string(incomingMessage.Body))
 			a.True(incomingMessage.ID > 0)
 			idReceived[incomingMessage.ID] = true
 

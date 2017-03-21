@@ -9,8 +9,8 @@ import (
 	"syscall"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/protocol"
+	"github.com/cosminrentea/gobbler/client"
+	"github.com/cosminrentea/gobbler/protocol"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -71,9 +71,9 @@ func readLoop(client client.Client) {
 		select {
 		case incomingMessage := <-client.Messages():
 			if *verbose {
-				fmt.Println(string(incomingMessage.Bytes()))
+				fmt.Println(string(incomingMessage.Encode()))
 			} else {
-				fmt.Printf("%v: %v\n", incomingMessage.UserID, incomingMessage.BodyAsString())
+				fmt.Printf("%v: %v\n", incomingMessage.UserID, string(incomingMessage.Body))
 			}
 		case e := <-client.Errors():
 			fmt.Println("ERROR: " + string(e.Bytes()))

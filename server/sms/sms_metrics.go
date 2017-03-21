@@ -1,8 +1,9 @@
 package sms
 
 import (
-	"github.com/smancke/guble/server/metrics"
 	"time"
+
+	"github.com/cosminrentea/gobbler/server/metrics"
 )
 
 var (
@@ -11,6 +12,7 @@ var (
 	mTotalSendErrors             = ns.NewInt("total_sent_message_errors")
 	mTotalResponseErrors         = ns.NewInt("total_response_errors")
 	mTotalResponseInternalErrors = ns.NewInt("total_response_internal_errors")
+	mTotalExpiredMessages        = ns.NewInt("total_expires_messages")
 	mMinute                      = ns.NewMap("minute")
 	mHour                        = ns.NewMap("hour")
 	mDay                         = ns.NewMap("day")

@@ -5,12 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/auth"
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/server/store"
-	"github.com/smancke/guble/server/store/dummystore"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/kvstore"
+	"github.com/cosminrentea/gobbler/server/store"
+	"github.com/cosminrentea/gobbler/server/store/dummystore"
+	"github.com/cosminrentea/gobbler/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -46,7 +45,7 @@ func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a Router
-	router, _, _, _ := aStartedRouter()
+	router, _, _ := aStartedRouter()
 
 	// when i add two routes in the same path
 	routeBlah1, _ := router.Subscribe(NewRoute(
@@ -94,102 +93,11 @@ func TestRouter_AddAndRemoveRoutes(t *testing.T) {
 	a.Nil(router.routes[protocol.Path("/foo")])
 }
 
-func TestRouter_SubscribeNotAllowed(t *testing.T) {
-	ctrl, finish := testutil.NewMockCtrl(t)
-	defer finish()
-	a := assert.New(t)
-
-	am := NewMockAccessManager(ctrl)
-	msMock := NewMockMessageStore(ctrl)
-	kvsMock := NewMockKVStore(ctrl)
-
-	am.EXPECT().IsAllowed(auth.READ, "user01", protocol.Path("/blah")).Return(false)
-
-	router := New(am, msMock, kvsMock, nil).(*router)
-	router.Start()
-
-	_, e := router.Subscribe(NewRoute(
-		RouteConfig{
-			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
-			Path:        protocol.Path("/blah"),
-			ChannelSize: chanSize,
-		},
-	))
-
-	// default TestAccessManager denies all
-	a.NotNil(e)
-
-	// now add permissions
-	am.EXPECT().IsAllowed(auth.READ, "user01", protocol.Path("/blah")).Return(true)
-
-	// and user shall be allowed to subscribe
-	_, e = router.Subscribe(NewRoute(
-		RouteConfig{
-			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},
-			Path:        protocol.Path("/blah"),
-			ChannelSize: chanSize,
-		},
-	))
-
-	a.Nil(e)
-}
-
-func TestRouter_HandleMessageNotAllowed(t *testing.T) {
-	ctrl, finish := testutil.NewMockCtrl(t)
-	defer finish()
-	a := assert.New(t)
-
-	amMock := NewMockAccessManager(ctrl)
-	msMock := NewMockMessageStore(ctrl)
-	kvsMock := NewMockKVStore(ctrl)
-
-	// Given a Router with route
-	router, r := aRouterRoute(chanSize)
-	router.accessManager = amMock
-	router.messageStore = msMock
-	router.kvStore = kvsMock
-
-	amMock.EXPECT().IsAllowed(auth.WRITE, r.Get("user_id"), r.Path).Return(false)
-
-	// when i send a message to the route
-	err := router.HandleMessage(&protocol.Message{
-		Path:   r.Path,
-		Body:   aTestByteMessage,
-		UserID: r.Get("user_id"),
-	})
-
-	// an error shall be returned
-	a.Error(err)
-
-	// and when permission is granted
-	id, ts := uint64(2), time.Now().Unix()
-
-	amMock.EXPECT().IsAllowed(auth.WRITE, r.Get("user_id"), r.Path).Return(true)
-	msMock.EXPECT().
-		StoreMessage(gomock.Any(), gomock.Any()).
-		Do(func(m *protocol.Message, nodeID uint8) (int, error) {
-			m.ID = id
-			m.Time = ts
-			m.NodeID = nodeID
-			return len(m.Bytes()), nil
-		})
-
-	// sending message
-	err = router.HandleMessage(&protocol.Message{
-		Path:   r.Path,
-		Body:   aTestByteMessage,
-		UserID: r.Get("user_id"),
-	})
-
-	// shall give no error
-	a.NoError(err)
-}
-
 func TestRouter_ReplacingOfRoutesMatchingAppID(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a Router with a route
-	router, _, _, _ := aStartedRouter()
+	router, _, _ := aStartedRouter()
 
 	matcherFunc := func(route, other RouteConfig, keys ...string) bool {
 		return route.Path == other.Path && route.Get("application_id") == other.Get("application_id")
@@ -234,7 +142,7 @@ func TestRouter_SimpleMessageSending(t *testing.T) {
 			m.ID = id
 			m.Time = ts
 			m.NodeID = nodeID
-			return len(m.Bytes()), nil
+			return len(m.Encode()), nil
 		})
 
 	// when i send a message to the route
@@ -250,7 +158,7 @@ func TestRouter_RoutingWithSubTopics(t *testing.T) {
 	a := assert.New(t)
 
 	// Given a Router with route
-	router, _, _, _ := aStartedRouter()
+	router, _, _ := aStartedRouter()
 
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
@@ -316,7 +224,7 @@ func TestRoute_IsRemovedIfChannelIsFull(t *testing.T) {
 
 	// Given a Router with route
 	router, r := aRouterRoute(chanSize)
-	r.timeout = 5 * time.Millisecond
+	r.Timeout = 5 * time.Millisecond
 
 	msMock := NewMockMessageStore(ctrl)
 	router.messageStore = msMock
@@ -388,7 +296,7 @@ func TestRouter_CleanShutdown(t *testing.T) {
 		}).
 		AnyTimes()
 
-	router, _, _, _ := aStartedRouter()
+	router, _, _ := aStartedRouter()
 	router.messageStore = msMock
 
 	route, err := router.Subscribe(NewRoute(
@@ -454,38 +362,28 @@ func TestRouter_Check(t *testing.T) {
 	defer finish()
 	a := assert.New(t)
 
-	amMock := NewMockAccessManager(ctrl)
 	msMock := NewMockMessageStore(ctrl)
 	kvsMock := NewMockKVStore(ctrl)
 	msCheckerMock := newMSChecker()
 	kvsCheckerMock := newKVSChecker()
 
 	// Given a Multiplexer with route
-	router, _, _, _ := aStartedRouter()
+	router, _, _ := aStartedRouter()
 
 	// Test 0: Router is healthy by default
 	a.Nil(router.Check())
 
-	// Test 1a: Given accessManager is nil, then router's Check returns error
-	router.accessManager = nil
-	router.messageStore = msMock
-	router.kvStore = kvsMock
-	a.NotNil(router.Check())
-
 	// Test 1b: Given messageStore is nil, then router's Check returns error
-	router.accessManager = amMock
 	router.messageStore = nil
 	router.kvStore = kvsMock
 	a.NotNil(router.Check())
 
 	// Test 1c: Given kvStore is nil, then router's Check return error
-	router.accessManager = amMock
 	router.messageStore = msMock
 	router.kvStore = nil
 	a.NotNil(router.Check())
 
 	// Test 2: Given mocked store dependencies, both healthy
-	router.accessManager = amMock
 	router.messageStore = msCheckerMock
 	router.kvStore = kvsCheckerMock
 
@@ -510,21 +408,20 @@ func TestRouter_Check(t *testing.T) {
 
 func TestPanicOnInternalDependencies(t *testing.T) {
 	defer testutil.ExpectPanic(t)
-	router := New(nil, nil, nil, nil).(*router)
+	router := New(nil, nil, nil).(*router)
 	router.panicIfInternalDependenciesAreNil()
 }
 
-func aStartedRouter() (*router, auth.AccessManager, store.MessageStore, kvstore.KVStore) {
-	am := auth.NewAllowAllAccessManager(true)
+func aStartedRouter() (*router, store.MessageStore, kvstore.KVStore) {
 	kvs := kvstore.NewMemoryKVStore()
 	ms := dummystore.New(kvs)
-	router := New(am, ms, kvs, nil).(*router)
+	router := New(ms, kvs, nil).(*router)
 	router.Start()
-	return router, am, ms, kvs
+	return router, ms, kvs
 }
 
 func aRouterRoute(unused int) (*router, *Route) {
-	router, _, _, _ := aStartedRouter()
+	router, _, _ := aStartedRouter()
 	route, _ := router.Subscribe(NewRoute(
 		RouteConfig{
 			RouteParams: RouteParams{"application_id": "appid01", "user_id": "user01"},

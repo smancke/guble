@@ -3,23 +3,22 @@ package server
 import (
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/smancke/guble/logformatter"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/apns"
-	"github.com/smancke/guble/server/auth"
-	"github.com/smancke/guble/server/cluster"
-	"github.com/smancke/guble/server/fcm"
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/server/metrics"
-	"github.com/smancke/guble/server/rest"
-	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/server/service"
-	"github.com/smancke/guble/server/sms"
-	"github.com/smancke/guble/server/store"
-	"github.com/smancke/guble/server/store/dummystore"
-	"github.com/smancke/guble/server/store/filestore"
-	"github.com/smancke/guble/server/webserver"
-	"github.com/smancke/guble/server/websocket"
+	"github.com/cosminrentea/gobbler/logformatter"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/apns"
+	"github.com/cosminrentea/gobbler/server/cluster"
+	"github.com/cosminrentea/gobbler/server/fcm"
+	"github.com/cosminrentea/gobbler/server/kvstore"
+	"github.com/cosminrentea/gobbler/server/metrics"
+	"github.com/cosminrentea/gobbler/server/rest"
+	"github.com/cosminrentea/gobbler/server/router"
+	"github.com/cosminrentea/gobbler/server/service"
+	"github.com/cosminrentea/gobbler/server/sms"
+	"github.com/cosminrentea/gobbler/server/store"
+	"github.com/cosminrentea/gobbler/server/store/dummystore"
+	"github.com/cosminrentea/gobbler/server/store/filestore"
+	"github.com/cosminrentea/gobbler/server/webserver"
+	"github.com/cosminrentea/gobbler/server/websocket"
 
 	"fmt"
 	"net"
@@ -57,12 +56,6 @@ var ValidateStoragePath = func() error {
 		os.Remove(testfile)
 	}
 	return nil
-}
-
-// CreateAccessManager is a func which returns a auth.AccessManager implementation
-// (currently: AllowAllAccessManager).
-var CreateAccessManager = func() auth.AccessManager {
-	return auth.NewAllowAllAccessManager(true)
 }
 
 // CreateKVStore is a func which returns a kvstore.KVStore implementation
@@ -116,16 +109,17 @@ var CreateMessageStore = func() store.MessageStore {
 // CreateModules is a func which returns a slice of modules which should be used by the service
 // (currently, based on guble configuration);
 // see package `service` for terminological details.
-var CreateModules = func(router router.Router) []interface{} {
-	var modules []interface{}
-
-	if wsHandler, err := websocket.NewWSHandler(router, "/stream/"); err != nil {
-		logger.WithError(err).Error("Error loading WSHandler module")
-	} else {
-		modules = append(modules, wsHandler)
-	}
+var CreateModules = func(router router.Router) (modules []interface{}) {
 
 	modules = append(modules, rest.NewRestMessageAPI(router, "/api/"))
+
+	if *Config.WS.Enabled {
+		if wsHandler, err := websocket.NewWSHandler(router, *Config.WS.Prefix); err != nil {
+			logger.WithError(err).Error("Error loading WSHandler module")
+		} else {
+			modules = append(modules, wsHandler)
+		}
+	}
 
 	if *Config.FCM.Enabled {
 		logger.Info("Firebase Cloud Messaging: enabled")
@@ -196,7 +190,7 @@ var CreateModules = func(router router.Router) []interface{} {
 		logger.Info("SMS: disabled")
 	}
 
-	return modules
+	return
 }
 
 // Main is the entry-point of the guble server.
@@ -254,7 +248,6 @@ func Main() {
 func StartService() *service.Service {
 	//TODO StartService could return an error in case it fails to start
 
-	accessManager := CreateAccessManager()
 	messageStore := CreateMessageStore()
 	kvStore := CreateKVStore()
 
@@ -276,12 +269,13 @@ func StartService() *service.Service {
 		logger.Info("Starting in standalone-mode")
 	}
 
-	r := router.New(accessManager, messageStore, kvStore, cl)
+	r := router.New(messageStore, kvStore, cl)
 	websrv := webserver.New(*Config.HttpListen)
 
 	srv := service.New(r, websrv).
 		HealthEndpoint(*Config.HealthEndpoint).
-		MetricsEndpoint(*Config.MetricsEndpoint)
+		MetricsEndpoint(*Config.MetricsEndpoint).
+		PrometheusEndpoint(*Config.PrometheusEndpoint)
 
 	srv.RegisterModules(0, 6, kvStore, messageStore)
 	srv.RegisterModules(4, 3, CreateModules(r)...)

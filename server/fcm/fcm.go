@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/Bogh/gcm"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/server/metrics"
-	"github.com/smancke/guble/server/router"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/connector"
+	"github.com/cosminrentea/gobbler/server/metrics"
+	"github.com/cosminrentea/gobbler/server/router"
 	"time"
 )
 
@@ -87,6 +87,7 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 	if err != nil && !isValidResponseError(err) {
 		logger.WithField("error", err.Error()).Error("Error sending message to FCM")
 		mTotalSendErrors.Add(1)
+		pSendErrors.Inc()
 		if *f.IntervalMetrics && metadata != nil {
 			addToLatenciesAndCountsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, metadata.Latency)
 		}
@@ -98,6 +99,7 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 	response, ok := responseIface.(*gcm.Response)
 	if !ok {
 		mTotalResponseErrors.Add(1)
+		pResponseErrors.Inc()
 		return fmt.Errorf("Invalid FCM Response")
 	}
 
@@ -110,6 +112,7 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 	}
 	if response.Ok() {
 		mTotalSentMessages.Add(1)
+		pSent.Inc()
 		if *f.IntervalMetrics && metadata != nil {
 			addToLatenciesAndCountsMaps(currentTotalMessagesLatenciesKey, currentTotalMessagesKey, metadata.Latency)
 		}
@@ -123,6 +126,7 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 		logger.Debug("Removing not registered FCM subscription")
 		f.Manager().Remove(subscriber)
 		mTotalResponseNotRegisteredErrors.Add(1)
+		pResponseNotRegisteredErrors.Inc()
 		return response.Error
 	case "InvalidRegistration":
 		logger.WithField("jsonError", errText).Error("InvalidRegistration of FCM subscription")
@@ -132,10 +136,12 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 
 	if response.CanonicalIDs != 0 {
 		mTotalReplacedCanonicalErrors.Add(1)
+		pResponseReplacedCanonicalErrors.Inc()
 		// we only send to one receiver, so we know that we can replace the old id with the first registration id (=canonical id)
 		return f.replaceCanonical(request.Subscriber(), response.Results[0].RegistrationID)
 	}
 	mTotalResponseOtherErrors.Add(1)
+	pResponseOtherErrors.Inc()
 	return nil
 }
 

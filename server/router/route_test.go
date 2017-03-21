@@ -7,19 +7,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/kvstore"
+	"github.com/cosminrentea/gobbler/server/store"
+	"github.com/cosminrentea/gobbler/testutil"
 	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/auth"
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/server/store"
-	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
 	dummyPath          = protocol.Path("/dummy")
 	dummyMessageWithID = &protocol.Message{ID: 1, Path: dummyPath, Body: []byte("dummy body")}
-	dummyMessageBytes  = `/dummy,MESSAGE_ID,user01,phone01,{},1420110000,1
+	dummyMessageBytes  = `/dummy,MESSAGE_ID,user01,phone01,{},,1420110000,1
 {"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}
 Hello World`
 	chanSize  = 10
@@ -86,7 +85,7 @@ func TestRouteDeliver_QueueSize(t *testing.T) {
 	a := assert.New(t)
 	// create a route with a queue size
 	r := testRoute()
-	r.queueSize = queueSize
+	r.QueueSize = queueSize
 
 	// fill the channel buffer and the queue
 	for i := 0; i < chanSize+queueSize; i++ {
@@ -116,8 +115,8 @@ func TestRouteDeliver_WithTimeout(t *testing.T) {
 
 	// create a route with timeout and infinite queue size
 	r := testRoute()
-	r.queueSize = -1 // infinite queue size
-	r.timeout = 10 * time.Millisecond
+	r.QueueSize = -1 // infinite queue size
+	r.Timeout = 10 * time.Millisecond
 
 	// fill the channel buffer
 	for i := 0; i < chanSize; i++ {
@@ -407,7 +406,7 @@ func TestRoute_Provide_MultipleFetch(t *testing.T) {
 	memoryKV := kvstore.NewMemoryKVStore()
 
 	msMock := NewMockMessageStore(ctrl)
-	router := New(auth.AllowAllAccessManager(true), msMock, memoryKV, nil)
+	router := New(msMock, memoryKV, nil)
 
 	if startable, ok := router.(startable); ok {
 		startable.Start()

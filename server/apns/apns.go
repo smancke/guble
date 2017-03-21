@@ -3,10 +3,10 @@ package apns
 import (
 	"errors"
 	"fmt"
+	"github.com/cosminrentea/gobbler/server/connector"
+	"github.com/cosminrentea/gobbler/server/metrics"
+	"github.com/cosminrentea/gobbler/server/router"
 	"github.com/sideshow/apns2"
-	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/server/metrics"
-	"github.com/smancke/guble/server/router"
 	"time"
 )
 
@@ -98,6 +98,7 @@ func (a *apns) HandleResponse(request connector.Request, responseIface interface
 	if errSend != nil {
 		logger.WithField("error", errSend.Error()).WithField("error_type", errSend).Error("error when trying to send APNS notification")
 		mTotalSendErrors.Add(1)
+		pSendErrors.Inc()
 		if *a.IntervalMetrics && metadata != nil {
 			addToLatenciesAndCountsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, metadata.Latency)
 		}
@@ -106,6 +107,7 @@ func (a *apns) HandleResponse(request connector.Request, responseIface interface
 	r, ok := responseIface.(*apns2.Response)
 	if !ok {
 		mTotalResponseErrors.Add(1)
+		pResponseErrors.Inc()
 		return fmt.Errorf("Response could not be converted to an APNS Response")
 	}
 	messageID := request.Message().ID
@@ -114,11 +116,13 @@ func (a *apns) HandleResponse(request connector.Request, responseIface interface
 	if err := a.Manager().Update(subscriber); err != nil {
 		logger.WithField("error", err.Error()).Error("Manager could not update subscription")
 		mTotalResponseInternalErrors.Add(1)
+		pResponseInternalErrors.Inc()
 		return err
 	}
 	if r.Sent() {
 		logger.WithField("id", r.ApnsID).Info("APNS notification was successfully sent")
 		mTotalSentMessages.Add(1)
+		pSentMessages.Inc()
 		if *a.IntervalMetrics && metadata != nil {
 			addToLatenciesAndCountsMaps(currentTotalMessagesLatenciesKey, currentTotalMessagesKey, metadata.Latency)
 		}
@@ -135,6 +139,7 @@ func (a *apns) HandleResponse(request connector.Request, responseIface interface
 
 		logger.WithField("id", r.ApnsID).Info("trying to remove subscriber because a relevant error was received from APNS")
 		mTotalResponseRegistrationErrors.Add(1)
+		pResponseRegistrationErrors.Inc()
 		err := a.Manager().Remove(subscriber)
 		if err != nil {
 			logger.WithField("id", r.ApnsID).Error("could not remove subscriber")
@@ -142,6 +147,7 @@ func (a *apns) HandleResponse(request connector.Request, responseIface interface
 	default:
 		logger.Error("handling other APNS errors")
 		mTotalResponseOtherErrors.Add(1)
+		pResponseOtherErrors.Inc()
 	}
 	return nil
 }

@@ -39,8 +39,17 @@ func TestParsingOfEnvironmentVariables(t *testing.T) {
 	os.Setenv("GUBLE_METRICS_ENDPOINT", "metrics_endpoint")
 	defer os.Unsetenv("GUBLE_METRICS_ENDPOINT")
 
+	os.Setenv("GUBLE_PROMETHEUS_ENDPOINT", "prometheus_endpoint")
+	defer os.Unsetenv("GUBLE_PROMETHEUS_ENDPOINT")
+
 	os.Setenv("GUBLE_MS", "ms-backend")
 	defer os.Unsetenv("GUBLE_MS")
+
+	os.Setenv("GUBLE_WS", "true")
+	defer os.Unsetenv("GUBLE_WS")
+
+	os.Setenv("GUBLE_WS_PREFIX", "/wstream/")
+	defer os.Unsetenv("GUBLE_WS_PREFIX")
 
 	os.Setenv("GUBLE_FCM", "true")
 	defer os.Unsetenv("GUBLE_FCM")
@@ -115,6 +124,9 @@ func TestParsingArgs(t *testing.T) {
 		"--ms", "ms-backend",
 		"--health-endpoint", "health_endpoint",
 		"--metrics-endpoint", "metrics_endpoint",
+		"--prometheus-endpoint", "prometheus_endpoint",
+		"--ws",
+		"--ws-prefix", "/wstream/",
 		"--fcm",
 		"--fcm-api-key", "fcm-api-key",
 		"--fcm-workers", "3",
@@ -148,6 +160,10 @@ func assertArguments(a *assert.Assertions) {
 	a.Equal("health_endpoint", *Config.HealthEndpoint)
 
 	a.Equal("metrics_endpoint", *Config.MetricsEndpoint)
+	a.Equal("prometheus_endpoint", *Config.PrometheusEndpoint)
+
+	a.Equal(true, *Config.WS.Enabled)
+	a.Equal("/wstream/", *Config.WS.Prefix)
 
 	a.Equal(true, *Config.FCM.Enabled)
 	a.Equal("fcm-api-key", *Config.FCM.APIKey)

@@ -1,9 +1,9 @@
 package server
 
 import (
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/service"
+	"github.com/cosminrentea/gobbler/client"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/service"
 
 	"github.com/stretchr/testify/assert"
 
@@ -16,13 +16,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smancke/guble/restclient"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/restclient"
+	"github.com/cosminrentea/gobbler/testutil"
 )
 
 func initServerAndClients(t *testing.T) (*service.Service, client.Client, client.Client, func()) {
 	*Config.HttpListen = "localhost:0"
 	*Config.KVS = "memory"
+	*Config.WS.Enabled = true
+	*Config.WS.Prefix = "/stream/"
 	s := StartService()
 
 	time.Sleep(time.Millisecond * 100)
@@ -82,8 +84,7 @@ type Subscriber struct {
 }
 
 func TestSubscribersIntegration(t *testing.T) {
-	defer testutil.SkipIfShort(t)
-	defer testutil.SkipIfDisabled(t)
+	testutil.SkipIfDisabled(t)
 
 	defer testutil.ResetDefaultRegistryHealthCheck()
 	defer testutil.EnableDebugForMethod()()

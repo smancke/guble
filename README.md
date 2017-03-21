@@ -1,24 +1,24 @@
-# Guble Messaging Server
+# Gobbler Messaging Server
 
-Guble is a simple user-facing messaging and data replication server written in Go.
+Gobbler is a simple user-facing messaging and data replication server written in Go.
 
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/f3b9a351201b416db4fe6df8faea363b)](https://www.codacy.com/app/cosminrentea/guble?utm_source=github.com&utm_medium=referral&utm_content=smancke/guble&utm_campaign=badger)
-[![Release](https://img.shields.io/github/release/smancke/guble.svg)](https://github.com/smancke/guble/releases/latest)
-[![Docker](https://img.shields.io/docker/pulls/smancke/guble.svg)](https://hub.docker.com/r/smancke/guble/)
-[![Build Status](https://api.travis-ci.org/smancke/guble.svg?branch=master)](https://travis-ci.org/smancke/guble)
-[![Go Report Card](https://goreportcard.com/badge/github.com/smancke/guble)](https://goreportcard.com/report/github.com/smancke/guble)
-[![codebeat badge](https://codebeat.co/badges/7f317892-0a7b-4e31-97f4-a530cf779889)](https://codebeat.co/projects/github-com-smancke-guble)
-[![Coverage Status](https://coveralls.io/repos/smancke/guble/badge.svg?branch=master&service=github)](https://coveralls.io/github/smancke/guble?branch=master)
-[![GoDoc](https://godoc.org/github.com/smancke/guble?status.svg)](https://godoc.org/github.com/smancke/guble)
+[![Release](https://img.shields.io/github/release/cosminrentea/gobbler.svg)](https://github.com/cosminrentea/gobbler/releases/latest)
+[![Docker](https://img.shields.io/docker/pulls/cosminrentea/gobbler.svg)](https://hub.docker.com/r/cosminrentea/gobbler/)
+[![Build Status](https://api.travis-ci.org/cosminrentea/gobbler.svg?branch=master)](https://travis-ci.org/cosminrentea/gobbler)
+[![Coverage Status](https://coveralls.io/repos/cosminrentea/gobbler/badge.svg?branch=master&service=github)](https://coveralls.io/github/cosminrentea/gobbler?branch=master)
+[![GoDoc](https://godoc.org/github.com/cosminrentea/gobbler?status.svg)](https://godoc.org/github.com/cosminrentea/gobbler)
+[![Go Report Card](https://goreportcard.com/badge/github.com/cosminrentea/gobbler)](https://goreportcard.com/report/github.com/cosminrentea/gobbler)
+[![codebeat](https://codebeat.co/badges/363f61b0-caf3-440d-bd55-af92bdca42e1)](https://codebeat.co/projects/github-com-cosminrentea-gobbler-master)
+[![Codacy](https://api.codacy.com/project/badge/Grade/91fa286a14ec460eb7f1fbb0d02e7888)](https://www.codacy.com/app/cosminrentea/gobbler?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=cosminrentea/gobbler&amp;utm_campaign=Badge_Grade)
 [![Awesome-Go](https://camo.githubusercontent.com/13c4e50d88df7178ae1882a203ed57b641674f94/68747470733a2f2f63646e2e7261776769742e636f6d2f73696e647265736f726875732f617765736f6d652f643733303566333864323966656437386661383536353265336136336531353464643865383832392f6d656469612f62616467652e737667)](https://awesome-go.com)
 
 # Overview
-Guble is in an early state (release 0.4). 
+Gobbler is in an early state (release 0.4). 
 It is already working well and is very useful, but the protocol, API and storage formats 
 may still change (until reaching 0.7). 
-If you intend to use guble, please get in contact with us.
+If you intend to use Gobbler, please get in contact with us.
 
-The goal of guble is to be a simple and fast message bus for user interaction and replication of data between multiple devices:
+The goal of Gobbler is to be a simple and fast message bus for user interaction and replication of data between multiple devices:
 * Very easy consumption of messages with web and mobile clients
 * Fast realtime messaging, as well as playback of messages from a persistent commit log
 * Reliable and scalable over multiple nodes
@@ -61,9 +61,9 @@ During the tests, the memory consumption of the server was around ~25 MB.
   - [Roadmap Release 0.5](#roadmap-release-05)
   - [Roadmap Release 0.6](#roadmap-release-06)
   - [Roadmap Release 0.7](#roadmap-release-07)
-- [Guble Docker Image](#guble-docker-image)
-  - [Start the Guble Server](#start-the-guble-server)
-  - [Connecting with the Guble Client](#connecting-with-the-guble-client)
+- [Gobbler Docker Image](#gobbler-docker-image)
+  - [Start the Gobbler Server](#start-the-gobbler-server)
+  - [Connecting with the Gobbler Client](#connecting-with-the-gobbler-client)
 - [Build and Run](#build-and-run)
   - [Build and Start the Server](#build-and-start-the-server)
     - [Configuration](#configuration)
@@ -83,10 +83,10 @@ During the tests, the memory consumption of the server was around ~25 MB.
 This is the current (and fast changing) roadmap and todo list:
 
 ## Roadmap Release 0.5
-* Replication across multiple servers (in a Guble cluster)
+* Replication across multiple servers (in a Gobbler cluster)
 * Acknowledgement of message delivery for connectors
 * Storing the sequence-Id of topics in KV store, if we turn off persistence
-* Filtering of messages in guble server (e.g. sent by the REST client) according to URL parameters: UserID, DeviceID, Connector name
+* Filtering of messages in gobbler server (e.g. sent by the REST client) according to URL parameters: UserID, DeviceID, Connector name
 * Updating README to show subscribe/unsubscribe/get/posting, health/metrics 
 
 ## Roadmap Release 0.6
@@ -102,64 +102,63 @@ This is the current (and fast changing) roadmap and todo list:
 ## Roadmap Release 0.7
 * HTTPS support in the service
 * Minimal example: chat application
-* Stable JavaScript client: https://github.com/smancke/guble-js
 * (TBD) Improved authentication and access-management
 * (TBD) Add Consul as KV Backend
 * (TBD) Index-based search of messages using [GoLucene](https://github.com/balzaczyy/golucene)
 
-# Guble Docker Image
+# Gobbler Docker Image
 We are providing Docker images of the server and client for your convenience.
 
-## Start the Guble Server
+## Start the Gobbler Server
 There is an automated Docker build for the master at the Docker Hub.
 To start the server with Docker simply type:
 ```
-docker run -p 8080:8080 smancke/guble
+docker run -p 8080:8080 cosminrentea/gobbler
 ```
 
 To see available configuration options:
 ```
-docker run smancke/guble --help
+docker run cosminrentea/gobbler --help
 ```
 
 All options can be supplied on the commandline or by a corresponding environment variable with the prefix `GUBLE_`.
-So to let guble be more verbose, you can either use:
+So to let gobbler be more verbose, you can either use:
 ```
-docker run smancke/guble --log=info
+docker run cosminrentea/gobbler --log=info
 ```
 or
 ```
-docker run -e GUBLE_LOG=info smancke/guble
+docker run -e GUBLE_LOG=info cosminrentea/gobbler
 ```
 
-The Docker image has a volume mount point at `/var/lib/guble`, so if you want to bind-mount the persistent storage from your host you should use:
+The Docker image has a volume mount point at `/var/lib/gobbler`, so if you want to bind-mount the persistent storage from your host you should use:
 ```
-docker run -p 8080:8080 -v /host/storage/path:/var/lib/guble smancke/guble
+docker run -p 8080:8080 -v /host/storage/path:/var/lib/gobbler cosminrentea/gobbler
 ```
 
-## Connecting with the Guble Client
-The Docker image includes the guble commandline client `guble-cli`.
-You can execute it within a running guble container and connect to the server:
+## Connecting with the Gobbler Client
+The Docker image includes the gobbler commandline client `gobbler-cli`.
+You can execute it within a running gobbler container and connect to the server:
 ```
-docker run -d --name guble smancke/guble
-docker exec -it guble /usr/local/bin/guble-cli
+docker run -d --name gobbler cosminrentea/gobbler
+docker exec -it gobbler /usr/local/bin/gobbler-cli
 ```
-Visit the [`guble-cli` documentation](https://github.com/smancke/guble/tree/master/guble-cli) for more details.
+Visit the [`guble-cli` documentation](https://github.com/cosminrentea/gobbler/tree/master/guble-cli) for more details.
 
 # Build and Run
-Since Go makes it very easy to build from source, you can compile guble using a single command.
+Since Go makes it very easy to build from source, you can compile gobbler using a single command.
 A prerequisite is having an installed Go environment and an empty directory:
 ```
 sudo apt-get install golang
-mkdir guble && cd guble
+mkdir gobbler && cd gobbler
 export GOPATH=`pwd`
 ```
 
 ## Build and Start the Server
-Build and start guble with the following commands (assuming that directory `/var/lib/guble` is already created with read-write rights for the current user):
+Build and start gobbler with the following commands (assuming that directory `/var/lib/gobbler` is already created with read-write rights for the current user):
 ```
-go get github.com/smancke/guble
-bin/guble --log=info
+go get github.com/cosminrentea/gobbler
+bin/gobbler --log=info
 ```
 
 ### Configuration
@@ -174,7 +173,7 @@ bin/guble --log=info
 |--metrics-endpoint|GUBLE_METRICS_ENDPOINT|resource/path/to/metricsendpoint|/admin/metrics|The metrics endpoint to be used by the HTTP server.Can be disabled by setting the value to ""|
 |--ms|GUBLE_MS|memory &#124; file|file|The message storage backend|
 |--profile|GUBLE_PROFILE|cpu &#124; mem &#124; block||The profiler to be used|
-|--storage-path|GUBLE_STORAGE_PATH|path/to/storage|/var/lib/guble|The path for storing messages and key-value data like subscriptions if defined.The path must exists!|
+|--storage-path|GUBLE_STORAGE_PATH|path/to/storage|/var/lib/gobbler|The path for storing messages and key-value data like subscriptions if defined.The path must exists!|
 
 
 #### APNS
@@ -217,22 +216,22 @@ bin/guble --log=info
 |--- |--- |--- |--- |--- |--- |
 |--pg-host|GUBLE_PG_HOST|hostname|localhost|The PostgreSQL hostname|
 |--pg-port|GUBLE_PG_PORT|port|5432|The PostgreSQL port|
-|--pg-user|GUBLE_PG_USER|user|guble|The PostgreSQL user|
-|--pg-password|GUBLE_PG_PASSWORD|password|guble|The PostgreSQL password|
-|--pg-dbname|GUBLE_PG_DBNAME|database|guble|The PostgreSQL database name|
+|--pg-user|GUBLE_PG_USER|user|gobbler|The PostgreSQL user|
+|--pg-password|GUBLE_PG_PASSWORD|password|gobbler|The PostgreSQL password|
+|--pg-dbname|GUBLE_PG_DBNAME|database|gobbler|The PostgreSQL database name|
 
 
 ## Run All Tests
 ```
-go get -t github.com/smancke/guble/...
-go test github.com/smancke/guble/...
+go get -t github.com/cosminrentea/gobbler/...
+go test github.com/cosminrentea/gobbler/...
 ```
 
 # Clients
 The following clients are available:
-* __Commandline Client__: https://github.com/smancke/guble/tree/master/guble-cli
-* __Go client library__: https://github.com/smancke/guble/tree/master/client
-* __JavaScript library__: (in early stage) https://github.com/smancke/guble-js
+* __Commandline Client__: https://github.com/cosminrentea/gobbler/tree/master/gobbler-cli
+* __Go client library__: https://github.com/cosminrentea/gobbler/tree/master/client
+* __JavaScript library__: (in early stage) https://github.com/cosminrentea/gobbler-js
 
 # Protocol Reference
 
@@ -247,11 +246,11 @@ URL parameters:
 * __messageId__: The PublisherMessageId
 
 ### Headers
-You can set fields in the header JSON of the message by providing the corresponding HTTP headers with the prefix `X-Guble-`.
+You can set fields in the header JSON of the message by providing the corresponding HTTP headers with the prefix `X-Gobbler-`.
 
 Curl example with the resulting message:
 ```
-curl -X POST -H "x-Guble-Key: Value" --data Hello 'http://127.0.0.1:8080/api/message/foo?userId=marvin&messageId=42'
+curl -X POST -H "x-Gobbler-Key: Value" --data Hello 'http://127.0.0.1:8080/api/message/foo?userId=marvin&messageId=42'
 ```
 Results in:
 ```
@@ -261,7 +260,7 @@ Hello
 ```
 
 ## WebSocket Protocol
-The communication with the guble server is done by ordinary WebSockets, using a binary encoding.
+The communication with the gobbler server is done by ordinary WebSockets, using a binary encoding.
 
 ### Message Format
 All payload messages sent from the server to the client are using the following format:

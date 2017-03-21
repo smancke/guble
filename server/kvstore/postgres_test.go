@@ -1,8 +1,11 @@
 package kvstore
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/cosminrentea/gobbler/testutil"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func BenchmarkPostgresKVStore_PutGet(b *testing.B) {
@@ -12,24 +15,28 @@ func BenchmarkPostgresKVStore_PutGet(b *testing.B) {
 }
 
 func TestPostgresKVStore_PutGetDelete(t *testing.T) {
+	testutil.SkipIfShort(t)
 	kvs := NewPostgresKVStore(aPostgresConfig())
 	kvs.Open()
 	CommonTestPutGetDelete(t, kvs, kvs)
 }
 
 func TestPostgresKVStore_Iterate(t *testing.T) {
+	testutil.SkipIfShort(t)
 	kvs := NewPostgresKVStore(aPostgresConfig())
 	kvs.Open()
 	CommonTestIterate(t, kvs, kvs)
 }
 
 func TestPostgresKVStore_IterateKeys(t *testing.T) {
+	testutil.SkipIfShort(t)
 	kvs := NewPostgresKVStore(aPostgresConfig())
 	kvs.Open()
 	CommonTestIterateKeys(t, kvs, kvs)
 }
 
 func TestPostgresKVStore_Check(t *testing.T) {
+	testutil.SkipIfShort(t)
 	a := assert.New(t)
 
 	kvs := NewPostgresKVStore(aPostgresConfig())
@@ -45,6 +52,7 @@ func TestPostgresKVStore_Check(t *testing.T) {
 }
 
 func TestPostgresKVStore_Open(t *testing.T) {
+	testutil.SkipIfShort(t)
 	kvs := NewPostgresKVStore(invalidPostgresConfig())
 	err := kvs.Open()
 	assert.NotNil(t, err)

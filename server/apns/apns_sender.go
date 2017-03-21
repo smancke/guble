@@ -2,9 +2,9 @@ package apns
 
 import (
 	"errors"
+	"github.com/cosminrentea/gobbler/server/connector"
 	"github.com/jpillora/backoff"
 	"github.com/sideshow/apns2"
-	"github.com/smancke/guble/server/connector"
 	"net"
 	"time"
 )
@@ -69,10 +69,12 @@ func (s sender) Send(request connector.Request) (interface{}, error) {
 		if closable, ok := s.client.(closable); ok {
 			logger.Warn("Close TLS and retry again")
 			mTotalSendRetryCloseTLS.Add(1)
+			pSendRetryCloseTLS.Inc()
 			closable.CloseTLS()
 			return push()
 		} else {
 			mTotalSendRetryUnrecoverable.Add(1)
+			pSendRetryUnrecoverable.Inc()
 			logger.Error("Cannot Close TLS. Unrecoverable state")
 		}
 	}
@@ -92,6 +94,7 @@ func (r *retryable) execute(op func() (interface{}, error)) (interface{}, error)
 		// retry on network errors
 		if _, ok := opError.(net.Error); ok {
 			mTotalSendNetworkErrors.Add(1)
+			pSendNetworkErrors.Inc()
 			if tryCounter >= r.maxTries {
 				return "", ErrRetryFailed
 			}

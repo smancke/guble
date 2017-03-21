@@ -1,6 +1,6 @@
 package store
 
-import "github.com/smancke/guble/protocol"
+import "github.com/cosminrentea/gobbler/protocol"
 
 // MessageStore is an interface for a persistence backend storing topics.
 type MessageStore interface {

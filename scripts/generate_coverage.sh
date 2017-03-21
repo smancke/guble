@@ -1,7 +1,7 @@
 #!/bin/bash -e
 # Requires local installation of: `github.com/wadey/gocovmerge`
 
-cd $GOPATH/src/github.com/smancke/guble
+cd $GOPATH/src/github.com/cosminrentea/gobbler
 
 rm -rf ./cov
 mkdir cov

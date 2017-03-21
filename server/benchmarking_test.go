@@ -10,9 +10,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/client"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/testutil"
 )
 
 type testgroup struct {
@@ -48,6 +48,8 @@ func TestThroughput(t *testing.T) {
 	*Config.KVS = "memory"
 	*Config.MS = "file"
 	*Config.StoragePath = dir
+	*Config.WS.Enabled = true
+	*Config.WS.Prefix = "/stream/"
 
 	service := StartService()
 
@@ -157,7 +159,7 @@ func (tg *testgroup) Start() {
 		select {
 		case msg := <-tg.consumer.Messages():
 			assert.Equal(tg.t, tg.topic, string(msg.Path))
-			if !assert.Equal(tg.t, body, msg.BodyAsString()) {
+			if !assert.Equal(tg.t, body, string(msg.Body)) {
 				tg.t.FailNow()
 				tg.done <- false
 			}

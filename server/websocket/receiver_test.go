@@ -1,10 +1,10 @@
 package websocket
 
 import (
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/server/store"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/router"
+	"github.com/cosminrentea/gobbler/server/store"
+	"github.com/cosminrentea/gobbler/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -133,8 +133,8 @@ func Test_Receiver_Fetch_Subscribe_Fetch_Subscribe(t *testing.T) {
 		"fetch_first2-a",
 		"#"+protocol.SUCCESS_FETCH_END+" /foo",
 		"#"+protocol.SUCCESS_SUBSCRIBED_TO+" /foo",
-		",4,,,,1405544146,0\n\nrouter-a",
-		",5,,,,1405544146,0\n\nrouter-b",
+		",4,,,,,1405544146,0\n\nrouter-a",
+		",5,,,,,1405544146,0\n\nrouter-b",
 		"#"+protocol.SUCCESS_FETCH_START+" /foo 1",
 		"fetch_after-a",
 		"#"+protocol.SUCCESS_FETCH_END+" /foo",

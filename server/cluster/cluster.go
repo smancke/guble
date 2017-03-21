@@ -3,8 +3,8 @@ package cluster
 import (
 	"io/ioutil"
 
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/store"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/store"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/hashicorp/memberlist"
@@ -169,7 +169,7 @@ func (cluster *Cluster) BroadcastMessage(pMessage *protocol.Message) error {
 	cMessage := &message{
 		NodeID: cluster.Config.ID,
 		Type:   mtGubleMessage,
-		Body:   pMessage.Bytes(),
+		Body:   pMessage.Encode(),
 	}
 	return cluster.broadcastClusterMessage(cMessage)
 }
