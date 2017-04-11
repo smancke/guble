@@ -1,9 +1,6 @@
 package router
 
 import (
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/auth"
-
 	"errors"
 	"fmt"
 )
@@ -23,23 +20,6 @@ var (
 	// ErrQueueFull is returned when trying to `Deliver` a message in a full queued route
 	ErrQueueFull = errors.New("Route queue is full. Route is closed.")
 )
-
-// PermissionDeniedError is returned when AccessManager denies a user request for a topic
-type PermissionDeniedError struct {
-
-	// userId of request
-	UserID string
-
-	// accessType  requested(READ/WRITE)
-	AccessType auth.AccessType
-
-	// requested topic
-	Path protocol.Path
-}
-
-func (e *PermissionDeniedError) Error() string {
-	return fmt.Sprintf("Access Denied for user=[%s] on path=[%s] for Operation=[%s]", e.UserID, e.Path, e.AccessType)
-}
 
 // ModuleStoppingError is returned when the module is stopping
 type ModuleStoppingError struct {

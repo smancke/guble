@@ -1,11 +1,11 @@
 package service
 
 import (
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/server/store"
-	"github.com/smancke/guble/server/store/dummystore"
-	"github.com/smancke/guble/server/webserver"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/server/kvstore"
+	"github.com/cosminrentea/gobbler/server/store"
+	"github.com/cosminrentea/gobbler/server/store/dummystore"
+	"github.com/cosminrentea/gobbler/server/webserver"
+	"github.com/cosminrentea/gobbler/testutil"
 
 	"github.com/stretchr/testify/assert"
 
@@ -155,7 +155,34 @@ func TestMetricsEnabled(t *testing.T) {
 	url := fmt.Sprintf("http://%s/metrics_url", service.WebServer().GetAddr())
 	result, err := http.Get(url)
 
-	// then I get status 200 and JSON: {}
+	// then I get status 200 and a non-empty text
+	a.NoError(err)
+	body, err := ioutil.ReadAll(result.Body)
+	a.NoError(err)
+	a.True(len(body) > 0)
+}
+
+func TestPrometheusMetricsEnabled(t *testing.T) {
+	_, finish := testutil.NewMockCtrl(t)
+	defer finish()
+	defer testutil.ResetDefaultRegistryHealthCheck()
+	a := assert.New(t)
+
+	// given:
+	service, _, _, _ := aMockedServiceWithMockedRouterStandalone()
+	service = service.PrometheusEndpoint("/metrics_url")
+	a.Equal(2, len(service.ModulesSortedByStartOrder()))
+
+	// when starting the service
+	defer service.Stop()
+	service.Start()
+	time.Sleep(time.Millisecond * 10)
+
+	// and when I call the health URL
+	url := fmt.Sprintf("http://%s/metrics_url", service.WebServer().GetAddr())
+	result, err := http.Get(url)
+
+	// then I get status 200 and some non-empty text
 	a.NoError(err)
 	body, err := ioutil.ReadAll(result.Body)
 	a.NoError(err)

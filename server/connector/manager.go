@@ -3,9 +3,9 @@ package connector
 import (
 	"sync"
 
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/server/router"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/kvstore"
+	"github.com/cosminrentea/gobbler/server/router"
 )
 
 type Manager interface {

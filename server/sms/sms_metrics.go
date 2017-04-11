@@ -1,7 +1,7 @@
 package sms
 
 import (
-	"github.com/smancke/guble/server/metrics"
+	"github.com/cosminrentea/gobbler/server/metrics"
 	"time"
 )
 

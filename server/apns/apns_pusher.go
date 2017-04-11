@@ -118,7 +118,7 @@ func newApns2Client(certificate tls.Certificate) *apns2Client {
 	return c
 }
 
-// interface closable used used by apns_sender
+// interface closable used by apns_sender
 func (c *apns2Client) CloseTLS() {
 	c.mu.Lock()
 	defer c.mu.Unlock()

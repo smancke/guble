@@ -8,22 +8,19 @@ services:
 before_script:
   - psql -c 'create database guble;' -U postgres
 before_install:
-  - go get github.com/wadey/gocovmerge
-  - go get github.com/mattn/goveralls
-  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/wadey/gocovmerge github.com/mattn/goveralls golang.org/x/tools/cmd/cover
 script:
-  - GO_TEST_DISABLED=true go test -v ./...
+  - GO_TEST_DISABLED=true go test -v ./... && GO_TEST_DISABLED=true go test -v -tags cluster ./...
 after_success:
   - scripts/generate_coverage.sh
   - goveralls -coverprofile=full_cov.out -service=travis-ci
-  - if [ "$TRAVIS_BRANCH" == "master" ]; then
-      GOOS=linux go build -a --ldflags '-linkmode external -extldflags "-static"' . ;
-      GOOS=linux go build -a --ldflags '-linkmode external -extldflags "-static"' -o ./guble-cli/guble-cli ./guble-cli ;
-      docker build -t smancke/guble . ;
-      docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" ;
-      docker push smancke/guble ;
-    fi
-
+#  - if [ "$TRAVIS_BRANCH" == "master" ]; then
+#      GOOS=linux go build -a --ldflags '-linkmode external -extldflags "-static"' . ;
+#      GOOS=linux go build -a --ldflags '-linkmode external -extldflags "-static"' -o ./guble-cli/guble-cli ./guble-cli ;
+#    fi
+#    docker build -t cosminrentea/gobbler . ;
+#    docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" ;
+#    docker push cosminrentea/gobbler ;
 env:
   global:
   - secure: V9+UswYO6l0EuekA5YBviUdz0OcWfT3QsY1Bgoml8lmWP3/Rdq0fpxGh1hHUWt1pyAl3Aymw5Sc9DU/STmb5k6YjimS649Hu3jZ2AJfjLxh8ZA+vTgFiQc4mN4FqDAFhnPVB/aOSQhGyRlWalxikNy3nhcJrN+uWOpzRqzg0icNOdfTKpSH1cRJO0Ja34f4AEmLuNvGUAyZVpLuZJFL5mE9sJ1G1baqgFf/kTQ67jF+Ezg+1AY+NYaYwd5PUGFgIKf/qVT5Wqtrff26Yxzr/hECEBypAvNmCdLSoV/qyzZvzUTgYZTPmUnDks0uUEup9YzEQZ9XxwIQyHSXZ9D6h2vZxyr0TlZvBtdzWNiLHjBSISF8ZzOthI7NIi/e4YRYlqCF3apZuRo6o2fneHqzonza0OpJQdCKACXgycFe0ZTXk1o7SdT1d1JgeFckmL0kS8H2N4E/DaIAPq8zaC4bOlaYaUYt6vXNwEKK99q0X97gLJFdrBBY7lzKs9bbVa7b2Dhkh67PUt6WhoHUjLSN+9jTn+oda8VEKtXxyaWM6AsCRHgBiy0VaxuHbU2k1mpSCLdBfJGbrDITA4+nyPopv/oky4xHX1FGSMGFw73Ejafu9Xo0cpvIpVcNjeagUugQ5ThPQMSua9hxSZJx6alIUhptDUesiYHJAWUVPQi4N/3A=
