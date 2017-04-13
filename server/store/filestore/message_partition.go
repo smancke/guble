@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smancke/guble/server/store"
+	"github.com/cosminrentea/gobbler/server/store"
 
 	"io"
 

@@ -3,10 +3,11 @@ package service
 import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/health"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/smancke/guble/server/metrics"
-	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/server/webserver"
+	"github.com/cosminrentea/gobbler/server/metrics"
+	"github.com/cosminrentea/gobbler/server/router"
+	"github.com/cosminrentea/gobbler/server/webserver"
 
 	"github.com/hashicorp/go-multierror"
 	"net/http"
@@ -21,13 +22,14 @@ const (
 
 // Service is the main struct for controlling a guble server
 type Service struct {
-	webserver       *webserver.WebServer
-	router          router.Router
-	modules         []module
-	healthEndpoint  string
-	healthFrequency time.Duration
-	healthThreshold int
-	metricsEndpoint string
+	webserver          *webserver.WebServer
+	router             router.Router
+	modules            []module
+	healthEndpoint     string
+	healthFrequency    time.Duration
+	healthThreshold    int
+	metricsEndpoint    string
+	prometheusEndpoint string
 }
 
 // New creates a new Service, using the given Router and WebServer.
@@ -80,6 +82,12 @@ func (s *Service) MetricsEndpoint(endpointPrefix string) *Service {
 	return s
 }
 
+// PrometheusEndpoint sets the endpoint used for Prometheus metrics. Parameter for disabling the endpoint is: "". Returns the updated service.
+func (s *Service) PrometheusEndpoint(endpointPrefix string) *Service {
+	s.prometheusEndpoint = endpointPrefix
+	return s
+}
+
 // Start checks the modules for the following interfaces and registers and/or starts:
 //   Startable:
 //   health.Checker:
@@ -97,6 +105,12 @@ func (s *Service) Start() error {
 		s.webserver.Handle(s.metricsEndpoint, http.HandlerFunc(metrics.HttpHandler))
 	} else {
 		logger.Info("Metrics endpoint disabled")
+	}
+	if s.prometheusEndpoint != "" {
+		logger.WithField("prometheusEndpoint", s.prometheusEndpoint).Info("Prometheus metrics endpoint")
+		s.webserver.Handle(s.prometheusEndpoint, promhttp.Handler())
+	} else {
+		logger.Info("Prometheus metrics endpoint disabled")
 	}
 	for order, iface := range s.ModulesSortedByStartOrder() {
 		name := reflect.TypeOf(iface).String()

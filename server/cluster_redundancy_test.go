@@ -1,15 +1,18 @@
+// +build cluster
+
 package server
 
 import (
 	"testing"
 	"time"
 
-	"github.com/smancke/guble/server/fcm"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/server/fcm"
+	"github.com/cosminrentea/gobbler/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_Subscribe_on_random_node(t *testing.T) {
+	testutil.SkipIfDisabled(t)
 	testutil.SkipIfShort(t)
 	a := assert.New(t)
 

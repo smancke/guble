@@ -1,7 +1,7 @@
 package client
 
 import (
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/testutil"
 
 	"fmt"
 	"strings"
@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var aNormalMessage = `/foo/bar,42,user01,phone01,{},1420110000,0
+var aNormalMessage = `/foo/bar,42,user01,phone01,{},,1420110000,0
 
 Hello World`
 
@@ -184,7 +184,7 @@ func TestReceiveAMessage(t *testing.T) {
 	// than we receive the expected message
 	select {
 	case m := <-c.Messages():
-		a.Equal(aNormalMessage, string(m.Bytes()))
+		a.Equal(aNormalMessage, string(m.Encode()))
 	case <-time.After(time.Millisecond * 10):
 		a.Fail("timeout while waiting for message")
 	}

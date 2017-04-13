@@ -3,23 +3,21 @@ package server
 import (
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/smancke/guble/logformatter"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/apns"
-	"github.com/smancke/guble/server/auth"
-	"github.com/smancke/guble/server/cluster"
-	"github.com/smancke/guble/server/fcm"
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/server/metrics"
-	"github.com/smancke/guble/server/rest"
-	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/server/service"
-	"github.com/smancke/guble/server/sms"
-	"github.com/smancke/guble/server/store"
-	"github.com/smancke/guble/server/store/dummystore"
-	"github.com/smancke/guble/server/store/filestore"
-	"github.com/smancke/guble/server/webserver"
-	"github.com/smancke/guble/server/websocket"
+	"github.com/cosminrentea/gobbler/logformatter"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/apns"
+	"github.com/cosminrentea/gobbler/server/fcm"
+	"github.com/cosminrentea/gobbler/server/kvstore"
+	"github.com/cosminrentea/gobbler/server/metrics"
+	"github.com/cosminrentea/gobbler/server/rest"
+	"github.com/cosminrentea/gobbler/server/router"
+	"github.com/cosminrentea/gobbler/server/service"
+	"github.com/cosminrentea/gobbler/server/sms"
+	"github.com/cosminrentea/gobbler/server/store"
+	"github.com/cosminrentea/gobbler/server/store/dummystore"
+	"github.com/cosminrentea/gobbler/server/store/filestore"
+	"github.com/cosminrentea/gobbler/server/webserver"
+	"github.com/cosminrentea/gobbler/server/websocket"
 
 	"fmt"
 	"net"
@@ -31,6 +29,7 @@ import (
 	"syscall"
 
 	"github.com/Bogh/gcm"
+	"github.com/cosminrentea/gobbler/server/kafka"
 	"github.com/pkg/profile"
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -57,12 +56,6 @@ var ValidateStoragePath = func() error {
 		os.Remove(testfile)
 	}
 	return nil
-}
-
-// CreateAccessManager is a func which returns a auth.AccessManager implementation
-// (currently: AllowAllAccessManager).
-var CreateAccessManager = func() auth.AccessManager {
-	return auth.NewAllowAllAccessManager(true)
 }
 
 // CreateKVStore is a func which returns a kvstore.KVStore implementation
@@ -116,16 +109,31 @@ var CreateMessageStore = func() store.MessageStore {
 // CreateModules is a func which returns a slice of modules which should be used by the service
 // (currently, based on guble configuration);
 // see package `service` for terminological details.
-var CreateModules = func(router router.Router) []interface{} {
-	var modules []interface{}
-
-	if wsHandler, err := websocket.NewWSHandler(router, "/stream/"); err != nil {
-		logger.WithError(err).Error("Error loading WSHandler module")
-	} else {
-		modules = append(modules, wsHandler)
-	}
+var CreateModules = func(router router.Router) (modules []interface{}) {
 
 	modules = append(modules, rest.NewRestMessageAPI(router, "/api/"))
+
+	var kafkaProducer kafka.Producer
+	if (*Config.KafkaProducer.Brokers).IsEmpty() {
+		logger.Info("KafkaProducer: disabled")
+	} else {
+		logger.Info("KafkaProducer: enabled")
+		var errKafka error
+		kafkaProducer, errKafka = kafka.NewProducer(Config.KafkaProducer)
+		if errKafka != nil {
+			logger.WithError(errKafka).Error("Could not create KafkaProducer")
+		} else {
+			modules = append(modules, kafkaProducer)
+		}
+	}
+
+	if *Config.WS.Enabled {
+		if wsHandler, err := websocket.NewWSHandler(router, *Config.WS.Prefix); err != nil {
+			logger.WithError(err).Error("Error loading WSHandler module")
+		} else {
+			modules = append(modules, wsHandler)
+		}
+	}
 
 	if *Config.FCM.Enabled {
 		logger.Info("Firebase Cloud Messaging: enabled")
@@ -182,7 +190,7 @@ var CreateModules = func(router router.Router) []interface{} {
 		if *Config.SMS.APIKey == "" || *Config.SMS.APISecret == "" {
 			logger.Panic("The API Key has to be provided when NEXMO SMS connector is enabled")
 		}
-		nexmoSender, err := sms.NewNexmoSender(*Config.SMS.APIKey, *Config.SMS.APISecret)
+		nexmoSender, err := sms.NewNexmoSender(*Config.SMS.APIKey, *Config.SMS.APISecret, kafkaProducer, *Config.SMS.KafkaReportingTopic)
 		if err != nil {
 			logger.WithError(err).Error("Error creating Nexmo Sender")
 		}
@@ -196,7 +204,7 @@ var CreateModules = func(router router.Router) []interface{} {
 		logger.Info("SMS: disabled")
 	}
 
-	return modules
+	return
 }
 
 // Main is the entry-point of the guble server.
@@ -254,39 +262,21 @@ func Main() {
 func StartService() *service.Service {
 	//TODO StartService could return an error in case it fails to start
 
-	accessManager := CreateAccessManager()
 	messageStore := CreateMessageStore()
 	kvStore := CreateKVStore()
 
-	var cl *cluster.Cluster
-	var err error
-
-	if *Config.Cluster.NodeID > 0 {
-		exitIfInvalidClusterParams(*Config.Cluster.NodeID, *Config.Cluster.NodePort, *Config.Cluster.Remotes)
-		logger.Info("Starting in cluster-mode")
-		cl, err = cluster.New(&cluster.Config{
-			ID:      *Config.Cluster.NodeID,
-			Port:    *Config.Cluster.NodePort,
-			Remotes: *Config.Cluster.Remotes,
-		})
-		if err != nil {
-			logger.WithField("err", err).Fatal("Module could not be started (cluster)")
-		}
-	} else {
-		logger.Info("Starting in standalone-mode")
-	}
-
-	r := router.New(accessManager, messageStore, kvStore, cl)
+	r := router.New(messageStore, kvStore, createCluster())
 	websrv := webserver.New(*Config.HttpListen)
 
 	srv := service.New(r, websrv).
 		HealthEndpoint(*Config.HealthEndpoint).
-		MetricsEndpoint(*Config.MetricsEndpoint)
+		MetricsEndpoint(*Config.MetricsEndpoint).
+		PrometheusEndpoint(*Config.PrometheusEndpoint)
 
 	srv.RegisterModules(0, 6, kvStore, messageStore)
 	srv.RegisterModules(4, 3, CreateModules(r)...)
 
-	if err = srv.Start(); err != nil {
+	if err := srv.Start(); err != nil {
 		logger.WithField("error", err.Error()).Error("errors occurred while starting service")
 		if err = srv.Stop(); err != nil {
 			logger.WithField("error", err.Error()).Error("errors occurred when stopping service after it failed to start")

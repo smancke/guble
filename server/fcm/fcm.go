@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/Bogh/gcm"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/server/metrics"
-	"github.com/smancke/guble/server/router"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/connector"
+	"github.com/cosminrentea/gobbler/server/metrics"
+	"github.com/cosminrentea/gobbler/server/router"
 	"time"
 )
 
@@ -84,9 +84,12 @@ func (f *fcm) startIntervalMetric(m metrics.Map, td time.Duration) {
 }
 
 func (f *fcm) HandleResponse(request connector.Request, responseIface interface{}, metadata *connector.Metadata, err error) error {
+	l := logger.WithField("correlation_id", request.Message().CorrelationID())
+
 	if err != nil && !isValidResponseError(err) {
-		logger.WithField("error", err.Error()).Error("Error sending message to FCM")
+		l.WithField("error", err.Error()).Error("Error sending message to FCM")
 		mTotalSendErrors.Add(1)
+		pSendErrors.Inc()
 		if *f.IntervalMetrics && metadata != nil {
 			addToLatenciesAndCountsMaps(currentTotalErrorsLatenciesKey, currentTotalErrorsKey, metadata.Latency)
 		}
@@ -98,44 +101,50 @@ func (f *fcm) HandleResponse(request connector.Request, responseIface interface{
 	response, ok := responseIface.(*gcm.Response)
 	if !ok {
 		mTotalResponseErrors.Add(1)
+		pResponseErrors.Inc()
 		return fmt.Errorf("Invalid FCM Response")
 	}
 
-	logger.WithField("messageID", message.ID).Debug("Delivered message to FCM")
+	l.WithField("messageID", message.ID).Debug("Delivered message to FCM")
+
 	subscriber.SetLastID(message.ID)
 	if err := f.Manager().Update(request.Subscriber()); err != nil {
-		logger.WithField("error", err.Error()).Error("Manager could not update subscription")
+		l.WithField("error", err.Error()).Error("Manager could not update subscription")
 		mTotalResponseInternalErrors.Add(1)
 		return err
 	}
 	if response.Ok() {
 		mTotalSentMessages.Add(1)
+		pSent.Inc()
 		if *f.IntervalMetrics && metadata != nil {
 			addToLatenciesAndCountsMaps(currentTotalMessagesLatenciesKey, currentTotalMessagesKey, metadata.Latency)
 		}
 		return nil
 	}
 
-	logger.WithField("success", response.Success).Debug("Handling FCM Error")
+	l.WithField("success", response.Success).Debug("Handling FCM Error")
 
 	switch errText := response.Error.Error(); errText {
 	case "NotRegistered":
-		logger.Debug("Removing not registered FCM subscription")
+		l.Debug("Removing not registered FCM subscription")
 		f.Manager().Remove(subscriber)
 		mTotalResponseNotRegisteredErrors.Add(1)
+		pResponseNotRegisteredErrors.Inc()
 		return response.Error
 	case "InvalidRegistration":
-		logger.WithField("jsonError", errText).Error("InvalidRegistration of FCM subscription")
+		l.WithField("jsonError", errText).Error("InvalidRegistration of FCM subscription")
 	default:
-		logger.WithField("jsonError", errText).Error("Unexpected error while sending to FCM")
+		l.WithField("jsonError", errText).Error("Unexpected error while sending to FCM")
 	}
 
 	if response.CanonicalIDs != 0 {
 		mTotalReplacedCanonicalErrors.Add(1)
+		pResponseReplacedCanonicalErrors.Inc()
 		// we only send to one receiver, so we know that we can replace the old id with the first registration id (=canonical id)
 		return f.replaceCanonical(request.Subscriber(), response.Results[0].RegistrationID)
 	}
 	mTotalResponseOtherErrors.Add(1)
+	pResponseOtherErrors.Inc()
 	return nil
 }
 

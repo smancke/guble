@@ -1,7 +1,7 @@
 package router
 
 import (
-	"github.com/smancke/guble/protocol"
+	"github.com/cosminrentea/gobbler/protocol"
 
 	"sync"
 )

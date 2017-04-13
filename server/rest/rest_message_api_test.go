@@ -1,14 +1,16 @@
 package rest
 
 import (
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"github.com/cosminrentea/go-uuid"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -19,10 +21,31 @@ import (
 
 var testBytes = []byte("test")
 
+func TestServerHTTP_MethodNotAllowed(t *testing.T) {
+	a := assert.New(t)
+	api := NewRestMessageAPI(nil, "/api")
+
+	u, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")
+	// and a http context
+	req := &http.Request{
+		Method: http.MethodDelete,
+		URL:    u,
+		Body:   ioutil.NopCloser(bytes.NewReader(testBytes)),
+		Header: http.Header{},
+	}
+	w := &httptest.ResponseRecorder{}
+
+	// when: I POST a message
+	api.ServeHTTP(w, req)
+
+	//then
+	a.Equal(http.StatusMethodNotAllowed, w.Code)
+
+}
+
 func TestServerHTTP(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-
 	a := assert.New(t)
 
 	// given:  a rest api with a message sink
@@ -31,19 +54,23 @@ func TestServerHTTP(t *testing.T) {
 
 	u, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")
 
+	header := http.Header{}
+	genUUID, _ := go_uuid.New()
+	header.Add(XHeaderPrefix+"correlation-id", genUUID)
 	// and a http context
 	req := &http.Request{
 		Method: http.MethodPost,
 		URL:    u,
 		Body:   ioutil.NopCloser(bytes.NewReader(testBytes)),
-		Header: http.Header{},
+		Header: header,
 	}
 	w := &httptest.ResponseRecorder{}
 
 	// then i expect
 	routerMock.EXPECT().HandleMessage(gomock.Any()).Do(func(msg *protocol.Message) {
 		a.Equal(testBytes, msg.Body)
-		a.Equal("{}", msg.HeaderJSON)
+		a.JSONEq(fmt.Sprintf(`{"Correlation-Id": "%s"}`, genUUID), msg.HeaderJSON)
+		a.Equal(genUUID, msg.CorrelationID())
 		a.Equal("/my/topic", string(msg.Path))
 		a.True(len(msg.ApplicationID) > 0)
 		a.Nil(msg.Filters)
@@ -57,7 +84,6 @@ func TestServerHTTP(t *testing.T) {
 // Server should return an 405 Method Not Allowed in case method request is not POST
 func TestServeHTTP_GetError(t *testing.T) {
 	a := assert.New(t)
-	defer testutil.EnableDebugForMethod()()
 	api := NewRestMessageAPI(nil, "/api")
 
 	u, _ := url.Parse("http://localhost/api/message/my/topic?userId=marvin&messageId=42")
@@ -81,7 +107,6 @@ func TestServeHTTP_GetError(t *testing.T) {
 func TestServeHTTP_GetSubscribers(t *testing.T) {
 	_, finish := testutil.NewMockCtrl(t)
 	defer finish()
-	//defer testutil.EnableDebugForMethod()()
 
 	a := assert.New(t)
 
@@ -111,9 +136,9 @@ func TestHeadersToJSON(t *testing.T) {
 
 	// simple head
 	jsonString := headersToJSON(http.Header{
-		xHeaderPrefix + "a": []string{"b"},
+		XHeaderPrefix + "a": []string{"b"},
 		"foo":               []string{"b"},
-		xHeaderPrefix + "x": []string{"y"},
+		XHeaderPrefix + "x": []string{"y"},
 		"bar":               []string{"b"},
 	})
 
