@@ -8,6 +8,7 @@ type NexmoSms struct {
 	To        string `json:"to"`
 	From      string `json:"from"`
 	Text      string `json:"text"`
+	ClientRef string `json:"client-ref"`
 }
 
 func (sms *NexmoSms) EncodeNexmoSms(apiKey, apiSecret string) ([]byte, error) {
