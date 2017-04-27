@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-GO_TEST_DISABLED=true go test -short  ./...
+GO_TEST_DISABLED=true go test -v -short $(go list ./... | grep -v /vendor/)
 TESTRESULT=$?
 
 RED='\033[0;31m'

@@ -1,12 +1,13 @@
 package server
 
 import (
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/client"
+	"github.com/cosminrentea/gobbler/testutil"
 
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
+	"github.com/cosminrentea/gobbler/server/configstring"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -25,6 +26,10 @@ func Benchmark_E2E_Fetch_HelloWorld_Messages(b *testing.B) {
 	*Config.KVS = "memory"
 	*Config.MS = "file"
 	*Config.StoragePath = dir
+	*Config.WS.Enabled = true
+	*Config.WS.Prefix = "/stream/"
+	*Config.KafkaProducer.Brokers = configstring.List{}
+
 	service := StartService()
 	defer service.Stop()
 
@@ -52,7 +57,7 @@ func Benchmark_E2E_Fetch_HelloWorld_Messages(b *testing.B) {
 	for i := 1; i <= b.N; i++ {
 		select {
 		case msg := <-c.Messages():
-			a.Equal(fmt.Sprintf("Hello %v", i), msg.BodyAsString())
+			a.Equal(fmt.Sprintf("Hello %v", i), string(msg.Body))
 		case e := <-c.Errors():
 			a.Fail(string(e.Bytes()))
 			return

@@ -12,13 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/server/fcm"
+	"github.com/cosminrentea/gobbler/server/connector"
+	"github.com/cosminrentea/gobbler/server/fcm"
 
 	"errors"
 
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/server/service"
+	"github.com/cosminrentea/gobbler/client"
+	"github.com/cosminrentea/gobbler/server/service"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -50,7 +50,7 @@ func (tnc *testClusterNodeConfig) parseConfig() error {
 		"--http", tnc.HttpListen,
 		"--storage-path", tnc.StoragePath,
 		"--health-endpoint", "",
-
+		"--ws",
 		"--fcm",
 		"--fcm-api-key", "WILL BE OVERWRITTEN",
 		"--fcm-workers", "4",
@@ -107,7 +107,7 @@ func newTestClusterNode(t *testing.T, nodeConfig testClusterNodeConfig) *testClu
 			break
 		}
 	}
-	if !a.True(ok, "There should be a module of type GCMConnector") {
+	if !a.True(ok, "There should be a module of type ResponsiveConnector (FCM)") {
 		return nil
 	}
 
