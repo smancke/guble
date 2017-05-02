@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/Bogh/gcm"
-	"github.com/smancke/guble/server/connector"
+	"github.com/cosminrentea/gobbler/server/connector"
 )
 
 const (

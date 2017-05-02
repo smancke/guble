@@ -13,11 +13,10 @@ import (
 
 	"net/http"
 
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/auth"
-	"github.com/smancke/guble/server/cluster"
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/server/store"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/cluster"
+	"github.com/cosminrentea/gobbler/server/kvstore"
+	"github.com/cosminrentea/gobbler/server/store"
 )
 
 const (
@@ -36,7 +35,6 @@ type Router interface {
 	Fetch(*store.FetchRequest) error
 	GetSubscribers(topic string) ([]byte, error)
 
-	AccessManager() (auth.AccessManager, error)
 	MessageStore() (store.MessageStore, error)
 	KVStore() (kvstore.KVStore, error)
 	Cluster() *cluster.Cluster
@@ -59,16 +57,15 @@ type router struct {
 	stopping     bool           // Flag: the router is in stopping process and no incoming messages are accepted
 	wg           sync.WaitGroup // Add any operation that we need to wait upon here
 
-	accessManager auth.AccessManager
-	messageStore  store.MessageStore
-	kvStore       kvstore.KVStore
-	cluster       *cluster.Cluster
+	messageStore store.MessageStore
+	kvStore      kvstore.KVStore
+	cluster      *cluster.Cluster
 
 	sync.RWMutex
 }
 
 // New returns a pointer to Router
-func New(accessManager auth.AccessManager, messageStore store.MessageStore, kvStore kvstore.KVStore, cluster *cluster.Cluster) Router {
+func New(messageStore store.MessageStore, kvStore kvstore.KVStore, cluster *cluster.Cluster) Router {
 	return &router{
 		routes: make(map[protocol.Path][]*Route),
 
@@ -77,10 +74,9 @@ func New(accessManager auth.AccessManager, messageStore store.MessageStore, kvSt
 		unsubscribeC: make(chan subRequest, unsubscribeChannelCapacity),
 		stopC:        make(chan bool, 1),
 
-		accessManager: accessManager,
-		messageStore:  messageStore,
-		kvStore:       kvStore,
-		cluster:       cluster,
+		messageStore: messageStore,
+		kvStore:      kvStore,
+		cluster:      cluster,
 	}
 }
 
@@ -133,7 +129,7 @@ func (router *router) Stop() error {
 }
 
 func (router *router) Check() error {
-	if router.accessManager == nil || router.messageStore == nil || router.kvStore == nil {
+	if router.messageStore == nil || router.kvStore == nil {
 		logger.WithError(ErrServiceNotProvided).Error("Some mandatory services are not provided")
 		return ErrServiceNotProvided
 	}
@@ -158,17 +154,16 @@ func (router *router) Check() error {
 // and then passes it to the internal channel, and asynchronously to the cluster (if available).
 func (router *router) HandleMessage(message *protocol.Message) error {
 	logger.WithFields(log.Fields{
-		"userID": message.UserID,
-		"path":   message.Path}).Debug("HandleMessage")
+		"userID":         message.UserID,
+		"correlation_id": message.CorrelationID(),
+		"path":           message.Path}).Debug("HandleMessage")
 
 	mTotalMessagesIncoming.Add(1)
+	pMessagesIncoming.Inc()
+
 	if err := router.isStopping(); err != nil {
 		logger.WithField("error", err.Error()).Error("Router is stopping")
 		return err
-	}
-
-	if !router.accessManager.IsAllowed(auth.WRITE, message.UserID, message.Path) {
-		return &PermissionDeniedError{UserID: message.UserID, AccessType: auth.WRITE, Path: message.Path}
 	}
 
 	var nodeID uint8
@@ -176,14 +171,17 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 		nodeID = router.cluster.Config.ID
 	}
 
-	mTotalMessagesIncomingBytes.Add(int64(len(message.Bytes())))
+	mTotalMessagesIncomingBytes.Add(int64(len(message.Encode())))
+	pMessagesIncomingBytes.Add(float64(len(message.Encode())))
 	size, err := router.messageStore.StoreMessage(message, nodeID)
 	if err != nil {
 		logger.WithField("error", err.Error()).Error("Error storing message")
 		mTotalMessageStoreErrors.Add(1)
+		pMessageStoreErrors.Inc()
 		return err
 	}
 	mTotalMessagesStoredBytes.Add(int64(size))
+	pMessagesStoredBytes.Add(float64(size))
 
 	router.handleOverloadedChannel()
 
@@ -197,22 +195,12 @@ func (router *router) HandleMessage(message *protocol.Message) error {
 }
 
 func (router *router) Subscribe(r *Route) (*Route, error) {
-	logger.WithFields(log.Fields{
-		"accessManager": router.accessManager,
-		"route":         r,
-	}).Debug("Subscribe")
+	logger.WithField("route", r).Debug("Subscribe")
 
 	if err := router.isStopping(); err != nil {
 		return nil, err
 	}
 
-	userID := r.Get("user_id")
-	routePath := r.Path
-
-	accessAllowed := router.accessManager.IsAllowed(auth.READ, userID, routePath)
-	if !accessAllowed {
-		return r, &PermissionDeniedError{UserID: userID, AccessType: auth.READ, Path: routePath}
-	}
 	req := subRequest{
 		route: r,
 		doneC: make(chan bool),
@@ -225,10 +213,7 @@ func (router *router) Subscribe(r *Route) (*Route, error) {
 
 // Subscribe adds a route to the subscribers. If there is already a route with same Application Id and Path, it will be replaced.
 func (router *router) Unsubscribe(r *Route) {
-	logger.WithFields(log.Fields{
-		"accessManager": router.accessManager,
-		"route":         r,
-	}).Debug("Unsubscribe")
+	logger.WithField("route", r).Debug("Unsubscribe")
 
 	req := subRequest{
 		route: r,
@@ -256,6 +241,7 @@ func (router *router) GetSubscribers(topicPath string) ([]byte, error) {
 func (router *router) subscribe(r *Route) {
 	logger.WithField("route", r).Debug("Internal subscribe")
 	mTotalSubscriptionAttempts.Add(1)
+	pSubscriptionAttempts.Inc()
 
 	routePath := r.Path
 	slice, present := router.routes[routePath]
@@ -268,44 +254,54 @@ func (router *router) subscribe(r *Route) {
 		slice = make([]*Route, 0, 1)
 		router.routes[routePath] = slice
 		mCurrentRoutes.Add(1)
+		pRoutes.Inc()
 	}
 	router.routes[routePath] = append(slice, r)
 	if removed {
 		mTotalDuplicateSubscriptionsAttempts.Add(1)
+		pDuplicateSubscriptionAttempts.Inc()
 	} else {
 		mTotalSubscriptions.Add(1)
+		pTotalSubscriptions.Inc()
 		mCurrentSubscriptions.Add(1)
+		pSubscriptions.Inc()
 	}
 }
 
 func (router *router) unsubscribe(r *Route) {
 	logger.WithField("route", r).Debug("Internal unsubscribe")
 	mTotalUnsubscriptionAttempts.Add(1)
+	pUnsubscriptionAttempts.Inc()
 
 	routePath := r.Path
 	slice, present := router.routes[routePath]
 	if !present {
 		mTotalInvalidTopicOnUnsubscriptionAttempts.Add(1)
+		pInvalidTopicOnUnsubscriptionAttempts.Inc()
 		return
 	}
 	var removed bool
 	router.routes[routePath], removed = removeIfMatching(slice, r)
 	if removed {
 		mTotalUnsubscriptions.Add(1)
+		pTotalUnsubscriptions.Inc()
 		mCurrentSubscriptions.Add(-1)
+		pSubscriptions.Dec()
 	} else {
 		mTotalInvalidUnsubscriptionAttempts.Add(1)
+		pInvalidUnsubscriptionAttempts.Inc()
 	}
 	if len(router.routes[routePath]) == 0 {
 		delete(router.routes, routePath)
 		mCurrentRoutes.Add(-1)
+		pRoutes.Dec()
 	}
 }
 
 func (router *router) panicIfInternalDependenciesAreNil() {
-	if router.accessManager == nil || router.kvStore == nil || router.messageStore == nil {
-		panic(fmt.Sprintf("router: the internal dependencies marked with `true` are not set: AccessManager=%v, KVStore=%v, MessageStore=%v",
-			router.accessManager == nil, router.kvStore == nil, router.messageStore == nil))
+	if router.kvStore == nil || router.messageStore == nil {
+		panic(fmt.Sprintf("router: the internal dependencies marked with `true` are not set: KVStore=%v, MessageStore=%v",
+			router.kvStore == nil, router.messageStore == nil))
 	}
 }
 
@@ -343,6 +339,7 @@ func (router *router) handleMessage(message *protocol.Message) {
 	})
 	flog.Debug("Called routeMessage for data")
 	mTotalMessagesRouted.Add(1)
+	pMessagesRouted.Inc()
 
 	matched := false
 	for path, pathRoutes := range router.routes {
@@ -360,6 +357,7 @@ func (router *router) handleMessage(message *protocol.Message) {
 	if !matched {
 		flog.Debug("No route matched.")
 		mTotalMessagesNotMatchingTopic.Add(1)
+		pMessagesNotMatchingTopic.Inc()
 	}
 }
 
@@ -382,6 +380,7 @@ func (router *router) handleOverloadedChannel() {
 			"maxCapacity":   cap(router.handleC),
 		}).Warn("handleC channel is almost full")
 		mTotalOverloadedHandleChannel.Add(1)
+		pOverloadedHandleChannel.Inc()
 	}
 }
 
@@ -417,14 +416,6 @@ func (router *router) Fetch(req *store.FetchRequest) error {
 	}
 	router.messageStore.Fetch(req)
 	return nil
-}
-
-// AccessManager returns the `accessManager` provided for the router
-func (router *router) AccessManager() (auth.AccessManager, error) {
-	if router.accessManager == nil {
-		return nil, ErrServiceNotProvided
-	}
-	return router.accessManager, nil
 }
 
 // MessageStore returns the `messageStore` provided for the router

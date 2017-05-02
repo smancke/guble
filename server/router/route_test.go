@@ -7,19 +7,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/kvstore"
+	"github.com/cosminrentea/gobbler/server/store"
+	"github.com/cosminrentea/gobbler/testutil"
 	"github.com/golang/mock/gomock"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/auth"
-	"github.com/smancke/guble/server/kvstore"
-	"github.com/smancke/guble/server/store"
-	"github.com/smancke/guble/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
 	dummyPath          = protocol.Path("/dummy")
-	dummyMessageWithID = &protocol.Message{ID: 1, Path: dummyPath, Body: []byte("dummy body")}
-	dummyMessageBytes  = `/dummy,MESSAGE_ID,user01,phone01,{},1420110000,1
+	dummyMessageWithID = &protocol.Message{ID: 1, Path: dummyPath, Body: []byte("dummy body"), HeaderJSON: `{"Correlation-Id": "id"}`}
+	dummyMessageBytes  = `/dummy,MESSAGE_ID,user01,phone01,{},,1420110000,1
 {"Content-Type": "text/plain", "Correlation-Id": "7sdks723ksgqn"}
 Hello World`
 	chanSize  = 10
@@ -86,7 +85,7 @@ func TestRouteDeliver_QueueSize(t *testing.T) {
 	a := assert.New(t)
 	// create a route with a queue size
 	r := testRoute()
-	r.queueSize = queueSize
+	r.QueueSize = queueSize
 
 	// fill the channel buffer and the queue
 	for i := 0; i < chanSize+queueSize; i++ {
@@ -113,11 +112,10 @@ func TestRouteDeliver_QueueSize(t *testing.T) {
 
 func TestRouteDeliver_WithTimeout(t *testing.T) {
 	a := assert.New(t)
-
 	// create a route with timeout and infinite queue size
 	r := testRoute()
-	r.queueSize = -1 // infinite queue size
-	r.timeout = 10 * time.Millisecond
+	r.QueueSize = -1 // infinite queue size
+	r.Timeout = 10 * time.Millisecond
 
 	// fill the channel buffer
 	for i := 0; i < chanSize; i++ {
@@ -175,7 +173,6 @@ func testRoute() *Route {
 
 func TestRoute_messageFilter(t *testing.T) {
 	a := assert.New(t)
-
 	route := NewRoute(RouteConfig{
 		Path:        "/topic",
 		ChannelSize: 1,
@@ -186,8 +183,9 @@ func TestRoute_messageFilter(t *testing.T) {
 	})
 
 	msg := &protocol.Message{
-		ID:   1,
-		Path: "/topic",
+		ID:         1,
+		Path:       "/topic",
+		HeaderJSON: `{"Correlation-Id": "id"}`,
 	}
 	route.Deliver(msg, false)
 
@@ -195,16 +193,18 @@ func TestRoute_messageFilter(t *testing.T) {
 	a.True(isMessageReceived(route, msg))
 
 	msg = &protocol.Message{
-		ID:   1,
-		Path: "/topic",
+		ID:         1,
+		Path:       "/topic",
+		HeaderJSON: `{"Correlation-Id": "id"}`,
 	}
 	msg.SetFilter("field1", "value1")
 	route.Deliver(msg, true)
 	a.True(isMessageReceived(route, msg))
 
 	msg = &protocol.Message{
-		ID:   1,
-		Path: "/topic",
+		ID:         1,
+		Path:       "/topic",
+		HeaderJSON: `{"Correlation-Id": "id"}`,
 	}
 	msg.SetFilter("field1", "value1")
 	msg.SetFilter("field2", "value2")
@@ -212,8 +212,9 @@ func TestRoute_messageFilter(t *testing.T) {
 	a.True(isMessageReceived(route, msg))
 
 	msg = &protocol.Message{
-		ID:   1,
-		Path: "/topic",
+		ID:         1,
+		Path:       "/topic",
+		HeaderJSON: `{"Correlation-Id": "id"}`,
 	}
 	msg.SetFilter("field1", "value1")
 	msg.SetFilter("field2", "value2")
@@ -222,8 +223,9 @@ func TestRoute_messageFilter(t *testing.T) {
 	a.False(isMessageReceived(route, msg))
 
 	msg = &protocol.Message{
-		ID:   1,
-		Path: "/topic",
+		ID:         1,
+		Path:       "/topic",
+		HeaderJSON: `{"Correlation-Id": "id"}`,
 	}
 	msg.SetFilter("field3", "value3")
 	route.Deliver(msg, true)
@@ -356,9 +358,10 @@ func TestRoute_Provide_WithSubscribe(t *testing.T) {
 
 		for i := 3; i <= 4; i++ {
 			r.Deliver(&protocol.Message{
-				ID:   uint64(i),
-				Path: "/fetch_request",
-				Body: []byte("dummy"),
+				ID:         uint64(i),
+				Path:       "/fetch_request",
+				Body:       []byte("dummy"),
+				HeaderJSON: `{"Correlation-Id": "id"}`,
 			}, true)
 		}
 
@@ -401,13 +404,12 @@ type stopable interface {
 func TestRoute_Provide_MultipleFetch(t *testing.T) {
 	ctrl, finish := testutil.NewMockCtrl(t)
 	defer finish()
-
 	a := assert.New(t)
 
 	memoryKV := kvstore.NewMemoryKVStore()
 
 	msMock := NewMockMessageStore(ctrl)
-	router := New(auth.AllowAllAccessManager(true), msMock, memoryKV, nil)
+	router := New(msMock, memoryKV, nil)
 
 	if startable, ok := router.(startable); ok {
 		startable.Start()
@@ -456,8 +458,8 @@ func TestRoute_Provide_MultipleFetch(t *testing.T) {
 
 	msMock.EXPECT().StoreMessage(gomock.Any(), gomock.Any()).AnyTimes()
 
-	router.HandleMessage(&protocol.Message{ID: 3, Path: path, Body: []byte("dummy body")})
-	router.HandleMessage(&protocol.Message{ID: 4, Path: path, Body: []byte("dummy body")})
+	router.HandleMessage(&protocol.Message{ID: 3, Path: path, Body: []byte("dummy body"), HeaderJSON: `{"Correlation-Id": "id"}`})
+	router.HandleMessage(&protocol.Message{ID: 4, Path: path, Body: []byte("dummy body"), HeaderJSON: `{"Correlation-Id": "id"}`})
 
 	done := make(chan struct{})
 	go func() {
