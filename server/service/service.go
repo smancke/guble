@@ -3,14 +3,18 @@ package service
 import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/health"
-
-	"github.com/smancke/guble/server/metrics"
-	"github.com/smancke/guble/server/router"
-	"github.com/smancke/guble/server/webserver"
-
 	"github.com/hashicorp/go-multierror"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/cosminrentea/gobbler/server/metrics"
+	"github.com/cosminrentea/gobbler/server/router"
+	"github.com/cosminrentea/gobbler/server/webserver"
+
+	"fmt"
 	"net/http"
 	"reflect"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -21,13 +25,15 @@ const (
 
 // Service is the main struct for controlling a guble server
 type Service struct {
-	webserver       *webserver.WebServer
-	router          router.Router
-	modules         []module
-	healthEndpoint  string
-	healthFrequency time.Duration
-	healthThreshold int
-	metricsEndpoint string
+	webserver          *webserver.WebServer
+	router             router.Router
+	modules            []module
+	healthEndpoint     string
+	healthFrequency    time.Duration
+	healthThreshold    int
+	metricsEndpoint    string
+	prometheusEndpoint string
+	togglesEndpoint    string
 }
 
 // New creates a new Service, using the given Router and WebServer.
@@ -80,7 +86,20 @@ func (s *Service) MetricsEndpoint(endpointPrefix string) *Service {
 	return s
 }
 
-// Start checks the modules for the following interfaces and registers and/or starts:
+// PrometheusEndpoint sets the endpoint used for Prometheus metrics. Parameter for disabling the endpoint is: "". Returns the updated service.
+func (s *Service) PrometheusEndpoint(endpointPrefix string) *Service {
+	s.prometheusEndpoint = endpointPrefix
+	return s
+}
+
+// TogglesEndpoint sets the endpoint used for Feature-Toggles. Parameter for disabling the endpoint is: "". Returns the updated service.
+func (s *Service) TogglesEndpoint(endpointPrefix string) *Service {
+	s.togglesEndpoint = endpointPrefix
+	return s
+}
+
+// Start the health-check, old-format metrics, and Prometheus metrics endpoint,
+// and then check the modules for the following interfaces and registers and/or start:
 //   Startable:
 //   health.Checker:
 //   Endpoint: Register the handler function of the Endpoint in the http service at prefix
@@ -97,6 +116,18 @@ func (s *Service) Start() error {
 		s.webserver.Handle(s.metricsEndpoint, http.HandlerFunc(metrics.HttpHandler))
 	} else {
 		logger.Info("Metrics endpoint disabled")
+	}
+	if s.prometheusEndpoint != "" {
+		logger.WithField("prometheusEndpoint", s.prometheusEndpoint).Info("Prometheus metrics endpoint")
+		s.webserver.Handle(s.prometheusEndpoint, promhttp.Handler())
+	} else {
+		logger.Info("Prometheus metrics endpoint disabled")
+	}
+	if s.togglesEndpoint != "" {
+		logger.WithField("togglesEndpoint", s.togglesEndpoint).Info("Toggles endpoint")
+		s.webserver.Handle(s.togglesEndpoint, http.HandlerFunc(s.togglesHandlerFunc))
+	} else {
+		logger.Info("Toggles endpoint disabled")
 	}
 	for order, iface := range s.ModulesSortedByStartOrder() {
 		name := reflect.TypeOf(iface).String()
@@ -157,4 +188,75 @@ func (s *Service) modulesSortedBy(criteria by) []interface{} {
 		sorted = append(sorted, m.iface)
 	}
 	return sorted
+}
+
+func (s *Service) togglesHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	logger.Info("togglesHandlerFunc")
+	for key, values := range r.URL.Query() {
+		if !toggleAllowed(key) {
+			logger.WithField("key", key).Info("toggling this module is not explicitly allowed")
+			continue
+		}
+		if len(values) != 1 {
+			logger.WithField("key", key).Info("ignoring toggles parameter since it has more than one value")
+			continue
+		}
+		value := values[0]
+		enable, err := strconv.ParseBool(value)
+		if err != nil {
+			logger.WithFields(log.Fields{
+				"key":   key,
+				"value": value,
+			}).Info("ignoring toggles single parameter since it is not boolean")
+			continue
+		}
+		s.tryToggleModule(key, enable, w)
+	}
+}
+
+func toggleAllowed(modulePackage string) bool {
+	if modulePackage == "sms" {
+		return true
+	}
+	return false
+}
+
+func (s *Service) tryToggleModule(searchedModulePackage string, enable bool, w http.ResponseWriter) {
+	for _, iface := range s.ModulesSortedByStartOrder() {
+		packagePath := reflect.TypeOf(iface).String()
+		packagePathTokens := strings.Split(packagePath, ".")
+		var modulePackage string
+		if len(packagePathTokens) > 0 {
+			modulePackage = strings.TrimPrefix(packagePathTokens[0], "*")
+		}
+		if searchedModulePackage != modulePackage {
+			continue
+		}
+		s.toggleModule(modulePackage, enable, iface, w)
+	}
+}
+
+func (s *Service) toggleModule(modulePackage string, enable bool, iface interface{}, w http.ResponseWriter) {
+	le := logger.WithFields(log.Fields{
+		"modulePackage": modulePackage,
+		"enable":        enable,
+	})
+	if s, ok := iface.(Startable); ok && enable {
+		le.Info("Starting module")
+		if err := s.Start(); err != nil {
+			le.WithError(err).Error("Error while starting module")
+			w.Write([]byte(fmt.Sprintf("%s could not be started.\n", modulePackage)))
+			return
+		}
+		w.Write([]byte(fmt.Sprintf("%s was successfully started.\n", modulePackage)))
+	}
+	if s, ok := iface.(Stopable); ok && !enable {
+		le.Info("Stopping module")
+		if err := s.Stop(); err != nil {
+			le.WithError(err).Error("Error while stopping module")
+			w.Write([]byte(fmt.Sprintf("%s could not be stopped.\n", modulePackage)))
+			return
+		}
+		w.Write([]byte(fmt.Sprintf("%s was successfully stopped.\n", modulePackage)))
+	}
 }

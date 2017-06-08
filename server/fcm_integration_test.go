@@ -12,17 +12,18 @@ import (
 
 	"encoding/json"
 
-	"github.com/smancke/guble/client"
-	"github.com/smancke/guble/server/connector"
-	"github.com/smancke/guble/server/fcm"
-	"github.com/smancke/guble/server/service"
-	"github.com/smancke/guble/testutil"
+	"github.com/cosminrentea/gobbler/client"
+	"github.com/cosminrentea/gobbler/server/configstring"
+	"github.com/cosminrentea/gobbler/server/connector"
+	"github.com/cosminrentea/gobbler/server/fcm"
+	"github.com/cosminrentea/gobbler/server/service"
+	"github.com/cosminrentea/gobbler/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
 	testHttpPort         = 11000
-	timeoutForOneMessage = 50 * time.Millisecond
+	timeoutForOneMessage = 250 * time.Millisecond
 )
 
 type fcmMetricsMap struct {
@@ -54,9 +55,12 @@ type expectedValues struct {
 
 // Test that restarting the service continues to fetch messages from store for a subscription from lastID
 func TestFCMRestart(t *testing.T) {
-	// defer testutil.EnableDebugForMethod()()
-	defer testutil.ResetDefaultRegistryHealthCheck()
 
+	testutil.SkipIfDisabled(t)
+	testutil.SkipIfShort(t)
+
+	//defer testutil.EnableDebugForMethod()()
+	defer testutil.ResetDefaultRegistryHealthCheck()
 	a := assert.New(t)
 
 	receiveC := make(chan bool)
@@ -82,14 +86,15 @@ func TestFCMRestart(t *testing.T) {
 
 	// create subscription on topic
 	subscriptionSetUp(t, s)
-
+	time.Sleep(200 * time.Millisecond)
 	assertMetrics(a, s, expectedValues{true, 0, 1, 1})
 
 	c := clientSetUp(t, s)
+	defer c.Close()
 
 	// send 3 messages in the router but read only one and close the service
 	for i := 0; i < 3; i++ {
-		c.Send(testTopic, "dummy body", "{dummy: value}")
+		c.Send(testTopic, "dummy body", `{"Correlation-Id": "id"}`)
 	}
 
 	// receive one message only from FCM
@@ -98,6 +103,8 @@ func TestFCMRestart(t *testing.T) {
 	case <-time.After(timeoutForOneMessage):
 		a.Fail("Initial FCM message not received")
 	}
+
+	time.Sleep(time.Second)
 
 	assertMetrics(a, s, expectedValues{false, 1, 1, 1})
 	close(receiveC)
@@ -134,12 +141,15 @@ func serviceSetUp(t *testing.T) (*service.Service, func()) {
 	*Config.MS = "file"
 	*Config.Cluster.NodeID = 0
 	*Config.StoragePath = dir
-	*Config.MetricsEndpoint = "/admin/metrics"
+	*Config.MetricsEndpoint = "/admin/metrics-old"
+	*Config.WS.Enabled = true
+	*Config.WS.Prefix = "/stream/"
 	*Config.FCM.Enabled = true
 	*Config.FCM.APIKey = "WILL BE OVERWRITTEN"
 	*Config.FCM.Prefix = "/fcm/"
 	*Config.FCM.Workers = 1 // use only one worker so we can control the number of messages that go to FCM
 	*Config.APNS.Enabled = false
+	*Config.KafkaProducer.Brokers = configstring.List{}
 
 	var s *service.Service
 	for s == nil {
@@ -182,6 +192,8 @@ func subscriptionSetUp(t *testing.T, service *service.Service) {
 }
 
 func assertMetrics(a *assert.Assertions, s *service.Service, expected expectedValues) {
+	time.Sleep(50 * time.Millisecond)
+
 	httpClient := &http.Client{}
 	u := fmt.Sprintf("http://%s%s", s.WebServer().GetAddr(), defaultMetricsEndpoint)
 	request, err := http.NewRequest(http.MethodGet, u, nil)

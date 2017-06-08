@@ -1,17 +1,16 @@
 package cluster
 
 import (
-	"io/ioutil"
+	"github.com/cosminrentea/gobbler/server/store/filestore"
 
-	"github.com/smancke/guble/server/store/filestore"
-
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/store"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/store"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 
 	"errors"
+	"io/ioutil"
 	"net"
 	"testing"
 	"time"
@@ -51,13 +50,14 @@ func TestCluster_StartCheckStop(t *testing.T) {
 	node.Router = newDummyRouter(t)
 
 	err = node.Start()
+	defer func() {
+		err := node.Stop()
+		a.NoError(err, "No error should be raised when Stopping the Cluster")
+	}()
 	a.NoError(err, "No error should be raised when Starting the Cluster")
 
 	err = node.Check()
 	a.NoError(err, "Health-check score of a Cluster with a single node should be OK")
-
-	err = node.Stop()
-	a.NoError(err, "No error should be raised when Stopping the Cluster")
 }
 
 func TestCluster_BroadcastStringAndMessageAndCheck(t *testing.T) {
@@ -70,8 +70,11 @@ func TestCluster_BroadcastStringAndMessageAndCheck(t *testing.T) {
 	node1.Router = newDummyRouter(t)
 
 	//start the cluster node 1
-	defer node1.Stop()
 	err = node1.Start()
+	defer func() {
+		err := node1.Stop()
+		a.NoError(err, "No error should be raised when Stopping the Cluster")
+	}()
 	a.NoError(err, "No error should be raised when starting node 1 of the Cluster")
 
 	config2 := testConfigAnother()
@@ -81,8 +84,11 @@ func TestCluster_BroadcastStringAndMessageAndCheck(t *testing.T) {
 	node2.Router = newDummyRouter(t)
 
 	//start the cluster node 2
-	defer node2.Stop()
 	err = node2.Start()
+	defer func() {
+		err := node2.Stop()
+		a.NoError(err, "No error should be raised when Stopping the Cluster")
+	}()
 	a.NoError(err, "No error should be raised when starting node 2 of the Cluster")
 
 	// Send a String Message
@@ -120,10 +126,7 @@ func TestCluster_NewShouldReturnErrorWhenPortIsInvalid(t *testing.T) {
 
 	config := Config{ID: 1, Host: "localhost", Port: -1, Remotes: remotes}
 	_, err := New(&config)
-	if a.Error(err, "An error was expected when Creating the Cluster") {
-		a.Equal(err, errors.New("Failed to start TCP listener. Err: listen tcp :-1: bind: invalid argument"),
-			"Error should be precisely defined")
-	}
+	a.Error(err, "An error was expected when Creating the Cluster")
 }
 
 func TestCluster_StartShouldReturnErrorWhenNoRemotes(t *testing.T) {
@@ -138,8 +141,11 @@ func TestCluster_StartShouldReturnErrorWhenNoRemotes(t *testing.T) {
 
 	node.Router = newDummyRouter(t)
 
-	defer node.Stop()
 	err = node.Start()
+	defer func() {
+		err := node.Stop()
+		a.NoError(err, "No error should be raised when Stopping the Cluster")
+	}()
 	if a.Error(err, "An error is expected when Starting the Cluster") {
 		a.Equal(err, errors.New("No remote hosts were successfully contacted when this node wanted to join the cluster"),
 			"Error should be precisely defined")
@@ -160,8 +166,11 @@ func TestCluster_StartShouldReturnErrorWhenInvalidRemotes(t *testing.T) {
 
 	node.Router = newDummyRouter(t)
 
-	defer node.Stop()
 	err = node.Start()
+	defer func() {
+		err := node.Stop()
+		a.NoError(err, "No error should be raised when Stopping the Cluster")
+	}()
 	if a.Error(err, "An error is expected when Starting the Cluster") {
 		expected := multierror.Append(errors.New("Failed to join 127.0.0.1: dial tcp 127.0.0.1:0: getsockopt: connection refused"))
 		a.Equal(err, expected, "Error should be precisely defined")
@@ -175,8 +184,11 @@ func TestCluster_StartShouldReturnErrorWhenNoMessageHandler(t *testing.T) {
 	node, err := New(&config)
 	a.NoError(err, "No error should be raised when Creating the Cluster")
 
-	defer node.Stop()
 	err = node.Start()
+	defer func() {
+		err := node.Stop()
+		a.NoError(err, "No error should be raised when Stopping the Cluster")
+	}()
 	if a.Error(err, "An error is expected when Starting the Cluster") {
 		expected := errors.New("There should be a valid Router already set-up")
 		a.Equal(expected, err, "Error should be precisely defined")
@@ -192,8 +204,11 @@ func TestCluster_NotifyMsgShouldSimplyReturnWhenDecodingInvalidMessage(t *testin
 
 	node.Router = newDummyRouter(t)
 
-	defer node.Stop()
 	err = node.Start()
+	defer func() {
+		err := node.Stop()
+		a.NoError(err, "No error should be raised when Stopping the Cluster")
+	}()
 	a.NoError(err, "No error should be raised when Starting the Cluster")
 
 	node.NotifyMsg([]byte{})
@@ -210,8 +225,11 @@ func TestCluster_broadcastClusterMessage(t *testing.T) {
 
 	node.Router = newDummyRouter(t)
 
-	defer node.Stop()
 	err = node.Start()
+	defer func() {
+		err := node.Stop()
+		a.NoError(err, "No error should be raised when Stopping the Cluster")
+	}()
 	a.NoError(err, "No error should be raised when Starting the Cluster")
 
 	err = node.broadcastClusterMessage(nil)

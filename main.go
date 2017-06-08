@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/smancke/guble/server"
+	"github.com/cosminrentea/gobbler/server"
 )
 
 func main() {

@@ -1,9 +1,8 @@
 package websocket
 
 import (
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/auth"
-	"github.com/smancke/guble/server/router"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/router"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
@@ -15,27 +14,27 @@ import (
 	"time"
 )
 
+// Config is used for configuring the Websocket module.
+type Config struct {
+	Enabled *bool
+	Prefix  *string
+}
+
 var webSocketUpgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
 // WSHandler is a struct used for handling websocket connections on a certain prefix.
 type WSHandler struct {
-	router        router.Router
-	prefix        string
-	accessManager auth.AccessManager
+	router router.Router
+	prefix string
 }
 
 // NewWSHandler returns a new WSHandler.
 func NewWSHandler(router router.Router, prefix string) (*WSHandler, error) {
-	accessManager, err := router.AccessManager()
-	if err != nil {
-		return nil, err
-	}
 	return &WSHandler{
-		router:        router,
-		prefix:        prefix,
-		accessManager: accessManager,
+		router: router,
+		prefix: prefix,
 	}, nil
 }
 
@@ -121,9 +120,6 @@ func (ws *WebSocket) Start() error {
 
 func (ws *WebSocket) sendLoop() {
 	for raw := range ws.sendChannel {
-		if !ws.checkAccess(raw) {
-			continue
-		}
 		if err := ws.Send(raw); err != nil {
 			logger.WithFields(log.Fields{
 				"userId":        ws.userID,
@@ -135,21 +131,6 @@ func (ws *WebSocket) sendLoop() {
 			break
 		}
 	}
-}
-
-func (ws *WebSocket) checkAccess(raw []byte) bool {
-	if len(raw) > 0 && raw[0] == byte('/') {
-		path := getPathFromRawMessage(raw)
-
-		logger.WithFields(log.Fields{
-			"userID": ws.userID,
-			"path":   path,
-		}).Debug("Received msg")
-
-		return len(path) == 0 || ws.accessManager.IsAllowed(auth.READ, ws.userID, path)
-
-	}
-	return true
 }
 
 func getPathFromRawMessage(raw []byte) protocol.Path {

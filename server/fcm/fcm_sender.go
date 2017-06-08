@@ -7,8 +7,8 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/Bogh/gcm"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/connector"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/connector"
 )
 
 const (
@@ -33,7 +33,7 @@ func (s *sender) Send(request connector.Request) (interface{}, error) {
 	deviceToken := request.Subscriber().Route().Get(deviceTokenKey)
 	fcmMessage := fcmMessage(request.Message())
 	fcmMessage.To = deviceToken
-	logger.WithFields(log.Fields{"deviceToken": fcmMessage.To}).Debug("sending message")
+	logger.WithFields(log.Fields{"deviceToken": fcmMessage.To}).WithField("message", fcmMessage).Debug("Composed FCM  message")
 	return s.gcmSender.Send(fcmMessage)
 }
 
@@ -43,11 +43,12 @@ func fcmMessage(message *protocol.Message) *gcm.Message {
 	err := json.Unmarshal(message.Body, m)
 	if err != nil {
 		logger.WithFields(log.Fields{
-			"error":     err.Error(),
-			"body":      string(message.Body),
-			"messageID": message.ID,
-		}).Debug("Could not decode gcm.Message from guble message body")
-	} else if m.Notification != nil && m.Data != nil {
+			"error":          err.Error(),
+			"body":           string(message.Body),
+			"messageID":      message.ID,
+			"correlation_id": message.CorrelationID(),
+		}).Error("Could not decode fcm.Message from guble message body")
+	} else if m.Data != nil {
 		return m
 	}
 

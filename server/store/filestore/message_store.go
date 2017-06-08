@@ -11,8 +11,8 @@ import (
 	"syscall"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/smancke/guble/protocol"
-	"github.com/smancke/guble/server/store"
+	"github.com/cosminrentea/gobbler/protocol"
+	"github.com/cosminrentea/gobbler/server/store"
 )
 
 // FileMessageStore is a struct used by the filesystem-based implementation of the MessageStore interface.
@@ -95,9 +95,9 @@ func (fms *FileMessageStore) StoreMessage(message *protocol.Message, nodeID uint
 		}).Debug("Locally generated ID for message")
 	}
 
-	data := message.Bytes()
+	data := message.Encode()
 
-	if err := fms.Store(partitionName, message.ID, message.Bytes()); err != nil {
+	if err := fms.Store(partitionName, message.ID, message.Encode()); err != nil {
 		logger.
 			WithError(err).WithField("partition", partitionName).
 			Error("Error storing locally generated  messagein partition")

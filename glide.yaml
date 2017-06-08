@@ -1,0 +1,44 @@
+package: github.com/cosminrentea/gobbler
+import:
+- package: github.com/Bogh/gcm
+- package: github.com/Shopify/sarama
+- package: github.com/Sirupsen/logrus
+- package: github.com/azer/snakecase
+- package: github.com/cosminrentea/go-uuid
+- package: github.com/docker/distribution
+  subpackages:
+  - health
+- package: github.com/golang/mock
+  subpackages:
+  - gomock
+- package: github.com/gorilla/mux
+- package: github.com/gorilla/websocket
+- package: github.com/hashicorp/go-multierror
+- package: github.com/hashicorp/memberlist
+- package: github.com/jinzhu/gorm
+  subpackages:
+  - dialects/postgres
+- package: github.com/jpillora/backoff
+- package: github.com/mattn/go-sqlite3
+- package: github.com/pkg/profile
+- package: github.com/prometheus/client_golang
+  subpackages:
+  - prometheus
+  - prometheus/promhttp
+- package: github.com/rs/xid
+- package: github.com/sideshow/apns2
+  subpackages:
+  - certificate
+- package: github.com/stretchr/testify
+  subpackages:
+  - assert
+- package: github.com/ugorji/go
+  subpackages:
+  - codec
+- package: golang.org/x/crypto
+  subpackages:
+  - ssh/terminal
+- package: golang.org/x/net
+  subpackages:
+  - http2
+- package: gopkg.in/alecthomas/kingpin.v2
