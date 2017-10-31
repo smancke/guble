@@ -194,7 +194,7 @@ bin/guble --log=info
 #### SMS
 
 |CLI Option|Env Variable|Values|Default |Description|
-|--- |--- |--- |--- |--- |--- |
+|--- |--- |--- |--- |--- |
 |sms|GUBLE_SMS|true &#124; false|false |Enable the SMS gateway|
 |sms_api_key|GUBLE_SMS_API_KEY|api key||The Nexmo API Key for Sending sms|
 |sms_api_secret|GUBLE_SMS_API_SECRET|api secret||The Nexmo API Secret for Sending sms|
