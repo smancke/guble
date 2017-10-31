@@ -165,61 +165,61 @@ bin/guble --log=info
 ### Configuration
 
 |CLI Option|Env Variable|Values|Default|Description|
-|--- |--- |--- |--- |--- |--- |
-|--env|GUBLE_ENV|development &#124; integration &#124; preproduction &#124; production|development|Name of the environment on which the application is running. Used mainly for logging|
-|--health-endpoint|GUBLE_HEALTH_ENDPOINT|resource/path/to/healthendpoint|/admin/healthcheck|The health endpoint to be used by the HTTP server.Can be disabled by setting the value to ""|
-|--http|GUBLE_HTTP_LISTEN|format: [host]:port||The address to for the HTTP server to listen on|
-|--kvs|GUBLE_KVS|memory &#124; file &#124; postgres|file|The storage backend for the key-value store to use|
-|--log|GUBLE_LOG|panic &#124; fatal &#124; error &#124; warn &#124; info &#124; debug|error|The log level in which the process logs|
-|--metrics-endpoint|GUBLE_METRICS_ENDPOINT|resource/path/to/metricsendpoint|/admin/metrics|The metrics endpoint to be used by the HTTP server.Can be disabled by setting the value to ""|
-|--ms|GUBLE_MS|memory &#124; file|file|The message storage backend|
-|--profile|GUBLE_PROFILE|cpu &#124; mem &#124; block||The profiler to be used|
-|--storage-path|GUBLE_STORAGE_PATH|path/to/storage|/var/lib/guble|The path for storing messages and key-value data like subscriptions if defined.The path must exists!|
+|--- |--- |--- |--- |--- |
+|`--env`|GUBLE_ENV|development &#124; integration &#124; preproduction &#124; production|development|Name of the environment on which the application is running. Used mainly for logging|
+|`--health-endpoint`|GUBLE_HEALTH_ENDPOINT|resource/path/to/healthendpoint|/admin/healthcheck|The health endpoint to be used by the HTTP server.Can be disabled by setting the value to ""|
+|`--http`|GUBLE_HTTP_LISTEN|format: [host]:port||The address to for the HTTP server to listen on|
+|`--kvs`|GUBLE_KVS|memory &#124; file &#124; postgres|file|The storage backend for the key-value store to use|
+|`--log`|GUBLE_LOG|panic &#124; fatal &#124; error &#124; warn &#124; info &#124; debug|error|The log level in which the process logs|
+|`--metrics-endpoint`|GUBLE_METRICS_ENDPOINT|resource/path/to/metricsendpoint|/admin/metrics|The metrics endpoint to be used by the HTTP server.Can be disabled by setting the value to ""|
+|`--ms`|GUBLE_MS|memory &#124; file|file|The message storage backend|
+|`--profile`|GUBLE_PROFILE|cpu &#124; mem &#124; block||The profiler to be used|
+|`--storage-path`|GUBLE_STORAGE_PATH|path/to/storage|/var/lib/guble|The path for storing messages and key-value data like subscriptions if defined.The path must exists!|
 
 
 #### APNS
 
 |CLI Option|Env Variable|Values|Default|Description|
-|--- |--- |--- |--- |--- |--- |
-|--apns|GUBLE_APNS|true &#124; false|false|Enable the APNS module in general as well as the connector to the development endpoint|
-|--apns-production|GUBLE_APNS_PRODUCTION|true &#124; false|false|Enables the connector to the apns production endpoint, requires the apns option to be set|
-|--apns-cert-file|GUBLE_APNS_CERT_FILE|path/to/cert/file||The APNS certificate file name, use this as an alternative to the certificate bytes option|
-|--apns-cert-bytes|GUBLE_APNS_CERT_BYTES|cert-bytes-as-hex-string||The APNS certificate bytes, use this as an alternative to the certificate file option|
-|--apns-cert-password|GUBLE_APNS_CERT_PASSWORD|password||The APNS certificate password|
-|--apns-app-topic|GUBLE_APNS_APP_TOPIC|topic||The APNS topic (as used by the mobile application)|
-|--apns-prefix|GUBLE_APNS_PREFIX|prefix|/apns/|The APNS prefix / endpoint|
-|--apns-workers|GUBLE_APNS_WORKERS|number of workers|Number of CPUs|The number of workers handling traffic with APNS (default: number of CPUs)|
+|--- |--- |--- |--- |--- |
+|`--apns`|GUBLE_APNS|true &#124; false|false|Enable the APNS module in general as well as the connector to the development endpoint|
+|`--apns-production`|GUBLE_APNS_PRODUCTION|true &#124; false|false|Enables the connector to the apns production endpoint, requires the apns option to be set|
+|`--apns-cert-file`|GUBLE_APNS_CERT_FILE|path/to/cert/file||The APNS certificate file name, use this as an alternative to the certificate bytes option|
+|`--apns-cert-bytes`|GUBLE_APNS_CERT_BYTES|cert-bytes-as-hex-string||The APNS certificate bytes, use this as an alternative to the certificate file option|
+|`--apns-cert-password`|GUBLE_APNS_CERT_PASSWORD|password||The APNS certificate password|
+|`--apns-app-topic`|GUBLE_APNS_APP_TOPIC|topic||The APNS topic (as used by the mobile application)|
+|`--apns-prefix`|GUBLE_APNS_PREFIX|prefix|/apns/|The APNS prefix / endpoint|
+|`--apns-workers`|GUBLE_APNS_WORKERS|number of workers|Number of CPUs|The number of workers handling traffic with APNS (default: number of CPUs)|
 
 
 #### SMS
 
 |CLI Option|Env Variable|Values|Default |Description|
-|--- |--- |--- |--- |--- |--- |
-|sms|GUBLE_SMS|true &#124; false|false |Enable the SMS gateway|
-|sms_api_key|GUBLE_SMS_API_KEY|api key||The Nexmo API Key for Sending sms|
-|sms_api_secret|GUBLE_SMS_API_SECRET|api secret||The Nexmo API Secret for Sending sms|
-|sms_topic|GUBLE_SMS_TOPIC|topic|/sms|The topic for sms route|
-|sms_workers|GUBLE_SMS_WORKERS|number of workers|Number of CPUs|The number of workers handling traffic with Nexmo sms endpoint|
+|--- |--- |--- |--- |--- |
+|`sms`|GUBLE_SMS|true &#124; false|false |Enable the SMS gateway|
+|`sms_api_key`|GUBLE_SMS_API_KEY|api key||The Nexmo API Key for Sending sms|
+|`sms_api_secret`|GUBLE_SMS_API_SECRET|api secret||The Nexmo API Secret for Sending sms|
+|`sms_topic`|GUBLE_SMS_TOPIC|topic|/sms|The topic for sms route|
+|`sms_workers`|GUBLE_SMS_WORKERS|number of workers|Number of CPUs|The number of workers handling traffic with Nexmo sms endpoint|
 
 #### FCM
 
 |CLI Option|Env Variable|Values|Default|Description|
-|--- |--- |--- |--- |--- |--- |
-|--fcm|GUBLE_FCM|true &#124; false|false|Enable the Google Firebase Cloud Messaging connector|
-|--fcm-api-key|GUBLE_FCM_API_KEY|api key||The Google API Key for Google Firebase Cloud Messaging|
-|--fcm-workers|GUBLE_FCM_WORKERS|number of workers|Number of CPUs|The number of workers handling traffic with Firebase Cloud Messaging|
-|--fcm-endpoint|GUBLE_FCM_ENDPOINT|format: url-schema|https://fcm.googleapis.com/fcm/send|The Google Firebase Cloud Messaging endpoint|
-|--fcm-prefix|GUBLE_FCM_PREFIX|prefix|/fcm/|The FCM prefix / endpoint|
+|--- |--- |--- |--- |--- |
+|`--fcm|GUBLE_FCM`|true &#124; false|false|Enable the Google Firebase Cloud Messaging connector|
+|`--fcm-api-key`|GUBLE_FCM_API_KEY|api key||The Google API Key for Google Firebase Cloud Messaging|
+|`--fcm-workers`|GUBLE_FCM_WORKERS|number of workers|Number of CPUs|The number of workers handling traffic with Firebase Cloud Messaging|
+|`--fcm-endpoint`|GUBLE_FCM_ENDPOINT|format: url-schema|https://fcm.googleapis.com/fcm/send|The Google Firebase Cloud Messaging endpoint|
+|`--fcm-prefix`|GUBLE_FCM_PREFIX|prefix|/fcm/|The FCM prefix / endpoint|
 
 #### Postgres
 
 |CLI Option|Env Variable|Values|Default|Description|
-|--- |--- |--- |--- |--- |--- |
-|--pg-host|GUBLE_PG_HOST|hostname|localhost|The PostgreSQL hostname|
-|--pg-port|GUBLE_PG_PORT|port|5432|The PostgreSQL port|
-|--pg-user|GUBLE_PG_USER|user|guble|The PostgreSQL user|
-|--pg-password|GUBLE_PG_PASSWORD|password|guble|The PostgreSQL password|
-|--pg-dbname|GUBLE_PG_DBNAME|database|guble|The PostgreSQL database name|
+|--- |--- |--- |--- |--- |
+|`--pg-host`|GUBLE_PG_HOST|hostname|localhost|The PostgreSQL hostname|
+|`--pg-port`|GUBLE_PG_PORT|port|5432|The PostgreSQL port|
+|`--pg-user`|GUBLE_PG_USER|user|guble|The PostgreSQL user|
+|`--pg-password`|GUBLE_PG_PASSWORD|password|guble|The PostgreSQL password|
+|`--pg-dbname`|GUBLE_PG_DBNAME|database|guble|The PostgreSQL database name|
 
 
 ## Run All Tests
