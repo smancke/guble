@@ -165,7 +165,7 @@ bin/guble --log=info
 ### Configuration
 
 |CLI Option|Env Variable|Values|Default|Description|
-|--- |--- |--- |--- |--- |--- |
+|--- |--- |--- |--- |--- |
 |--env|GUBLE_ENV|development &#124; integration &#124; preproduction &#124; production|development|Name of the environment on which the application is running. Used mainly for logging|
 |--health-endpoint|GUBLE_HEALTH_ENDPOINT|resource/path/to/healthendpoint|/admin/healthcheck|The health endpoint to be used by the HTTP server.Can be disabled by setting the value to ""|
 |--http|GUBLE_HTTP_LISTEN|format: [host]:port||The address to for the HTTP server to listen on|
@@ -180,7 +180,7 @@ bin/guble --log=info
 #### APNS
 
 |CLI Option|Env Variable|Values|Default|Description|
-|--- |--- |--- |--- |--- |--- |
+|--- |--- |--- |--- |--- |
 |--apns|GUBLE_APNS|true &#124; false|false|Enable the APNS module in general as well as the connector to the development endpoint|
 |--apns-production|GUBLE_APNS_PRODUCTION|true &#124; false|false|Enables the connector to the apns production endpoint, requires the apns option to be set|
 |--apns-cert-file|GUBLE_APNS_CERT_FILE|path/to/cert/file||The APNS certificate file name, use this as an alternative to the certificate bytes option|
@@ -204,7 +204,7 @@ bin/guble --log=info
 #### FCM
 
 |CLI Option|Env Variable|Values|Default|Description|
-|--- |--- |--- |--- |--- |--- |
+|--- |--- |--- |--- |--- |
 |--fcm|GUBLE_FCM|true &#124; false|false|Enable the Google Firebase Cloud Messaging connector|
 |--fcm-api-key|GUBLE_FCM_API_KEY|api key||The Google API Key for Google Firebase Cloud Messaging|
 |--fcm-workers|GUBLE_FCM_WORKERS|number of workers|Number of CPUs|The number of workers handling traffic with Firebase Cloud Messaging|
@@ -214,7 +214,7 @@ bin/guble --log=info
 #### Postgres
 
 |CLI Option|Env Variable|Values|Default|Description|
-|--- |--- |--- |--- |--- |--- |
+|--- |--- |--- |--- |--- |
 |--pg-host|GUBLE_PG_HOST|hostname|localhost|The PostgreSQL hostname|
 |--pg-port|GUBLE_PG_PORT|port|5432|The PostgreSQL port|
 |--pg-user|GUBLE_PG_USER|user|guble|The PostgreSQL user|
