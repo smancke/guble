@@ -33,7 +33,7 @@ type Config struct {
 	Enabled         *bool
 	APIKey          *string
 	APISecret       *string
-	Workers         *int
+	Workers         *int //Unused at the moment.
 	SMSTopic        *string
 	IntervalMetrics *bool
 
@@ -57,6 +57,7 @@ type gateway struct {
 }
 
 func New(router router.Router, sender Sender, config Config) (*gateway, error) {
+	//TODO use it if performance issue are detected.
 	if *config.Workers <= 0 {
 		*config.Workers = connector.DefaultWorkers
 	}
